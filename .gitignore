@@ -2,6 +2,9 @@
 Thumbs.db
 ehthumbs.db
 
+# PL/SQL Developer temp files
+*.~*
+
 # Folder config file
 Desktop.ini
 
