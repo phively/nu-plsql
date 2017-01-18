@@ -18,7 +18,7 @@ Select ksm_af_allocs.allocation_code, short_name, tx_number, fiscal_year, date_o
     Else 'E: <2.5K'
   End As nwu_af_bin,
   -- Construct year-to-date indicator
-  fytd_indicator(date_of_record) As ind_ytd
+  advance.fytd_indicator(date_of_record) As ind_ytd
 From ksm_af_allocs, nu_gft_trp_gifttrans
 -- Only use the KSM allocations
 Where nu_gft_trp_gifttrans.allocation_code = ksm_af_allocs.allocation_code

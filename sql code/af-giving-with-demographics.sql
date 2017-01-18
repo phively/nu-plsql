@@ -40,4 +40,5 @@ Select allocation_code, short_name, tx_number, fiscal_year, date_of_record, lega
     Else 'N'
   End As ksm_alum_flag
 From ksm_af_gifts, entity
-Where ksm_af_gifts.id_number = entity.id_number;
+Where ksm_af_gifts.id_number = entity.id_number
+Order By date_of_record Asc, legal_amount Desc, tx_number Asc;
