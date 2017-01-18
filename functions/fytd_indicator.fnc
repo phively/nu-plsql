@@ -1,9 +1,8 @@
+CREATE OR REPLACE Function ADVANCE.fytd_indicator(dt In date)
 /*
 Created by pbh634
 Fiscal year to date indicator: Takes as an argument any date object and returns Y/N
 */
-
-CREATE OR REPLACE Function ADVANCE.fytd_indicator(dt In date)
 Return character Is
   output character;
   -- Declarations

@@ -1,10 +1,9 @@
+CREATE OR REPLACE Function ADVANCE.math_mod(m In number, n In number)
 /*
 Created by pbh634
 Math mod
 Calculates the modulo function; needed to correct Oracle mod() weirdness
 */
-
-CREATE OR REPLACE Function Advance.math_mod(m In number, n In number)
 Return number Is
   remainder number;
 Begin
