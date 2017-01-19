@@ -63,7 +63,7 @@ Begin
   End If;
   
   -- Retrieve the master address
-  If xseq Is Null Then Return(NULL);
+  If xseq Is Null Then Return('#NA');
   End If;
   -- Big Case-When to fill in the appropriate field
   Select Case
@@ -81,10 +81,12 @@ Begin
     When field_ = 'zip_suffix' Then zip_suffix
     When field_ = 'postnet_zip' Then postnet_zip
     When field_ = 'county_code' Then county_code
-    When field_ = 'country_code' Then country_code
+    When field_ = 'country_code' Then tms_country.short_desc
   End
   Into master_addr
   From address
+    Left Join tms_country
+      On address.country_code = tms_country.country_code
   Where id_number = id
     And xsequence = xseq;
 
