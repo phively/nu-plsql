@@ -28,18 +28,19 @@ ksm_af_gifts As (
   From ksm_af_allocs, nu_gft_trp_gifttrans
     -- Only pull recent fiscal years
   Where nu_gft_trp_gifttrans.allocation_code = ksm_af_allocs.allocation_code
-    And fiscal_year Between 2015 And 2016
+    And fiscal_year Between 2016 And 2016
     -- Drop pledges
     And tx_gypm_ind != 'P'
 )
 -- Select final fields
 Select allocation_code, short_name, tx_number, fiscal_year, date_of_record, legal_amount, nwu_af_amount, nwu_af_bin,
   ksm_af_gifts.id_number, pref_name_sort, person_or_org, record_status_code, institutional_suffix,
-  advance.ksm_degrees_concat(ksm_af_gifts.id_number) As degrees_concat, gender_code, spouse_id_number,
+  advance.ksm_degrees_concat(ksm_af_gifts.id_number) As degrees_concat,
+  gender_code, spouse_id_number, advance.ksm_degrees_concat(spouse_id_number) As spouse_degrees_concat,
   Case
-    When institutional_suffix Like '%KSM%' Then 'Y'
+    When advance.ksm_degrees_concat(ksm_af_gifts.id_number) Is Not Null Then 'Y'
     Else 'N'
   End As ksm_alum_flag
 From ksm_af_gifts, entity
 Where ksm_af_gifts.id_number = entity.id_number
-Order By date_of_record Asc, legal_amount Desc, tx_number Asc;
+Order By date_of_record Asc, tx_number Asc, legal_amount Desc;
