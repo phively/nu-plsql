@@ -34,7 +34,8 @@ ksm_af_gifts As (
 )
 -- Select final fields
 Select allocation_code, short_name, tx_number, fiscal_year, date_of_record, legal_amount, nwu_af_amount, nwu_af_bin,
-  ksm_af_gifts.id_number, pref_name_sort, person_or_org, record_status_code, institutional_suffix, gender_code, spouse_id_number,
+  ksm_af_gifts.id_number, pref_name_sort, person_or_org, record_status_code, institutional_suffix,
+  advance.ksm_degrees_concat(ksm_af_gifts.id_number) As degrees_concat, gender_code, spouse_id_number,
   Case
     When institutional_suffix Like '%KSM%' Then 'Y'
     Else 'N'
