@@ -76,17 +76,24 @@ Begin
     When field_ = 'street3' Then street3
     When field_ = 'foreign_cityzip' Then foreign_cityzip
     When field_ = 'city' Then city
-    When field_ = 'state_code' Then state_code
+    When field_ = 'state_code' Then address.state_code
+    When field_ Like 'state%' Then tms_states.short_desc
     When field_ = 'zipcode' Then zipcode
     When field_ = 'zip_suffix' Then zip_suffix
     When field_ = 'postnet_zip' Then postnet_zip
-    When field_ = 'county_code' Then county_code
-    When field_ = 'country_code' Then tms_country.short_desc
+    When field_ = 'county_code' Then address.county_code
+    When field_ Like 'county%' Then tms_county.full_desc
+    When field_ = 'country_code' Then address.country_code
+    When field_ Like 'country%' Then tms_country.short_desc
   End
   Into master_addr
   From address
     Left Join tms_country
       On address.country_code = tms_country.country_code
+    Left Join tms_states
+      On address.state_code = tms_states.state_code
+    Left Join tms_county
+      On address.county_code = tms_county.county_code
   Where id_number = id
     And xsequence = xseq;
 

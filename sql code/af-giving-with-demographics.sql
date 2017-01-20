@@ -37,7 +37,7 @@ Select allocation_code, short_name, tx_number, fiscal_year, date_of_record, lega
   ksm_af_gifts.id_number, pref_name_sort, person_or_org, record_status_code, institutional_suffix,
   advance.ksm_degrees_concat(ksm_af_gifts.id_number) As degrees_concat,
   advance.master_addr(ksm_af_gifts.id_number, 'state_code') As master_state,
-  advance.master_addr(ksm_af_gifts.id_number, 'country_code') As master_country,
+  advance.master_addr(ksm_af_gifts.id_number, 'country') As master_country,
   gender_code, spouse_id_number, advance.ksm_degrees_concat(spouse_id_number) As spouse_degrees_concat,
   Case
     When advance.ksm_degrees_concat(ksm_af_gifts.id_number) Is Not Null Then 'Y'
