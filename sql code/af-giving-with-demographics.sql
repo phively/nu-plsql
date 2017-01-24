@@ -22,17 +22,17 @@ ksm_af_gifts As (
       When credit_amount >= 250 Then 'J: 250+'
       When credit_amount > 0 Then 'K: <250'
       Else 'L: Credit Only'
-    End As nwu_af_bin
+    End As ksm_af_bin
   From ksm_af_allocs allocs,
        nu_gft_trp_gifttrans
     -- Only pull recent fiscal years
   Where nu_gft_trp_gifttrans.allocation_code = allocs.allocation_code
-    And fiscal_year Between 2017 And 2017
+    And fiscal_year Between 2012 And 2016
     -- Drop pledges
     And tx_gypm_ind != 'P'
 )
 -- Select final fields
-Select af.allocation_code, af.short_name, af.tx_number, af.tx_gypm_ind, af.fiscal_year, af.date_of_record, af.legal_amount, af.credit_amount, af.nwu_af_amount, af.nwu_af_bin,
+Select af.allocation_code, af.short_name, af.tx_number, af.tx_gypm_ind, af.fiscal_year, af.date_of_record, af.legal_amount, af.credit_amount, af.nwu_af_amount, af.ksm_af_bin,
        srcdnr.id_number, entity.pref_name_sort, entity.person_or_org, entity.record_status_code, entity.institutional_suffix,
        advance.ksm_degrees_concat(entity.id_number) As degrees_concat,
        advance.master_addr(entity.id_number, 'state_code') As master_state,
@@ -49,4 +49,5 @@ From ksm_af_gifts af,
   Inner Join entity
     On srcdnr.id_number = entity.id_number
 Where srcdnr.trans_id_number = af.tx_number
+  And legal_amount > 0
 Order By date_of_record Asc, tx_number Asc, legal_amount Desc;
