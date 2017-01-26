@@ -1,3 +1,6 @@
+-- Create table for KSM alumni base
+Create Table ksm_alumni_base As
+
 -- List of people with Kellogg degrees
 With ksm_degree As (
   Select Distinct id_number

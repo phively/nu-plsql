@@ -1,3 +1,6 @@
+-- Create af giving table
+Create Table af_giving_with_demographics As
+
 -- Allocations tagged as Kellogg Annual Fund
 With ksm_af_allocs As (
   Select Distinct allocation_code, short_name
@@ -50,4 +53,4 @@ From ksm_af_gifts af,
     On srcdnr.id_number = entity.id_number
 Where srcdnr.trans_id_number = af.tx_number
   And legal_amount > 0
-Order By date_of_record Asc, tx_number Asc, legal_amount Desc;
+Order By date_of_record Asc, tx_number Asc, legal_amount Desc
