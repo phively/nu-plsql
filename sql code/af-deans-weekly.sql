@@ -1,28 +1,53 @@
--- Pull FY17 KSM AF gifts
+-- Pull CFY KSM AF gifts to compare year to year
+/* EDIT THESE! Insert current and previous fiscal year numbers */
+With fys As (
+  Select
+    2017 As cur_fy, -- edit this
+    2016 as prev_fy -- edit this
+  From DUAL -- null table
+),
 -- Allocations tagged as Kellogg Annual Fund
-With ksm_af_allocs As (
+ksm_af_allocs As (
   Select Distinct allocation_code,
     allocation.short_name
   From advance.allocation
   Where annual_sw = 'Y'
     And alloc_school = 'KM'
+),
+--ksm_giving_table As (
+  -- Select needed fields
+ksm_gifts As (
+  Select ksm_af_allocs.allocation_code, short_name, tx_number, fiscal_year, date_of_record, legal_amount, nwu_af_amount,
+    -- Construct custom gift size bins column
+    Case
+      When legal_amount >= 1000000 Then 'A: 1M+'
+      When legal_amount >= 100000 Then 'B: 100K+'
+      When legal_amount >= 50000 Then 'C: 50K+'
+      When legal_amount >= 2500 Then 'D: 2.5K+'
+      Else 'E: <2.5K'
+    End As ksm_af_bin,
+    -- Construct year-to-date indicator
+    advance.fytd_indicator(date_of_record) As ind_ytd
+  From ksm_af_allocs, nu_gft_trp_gifttrans, fys
+  -- Only use the KSM allocations
+  Where nu_gft_trp_gifttrans.allocation_code = ksm_af_allocs.allocation_code
+    -- Only pull recent fiscal years
+    And fiscal_year In (fys.cur_fy, fys.prev_fy)
+    -- Drop pledges
+    And tx_gypm_ind != 'P'
 )
--- Select needed fields
-Select ksm_af_allocs.allocation_code, short_name, tx_number, fiscal_year, date_of_record, legal_amount, nwu_af_amount,
-  -- Construct custom gift size bins column
-  Case
-    When nwu_af_amount >= 1000000 Then 'A: 1M+'
-    When nwu_af_amount >= 100000 Then 'B: 100K+'
-    When nwu_af_amount >= 50000 Then 'C: 50K+'
-    When nwu_af_amount >= 2500 Then 'D: 2.5K+'
-    Else 'E: <2.5K'
-  End As nwu_af_bin,
-  -- Construct year-to-date indicator
-  advance.fytd_indicator(date_of_record) As ind_ytd
-From ksm_af_allocs, nu_gft_trp_gifttrans
--- Only use the KSM allocations
-Where nu_gft_trp_gifttrans.allocation_code = ksm_af_allocs.allocation_code
-  -- Only pull recent fiscal years
-  And fiscal_year In (2016, 2017)
-  -- Drop pledges
-  And tx_gypm_ind != 'P';
+-- Final data is pulled from here down
+  -- Informative header specifying the exact years pulled
+(
+  Select '--- Year ---' As af_bins, cur_fy, prev_fy
+  From fys
+) Union (
+  -- Cross-tabulation step
+  Select ksm_af_bin,
+    Sum(Case When fiscal_year = fys.cur_fy Then legal_amount Else 0 End) As cur_fy,
+    Sum(Case When fiscal_year = fys.prev_fy Then legal_amount Else 0 End) As prev_fy
+  From ksm_gifts, fys
+  Where ind_ytd = 'Y'
+  Group By ksm_af_bin
+)
+Order By af_bins
