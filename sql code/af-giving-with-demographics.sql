@@ -1,6 +1,3 @@
--- Create af giving table
-Create Table af_giving_with_demographics As
-
 -- Allocations tagged as Kellogg Annual Fund
 With ksm_af_allocs As (
   Select Distinct allocation_code, short_name

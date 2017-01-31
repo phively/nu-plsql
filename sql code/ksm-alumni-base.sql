@@ -1,6 +1,3 @@
--- Create table for KSM alumni base
-Create Table ksm_alumni_base As
-
 -- List of people with Kellogg degrees
 With ksm_degree As (
   Select Distinct id_number
@@ -21,4 +18,4 @@ Select entity.id_number, entity.pref_name_sort, entity.person_or_org, entity.rec
        advance.ksm_degrees_concat(entity.spouse_id_number) As spouse_degrees_concat
 From entity
   Inner Join ksm_degree
-    On entity.id_number = ksm_degree.id_number;
+    On entity.id_number = ksm_degree.id_number
