@@ -1,11 +1,17 @@
 -- Pull CFY KSM AF gifts to compare year to year
-/* EDIT THESE! Insert current and previous fiscal year numbers */
+/*********************************************************
+ * EDIT THESE CONSTANTS!                                 *
+ * Insert current and previous fiscal year numbers below *
+ *********************************************************/
 With fys As (
   Select
     2017 As cur_fy, -- edit this
     2016 as prev_fy -- edit this
   From DUAL -- null table
 ),
+/*********************************************************
+ * Do not edit below here                                *
+ *********************************************************/
 -- Allocations tagged as Kellogg Annual Fund
 ksm_af_allocs As (
   Select Distinct allocation_code,
@@ -14,11 +20,11 @@ ksm_af_allocs As (
   Where annual_sw = 'Y'
     And alloc_school = 'KM'
 ),
---ksm_giving_table As (
-  -- Select needed fields
+-- Select needed fields from nu_gft_trp_gifttrans
 ksm_gifts As (
   Select ksm_af_allocs.allocation_code, short_name, tx_number, fiscal_year, date_of_record, legal_amount, nwu_af_amount,
     -- Construct custom gift size bins column
+    -- N.B. legal amount includes all gifts sitting in the chosen accounts; use nwu_af_amount to match CAT103
     Case
       When legal_amount >= 1000000 Then 'A: 1M+'
       When legal_amount >= 100000 Then 'B: 100K+'
@@ -43,6 +49,7 @@ ksm_gifts As (
   From fys
 ) Union (
   -- Cross-tabulation step
+  -- N.B. legal amount includes all gifts sitting in the chosen accounts; use nwu_af_amount to match CAT103
   Select ksm_af_bin,
     Sum(Case When fiscal_year = fys.cur_fy Then legal_amount Else 0 End) As cur_fy,
     Sum(Case When fiscal_year = fys.prev_fy Then legal_amount Else 0 End) As prev_fy
