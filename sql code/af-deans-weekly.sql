@@ -6,7 +6,7 @@
 With fys As (
   Select
     2017 As cur_fy, -- edit this
-    2016 as prev_fy -- edit this
+    2016 As prev_fy -- edit this
   From DUAL -- null table
 ),
 /*********************************************************
