@@ -1,17 +1,21 @@
-CREATE OR REPLACE Function ADVANCE.fytd_indicator(dt In date)
+Create Or Replace Function advance.fytd_indicator(dt In date)
+Return character Is
+
 /*
 Created by pbh634
 Fiscal year to date indicator: Takes as an argument any date object and returns Y/N
 */
-Return character Is
-  output character;
-  -- Declarations
-  fy_start_mo constant number := 9; -- fiscal start month, 9 = September
-  today_fisc_day number;
-  today_fisc_mo number;
-  dt_fisc_day number;
-  dt_fisc_mo number;
+
+-- Declarations
+output character;
+fy_start_mo constant number := 9; -- fiscal start month, 9 = September
+today_fisc_day number;
+today_fisc_mo number;
+dt_fisc_day number;
+dt_fisc_mo number;
+
 Begin
+
   -- extract dt fiscal month and day
   today_fisc_day := extract(day from sysdate);
   today_fisc_mo  := math_mod(m => extract(month from sysdate) - fy_start_mo, n => 12) + 1;
@@ -33,6 +37,8 @@ Begin
     -- fallback condition
     output := '#ERR';
   End If;
-  Return(output);
+  
+Return(output);
+
 End fytd_indicator;
 /

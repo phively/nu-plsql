@@ -1,4 +1,6 @@
 Create Or Replace Function advance.master_addr(id In varchar2, field In varchar2)
+Return character Is
+
 /*
 Created by pbh634
 Takes an ID and field and returns active master address, defined as preferred if available, else home, else business.
@@ -8,14 +10,15 @@ Sample output (prompt -> result):
 advance.master_addr('0000704936', 'city')       -> Chicago
 advance.master_addr('0000704936', 'sTaTe_CoDe') -> IL
 */
-Return character Is
-  master_addr varchar2(120); -- final output
-  field_ varchar2(60) := lower(field); -- lower-case field
-  -- xsequences for master address
-  pref_xseq number(6);
-  home_xseq number(6);
-  bus_xseq number(6);
-  xseq number(6); -- final xsequence of address to retrieve
+
+-- Declarations
+master_addr varchar2(120); -- final output
+field_ varchar2(60) := lower(field); -- lower-case field
+-- xsequences for master address
+pref_xseq number(6);
+home_xseq number(6);
+bus_xseq number(6);
+xseq number(6); -- final xsequence of address to retrieve
 
   -- Cursor to store possible xsequences
   Cursor t_xseq Is

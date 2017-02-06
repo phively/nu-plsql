@@ -1,4 +1,6 @@
-CREATE OR REPLACE Function ADVANCE.KSM_degrees_concat(id In varchar2, verbose In varchar2 Default 'FALSE')
+Create Or Replace Function advance.ksm_degrees_concat(id In varchar2, verbose In varchar2 Default 'FALSE')
+Return varchar2 Is
+
 /*
 Created by pbh634
 Takes an ID number and returns concatenated Kellogg degrees as a string
@@ -7,9 +9,10 @@ MBA 2014 KSM JDMBA                     MBA 2014 KSM Law/Kellogg - JD/MBA
 MBA 2014 KSM KGS2Y FT62                MBA 2014 KSM KSM - 2-Year MBA FT Section 62
 BBA 1969 BUS BEV; MBA 1970 KSM KGS1Y   BBA 1969 BUS Business - EV; MBA 1970 KSM KSM - 1-Year MBA
 */
-Return varchar2 Is
-  deg_conc varchar2(1024);
-  verbose_ char(1);
+
+-- Declarations
+deg_conc varchar2(1024);
+verbose_ char(1);
   
 Begin
 
