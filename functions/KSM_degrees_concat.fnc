@@ -69,5 +69,5 @@ Begin
 
 Return(deg_conc);
 
-End KSM_degrees_concat;
+End ksm_degrees_concat;
 /

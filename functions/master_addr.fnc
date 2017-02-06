@@ -20,37 +20,37 @@ home_xseq number(6);
 bus_xseq number(6);
 xseq number(6); -- final xsequence of address to retrieve
 
-  -- Cursor to store possible xsequences
-  Cursor t_xseq Is
-  -- xsequence of active preferred, home, and business addresses
-    With pref As (
-      Select id_number, xsequence As pref_xseq
-      From address
-      Where addr_status_code = 'A'
-        And addr_pref_ind = 'Y'
-    ),
-    home As (
-      Select id_number, xsequence As home_xseq
-      From address
-      Where addr_status_code = 'A'
-        And addr_type_code = 'H'
-    ),
-    bus As (
-      Select id_number, xsequence As bus_xseq
-      From address
-      Where addr_status_code = 'A'
-        And addr_type_code = 'B'
-    )
-    -- Combine preferred, home, and business xseq into a row
-    Select pref_xseq, home_xseq, bus_xseq
-    From entity
-      Left Join pref
-        On entity.id_number = pref.id_number
-      Left Join home
-        On entity.id_number = home.id_number
-      Left Join bus
-        On entity.id_number = bus.id_number
-    Where entity.id_number = id;
+-- Cursor to store possible xsequences
+Cursor t_xseq Is
+-- xsequence of active preferred, home, and business addresses
+  With pref As (
+    Select id_number, xsequence As pref_xseq
+    From address
+    Where addr_status_code = 'A'
+      And addr_pref_ind = 'Y'
+  ),
+  home As (
+    Select id_number, xsequence As home_xseq
+    From address
+    Where addr_status_code = 'A'
+      And addr_type_code = 'H'
+  ),
+  bus As (
+    Select id_number, xsequence As bus_xseq
+    From address
+    Where addr_status_code = 'A'
+      And addr_type_code = 'B'
+  )
+  -- Combine preferred, home, and business xseq into a row
+  Select pref_xseq, home_xseq, bus_xseq
+  From entity
+    Left Join pref
+      On entity.id_number = pref.id_number
+    Left Join home
+      On entity.id_number = home.id_number
+    Left Join bus
+      On entity.id_number = bus.id_number
+  Where entity.id_number = id;
 
 Begin
     
