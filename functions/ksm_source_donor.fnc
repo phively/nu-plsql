@@ -1,4 +1,4 @@
-Create Or Replace Function ksm_source_donor(receipt In varchar2)
+Create Or Replace Function advance.ksm_source_donor(receipt In varchar2)
 Return varchar2 Is
 
 /*
@@ -7,7 +7,7 @@ Takes an receipt number and returns the ID number of the entity who should recei
 primary Kellogg gift credit.
 
 Relies on nu_gft_trp_gifttrans, which combines gifts and matching gifts into a single table.
-Kellogg alumni status is defined as 
+Kellogg alumni status is defined as [...]
 */
 
 -- Declarations
@@ -17,7 +17,30 @@ id_tmp varchar2(10); -- temporary holder for id_number or receipt
 
 -- Cursor to store potential donors
 Cursor t_donor Is
-  NULL;
+  Select
+    -- varchar2 fields
+    id_number, advance.ksm_degrees_concat(id_number) As ksm_degrees,
+    -- char(1) fields
+    person_or_org,
+    -- numeric fields
+    legal_amount, credit_amount
+  From nu_gft_trp_gifttrans
+  Where tx_number = receipt;
+
+-- Collections corresponding to above cursor
+-- varchar2(10) fields
+Type t_ids Is Table Of varchar2(10);
+  l_id_number t_ids;
+-- varchar2 fields
+Type t_degrees Is Table Of varchar2(1024);
+  l_degrees t_degrees;
+-- char(1) fields
+Type t_person_org Is Table Of nu_gft_trp_gifttrans.person_or_org%type;
+  l_person_org t_person_org;
+-- numeric fields
+Type t_dollars Is Table Of nu_gft_trp_gifttrans.legal_amount%type;
+  l_legal_amount t_dollars;
+  l_credit_amount t_dollars;
 
 Begin
 
@@ -27,7 +50,7 @@ Begin
   From nu_gft_trp_gifttrans gift
   Where gift.tx_number = receipt;
 
-  -- For matching gifts, recursively run this but replace the matching gift receipt with matched receipt
+-- For matching gifts, recursively run this function but replace the matching gift receipt with matched receipt
   If gift_type = 'M' Then
     -- Pull the matched receipt into id_tmp
     Select gift.matched_receipt_nbr
@@ -40,8 +63,15 @@ Begin
     Return(id_final);
   End If;
 
-  -- For any other type of gift, proceed through the hierarchy of potential source donors
-  
+-- For any other type of gift, proceed through the hierarchy of potential source donors
+
+  -- Retrieve t_donor cursor results
+  Open t_donor;
+    Fetch t_donor
+      Bulk Collect Into l_id_number, l_degrees, l_person_org, l_legal_amount, l_credit_amount;
+  Close t_donor;
+
+  -- etc.
 
 Return(id_final);
 
