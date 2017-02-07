@@ -30,12 +30,12 @@ Begin
         -- Trimmed degree row, verbose
         When verbose_ = 'T' Then
           trim(
-            degree_code || ' ' || degree_year || ' ' || school_code || ' ' ||
+            degree_year|| ' ' || degree_code || ' ' || school_code || ' ' ||
             tms_dept_code.short_desc || ' ' || tms_class_section.short_desc
           )
         -- Trimmed degree row, terse
         Else trim(
-          degree_code || ' ' || degree_year || ' ' || school_code || ' ' || 
+          degree_year || ' ' || degree_code || ' ' || school_code || ' ' || 
           -- Special handler for KSM and EMBA departments
           Case
             When degrees.dept_code = '01MDB' Then 'MDMBA'
