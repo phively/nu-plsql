@@ -10,6 +10,9 @@ Relies on nu_gft_trp_gifttrans, which combines gifts and matching gifts into a s
 Kellogg alumni status is defined as [...]
 */
 
+-- Debugging flag
+debug boolean := TRUE;
+
 -- Declarations
 id_final varchar2(10); -- id_number of entity to receive credit
 gift_type char(1); -- GPYM indicator
@@ -45,7 +48,7 @@ Type t_dollars Is Table Of nu_gft_trp_gifttrans.legal_amount%type;
 Begin
 
   -- Check if the receipt is a matching gift
-  Select gift.tx_gypm_ind
+  Select Distinct gift.tx_gypm_ind
   Into gift_type
   From nu_gft_trp_gifttrans gift
   Where gift.tx_number = receipt;
@@ -70,6 +73,17 @@ Begin
     Fetch t_donor
       Bulk Collect Into l_id_number, l_degrees, l_person_org, l_legal_amount, l_credit_amount;
   Close t_donor;
+
+/* Debug -- test that the cursors worked */
+  If debug Then
+    dbms_output.put_line('==== Cursor Results ====');
+    -- Loop through the lists
+    For i In 1..(l_id_number.count) Loop
+      -- Concatenate output
+      dbms_output.put_line(l_id_number(i) || '; ' || l_degrees(i) || '; ' || l_person_org(i) || '; ' ||
+        l_legal_amount(i) || '; ' || l_credit_amount(i));
+    End Loop;
+  End If;
 
   -- etc.
 
