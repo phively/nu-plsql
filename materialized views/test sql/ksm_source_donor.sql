@@ -18,6 +18,9 @@ Select
   gift.id_number, advance.ksm_degrees_concat(gift.id_number) As ksm_degrees, gift.donor_name, gift.person_or_org, gift.record_type_code,
   -- Matching gift fields
   gift.matched_donor_id, advance.ksm_degrees_concat(gift.matched_donor_id) As matched_ksm_degrees,
+  -- KSM source donor
+  Case When gift.id_number = advance.ksm_source_donor(gift.tx_number) Then 'Y' Else 'N' End As bool_id_is_ksm_source,
+  advance.ksm_source_donor(gift.tx_number) As ksm_source_donor,
   -- Source donor
   -- Check if source donor ID is same as current entity ID
   Case When gift.id_number = srcdnr.id_number Then 'Y' Else 'N' End As bool_id_is_source,

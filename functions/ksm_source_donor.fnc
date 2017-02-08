@@ -18,7 +18,7 @@ id_tmp varchar2(10); -- temporary holder for id_number or receipt
 
 -- Cursor to store potential donors
 -- Needs to be sorted in preferred order, so that KSM alumni with earlier degree years appear higher
--- on the list and nonalumni
+-- on the list and nonalumni are sorted by lower id_number (as a proxy for age of record)
 Cursor t_donor Is
   Select
     -- varchar2 fields
