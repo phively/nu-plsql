@@ -35,20 +35,9 @@ Cursor t_donor Is
   -- People with smaller ID numbers take precedence over those with larger oens
   Order By advance.ksm_degrees_concat(id_number) Asc, id_number Asc;
 
--- Collections corresponding to above cursor
--- varchar2(10) fields
-Type t_ids Is Table Of varchar2(10);
-  l_id_number t_ids;
--- varchar2 fields
-Type t_degrees Is Table Of varchar2(1024);
-  l_degrees t_degrees;
--- char(1) fields
-Type t_char Is Table Of nu_gft_trp_gifttrans.person_or_org%type;
-  l_person_org t_char;
-  l_assoc_code t_char;
--- numeric fields
-Type t_dollars Is Table Of nu_gft_trp_gifttrans.credit_amount%type;
-  l_credit_amount t_dollars;
+-- Collection corresponding to above cursor
+Type t_results Is Table Of t_donor%rowtype;
+  results t_results;
 
 Begin
 
@@ -76,28 +65,28 @@ Begin
   -- Retrieve t_donor cursor results
   Open t_donor;
     Fetch t_donor
-      Bulk Collect Into l_id_number, l_degrees, l_person_org, l_assoc_code, l_credit_amount;
+      Bulk Collect Into results;
   Close t_donor;
-
+    
   -- Debug -- test that the cursors worked --
   If debug Then
     dbms_output.put_line('==== Cursor Results ====');
     -- Loop through the lists
-    For i In 1..(l_id_number.count) Loop
+    For i In 1..(results.count) Loop
       -- Concatenate output
-      dbms_output.put_line(l_id_number(i) || '; ' || l_degrees(i) || '; ' || l_person_org(i) || '; ' ||
-        l_assoc_code(i) || '; ' || l_credit_amount(i));
+      dbms_output.put_line(results(i).id_number || '; ' || results(i).ksm_degrees || '; ' || results(i).person_or_org || '; ' ||
+        results(i).associated_code || '; ' || results(i).credit_amount);
     End Loop;
   End If;
 
   -- Check if the primary donor has a KSM degree
-  For i In 1..(l_id_number.count) Loop
-    If l_assoc_code(i) = 'P' Then
+  For i In 1..(results.count) Loop
+    If results(i).associated_code = 'P' Then
       -- Store the record type of the primary donor
-      donor_type := l_person_org(i);
+      donor_type := results(i).person_or_org;
       -- If the primary donor is a KSM alum we're done
-      If l_degrees(i) Is Not Null Then
-        Return(l_id_number(i));
+      If results(i).ksm_degrees Is Not Null Then
+        Return(results(i).id_number);
       -- Otherwise jump to next check
       Else Exit;
       End If;
@@ -106,10 +95,10 @@ Begin
   
   -- Check if any non-primary donors have a KSM degree; grab first that has a non-null l_degrees
   -- IMPORTANT: this means the cursor t_donor needs to be sorted in preferred order!
-  For i In 1..(l_id_number.count) Loop
+  For i In 1..(results.count) Loop
     -- If we find a KSM alum we're done
-    If l_degrees(i) Is Not Null Then
-      Return(l_id_number(i));
+    If results(i).ksm_degrees Is Not Null Then
+      Return(results(i).id_number);
     End If;
   End Loop;
   
@@ -117,18 +106,18 @@ Begin
   -- IMPORTANT: this means the cursor t_donor needs to be sorted in preferred order!
   -- If primary record type is not person, continue
   If donor_type != 'P' Then  
-    For i In 1..(l_id_number.count) Loop
-      If l_person_org(i) = 'P' Then
-        return(l_id_number(i));
+    For i In 1..(results.count) Loop
+      If results(i).person_or_org = 'P' Then
+        return(results(i).id_number);
       End If;
     End Loop;  
   End If;
   
   -- Fallback is to use the existing primary donor ID
-  For i In 1..(l_id_number.count) Loop
+  For i In 1..(results.count) Loop
     -- If we find a KSM alum we're done
-    If l_assoc_code(i) = 'P' Then
-      Return(l_id_number(i));
+    If results(i).associated_code = 'P' Then
+      Return(results(i).id_number);
     End If;
   End Loop;
 
