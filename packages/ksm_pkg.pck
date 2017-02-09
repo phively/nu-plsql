@@ -17,12 +17,17 @@ Suggested naming convetions:
 -- Type <TypeName> Is <Datatype>;
   
 -- Public constant declarations
-  fy_start_month Constant number := 9; -- fiscal start month, 9 = September
+fy_start_month Constant number := 9; -- fiscal start month, 9 = September
 
 -- Public variable declarations
--- <VariableName> <Datatype>;
 
--- Public function and procedure declarations
+/* Table for allocations */
+Type t_varchar2_64 Is Table Of varchar2(64);
+
+
+/*************************************************************************
+Public function declarations
+*************************************************************************/
 
 /* Mathematical modulo operator */
 Function math_mod(
@@ -48,6 +53,12 @@ Function get_gift_source_donor_ksm(
   debug In boolean Default FALSE) -- if TRUE, debug output is printed via dbms_output.put_line()
   Return varchar2; -- entity id_number
 
+/* Return Kellogg Annual Fund allocations, both active and historical, as a pipelined function, e.g.
+   Select * From table(ksm_pkg.get_alloc_annual_fund_ksm);
+   Seems that the pipelining is super impractical, and I'd be better off with a view, but it's cool so I'm keeping it. */
+Function get_alloc_annual_fund_ksm
+  Return t_varchar2_64 Pipelined; -- returns list of matching values
+
 end ksm_pkg;
 /
 Create Or Replace Package Body ksm_pkg Is
@@ -59,7 +70,10 @@ Create Or Replace Package Body ksm_pkg Is
 -- <ConstantName> constant <Datatype> := <Value>;
 
 -- Private variable declarations
--- <VariableName> <Datatype>;
+
+/*************************************************************************
+Functions
+*************************************************************************/
 
 /* Calculates the modulo function; needed to correct Oracle mod() weirdness
    2017-02-08 */
@@ -276,6 +290,31 @@ Function get_gift_source_donor_ksm(receipt In varchar2, debug In boolean Default
     -- If we got all the way to the end, return null
     Return(NULL);
     
+  End;
+
+/* Pipeline function returning Kellogg Annual Fund allocations, both active and historical */
+Function get_alloc_annual_fund_ksm
+  Return t_varchar2_64 Pipelined As
+    -- Definition of current and historical Kellogg Annual Fund allocations
+    Cursor c_alloc_af Is
+      Select Distinct allocation_code
+      From allocation
+      Where annual_sw = 'Y'
+      And alloc_school = 'KM';
+    -- Holds allocation_codes
+    t_allocs t_varchar2_64;
+
+  Begin
+    -- Grab allocations
+    Open c_alloc_af;
+      Fetch c_alloc_af Bulk Collect Into t_allocs;
+    Close c_alloc_af;
+    -- Pipe out the allocations
+    For i in 1..(t_allocs.count) Loop
+      Pipe row(t_allocs(i));
+    End Loop;
+    
+    Return;
   End;
 
 End ksm_pkg;
