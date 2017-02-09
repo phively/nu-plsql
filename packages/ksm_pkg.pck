@@ -194,13 +194,17 @@ Function get_gift_source_donor_ksm(receipt In varchar2, debug In boolean Default
 
   -- For matching gifts, recursively run this function but replace the matching gift receipt with matched receipt
     If gift_type = 'M' Then
+      -- If debug, mention that it's a matched gift
+      If debug Then
+        dbms_output.put_line('==== Matching Gift! ====' || chr(10) || '*Matching receipt: ' || receipt);
+      End If;
       -- Pull the matched receipt into id_tmp
       Select gift.matched_receipt_nbr
       Into id_tmp
       From nu_gft_trp_gifttrans gift
       Where gift.tx_number = receipt;
       -- Run id_tmp through this function
-      id_tmp := get_gift_source_donor_ksm(receipt => id_tmp);
+      id_tmp := get_gift_source_donor_ksm(receipt => id_tmp,  debug => debug);
       -- Return found ID and break out of function
       Return(id_tmp);
     End If;
