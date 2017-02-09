@@ -13,17 +13,19 @@ Suggested naming convetions:
     get_gift_source_donor_ksm
 *************************************************************************/
 
--- Public type declarations
--- Type <TypeName> Is <Datatype>;
+/*************************************************************************
+Public type declarations
+*************************************************************************/
+Type t_varchar2_long Is Table Of varchar2(512);
   
--- Public constant declarations
+/*************************************************************************
+Public constant declarations
+*************************************************************************/
 fy_start_month Constant number := 9; -- fiscal start month, 9 = September
 
--- Public variable declarations
-
-/* Table for allocations */
-Type t_varchar2_64 Is Table Of varchar2(64);
-
+/*************************************************************************
+Public variable declarations
+*************************************************************************/
 
 /*************************************************************************
 Public function declarations
@@ -57,19 +59,34 @@ Function get_gift_source_donor_ksm(
    Select * From table(ksm_pkg.get_alloc_annual_fund_ksm);
    Seems that the pipelining is super impractical, and I'd be better off with a view, but it's cool so I'm keeping it. */
 Function get_alloc_annual_fund_ksm
-  Return t_varchar2_64 Pipelined; -- returns list of matching values
+  Return t_varchar2_long Pipelined; -- returns list of matching values
 
 end ksm_pkg;
 /
 Create Or Replace Package Body ksm_pkg Is
 
--- Private type declarations
--- type <TypeName> is <Datatype>;
-  
--- Private constant declarations
--- <ConstantName> constant <Datatype> := <Value>;
+/*************************************************************************
+Private cursors -- data definitions
+*************************************************************************/
 
--- Private variable declarations
+/* Definition of current and historical Kellogg Annual Fund allocations */
+Cursor c_alloc_annual_fund_ksm Is
+  Select Distinct allocation_code
+  From allocation
+  Where annual_sw = 'Y'
+  And alloc_school = 'KM';
+
+/*************************************************************************
+Private type declarations
+*************************************************************************/
+  
+/*************************************************************************
+Private constant declarations
+*************************************************************************/
+
+/*************************************************************************
+Private variable declarations
+*************************************************************************/
 
 /*************************************************************************
 Functions
@@ -292,26 +309,21 @@ Function get_gift_source_donor_ksm(receipt In varchar2, debug In boolean Default
     
   End;
 
-/* Pipeline function returning Kellogg Annual Fund allocations, both active and historical */
+/* Pipeline function returning Kellogg Annual Fund allocations, both active and historical
+   2017-02-09 */
 Function get_alloc_annual_fund_ksm
-  Return t_varchar2_64 Pipelined As
-    -- Definition of current and historical Kellogg Annual Fund allocations
-    Cursor c_alloc_af Is
-      Select Distinct allocation_code
-      From allocation
-      Where annual_sw = 'Y'
-      And alloc_school = 'KM';
-    -- Holds allocation_codes
-    t_allocs t_varchar2_64;
+  Return t_varchar2_long Pipelined As
+    -- Declarations
+    allocs t_varchar2_long;
 
   Begin
     -- Grab allocations
-    Open c_alloc_af;
-      Fetch c_alloc_af Bulk Collect Into t_allocs;
-    Close c_alloc_af;
+    Open c_alloc_annual_fund_ksm; -- Annual Fund allocations cursor
+      Fetch c_alloc_annual_fund_ksm Bulk Collect Into allocs;
+    Close c_alloc_annual_fund_ksm;
     -- Pipe out the allocations
-    For i in 1..(t_allocs.count) Loop
-      Pipe row(t_allocs(i));
+    For i in 1..(allocs.count) Loop
+      Pipe row(allocs(i));
     End Loop;
     
     Return;
