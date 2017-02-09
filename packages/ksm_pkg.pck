@@ -24,22 +24,26 @@ Suggested naming convetions:
 
 -- Public function and procedure declarations
 
-Function math_mod( -- mathematical modulo operator
+/* Mathematical modulo operator */
+Function math_mod(
   m In number,
   n In number)
   Return number; -- m % n
   
-Function fytd_indicator( -- fiscal year to date indicator
+/* Fiscal year to date indicator */
+Function fytd_indicator(
   dt In date,
-  day_offset In number Default -1) -- default offset in days; -1 means up to yesterday, 0 up to today, etc.
+  day_offset In number Default -1) -- default offset in days; -1 means up to yesterday is year-to-date, 0 up to today, etc.
   Return character; -- Y or N
 
-Function get_entity_degrees_concat_ksm( -- Returns concatenated Kellogg degrees as string
+/* Return concatenated Kellogg degrees as a string */
+Function get_entity_degrees_concat_ksm(
   id In varchar2, -- entity id_number
   verbose In varchar2 Default 'FALSE')  -- if TRUE, then preferentially return short_desc instead of code where unclear
   Return varchar2; -- e.g. 2014 MBA KSM JDMBA
 
-Function get_gift_source_donor_ksm( -- takes receipt number and returns id_number of entity to receive primary Kellogg gift credit
+/* Take receipt number and return id_number of entity to receive primary Kellogg gift credit */
+Function get_gift_source_donor_ksm(
   receipt In varchar2,
   debug In boolean Default FALSE) -- if TRUE, debug output is printed via dbms_output.put_line()
   Return varchar2; -- entity id_number
