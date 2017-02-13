@@ -14,9 +14,11 @@ With fy_start_month As (
   From DUAL
 ),
 
--- Calculate current fiscal year; always year + 1 unless the FY starts in Jan
+-- Store today from sysdate and calculate current fiscal year; always year + 1
+-- unless the FY starts in Jan
 curr_date As (
   Select
+  trunc(sysdate) As today,
   -- Current fiscal year; uses constant above
   Case
     When extract(month from sysdate) >= fy_start_month.nbr
@@ -34,9 +36,9 @@ curr_date As (
 -- Final table with definitions
 Select
   -- Current day
-  trunc(sysdate) As today,
+  curr_date.today As today,
   -- Yesterday
-  trunc(sysdate - 1) As yesterday,
+  curr_date.today - 1 As yesterday,
   -- Current fiscal year
   curr_date.yr As curr_fy,
   -- Start of fiscal year objects
@@ -48,5 +50,13 @@ Select
     As next_fy_start,
   -- Year-to-date objects
   add_months(trunc(sysdate), -12) As prev_fy_today,
-  add_months(trunc(sysdate), 12) As next_fy_today
+  add_months(trunc(sysdate), 12) As next_fy_today,
+  -- Start of week objects
+  trunc(sysdate, 'IW') - 7 As prev_week_start,
+  trunc(sysdate, 'IW') As curr_week_start,
+  trunc(sysdate, 'IW') + 7 As next_week_start,
+  -- Start of month objects
+  add_months(trunc(sysdate, 'Month'), -1) As prev_month_start,
+  add_months(trunc(sysdate, 'Month'), 0) As curr_month_start,
+  add_months(trunc(sysdate, 'Month'), 1) As next_month_start
 From fy_start_month, curr_date
