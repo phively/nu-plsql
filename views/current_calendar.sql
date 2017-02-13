@@ -1,4 +1,5 @@
-Create Or Replace View current_calendar As
+Create Or Replace View advance_nu_rpt.current_calendar As
+With stop_hiding_my_comments As (Select NULL From DUAL),
 /* 
 Created by pbh634
 Compiles useful dates together for use in other functions.
@@ -9,7 +10,7 @@ Naming convention:
 */
 
 -- If the fiscal start month ever changes from September (9) change here
-With fy_start_month As (
+fy_start_month As (
   Select 9 As nbr
   From DUAL
 ),
