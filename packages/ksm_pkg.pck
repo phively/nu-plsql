@@ -21,7 +21,6 @@ Type t_varchar2_long Is Table Of varchar2(512);
 /*************************************************************************
 Public constant declarations
 *************************************************************************/
-fy_start_month Constant number := 9; -- fiscal start month, 9 = September
 
 /*************************************************************************
 Public variable declarations
@@ -83,6 +82,7 @@ Private type declarations
 /*************************************************************************
 Private constant declarations
 *************************************************************************/
+fy_start_month Constant number := 9; -- fiscal start month, 9 = September
 
 /*************************************************************************
 Private variable declarations
