@@ -1,5 +1,5 @@
-Create Or Replace View advance_nu_rpt.current_calendar As
-With stop_hiding_my_comments As (Select NULL From DUAL),
+Create Or Replace View v_current_calendar As
+With
 /* 
 Created by pbh634
 Compiles useful dates together for use in other functions.

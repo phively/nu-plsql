@@ -1,5 +1,5 @@
---Create Or Replace View af_5fy_gifts As
-With stop_hiding_my_comments As (Select NULL From DUAL),
+Create Or Replace View v_af_gifts_5fy As
+With
 
 -- Kellogg Annual Fund allocations as defined in ksm_pkg
 ksm_af_allocs As (
@@ -10,7 +10,7 @@ ksm_af_allocs As (
 -- Calendar date range from current_calendar
 cal As (
   Select curr_fy - 5 As prev_fy5, curr_fy
-  From current_calendar
+  From v_current_calendar
 ),
 
 -- Formatted giving table
@@ -23,7 +23,7 @@ ksm_af_gifts As (
       On ksm_af_allocs.allocation_code = nu_gft_trp_gifttrans.allocation_code
   -- Only pull KSM AF gifts in recent fiscal years
   Where nu_gft_trp_gifttrans.allocation_code = ksm_af_allocs.allocation_code
-    And fiscal_year Between cal.curr_fy And cal.curr_fy
+    And fiscal_year Between cal.prev_fy5 And cal.curr_fy
     -- Drop pledges
     And tx_gypm_ind != 'P'
 )
