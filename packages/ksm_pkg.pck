@@ -8,16 +8,70 @@ Purpose : Kellogg-specific package with lots of fun functions
 Suggested naming convetions:
   Pure functions: [function type]_[description] e.g.
     math_mod
-  Data retrieval: get_[object type]_[action or description] e.g.
+  Row-by-row retrieval (slow): get_[object type]_[action or description] e.g.
     get_entity_degrees_concat_ksm
     get_gift_source_donor_ksm
+  Table or cursor retrieval (fast): tbl_[object type]_[action or description] e.g.
+    tbl_alloc_annual_fund_ksm
+    
+*************************************************************************/
+
+/*************************************************************************
+Public cursors -- data definitions
+*************************************************************************/
+
+/* Definition of Kellogg degrees concatenated */
+Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
+  Select id_number,
+    -- Verbose degrees
+    Listagg(
+      trim(degree_year || ' ' || degree_code || ' ' || school_code || ' ' ||
+        tms_dept_code.short_desc || ' ' || tms_class_section.short_desc), '; '
+    ) Within Group (Order By degree_year) As degrees_verbose,
+    -- Terse degrees
+    Listagg(
+      trim(degree_year || ' ' || degree_code || ' ' || school_code || ' ' || 
+        -- Special handler for KSM and EMBA departments
+          Case
+            When degrees.dept_code = '01MDB' Then 'MDMBA'
+            When degrees.dept_code Like '01%' Then substr(degrees.dept_code, 3)
+            When degrees.dept_code = '13JDM' Then 'JDMBA'
+            When degrees.dept_code = '13LLM' Then 'LLM'
+            When degrees.dept_code Like '41%' Then substr(degrees.dept_code, 3)
+            When degrees.dept_code = '95BCH' Then 'BCH'
+            When degrees.dept_code = '96BEV' Then 'BEV'
+            When degrees.dept_code In ('AMP', 'AMPI', 'EDP', 'KSMEE') Then degrees.dept_code
+            When degrees.dept_code = '0000000' Then ''
+            Else tms_dept_code.short_desc
+          End
+          -- Class section code
+          || ' ' || class_section), '; '
+    ) Within Group (Order By degree_year) As degrees_concat
+    -- Table joins, etc.
+    From degrees
+      Left Join tms_class_section -- For class section short_desc
+        On degrees.class_section = tms_class_section.section_code
+      Left Join tms_dept_code -- For department short_desc
+        On degrees.dept_code = tms_dept_code.dept_code
+    Where institution_code = '31173' -- Northwestern institution code
+      And school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
+      And id_number =
+        Case
+          When id Is Not Null Then id
+          Else id_number    
+        End
+    Group By id_number;
+
+/*************************************************************************
+Initial procedures
 *************************************************************************/
 
 /*************************************************************************
 Public type declarations
 *************************************************************************/
 Type t_varchar2_long Is Table Of varchar2(512);
-  
+Type t_degreed_alumni Is Table Of c_degrees_concat_ksm%rowtype;
+
 /*************************************************************************
 Public constant declarations
 *************************************************************************/
@@ -56,6 +110,13 @@ Function get_entity_address(
   debug In boolean Default FALSE) -- if TRUE, debug output is printed via dbms_output.put_line()
   Return varchar2; -- matched address piece
 
+/* Return latitude and longitude of selected entity's master address. */
+Function get_entity_geocode(
+  id In varchar2, -- entity id_number
+  latlon In varchar2, -- either lat% or lon% to return latitude or longitude
+  debug In boolean Default FALSE) -- if TRUE, debug output is printed via dbms_output.put_line()
+  Return number;
+
 /* Take receipt number and return id_number of entity to receive primary Kellogg gift credit */
 Function get_gift_source_donor_ksm(
   receipt In varchar2,
@@ -63,10 +124,13 @@ Function get_gift_source_donor_ksm(
   Return varchar2; -- entity id_number
 
 /* Return Kellogg Annual Fund allocations, both active and historical, as a pipelined function, e.g.
-   Select * From table(ksm_pkg.get_alloc_annual_fund_ksm);
-   Seems that the pipelining is super impractical, and I'd be better off with a view, but it's cool so I'm keeping it. */
-Function get_alloc_annual_fund_ksm
+   Select * From table(ksm_pkg.get_alloc_annual_fund_ksm); */
+Function tbl_alloc_annual_fund_ksm
   Return t_varchar2_long Pipelined; -- returns list of matching values
+
+/* Return pipelined table of entity_degrees_concat_ksm */
+Function tbl_entity_degrees_concat_ksm
+  Return t_degreed_alumni Pipelined;
 
 end ksm_pkg;
 /
@@ -154,50 +218,22 @@ Function fytd_indicator(dt In date, day_offset In number)
 Function get_entity_degrees_concat_ksm(id In varchar2, verbose In varchar2)
   Return varchar2 Is
   -- Declarations
-  deg_conc varchar2(1024); -- hold concatenated degree string
+  Type degrees Is Table Of c_degrees_concat_ksm%rowtype;
+  deg_conc degrees; -- hold concatenated degree results
   
   Begin
-    Select Listagg( -- Concatenated degrees string
-      -- Use this when verbose is FALSE (default)
-      Case
-        -- Trimmed degree row, verbose
-        When upper(verbose) In ('T', 'TR', 'TRU', 'TRUE') Then
-          trim(degree_year || ' ' || degree_code || ' ' || school_code || ' ' ||
-            tms_dept_code.short_desc || ' ' || tms_class_section.short_desc)
-        -- Trimmed degree row, terse
-        Else
-          trim(degree_year || ' ' || degree_code || ' ' || school_code || ' ' || 
-            -- Special handler for KSM and EMBA departments
-            Case
-              When degrees.dept_code = '01MDB' Then 'MDMBA'
-              When degrees.dept_code Like '01%' Then substr(degrees.dept_code, 3)
-              When degrees.dept_code = '13JDM' Then 'JDMBA'
-              When degrees.dept_code = '13LLM' Then 'LLM'
-              When degrees.dept_code Like '41%' Then substr(degrees.dept_code, 3)
-              When degrees.dept_code = '95BCH' Then 'BCH'
-              When degrees.dept_code = '96BEV' Then 'BEV'
-              When degrees.dept_code In ('AMP', 'AMPI', 'EDP', 'KSMEE') Then degrees.dept_code
-              When degrees.dept_code = '0000000' Then ''
-              Else tms_dept_code.short_desc
-            End
-            -- Class section code
-            || ' ' || class_section)
-        -- End of terse/verbose
-        End,
-      '; ') Within Group (Order By degree_year) As degrees_concat
-    Into deg_conc
-    From degrees
-      Left Join tms_class_section -- For class section short_desc
-        On degrees.class_section = tms_class_section.section_code
-      Left Join tms_dept_code -- For department short_desc
-        On degrees.dept_code = tms_dept_code.dept_code
-    Where institution_code = '31173' -- Northwestern institution code
-      And school_code in('BUS', 'KSM')
-      And id_number = id
-    Group By id_number;
+    -- Retrieve selected row
+    Open c_degrees_concat_ksm(id);
+      Fetch c_degrees_concat_ksm Bulk Collect Into deg_conc;
+    Close c_degrees_concat_ksm;
+    
+    -- Return appropriate concatenated string
+    If deg_conc.count = 0 Or deg_conc.count Is Null Then Return(NULL);
+    ElsIf upper(verbose) Like 'T%' Then Return (deg_conc(1).degrees_verbose);
+    Else Return(deg_conc(1).degrees_concat);
+    End If;
 
-    Return(deg_conc);
-  End;
+End;
 
 /* Takes an ID and returns xsequence of master address, defined as preferred if available, else home,
    else business.
@@ -307,6 +343,41 @@ Function get_entity_address(id In varchar2, field In varchar2, debug In Boolean 
     Where id_number = id And xsequence = xseq;
     
     Return(master_addr);
+  End;
+
+Function get_entity_geocode(id In varchar2, latlon In varchar2, debug In Boolean Default FALSE)
+  Return number Is
+  -- Declarations
+  output number; -- latitude or longitude to output
+  latlon_ varchar2(60) := lower(latlon); -- standardize latlon to lower-case
+  xseq number; -- stores master address xsequence
+  
+  Begin
+    -- Determine the xsequence of the master address
+    xseq := get_entity_address_master_xseq(id => id, debug => debug);
+        -- Debug -- print the retrieved master address sequence and field type
+    If debug Then dbms_output.put_line(xseq || ' ' || latlon || ' is: ');
+    End If;
+    -- Return latitude or longitude as appropriate
+    If xseq = 0 Then Return(NULL); -- failsafe condition
+    End If;
+    -- Select latitude or longitude field
+    With
+    geocoded As (
+      Select xsequence, latitude, longitude,
+        row_number() Over (Partition By id_number, xsequence Order By id_number, xsequence) As rn
+      From rpt_wcaproon.geocoded_addresses
+      Where id_number = id And xsequence=xseq
+    )
+    Select Case
+      When latlon_ Like 'la%' Then latitude
+      When latlon_ Like 'lo%' Then longitude
+    End
+    Into output
+    From geocoded
+    Where rn = 1;
+    
+    Return(output);
   End;
 
 /* Takes an receipt number and returns the ID number of the entity who should receive primary Kellogg gift credit.
@@ -426,9 +497,13 @@ Function get_gift_source_donor_ksm(receipt In varchar2, debug In boolean Default
     
   End;
 
-/* Pipeline function returning Kellogg Annual Fund allocations, both active and historical
+/*************************************************************************
+Pipelined functions
+*************************************************************************/
+
+/* Pipelined function returning Kellogg Annual Fund allocations, both active and historical
    2017-02-09 */
-Function get_alloc_annual_fund_ksm
+Function tbl_alloc_annual_fund_ksm
   Return t_varchar2_long Pipelined As
     -- Declarations
     allocs t_varchar2_long;
@@ -441,6 +516,26 @@ Function get_alloc_annual_fund_ksm
     -- Pipe out the allocations
     For i in 1..(allocs.count) Loop
       Pipe row(allocs(i));
+    End Loop;
+    
+    Return;
+  End;
+
+/* Pipelined function returning all non-null entity_degrees_concat_ksm rows
+   2017-02-15 */
+Function tbl_entity_degrees_concat_ksm
+  Return t_degreed_alumni Pipelined As
+  -- Declarations
+  degrees t_degreed_alumni;
+    
+  Begin
+    -- Open the degrees cursor
+    Open c_degrees_concat_ksm;
+      Fetch c_degrees_concat_ksm Bulk Collect Into degrees;
+    Close c_degrees_concat_ksm;
+    -- Pipe out the degrees
+    For i in 1..(degrees.count) Loop
+      Pipe row(degrees(i));
     End Loop;
     
     Return;
