@@ -32,6 +32,7 @@ ksm_af_gifts As (
 Select
   -- Giving fields
   af.allocation_code, af.alloc_short_name, af.tx_number, af.tx_sequence, af.tx_gypm_ind, af.fiscal_year, af.date_of_record,
+  ksm_pkg.fytd_indicator(af.date_of_record) As ytd_ind, -- year to date flag
   af.id_number As legal_dnr_id, af.legal_amount, af.credit_amount, af.nwu_af_amount,
   -- Source donor entity fields
   af.ksm_src_dnr_id, e_src_dnr.pref_name_sort, e_src_dnr.person_or_org, e_src_dnr.record_status_code, e_src_dnr.institutional_suffix,

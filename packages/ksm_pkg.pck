@@ -48,6 +48,13 @@ Function get_entity_degrees_concat_ksm(
   verbose In varchar2 Default 'FALSE')  -- if TRUE, then preferentially return short_desc instead of code where unclear
   Return varchar2; -- e.g. 2014 MBA KSM JDMBA
 
+/* Return specified address information */
+Function get_entity_address(
+  id In varchar2, -- entity id_number
+  field In varchar2, -- address item to pull, including city, state_code, country, etc.
+  debug In boolean Default FALSE) -- if TRUE, debug output is printed via dbms_output.put_line()
+  Return varchar2; -- matched address piece
+
 /* Take receipt number and return id_number of entity to receive primary Kellogg gift credit */
 Function get_gift_source_donor_ksm(
   receipt In varchar2,
@@ -78,7 +85,7 @@ Cursor c_alloc_annual_fund_ksm Is
 /*************************************************************************
 Private type declarations
 *************************************************************************/
-  
+
 /*************************************************************************
 Private constant declarations
 *************************************************************************/
@@ -191,6 +198,116 @@ Function get_entity_degrees_concat_ksm(id In varchar2, verbose In varchar2)
     Return(deg_conc);
   End;
 
+/* Takes an ID and returns xsequence of master address, defined as preferred if available, else home,
+   else business.
+   2017-02-15 */
+Function get_entity_address_master_xseq(id In varchar2, debug In Boolean Default FALSE)
+  Return number Is
+  -- Declarations
+  xseq number(6); -- final xsequence of address to retrieve
+  
+  -- Address types available for consideration as master/primary address
+  Cursor c_address_types Is
+    With
+    pref As (
+      Select id_number, xsequence As pref_xseq
+      From address
+      Where addr_status_code = 'A' And addr_pref_ind = 'Y'
+    ),
+    home As (
+      Select id_number, xsequence As home_xseq
+      From address
+      Where addr_status_code = 'A' And addr_type_code = 'H'
+    ),
+    bus As (
+      Select id_number, xsequence As bus_xseq
+      From address
+      Where addr_status_code = 'A' And addr_type_code = 'B'
+    )
+    -- Combine preferred, home, and business xseq into a row
+    Select pref_xseq, home_xseq, bus_xseq
+    From entity
+      Left Join pref On entity.id_number = pref.id_number
+      Left Join home On entity.id_number = home.id_number
+      Left Join bus On entity.id_number = bus.id_number
+    Where entity.id_number = id;
+
+  -- Table to hold address xsequence numbers
+  Type t_number Is Table Of c_address_types%rowtype;
+    t_xseq t_number;
+  
+  Begin
+    -- Determine which xsequence to use for master address
+    Open c_address_types;
+      Fetch c_address_types Bulk Collect Into t_xseq;
+    Close c_address_types;
+    
+    -- Debug -- print the retrieved address xsequence numbers
+    If debug Then
+      dbms_output.put_line('P: ' || t_xseq(1).pref_xseq || '; H: ' || t_xseq(1).home_xseq ||
+        '; B: ' || t_xseq(1).bus_xseq);
+    End If;
+    
+    -- Store best choice in xseq
+    If t_xseq(1).pref_xseq Is Not Null Then xseq := t_xseq(1).pref_xseq;
+    ElsIf t_xseq(1).home_xseq Is Not Null Then xseq := t_xseq(1).home_xseq;
+    ElsIf t_xseq(1).bus_xseq Is Not Null Then xseq := t_xseq(1).bus_xseq;
+    Else xseq := 0;
+    End If;
+    
+    Return xseq;
+  End;
+
+/* Takes an ID and field and returns active address part from master address. Standardizes input
+   fields to lower-case.
+   2017-02-15 */
+Function get_entity_address(id In varchar2, field In varchar2, debug In Boolean Default FALSE)
+  Return varchar2 Is
+  -- Declarations
+  master_addr varchar2(120); -- final output
+  field_ varchar2(60) := lower(field); -- lower-case field
+  xseq number; -- stores master address xsequence
+   
+  Begin
+    -- Determine the xsequence of the master address
+    xseq := get_entity_address_master_xseq(id => id, debug => debug);
+    -- Debug -- print the retrieved master address sequence and field type
+    If debug Then dbms_output.put_line(xseq || ' ' || field || ' is: ');
+    End If;
+    -- Retrieve the master address
+    If xseq = 0 Then Return('#NA'); -- failsafe condition
+    End If;
+     -- Big Case-When to fill in the appropriate field
+    Select Case
+      When field_ = 'care_of' Then care_of
+      When field_ = 'company_name_1' Then company_name_1
+      When field_ = 'company_name_2' Then company_name_2
+      When field_ = 'business_title' Then business_title
+      When field_ = 'street1' Then street1
+      When field_ = 'street2' Then street2
+      When field_ = 'street3' Then street3
+      When field_ = 'foreign_cityzip' Then foreign_cityzip
+      When field_ = 'city' Then city
+      When field_ = 'state_code' Then address.state_code
+      When field_ Like 'state%' Then tms_states.short_desc
+      When field_ = 'zipcode' Then zipcode
+      When field_ = 'zip_suffix' Then zip_suffix
+      When field_ = 'postnet_zip' Then postnet_zip
+      When field_ = 'county_code' Then address.county_code
+      When field_ Like 'county%' Then tms_county.full_desc
+      When field_ = 'country_code' Then address.country_code
+      When field_ Like 'country%' Then tms_country.short_desc
+    End
+    Into master_addr
+    From address
+      Left Join tms_country On address.country_code = tms_country.country_code
+      Left Join tms_states On address.state_code = tms_states.state_code
+      Left Join tms_county On address.county_code = tms_county.county_code
+    Where id_number = id And xsequence = xseq;
+    
+    Return(master_addr);
+  End;
+
 /* Takes an receipt number and returns the ID number of the entity who should receive primary Kellogg gift credit.
    Relies on nu_gft_trp_gifttrans, which combines gifts and matching gifts into a single table.
    Kellogg alumni status is defined as get_entity_degrees_concat_ksm(id_number) returning a non-null result.
@@ -248,8 +365,7 @@ Function get_gift_source_donor_ksm(receipt In varchar2, debug In boolean Default
 
     -- Retrieve t_donor cursor results
     Open t_donor;
-      Fetch t_donor
-        Bulk Collect Into results;
+      Fetch t_donor Bulk Collect Into results;
     Close t_donor;
     
     -- Debug -- test that the cursors worked --
