@@ -48,7 +48,8 @@ Function get_entity_degrees_concat_ksm(
   verbose In varchar2 Default 'FALSE')  -- if TRUE, then preferentially return short_desc instead of code where unclear
   Return varchar2; -- e.g. 2014 MBA KSM JDMBA
 
-/* Return specified address information */
+/* Return specified master address information, defined as preferred if available, else home if available, else business.
+   The field parameter should match an address table field or tms table name, e.g. street1, state_code, country, etc. */
 Function get_entity_address(
   id In varchar2, -- entity id_number
   field In varchar2, -- address item to pull, including city, state_code, country, etc.
@@ -322,7 +323,7 @@ Function get_gift_source_donor_ksm(receipt In varchar2, debug In boolean Default
   -- Cursor to store donors credited on the current gift
   -- Needs to be sorted in preferred order, so that KSM alumni with earlier degree years appear higher
   -- on the list and non-KSM alumni are sorted by lower id_number (as a proxy for age of record)
-  Cursor t_donor Is
+  Cursor c_donor Is
     Select
       id_number, get_entity_degrees_concat_ksm(id_number) As ksm_degrees,
       person_or_org, associated_code, credit_amount
@@ -334,7 +335,7 @@ Function get_gift_source_donor_ksm(receipt In varchar2, debug In boolean Default
     Order By get_entity_degrees_concat_ksm(id_number) Asc, id_number Asc;
     
   -- Table type corresponding to above cursor
-  Type t_results Is Table Of t_donor%rowtype;
+  Type t_results Is Table Of c_donor%rowtype;
     results t_results;
 
   Begin
@@ -363,10 +364,10 @@ Function get_gift_source_donor_ksm(receipt In varchar2, debug In boolean Default
 
   -- For any other type of gift, proceed through the hierarchy of potential source donors
 
-    -- Retrieve t_donor cursor results
-    Open t_donor;
-      Fetch t_donor Bulk Collect Into results;
-    Close t_donor;
+    -- Retrieve c_donor cursor results
+    Open c_donor;
+      Fetch c_donor Bulk Collect Into results;
+    Close c_donor;
     
     -- Debug -- test that the cursors worked --
     If debug Then
@@ -394,7 +395,7 @@ Function get_gift_source_donor_ksm(receipt In varchar2, debug In boolean Default
     End Loop;
     
     -- Check if any non-primary donors have a KSM degree; grab first that has a non-null l_degrees
-    -- IMPORTANT: this means the cursor t_donor needs to be sorted in preferred order!
+    -- IMPORTANT: this means the cursor c_donor needs to be sorted in preferred order!
     For i In 1..(results.count) Loop
       -- If we find a KSM alum we're done
       If results(i).ksm_degrees Is Not Null Then
@@ -403,7 +404,7 @@ Function get_gift_source_donor_ksm(receipt In varchar2, debug In boolean Default
     End Loop;
     
     -- Check if the primary donor is an organization; if so, grab first person who's associated
-    -- IMPORTANT: this means the cursor t_donor needs to be sorted in preferred order!
+    -- IMPORTANT: this means the cursor c_donor needs to be sorted in preferred order!
     -- If primary record type is not person, continue
     If donor_type != 'P' Then  
       For i In 1..(results.count) Loop
