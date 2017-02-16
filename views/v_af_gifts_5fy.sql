@@ -9,7 +9,7 @@ ksm_af_allocs As (
 
 -- Calendar date range from current_calendar
 cal As (
-  Select curr_fy - 5 As prev_fy5, curr_fy
+  Select curr_fy - 5 As prev_fy5, curr_fy, yesterday
   From v_current_calendar
 ),
 
@@ -23,7 +23,8 @@ deg As (
 ksm_af_gifts As (
   Select ksm_af_allocs.allocation_code, alloc_short_name, tx_number, tx_sequence, tx_gypm_ind, fiscal_year, date_of_record,
     legal_amount, credit_amount, nwu_af_amount, id_number,
-    ksm_pkg.get_gift_source_donor_ksm(tx_number) As ksm_src_dnr_id
+    ksm_pkg.get_gift_source_donor_ksm(tx_number) As ksm_src_dnr_id,
+    curr_fy, yesterday
   From cal, nu_gft_trp_gifttrans
     Inner Join ksm_af_allocs
       On ksm_af_allocs.allocation_code = nu_gft_trp_gifttrans.allocation_code
@@ -50,7 +51,9 @@ Select
   e_src_dnr.gender_code, e_src_dnr.spouse_id_number,
   spouse_deg.degrees_concat As spouse_degrees_concat,
   -- KSM alumni flag
-  Case When ksm_pkg.get_entity_degrees_concat_fast(e_src_dnr.id_number) Is Not Null Then 'Y' Else 'N' End As ksm_alum_flag
+  Case When ksm_pkg.get_entity_degrees_concat_fast(e_src_dnr.id_number) Is Not Null Then 'Y' Else 'N' End As ksm_alum_flag,
+  -- Fiscal year number
+  curr_fy, yesterday As data_as_of
 From ksm_af_gifts af
   Inner Join entity e_src_dnr On af.ksm_src_dnr_id = e_src_dnr.id_number
   Left Join deg entity_deg On entity_deg.id_number = e_src_dnr.id_number
