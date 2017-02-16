@@ -23,7 +23,8 @@ Public cursors -- data definitions
 /* Definition of Kellogg degrees concatenated */
 Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
   -- Concatenated degrees subquery
-  With concat As (
+  With
+  concat As (
     Select id_number,
       -- Verbose degrees
       Listagg(
@@ -60,30 +61,56 @@ Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
         And (Case When id Is Not Null Then id_number Else 'T' End)
             = (Case When id Is Not Null Then id Else 'T' End)
       Group By id_number
+    ),
+    -- Extract program
+    prg As (
+      Select id_number,
+        Case
+          When degrees_concat Like '%KSM TMP%' Then 'TMP'
+          When degrees_concat Like '%KSM PTS%' Then 'TMP-SAT'
+          When degrees_concat Like '%KSM PSA%' Then 'TMP-SATXCEL'
+          When degrees_concat Like '%KSM PTA%' Then 'TMP-XCEL'
+          When degrees_concat Like '% EMP%' Then 'EMP'
+          When degrees_concat Like '%KSM NAP%' Then 'EMP-IL'
+          When degrees_concat Like '%KSM WHU%' Then 'EMP-GER'
+          When degrees_concat Like '%KSM SCH%' Then 'EMP-CAN'
+          When degrees_concat Like '%KSM LAP%' Then 'EMP-FL'
+          When degrees_concat Like '%KSM HK%' Then 'EMP-HK'
+          When degrees_concat Like '%KSM JNA%' Then 'EMP-JAP'
+          When degrees_concat Like '%KSM RU%' Then 'EMP-ISR'
+          When degrees_concat Like '%KSM AEP%' Then 'EMP-AEP'
+          When degrees_concat Like '%KGS2Y%' Then 'FT-6Q'
+          When degrees_concat Like '%KGS1Y%' Then 'FT-4Q'
+          When degrees_concat Like '%JDMBA%' Then 'FT-JDMBA'
+          When degrees_concat Like '%MMM%' Then 'FT-MMM'
+          When degrees_concat Like '%MDMBA%' Then 'FT-MDMBA'
+          When degrees_concat Like '%KSM KEN%' Then 'FT-KENNEDY'
+          When degrees_concat Like '%KGS%' Then 'FT'
+          When degrees_concat Like '%BEV%' Then 'FT-EB'
+          When degrees_concat Like '%BCH%' Then 'FT-CB'
+          When degrees_concat Like '%PHD%' Then 'PHD'
+          When degrees_concat Like '%KSMEE%' Then 'EXECED'
+          When degrees_concat Like '%MBA %' Then 'FT'
+          When degrees_concat Like '%CERT%' Then 'EXECED'
+          When degrees_concat Like '%Institute for Mgmt%' Then 'EXECED'
+          When degrees_concat Like '%MS %' Then 'FT-MS'
+          When degrees_concat Like '%LLM%' Then 'CERT-LLM'
+          When degrees_concat Like '%MMGT%' Then 'FT-MMGT' 
+        End As program
+      From concat
     )
-    -- Select fields and choose program
-    Select id_number, degrees_verbose, degrees_concat,
+    -- Final results
+    Select concat.id_number, degrees_verbose, degrees_concat, prg.program,
+      -- program_group
       Case
-        When degrees_concat Like '%TMP%' Or degrees_concat Like '%KSM PTS%' Or degrees_concat Like '%KSM PSA%'
-          Or degrees_concat Like '%KSM PTA%'
-          Then 'TMP'
-        When degrees_concat Like '% EMP%' Or degrees_concat Like '%KSM NAP%' Or degrees_concat Like '%KSM WHU%'
-          Or degrees_concat Like '%KSM SCH%' Or degrees_concat Like '%KSM LAP%' Or degrees_concat Like '%KSM HK%'
-          Or degrees_concat Like '%KSM JNA%' Or degrees_concat Like '%KSM RU%' Or degrees_concat Like '%KSM AEP%'
-          Then 'EMP'
-        When degrees_concat Like '%KGS_Y%' Or degrees_concat Like '%JDMBA%' Or degrees_concat Like '%MMM%'
-          Or degrees_concat Like '%MDMBA%' Or degrees_concat Like '%KSM KEN%' Or degrees_concat Like '%KGS%'
-          Or degrees_concat Like '%BEV%' Or degrees_concat Like '%BCH%'
-          Then 'FT'
-        When degrees_concat Like '%PHD%'
-          Then 'PHD'
-        When degrees_concat Like '%KSMEE%'
-          Then 'EXECED'
-        When degrees_concat Like '%MBA %' Or degrees_concat Like '%MS %' Or degrees_concat Like '%MMGT%'
-          Then 'FT'
-        Else 'EXECED'
+        When program Like 'TMP%' Then 'TMP'
+        When program Like 'EMP%' Then 'EMP'
+        When program Like 'FT%' Then 'FT'
+        When program Like 'PHD%' Then 'PHD'
+        When program Like 'EXEC%' Or program Like 'CERT%' Then 'EXECED'
       End As program_group
-    From concat;
+    From concat
+      Inner Join prg On concat.id_number = prg.id_number;
 
 /*************************************************************************
 Initial procedures

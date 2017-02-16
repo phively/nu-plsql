@@ -15,7 +15,7 @@ cal As (
 
 -- Degrees concat
 deg As (
-  Select id_number, degrees_concat, program_group
+  Select id_number, degrees_concat, program, program_group
   From table(ksm_pkg.tbl_entity_degrees_concat_ksm)
 ),
 
@@ -32,12 +32,7 @@ ksm_af_gifts As (
     And fiscal_year Between cal.prev_fy5 And cal.curr_fy
     -- Drop pledges
     And tx_gypm_ind != 'P'
-)/*,
-
--- Geocodes
-geocodes As (
-  
-)*/
+)
 
 -- Final results
 Select
@@ -48,6 +43,7 @@ Select
   -- Source donor entity fields
   af.ksm_src_dnr_id, e_src_dnr.pref_name_sort, e_src_dnr.person_or_org, e_src_dnr.record_status_code, e_src_dnr.institutional_suffix,
   entity_deg.degrees_concat As src_dnr_degrees_concat,
+  entity_deg.program As src_dnr_program,
   entity_deg.program_group As src_dnr_program_group,
   ksm_pkg.get_entity_address(e_src_dnr.id_number, 'state_code') As master_state,
   ksm_pkg.get_entity_address(e_src_dnr.id_number, 'country') As master_country,
