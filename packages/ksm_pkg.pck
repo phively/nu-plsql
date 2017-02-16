@@ -55,11 +55,8 @@ Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
         On degrees.dept_code = tms_dept_code.dept_code
     Where institution_code = '31173' -- Northwestern institution code
       And school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
-      And id_number =
-        Case
-          When id Is Not Null Then id
-          Else id_number    
-        End
+      And (Case When id Is Not Null Then id_number Else 'T' End)
+          = (Case When id Is Not Null Then id Else 'T' End)
     Group By id_number;
 
 /*************************************************************************
@@ -96,6 +93,10 @@ Function fytd_indicator(
   day_offset In number Default -1) -- default offset in days; -1 means up to yesterday is year-to-date, 0 up to today, etc.
   Return character; -- Y or N
 
+/* Quick SQL-only retrieval of KSM degrees concat */
+Function get_entity_degrees_concat_fast(id In varchar2)
+  Return varchar2;
+
 /* Return concatenated Kellogg degrees as a string */
 Function get_entity_degrees_concat_ksm(
   id In varchar2, -- entity id_number
@@ -109,13 +110,6 @@ Function get_entity_address(
   field In varchar2, -- address item to pull, including city, state_code, country, etc.
   debug In boolean Default FALSE) -- if TRUE, debug output is printed via dbms_output.put_line()
   Return varchar2; -- matched address piece
-
-/* Return latitude and longitude of selected entity's master address. */
-Function get_entity_geocode(
-  id In varchar2, -- entity id_number
-  latlon In varchar2, -- either lat% or lon% to return latitude or longitude
-  debug In boolean Default FALSE) -- if TRUE, debug output is printed via dbms_output.put_line()
-  Return number;
 
 /* Take receipt number and return id_number of entity to receive primary Kellogg gift credit */
 Function get_gift_source_donor_ksm(
@@ -235,6 +229,32 @@ Function get_entity_degrees_concat_ksm(id In varchar2, verbose In varchar2)
 
 End;
 
+/* Fast degree years concat
+   2017-02-15 */
+Function get_entity_degrees_concat_fast(id In varchar2)
+  Return varchar2 Is
+  -- Declarations
+  deg_conc varchar2(1024);
+  
+  Begin
+  
+    Select
+      -- Concatenated degrees string
+      Listagg(
+        trim(degree_year || ' ' || degree_code || ' ' || school_code || ' ' || 
+          tms_dept_code.short_desc || ' ' || class_section), '; '
+      ) Within Group (Order By degree_year) As degrees_concat
+    Into deg_conc
+    From degrees
+      Left Join tms_dept_code On degrees.dept_code = tms_dept_code.dept_code
+    Where institution_code = '31173'
+      And school_code in('BUS', 'KSM')
+      And id_number = id
+    Group By id_number;
+    
+    Return deg_conc;
+  End;
+
 /* Takes an ID and returns xsequence of master address, defined as preferred if available, else home,
    else business.
    2017-02-15 */
@@ -345,41 +365,6 @@ Function get_entity_address(id In varchar2, field In varchar2, debug In Boolean 
     Return(master_addr);
   End;
 
-Function get_entity_geocode(id In varchar2, latlon In varchar2, debug In Boolean Default FALSE)
-  Return number Is
-  -- Declarations
-  output number; -- latitude or longitude to output
-  latlon_ varchar2(60) := lower(latlon); -- standardize latlon to lower-case
-  xseq number; -- stores master address xsequence
-  
-  Begin
-    -- Determine the xsequence of the master address
-    xseq := get_entity_address_master_xseq(id => id, debug => debug);
-        -- Debug -- print the retrieved master address sequence and field type
-    If debug Then dbms_output.put_line(xseq || ' ' || latlon || ' is: ');
-    End If;
-    -- Return latitude or longitude as appropriate
-    If xseq = 0 Then Return(NULL); -- failsafe condition
-    End If;
-    -- Select latitude or longitude field
-    With
-    geocoded As (
-      Select xsequence, latitude, longitude,
-        row_number() Over (Partition By id_number, xsequence Order By id_number, xsequence) As rn
-      From rpt_wcaproon.geocoded_addresses
-      Where id_number = id And xsequence=xseq
-    )
-    Select Case
-      When latlon_ Like 'la%' Then latitude
-      When latlon_ Like 'lo%' Then longitude
-    End
-    Into output
-    From geocoded
-    Where rn = 1;
-    
-    Return(output);
-  End;
-
 /* Takes an receipt number and returns the ID number of the entity who should receive primary Kellogg gift credit.
    Relies on nu_gft_trp_gifttrans, which combines gifts and matching gifts into a single table.
    Kellogg alumni status is defined as get_entity_degrees_concat_ksm(id_number) returning a non-null result.
@@ -396,14 +381,14 @@ Function get_gift_source_donor_ksm(receipt In varchar2, debug In boolean Default
   -- on the list and non-KSM alumni are sorted by lower id_number (as a proxy for age of record)
   Cursor c_donor Is
     Select
-      id_number, get_entity_degrees_concat_ksm(id_number) As ksm_degrees,
+      id_number, get_entity_degrees_concat_fast(id_number) As ksm_degrees,
       person_or_org, associated_code, credit_amount
     From nu_gft_trp_gifttrans
     Where tx_number = receipt
       And associated_code Not In ('H', 'M') -- Exclude In Honor Of and In Memory Of from consideration
     -- People with earlier KSM degree years take precedence over those with later ones
     -- People with smaller ID numbers take precedence over those with larger oens
-    Order By get_entity_degrees_concat_ksm(id_number) Asc, id_number Asc;
+    Order By get_entity_degrees_concat_fast(id_number) Asc, id_number Asc;
     
   -- Table type corresponding to above cursor
   Type t_results Is Table Of c_donor%rowtype;
