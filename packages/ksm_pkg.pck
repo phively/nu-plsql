@@ -22,42 +22,68 @@ Public cursors -- data definitions
 
 /* Definition of Kellogg degrees concatenated */
 Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
-  Select id_number,
-    -- Verbose degrees
-    Listagg(
-      trim(degree_year || ' ' || degree_code || ' ' || school_code || ' ' ||
-        tms_dept_code.short_desc || ' ' || tms_class_section.short_desc), '; '
-    ) Within Group (Order By degree_year) As degrees_verbose,
-    -- Terse degrees
-    Listagg(
-      trim(degree_year || ' ' || degree_code || ' ' || school_code || ' ' || 
-        -- Special handler for KSM and EMBA departments
-          Case
-            When degrees.dept_code = '01MDB' Then 'MDMBA'
-            When degrees.dept_code Like '01%' Then substr(degrees.dept_code, 3)
-            When degrees.dept_code = '13JDM' Then 'JDMBA'
-            When degrees.dept_code = '13LLM' Then 'LLM'
-            When degrees.dept_code Like '41%' Then substr(degrees.dept_code, 3)
-            When degrees.dept_code = '95BCH' Then 'BCH'
-            When degrees.dept_code = '96BEV' Then 'BEV'
-            When degrees.dept_code In ('AMP', 'AMPI', 'EDP', 'KSMEE') Then degrees.dept_code
-            When degrees.dept_code = '0000000' Then ''
-            Else tms_dept_code.short_desc
-          End
-          -- Class section code
-          || ' ' || class_section), '; '
-    ) Within Group (Order By degree_year) As degrees_concat
-    -- Table joins, etc.
-    From degrees
-      Left Join tms_class_section -- For class section short_desc
-        On degrees.class_section = tms_class_section.section_code
-      Left Join tms_dept_code -- For department short_desc
-        On degrees.dept_code = tms_dept_code.dept_code
-    Where institution_code = '31173' -- Northwestern institution code
-      And school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
-      And (Case When id Is Not Null Then id_number Else 'T' End)
-          = (Case When id Is Not Null Then id Else 'T' End)
-    Group By id_number;
+  -- Concatenated degrees subquery
+  With concat As (
+    Select id_number,
+      -- Verbose degrees
+      Listagg(
+        trim(degree_year || ' ' || degree_code || ' ' || school_code || ' ' ||
+          tms_dept_code.short_desc || ' ' || tms_class_section.short_desc), '; '
+      ) Within Group (Order By degree_year) As degrees_verbose,
+      -- Terse degrees
+      Listagg(
+        trim(degree_year || ' ' || degree_code || ' ' || school_code || ' ' || 
+          -- Special handler for KSM and EMBA departments
+            Case
+              When degrees.dept_code = '01MDB' Then 'MDMBA'
+              When degrees.dept_code Like '01%' Then substr(degrees.dept_code, 3)
+              When degrees.dept_code = '13JDM' Then 'JDMBA'
+              When degrees.dept_code = '13LLM' Then 'LLM'
+              When degrees.dept_code Like '41%' Then substr(degrees.dept_code, 3)
+              When degrees.dept_code = '95BCH' Then 'BCH'
+              When degrees.dept_code = '96BEV' Then 'BEV'
+              When degrees.dept_code In ('AMP', 'AMPI', 'EDP', 'KSMEE') Then degrees.dept_code
+              When degrees.dept_code = '0000000' Then ''
+              Else tms_dept_code.short_desc
+            End
+            -- Class section code
+            || ' ' || class_section), '; '
+      ) Within Group (Order By degree_year) As degrees_concat
+      -- Table joins, etc.
+      From degrees
+        Left Join tms_class_section -- For class section short_desc
+          On degrees.class_section = tms_class_section.section_code
+        Left Join tms_dept_code -- For department short_desc
+          On degrees.dept_code = tms_dept_code.dept_code
+      Where institution_code = '31173' -- Northwestern institution code
+        And school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
+        And (Case When id Is Not Null Then id_number Else 'T' End)
+            = (Case When id Is Not Null Then id Else 'T' End)
+      Group By id_number
+    )
+    -- Select fields and choose program
+    Select id_number, degrees_verbose, degrees_concat,
+      Case
+        When degrees_concat Like '%TMP%' Or degrees_concat Like '%KSM PTS%' Or degrees_concat Like '%KSM PSA%'
+          Or degrees_concat Like '%KSM PTA%'
+          Then 'TMP'
+        When degrees_concat Like '% EMP%' Or degrees_concat Like '%KSM NAP%' Or degrees_concat Like '%KSM WHU%'
+          Or degrees_concat Like '%KSM SCH%' Or degrees_concat Like '%KSM LAP%' Or degrees_concat Like '%KSM HK%'
+          Or degrees_concat Like '%KSM JNA%' Or degrees_concat Like '%KSM RU%' Or degrees_concat Like '%KSM AEP%'
+          Then 'EMP'
+        When degrees_concat Like '%KGS_Y%' Or degrees_concat Like '%JDMBA%' Or degrees_concat Like '%MMM%'
+          Or degrees_concat Like '%MDMBA%' Or degrees_concat Like '%KSM KEN%' Or degrees_concat Like '%KGS%'
+          Or degrees_concat Like '%BEV%' Or degrees_concat Like '%BCH%'
+          Then 'FT'
+        When degrees_concat Like '%PHD%'
+          Then 'PHD'
+        When degrees_concat Like '%KSMEE%'
+          Then 'EXECED'
+        When degrees_concat Like '%MBA %' Or degrees_concat Like '%MS %' Or degrees_concat Like '%MMGT%'
+          Then 'FT'
+        Else 'EXECED'
+      End As program_group
+    From concat;
 
 /*************************************************************************
 Initial procedures
