@@ -17,10 +17,100 @@ Suggested naming convetions:
 *************************************************************************/
 
 /*************************************************************************
-Public cursors -- data definitions
+Initial procedures
 *************************************************************************/
 
-/* Definition of Kellogg degrees concatenated */
+/*************************************************************************
+Public type declarations
+*************************************************************************/
+
+-- Degreed alumi, for entity_degrees_concat
+Type degreed_alumni Is Record (
+  id_number varchar2(10), degrees_verbose varchar2(1024), degrees_concat varchar2(512), first_ksm_year varchar2(4),
+  program varchar2(20), program_group varchar2(20)
+);
+
+/*************************************************************************
+Public table declarations
+*************************************************************************/
+Type t_varchar2_long Is Table Of varchar2(512);
+Type t_degreed_alumni Is Table Of degreed_alumni;
+
+/*************************************************************************
+Public constant declarations
+*************************************************************************/
+
+/*************************************************************************
+Public variable declarations
+*************************************************************************/
+
+/*************************************************************************
+Public function declarations
+*************************************************************************/
+
+/* Mathematical modulo operator */
+Function math_mod(
+  m In number,
+  n In number)
+  Return number; -- m % n
+  
+/* Fiscal year to date indicator */
+Function fytd_indicator(
+  dt In date,
+  day_offset In number Default -1) -- default offset in days; -1 means up to yesterday is year-to-date, 0 up to today, etc.
+  Return character; -- Y or N
+
+/* Quick SQL-only retrieval of KSM degrees concat */
+Function get_entity_degrees_concat_fast(id In varchar2)
+  Return varchar2;
+
+/* Return concatenated Kellogg degrees as a string */
+Function get_entity_degrees_concat_ksm(
+  id In varchar2, -- entity id_number
+  verbose In varchar2 Default 'FALSE')  -- if TRUE, then preferentially return short_desc instead of code where unclear
+  Return varchar2; -- e.g. 2014 MBA KSM JDMBA
+
+/* Return specified master address information, defined as preferred if available, else home if available, else business.
+   The field parameter should match an address table field or tms table name, e.g. street1, state_code, country, etc. */
+Function get_entity_address(
+  id In varchar2, -- entity id_number
+  field In varchar2, -- address item to pull, including city, state_code, country, etc.
+  debug In boolean Default FALSE) -- if TRUE, debug output is printed via dbms_output.put_line()
+  Return varchar2; -- matched address piece
+
+/* Take receipt number and return id_number of entity to receive primary Kellogg gift credit */
+Function get_gift_source_donor_ksm(
+  receipt In varchar2,
+  debug In boolean Default FALSE) -- if TRUE, debug output is printed via dbms_output.put_line()
+  Return varchar2; -- entity id_number
+
+/* Return Kellogg Annual Fund allocations, both active and historical, as a pipelined function, e.g.
+   Select * From table(ksm_pkg.get_alloc_annual_fund_ksm); */
+Function tbl_alloc_annual_fund_ksm
+  Return t_varchar2_long Pipelined; -- returns list of matching values
+
+/* Return pipelined table of entity_degrees_concat_ksm */
+Function tbl_entity_degrees_concat_ksm
+  Return t_degreed_alumni Pipelined;
+
+end ksm_pkg;
+/
+Create Or Replace Package Body ksm_pkg Is
+
+/*************************************************************************
+Private cursors -- data definitions
+*************************************************************************/
+
+/* Definition of current and historical Kellogg Annual Fund allocations
+   2017-02-09 */
+Cursor c_alloc_annual_fund_ksm Is
+  Select Distinct allocation_code
+  From allocation
+  Where annual_sw = 'Y'
+  And alloc_school = 'KM';
+
+/* Definition of Kellogg degrees concatenated
+   2017-02-15 */
 Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
   -- Concatenated degrees subquery
   With
@@ -114,87 +204,13 @@ Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
     From concat
       Inner Join prg On concat.id_number = prg.id_number;
 
-/*************************************************************************
-Initial procedures
-*************************************************************************/
-
-/*************************************************************************
-Public type declarations
-*************************************************************************/
-Type t_varchar2_long Is Table Of varchar2(512);
-Type t_degreed_alumni Is Table Of c_degrees_concat_ksm%rowtype;
-
-/*************************************************************************
-Public constant declarations
-*************************************************************************/
-
-/*************************************************************************
-Public variable declarations
-*************************************************************************/
-
-/*************************************************************************
-Public function declarations
-*************************************************************************/
-
-/* Mathematical modulo operator */
-Function math_mod(
-  m In number,
-  n In number)
-  Return number; -- m % n
-  
-/* Fiscal year to date indicator */
-Function fytd_indicator(
-  dt In date,
-  day_offset In number Default -1) -- default offset in days; -1 means up to yesterday is year-to-date, 0 up to today, etc.
-  Return character; -- Y or N
-
-/* Quick SQL-only retrieval of KSM degrees concat */
-Function get_entity_degrees_concat_fast(id In varchar2)
-  Return varchar2;
-
-/* Return concatenated Kellogg degrees as a string */
-Function get_entity_degrees_concat_ksm(
-  id In varchar2, -- entity id_number
-  verbose In varchar2 Default 'FALSE')  -- if TRUE, then preferentially return short_desc instead of code where unclear
-  Return varchar2; -- e.g. 2014 MBA KSM JDMBA
-
-/* Return specified master address information, defined as preferred if available, else home if available, else business.
-   The field parameter should match an address table field or tms table name, e.g. street1, state_code, country, etc. */
-Function get_entity_address(
-  id In varchar2, -- entity id_number
-  field In varchar2, -- address item to pull, including city, state_code, country, etc.
-  debug In boolean Default FALSE) -- if TRUE, debug output is printed via dbms_output.put_line()
-  Return varchar2; -- matched address piece
-
-/* Take receipt number and return id_number of entity to receive primary Kellogg gift credit */
-Function get_gift_source_donor_ksm(
-  receipt In varchar2,
-  debug In boolean Default FALSE) -- if TRUE, debug output is printed via dbms_output.put_line()
-  Return varchar2; -- entity id_number
-
-/* Return Kellogg Annual Fund allocations, both active and historical, as a pipelined function, e.g.
-   Select * From table(ksm_pkg.get_alloc_annual_fund_ksm); */
-Function tbl_alloc_annual_fund_ksm
-  Return t_varchar2_long Pipelined; -- returns list of matching values
-
-/* Return pipelined table of entity_degrees_concat_ksm */
-Function tbl_entity_degrees_concat_ksm
-  Return t_degreed_alumni Pipelined;
-
-end ksm_pkg;
-/
-Create Or Replace Package Body ksm_pkg Is
-
-/*************************************************************************
-Private cursors -- data definitions
-*************************************************************************/
-
-/* Definition of current and historical Kellogg Annual Fund allocations */
-Cursor c_alloc_annual_fund_ksm Is
-  Select Distinct allocation_code
-  From allocation
-  Where annual_sw = 'Y'
-  And alloc_school = 'KM';
+/* Definition of Kellogg householding
+   2017-02-21 */
+Cursor c_householding_ksm Is
+  Select entity.id_number, edc.degrees_concat, entity.spouse_id_number, sdc.degrees_concat As spouse_degrees_concat
+  From entity
+    Left Join table(ksm_pkg.tbl_entity_degrees_concat_ksm) edc On entity.id_number = edc.id_number
+    Left Join table(ksm_pkg.tbl_entity_degrees_concat_ksm) sdc On entity.spouse_id_number = sdc.id_number;
 
 /*************************************************************************
 Private type declarations
@@ -256,33 +272,11 @@ Function fytd_indicator(dt In date, day_offset In number)
       End If;
     Else
       -- fallback condition
-      output := '#ERR';
+      output := NULL;
     End If;
     
     Return(output);
   End;
-
-/* Takes an entity id_number and returns concatenated Kellogg degrees as a string
-   2017-02-09 */
-Function get_entity_degrees_concat_ksm(id In varchar2, verbose In varchar2)
-  Return varchar2 Is
-  -- Declarations
-  Type degrees Is Table Of c_degrees_concat_ksm%rowtype;
-  deg_conc degrees; -- hold concatenated degree results
-  
-  Begin
-    -- Retrieve selected row
-    Open c_degrees_concat_ksm(id);
-      Fetch c_degrees_concat_ksm Bulk Collect Into deg_conc;
-    Close c_degrees_concat_ksm;
-    
-    -- Return appropriate concatenated string
-    If deg_conc.count = 0 Or deg_conc.count Is Null Then Return(NULL);
-    ElsIf upper(verbose) Like 'T%' Then Return (deg_conc(1).degrees_verbose);
-    Else Return(deg_conc(1).degrees_concat);
-    End If;
-
-End;
 
 /* Fast degree years concat
    2017-02-15 */
@@ -308,6 +302,28 @@ Function get_entity_degrees_concat_fast(id In varchar2)
     Group By id_number;
     
     Return deg_conc;
+  End;
+
+/* Takes an entity id_number and returns concatenated Kellogg degrees as a string
+   2017-02-09 */
+Function get_entity_degrees_concat_ksm(id In varchar2, verbose In varchar2)
+  Return varchar2 Is
+  -- Declarations
+  Type degrees Is Table Of c_degrees_concat_ksm%rowtype;
+  deg_conc degrees; -- hold concatenated degree results
+  
+  Begin
+    -- Retrieve selected row
+    Open c_degrees_concat_ksm(id);
+      Fetch c_degrees_concat_ksm Bulk Collect Into deg_conc;
+    Close c_degrees_concat_ksm;
+    
+    -- Return appropriate concatenated string
+    If deg_conc.count = 0 Or deg_conc.count Is Null Then Return(NULL);
+    ElsIf upper(verbose) Like 'T%' Then Return (deg_conc(1).degrees_verbose);
+    Else Return(deg_conc(1).degrees_concat);
+    End If;
+
   End;
 
 /* Takes an ID and returns xsequence of master address, defined as preferred if available, else home,
@@ -387,7 +403,7 @@ Function get_entity_address(id In varchar2, field In varchar2, debug In Boolean 
     If debug Then dbms_output.put_line(xseq || ' ' || field || ' is: ');
     End If;
     -- Retrieve the master address
-    If xseq = 0 Then Return('#NA'); -- failsafe condition
+    If xseq = 0 Then Return('LOST_ALUMNI'); -- failsafe condition
     End If;
      -- Big Case-When to fill in the appropriate field
     Select Case
