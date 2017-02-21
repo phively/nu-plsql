@@ -49,7 +49,9 @@ Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
             End
             -- Class section code
             || ' ' || class_section), '; '
-      ) Within Group (Order By degree_year) As degrees_concat
+      ) Within Group (Order By degree_year) As degrees_concat,
+      -- First Kellogg year
+      min(trim(degree_year)) As first_ksm_year
       -- Table joins, etc.
       From degrees
         Left Join tms_class_section -- For class section short_desc
@@ -100,13 +102,13 @@ Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
       From concat
     )
     -- Final results
-    Select concat.id_number, degrees_verbose, degrees_concat, prg.program,
-      -- program_group
+    Select concat.id_number, degrees_verbose, degrees_concat, first_ksm_year, prg.program,
+      -- program_group; use spaces to force non-alphabetic entries to apear first
       Case
-        When program Like 'TMP%' Then 'TMP'
-        When program Like 'EMP%' Then 'EMP'
-        When program Like 'FT%' Then 'FT'
-        When program Like 'PHD%' Then 'PHD'
+        When program Like 'FT%' Then  '  FT'
+        When program Like 'TMP%' Then '  TMP'
+        When program Like 'EMP%' Then ' EMP'
+        When program Like 'PHD%' Then ' PHD'
         When program Like 'EXEC%' Or program Like 'CERT%' Then 'EXECED'
       End As program_group
     From concat
