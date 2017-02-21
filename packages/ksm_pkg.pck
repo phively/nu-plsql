@@ -24,10 +24,18 @@ Initial procedures
 Public type declarations
 *************************************************************************/
 
--- Degreed alumi, for entity_degrees_concat
+/* Degreed alumi, for entity_degrees_concat */
 Type degreed_alumni Is Record (
-  id_number varchar2(10), degrees_verbose varchar2(1024), degrees_concat varchar2(512), first_ksm_year varchar2(4),
-  program varchar2(20), program_group varchar2(20)
+  id_number entity.id_number%type, degrees_verbose varchar2(1024), degrees_concat varchar2(512),
+  first_ksm_year degrees.degree_year%type, program tms_dept_code.short_desc%type, program_group varchar2(20)
+);
+
+/* Household, for entity_households */
+Type household Is Record (
+  id_number entity.id_number%type, degrees_concat varchar2(512), first_ksm_year degrees.degree_year%type,
+  program_group varchar2(20), spouse_id_number entity.spouse_id_number%type, spouse_degrees_concat varchar2(512),
+  spouse_first_ksm_year degrees.degree_year%type, spouse_program_group varchar2(20),
+  household_id entity.id_number%type, household_ksm_year degrees.degree_year%type, household_program_group varchar2(20)
 );
 
 /*************************************************************************
@@ -35,6 +43,7 @@ Public table declarations
 *************************************************************************/
 Type t_varchar2_long Is Table Of varchar2(512);
 Type t_degreed_alumni Is Table Of degreed_alumni;
+type t_households Is Table Of household;
 
 /*************************************************************************
 Public constant declarations
@@ -92,6 +101,10 @@ Function tbl_alloc_annual_fund_ksm
 /* Return pipelined table of entity_degrees_concat_ksm */
 Function tbl_entity_degrees_concat_ksm
   Return t_degreed_alumni Pipelined;
+
+/* Return pipelined table of entity_households_ksm */
+Function tbl_entity_households_ksm
+  Return t_households Pipelined;
 
 end ksm_pkg;
 /
@@ -206,11 +219,39 @@ Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
 
 /* Definition of Kellogg householding
    2017-02-21 */
-Cursor c_householding_ksm Is
-  Select entity.id_number, edc.degrees_concat, entity.spouse_id_number, sdc.degrees_concat As spouse_degrees_concat
-  From entity
-    Left Join table(ksm_pkg.tbl_entity_degrees_concat_ksm) edc On entity.id_number = edc.id_number
-    Left Join table(ksm_pkg.tbl_entity_degrees_concat_ksm) sdc On entity.spouse_id_number = sdc.id_number;
+Cursor c_households_ksm (id In varchar2 Default NULL) Is
+  With
+  -- Entities and spouses, with Kellogg degrees concat fields
+  couples As (
+    Select entity.id_number, edc.degrees_concat, edc.first_ksm_year, edc.program_group, entity.spouse_id_number,
+      sdc.degrees_concat As spouse_degrees_concat, sdc.first_ksm_year As spouse_first_ksm_year, sdc.program_group As spouse_program_group
+    From entity
+      Left Join table(ksm_pkg.tbl_entity_degrees_concat_ksm) edc On entity.id_number = edc.id_number
+      Left Join table(ksm_pkg.tbl_entity_degrees_concat_ksm) sdc On entity.spouse_id_number = sdc.id_number
+  ),
+  household As (
+    Select id_number, degrees_concat, first_ksm_year, program_group, spouse_id_number,
+      spouse_degrees_concat, spouse_first_ksm_year, spouse_program_group,
+      -- Choose which spouse is primary based on program_group
+      Case
+        When length(spouse_id_number) < 10 Or spouse_id_number Is Null Then id_number -- if no spouse, use id_number
+        -- if same program (or both null), use lower id_number
+        When program_group = spouse_program_group Or program_group Is Null And spouse_program_group Is Null Then
+          Case When id_number < spouse_id_number Then id_number Else spouse_id_number End
+        When spouse_program_group Is Null Then id_number -- if no spouse program, use id_number
+        When program_group Is Null Then spouse_id_number -- if no self program, use spouse_id_number
+        When program_group < spouse_program_group Then id_number
+        When spouse_program_group < program_group Then spouse_id_number
+      End As household_id
+    From couples
+  )
+  Select household.id_number, household.degrees_concat, household.first_ksm_year, household.program_group, household.spouse_id_number,
+    household.spouse_degrees_concat, household.spouse_first_ksm_year, household.spouse_program_group,
+    household.household_id, couples.first_ksm_year As household_ksm_year, couples.program_group As household_program_group
+  From household
+    Left Join couples On household.household_id = couples.id_number
+  Where (Case When id Is Not Null Then household.id_number Else 'T' End)
+            = (Case When id Is Not Null Then id Else 'T' End);
 
 /*************************************************************************
 Private type declarations
@@ -592,6 +633,26 @@ Function tbl_entity_degrees_concat_ksm
     -- Pipe out the degrees
     For i in 1..(degrees.count) Loop
       Pipe row(degrees(i));
+    End Loop;
+    
+    Return;
+  End;
+
+/* Pipelined function returning households and household degree information
+   2017-02-15 */
+Function tbl_entity_households_ksm
+  Return t_households Pipelined As
+  -- Declarations
+  households t_households;
+  
+  Begin
+    -- Open the households cursor
+    Open c_households_ksm;
+      Fetch c_households_ksm Bulk Collect Into households;
+    Close c_households_ksm;
+    -- Pipe out the degrees
+    For i in 1..(households.count) Loop
+      Pipe row(households(i));
     End Loop;
     
     Return;
