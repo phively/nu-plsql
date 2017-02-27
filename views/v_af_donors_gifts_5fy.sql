@@ -38,7 +38,7 @@ ksm_af_gifts As (
   From cal, nu_gft_trp_gifttrans
     Inner Join ksm_af_allocs
       On ksm_af_allocs.allocation_code = nu_gft_trp_gifttrans.allocation_code
-    Left Join households On households.id_number = ksm_pkg.get_gift_source_donor_ksm(tx_number)
+    Inner Join households On households.id_number = ksm_pkg.get_gift_source_donor_ksm(tx_number)
   -- Only pull KSM AF gifts in recent fiscal years
   Where nu_gft_trp_gifttrans.allocation_code = ksm_af_allocs.allocation_code
     And fiscal_year Between cal.prev_fy5 And cal.curr_fy
