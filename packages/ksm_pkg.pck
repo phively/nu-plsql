@@ -38,12 +38,20 @@ Type household Is Record (
   household_id entity.id_number%type, household_ksm_year degrees.degree_year%type, household_program_group varchar2(20)
 );
 
+/* Source donor, for gift_source_donor */
+Type src_donor Is Record (
+  tx_number nu_gft_trp_gifttrans.tx_number%type, id_number nu_gft_trp_gifttrans.id_number%type,
+  degrees_concat varchar2(512), person_or_org nu_gft_trp_gifttrans.person_or_org%type,
+  associated_code nu_gft_trp_gifttrans.associated_code%type, credit_amount nu_gft_trp_gifttrans.credit_amount%type
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
 Type t_varchar2_long Is Table Of varchar2(512);
 Type t_degreed_alumni Is Table Of degreed_alumni;
 type t_households Is Table Of household;
+Type t_src_donors Is Table Of src_donor;
 
 /*************************************************************************
 Public constant declarations
@@ -92,6 +100,10 @@ Function get_gift_source_donor_ksm(
   receipt In varchar2,
   debug In boolean Default FALSE) -- if TRUE, debug output is printed via dbms_output.put_line()
   Return varchar2; -- entity id_number
+
+/*************************************************************************
+Public pipelined functions declarations
+*************************************************************************/
 
 /* Return Kellogg Annual Fund allocations, both active and historical, as a pipelined function, e.g.
    Select * From table(ksm_pkg.get_alloc_annual_fund_ksm); */
@@ -216,6 +228,19 @@ Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
       End As program_group
     From concat
       Inner Join prg On concat.id_number = prg.id_number;
+
+/* Definition of Kellogg gift source donor
+   2017-02-27 */
+Cursor c_source_donor_ksm (receipt In varchar2) Is
+  Select
+    gft.tx_number, gft.id_number, get_entity_degrees_concat_fast(id_number) As ksm_degrees,
+    gft.person_or_org, gft.associated_code, gft.credit_amount
+  From nu_gft_trp_gifttrans gft
+  Where gft.tx_number = receipt
+    And associated_code Not In ('H', 'M') -- Exclude In Honor Of and In Memory Of from consideration
+  -- People with earlier KSM degree years take precedence over those with later ones
+  -- People with smaller ID numbers take precedence over those with larger oens
+  Order By get_entity_degrees_concat_fast(id_number) Asc, id_number Asc;
 
 /* Definition of Kellogg householding
    2017-02-21 */
@@ -487,23 +512,9 @@ Function get_gift_source_donor_ksm(receipt In varchar2, debug In boolean Default
   gift_type char(1); -- GPYM indicator
   donor_type char(1); -- record type of primary associated donor
   id_tmp varchar2(10); -- temporary holder for id_number or receipt
-  
-  -- Cursor to store donors credited on the current gift
-  -- Needs to be sorted in preferred order, so that KSM alumni with earlier degree years appear higher
-  -- on the list and non-KSM alumni are sorted by lower id_number (as a proxy for age of record)
-  Cursor c_donor Is
-    Select
-      id_number, get_entity_degrees_concat_fast(id_number) As ksm_degrees,
-      person_or_org, associated_code, credit_amount
-    From nu_gft_trp_gifttrans
-    Where tx_number = receipt
-      And associated_code Not In ('H', 'M') -- Exclude In Honor Of and In Memory Of from consideration
-    -- People with earlier KSM degree years take precedence over those with later ones
-    -- People with smaller ID numbers take precedence over those with larger oens
-    Order By get_entity_degrees_concat_fast(id_number) Asc, id_number Asc;
     
   -- Table type corresponding to above cursor
-  Type t_results Is Table Of c_donor%rowtype;
+  Type t_results Is Table Of c_source_donor_ksm%rowtype;
     results t_results;
 
   Begin
@@ -532,10 +543,10 @@ Function get_gift_source_donor_ksm(receipt In varchar2, debug In boolean Default
 
   -- For any other type of gift, proceed through the hierarchy of potential source donors
 
-    -- Retrieve c_donor cursor results
-    Open c_donor;
-      Fetch c_donor Bulk Collect Into results;
-    Close c_donor;
+    -- Retrieve c_source_donor_ksm cursor results
+    Open c_source_donor_ksm(receipt => receipt);
+      Fetch c_source_donor_ksm Bulk Collect Into results;
+    Close c_source_donor_ksm;
     
     -- Debug -- test that the cursors worked --
     If debug Then
@@ -563,7 +574,7 @@ Function get_gift_source_donor_ksm(receipt In varchar2, debug In boolean Default
     End Loop;
     
     -- Check if any non-primary donors have a KSM degree; grab first that has a non-null l_degrees
-    -- IMPORTANT: this means the cursor c_donor needs to be sorted in preferred order!
+    -- IMPORTANT: this means the cursor c_source_donor_ksm needs to be sorted in preferred order!
     For i In 1..(results.count) Loop
       -- If we find a KSM alum we're done
       If results(i).ksm_degrees Is Not Null Then
@@ -572,7 +583,7 @@ Function get_gift_source_donor_ksm(receipt In varchar2, debug In boolean Default
     End Loop;
     
     -- Check if the primary donor is an organization; if so, grab first person who's associated
-    -- IMPORTANT: this means the cursor c_donor needs to be sorted in preferred order!
+    -- IMPORTANT: this means the cursor c_source_donor_ksm needs to be sorted in preferred order!
     -- If primary record type is not person, continue
     If donor_type != 'P' Then  
       For i In 1..(results.count) Loop
