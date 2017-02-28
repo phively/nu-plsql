@@ -1,4 +1,4 @@
-Create Or Replace View v_af_gifts_5fy As
+Create Or Replace View v_af_gifts_legal_5fy As
 With
 
 -- Kellogg Annual Fund allocations as defined in ksm_pkg

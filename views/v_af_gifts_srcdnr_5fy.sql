@@ -1,4 +1,4 @@
-Create Or Replace View v_af_donors_gifts_5fy As
+Create Or Replace View v_af_gifts_srcdnr_5fy As
 With
 
 /* Core Annual Fund transaction-level view; current and previous 5 fiscal years. Rolls data up to the household giving source donor
@@ -26,7 +26,7 @@ households As (
 ksm_af_gifts As (
   Select ksm_af_allocs.allocation_code, alloc_short_name, tx_number, tx_sequence, tx_gypm_ind, fiscal_year, date_of_record,
     legal_amount, credit_amount, nwu_af_amount, nu_gft_trp_gifttrans.id_number,
-    ksm_pkg.get_gift_source_donor_ksm(tx_number) As ksm_src_dnr_id,
+    ksm_pkg.get_gift_source_donor_ksm(tx_number) As id_hh_src_dnr,
     households.household_id As ksm_household_src_dnr,
     curr_fy, yesterday
   From cal, nu_gft_trp_gifttrans
@@ -47,7 +47,7 @@ Select
   ksm_pkg.fytd_indicator(af.date_of_record) As ytd_ind, -- year to date flag
   af.id_number As legal_dnr_id, af.legal_amount, af.credit_amount, af.nwu_af_amount,
   -- Household source donor entity fields
-  af.ksm_household_src_dnr, e_src_dnr.pref_name_sort, e_src_dnr.person_or_org, e_src_dnr.record_status_code, e_src_dnr.institutional_suffix,
+  af.id_hh_src_dnr, e_src_dnr.pref_name_sort, e_src_dnr.person_or_org, e_src_dnr.record_status_code, e_src_dnr.institutional_suffix,
   ksm_pkg.get_entity_address(e_src_dnr.id_number, 'state_code') As master_state,
   ksm_pkg.get_entity_address(e_src_dnr.id_number, 'country') As master_country,
   e_src_dnr.gender_code, e_src_dnr.spouse_id_number,
