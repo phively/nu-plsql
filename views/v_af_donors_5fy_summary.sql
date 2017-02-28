@@ -35,7 +35,22 @@ Select
   sum(Case When fiscal_year = (curr_fy - 2) And ytd_ind = 'Y' Then legal_amount Else 0 End) As ksm_af_prev_fy2_ytd,
   sum(Case When fiscal_year = (curr_fy - 3) And ytd_ind = 'Y' Then legal_amount Else 0 End) As ksm_af_prev_fy3_ytd,
   sum(Case When fiscal_year = (curr_fy - 4) And ytd_ind = 'Y' Then legal_amount Else 0 End) As ksm_af_prev_fy4_ytd,
-  sum(Case When fiscal_year = (curr_fy - 5) And ytd_ind = 'Y' Then legal_amount Else 0 End) As ksm_af_prev_fy5_ytd
+  sum(Case When fiscal_year = (curr_fy - 5) And ytd_ind = 'Y' Then legal_amount Else 0 End) As ksm_af_prev_fy5_ytd,
+  -- Aggregated match amounts
+  sum(Case When fiscal_year = (curr_fy - 0) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As ksm_af_curr_fy_match,
+  sum(Case When fiscal_year = (curr_fy - 1) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As ksm_af_prev_fy1_match,
+  sum(Case When fiscal_year = (curr_fy - 2) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As ksm_af_prev_fy2_match,
+  sum(Case When fiscal_year = (curr_fy - 3) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As ksm_af_prev_fy3_match,
+  sum(Case When fiscal_year = (curr_fy - 4) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As ksm_af_prev_fy4_match,
+  sum(Case When fiscal_year = (curr_fy - 5) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As ksm_af_prev_fy5_match,
+  -- Recent gift details
+  max(Case When fiscal_year = (curr_fy - 0) then date_of_record Else NULL End) As last_gift_curr_fy,
+  max(Case When fiscal_year = (curr_fy - 1) then date_of_record Else NULL End) As last_gift_prev_fy1,
+  max(Case When fiscal_year = (curr_fy - 2) then date_of_record Else NULL End) As last_gift_prev_fy2,
+  -- Count of gifts per year
+  sum(Case When fiscal_year = (curr_fy - 0) then 1 Else 0 End) As gifts_curr_fy,
+  sum(Case When fiscal_year = (curr_fy - 1) then 1 Else 0 End) As gifts_prev_fy1,
+  sum(Case When fiscal_year = (curr_fy - 2) then 1 Else 0 End) As gifts_prev_fy2
 From v_af_gifts_srcdnr_5fy af_gifts
   Left Join deg entity_deg On entity_deg.id_number = af_gifts.id_hh_src_dnr
   Left Join deg spouse_deg On spouse_deg.id_number = af_gifts.spouse_id_number

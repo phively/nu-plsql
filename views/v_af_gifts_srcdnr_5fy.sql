@@ -24,17 +24,20 @@ households As (
 
 -- Formatted giving table
 ksm_af_gifts As (
-  Select ksm_af_allocs.allocation_code, alloc_short_name, tx_number, tx_sequence, tx_gypm_ind, fiscal_year, date_of_record,
-    legal_amount, credit_amount, nwu_af_amount, nu_gft_trp_gifttrans.id_number,
+  Select ksm_af_allocs.allocation_code,
+    gft.alloc_short_name, gft.tx_number, gft.tx_sequence, gft.tx_gypm_ind,
+    gft.fiscal_year, gft.date_of_record,
+    gft.legal_amount, gft.credit_amount, gft.nwu_af_amount,
+    gft.id_number As legal_dnr_id,
     ksm_pkg.get_gift_source_donor_ksm(tx_number) As id_hh_src_dnr,
     households.household_id As ksm_household_src_dnr,
-    curr_fy, yesterday
-  From cal, nu_gft_trp_gifttrans
+    cal.curr_fy, cal.yesterday
+  From cal, nu_gft_trp_gifttrans gft
     Inner Join ksm_af_allocs
-      On ksm_af_allocs.allocation_code = nu_gft_trp_gifttrans.allocation_code
+      On ksm_af_allocs.allocation_code = gft.allocation_code
     Inner Join households On households.id_number = ksm_pkg.get_gift_source_donor_ksm(tx_number)
   -- Only pull KSM AF gifts in recent fiscal years
-  Where nu_gft_trp_gifttrans.allocation_code = ksm_af_allocs.allocation_code
+  Where gft.allocation_code = ksm_af_allocs.allocation_code
     And fiscal_year Between cal.prev_fy5 And cal.curr_fy
     -- Drop pledges
     And tx_gypm_ind != 'P'
@@ -45,7 +48,7 @@ Select
   -- Giving fields
   af.allocation_code, af.alloc_short_name, af.tx_number, af.tx_sequence, af.tx_gypm_ind, af.fiscal_year, af.date_of_record,
   ksm_pkg.fytd_indicator(af.date_of_record) As ytd_ind, -- year to date flag
-  af.id_number As legal_dnr_id, af.legal_amount, af.credit_amount, af.nwu_af_amount,
+  af.legal_dnr_id, af.legal_amount, af.credit_amount, af.nwu_af_amount,
   -- Household source donor entity fields
   af.id_hh_src_dnr, e_src_dnr.pref_name_sort, e_src_dnr.person_or_org, e_src_dnr.record_status_code, e_src_dnr.institutional_suffix,
   ksm_pkg.get_entity_address(e_src_dnr.id_number, 'state_code') As master_state,
