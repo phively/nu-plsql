@@ -32,9 +32,9 @@ Type degreed_alumni Is Record (
 
 /* Committee member list, for committee results */
 Type committee_member Is Record (
-  id_number committee.id_number%type, start_dt committee.start_dt%type, stop_dt committee.stop_dt%type,
-  status tms_committee_status.short_desc%type, role tms_committee_role.short_desc%type,
-  xcomment committee.xcomment%type, date_modified committee.date_modified%type,
+  id_number committee.id_number%type, short_desc committee_header.short_desc%type,
+  start_dt committee.start_dt%type, stop_dt committee.stop_dt%type, status tms_committee_status.short_desc%type,
+  role tms_committee_role.short_desc%type, xcomment committee.xcomment%type, date_modified committee.date_modified%type,
   operator_name committee.operator_name%type
 );
 
@@ -128,10 +128,13 @@ Function tbl_entity_degrees_concat_ksm
 Function tbl_entity_households_ksm
   Return t_households Pipelined;
 
-/* Return pipelined table of GAB members */
+/* Return pipelined table of committee members */
 Function tbl_committee_gab
   Return t_committee_members Pipelined;
-
+  
+Function tbl_committee_kac
+  Return t_committee_members Pipelined;
+  
 end ksm_pkg;
 /
 Create Or Replace Package Body ksm_pkg Is
@@ -148,16 +151,17 @@ Cursor c_alloc_annual_fund_ksm Is
   Where annual_sw = 'Y'
   And alloc_school = 'KM';
 
-/* Definition of current Kellogg Global Advisory Board members
+/* Definition of current Kellogg committee members
    2017-03-01 */
-Cursor c_committee_gab Is
-  Select comm.id_number, comm.start_dt, comm.stop_dt, tms_status.short_desc As status, tms_role.short_desc As role,
-    comm.xcomment, comm.date_modified, comm.operator_name
+Cursor c_committee (my_committee_cd In varchar2) Is
+  Select comm.id_number, hdr.short_desc, comm.start_dt, comm.stop_dt, tms_status.short_desc As status,
+    tms_role.short_desc As role, comm.xcomment, comm.date_modified, comm.operator_name
   From committee comm
     Left Join tms_committee_status tms_status On comm.committee_status_code = tms_status.committee_status_code
     Left Join tms_committee_role tms_role On comm.committee_role_code = tms_role.committee_role_code
-  Where committee_code = 'U' -- KSM Global Advisory Board
-    And comm.committee_status_code = 'C'; -- Current; Active (A) is deprecated
+    Left Join committee_header hdr On comm.committee_code = hdr.committee_code
+  Where comm.committee_code = my_committee_cd
+    And comm.committee_status_code In ('C', 'A'); -- 'C'urrent or 'A'ctive; 'A' is deprecated
 
 /* Definition of Kellogg degrees concatenated
    2017-02-15 */
@@ -314,6 +318,12 @@ Private type declarations
 /*************************************************************************
 Private constant declarations
 *************************************************************************/
+
+/* Committees */
+committee_gab Constant committee.committee_code%type := 'U'; -- Kellogg Global Advisory Board committee code
+committee_kac Constant committee.committee_code%type := 'KACNA'; -- Kellogg Alumni Council committee code
+
+/* Miscellaneous */
 fy_start_month Constant number := 9; -- fiscal start month, 9 = September
 
 /*************************************************************************
@@ -323,6 +333,21 @@ Private variable declarations
 /*************************************************************************
 Functions
 *************************************************************************/
+
+/* Generic function returning 'C'urrent or 'A'ctive (deprecated) committee members
+   2017-03-01 */
+Function committee_members (my_committee_cd In varchar2)
+  Return t_committee_members As
+  -- Declarations
+  committees t_committee_members;
+  
+  -- Return table results
+  Begin
+    Open c_committee (my_committee_cd => my_committee_cd);
+      Fetch c_committee Bulk Collect Into committees;
+    Close c_committee;
+    Return committees;
+  End;
 
 /* Calculates the modulo function; needed to correct Oracle mod() weirdness
    2017-02-08 */
@@ -646,7 +671,6 @@ Function tbl_alloc_annual_fund_ksm
     allocs t_varchar2_long;
 
   Begin
-    -- Grab allocations
     Open c_alloc_annual_fund_ksm; -- Annual Fund allocations cursor
       Fetch c_alloc_annual_fund_ksm Bulk Collect Into allocs;
     Close c_alloc_annual_fund_ksm;
@@ -654,7 +678,6 @@ Function tbl_alloc_annual_fund_ksm
     For i in 1..(allocs.count) Loop
       Pipe row(allocs(i));
     End Loop;
-    
     Return;
   End;
 
@@ -666,15 +689,12 @@ Function tbl_entity_degrees_concat_ksm
   degrees t_degreed_alumni;
     
   Begin
-    -- Open the degrees cursor
     Open c_degrees_concat_ksm;
       Fetch c_degrees_concat_ksm Bulk Collect Into degrees;
     Close c_degrees_concat_ksm;
-    -- Pipe out the degrees
     For i in 1..(degrees.count) Loop
       Pipe row(degrees(i));
     End Loop;
-    
     Return;
   End;
 
@@ -686,36 +706,42 @@ Function tbl_entity_households_ksm
   households t_households;
   
   Begin
-    -- Open the households cursor
     Open c_households_ksm;
       Fetch c_households_ksm Bulk Collect Into households;
     Close c_households_ksm;
-    -- Pipe out the degrees
     For i in 1..(households.count) Loop
       Pipe row(households(i));
     End Loop;
-    
     Return;
   End;
 
-/* Pipelined function returning Kellogg GAB committee members */
-Function tbl_committee_gab
-  Return t_committee_members Pipelined As
-  -- Declarations
-  committees t_committee_members;
+/* Pipelined function for Kellogg committees */
   
-  Begin
-    -- Open the GAB cursor
-    Open c_committee_gab;
-      Fetch c_committee_gab Bulk Collect Into committees;
-    Close c_committee_gab;
-    -- Pipe out the degrees
-    For i in 1..(committees.count) Loop
-      Pipe row(committees(i));
-    End Loop;
+  /* GAB */
+  Function tbl_committee_gab
+    Return t_committee_members Pipelined As
+    committees t_committee_members;
     
-    Return;
-  End;
+    Begin
+      committees := committee_members (my_committee_cd => committee_gab);
+      For i in 1..committees.count Loop
+        Pipe row(committees(i));
+      End Loop;
+      Return;
+    End;
+  
+  /* KAC */
+  Function tbl_committee_kac
+    Return t_committee_members Pipelined As
+    committees t_committee_members;
+    
+    Begin
+      committees := committee_members (my_committee_cd => committee_kac);
+      For i in 1..committees.count Loop
+        Pipe row(committees(i));
+      End Loop;
+      Return;
+    End;
 
 End ksm_pkg;
 /
