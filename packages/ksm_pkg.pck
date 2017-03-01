@@ -30,6 +30,14 @@ Type degreed_alumni Is Record (
   first_ksm_year degrees.degree_year%type, program tms_dept_code.short_desc%type, program_group varchar2(20)
 );
 
+/* Committee member list, for committee results */
+Type committee_member Is Record (
+  id_number committee.id_number%type, start_dt committee.start_dt%type, stop_dt committee.stop_dt%type,
+  status tms_committee_status.short_desc%type, role tms_committee_role.short_desc%type,
+  xcomment committee.xcomment%type, date_modified committee.date_modified%type,
+  operator_name committee.operator_name%type
+);
+
 /* Household, for entity_households */
 Type household Is Record (
   id_number entity.id_number%type, pref_mail_name entity.pref_mail_name%type, degrees_concat varchar2(512),
@@ -51,8 +59,9 @@ Public table declarations
 *************************************************************************/
 Type t_varchar2_long Is Table Of varchar2(512);
 Type t_degreed_alumni Is Table Of degreed_alumni;
-type t_households Is Table Of household;
+Type t_households Is Table Of household;
 Type t_src_donors Is Table Of src_donor;
+Type t_committee_members Is Table Of committee_member;
 
 /*************************************************************************
 Public constant declarations
@@ -119,6 +128,10 @@ Function tbl_entity_degrees_concat_ksm
 Function tbl_entity_households_ksm
   Return t_households Pipelined;
 
+/* Return pipelined table of GAB members */
+Function tbl_committee_gab
+  Return t_committee_members Pipelined;
+
 end ksm_pkg;
 /
 Create Or Replace Package Body ksm_pkg Is
@@ -134,6 +147,17 @@ Cursor c_alloc_annual_fund_ksm Is
   From allocation
   Where annual_sw = 'Y'
   And alloc_school = 'KM';
+
+/* Definition of current Kellogg Global Advisory Board members
+   2017-03-01 */
+Cursor c_committee_gab Is
+  Select comm.id_number, comm.start_dt, comm.stop_dt, tms_status.short_desc As status, tms_role.short_desc As role,
+    comm.xcomment, comm.date_modified, comm.operator_name
+  From committee comm
+    Left Join tms_committee_status tms_status On comm.committee_status_code = tms_status.committee_status_code
+    Left Join tms_committee_role tms_role On comm.committee_role_code = tms_role.committee_role_code
+  Where committee_code = 'U' -- KSM Global Advisory Board
+    And comm.committee_status_code = 'C'; -- Current; Active (A) is deprecated
 
 /* Definition of Kellogg degrees concatenated
    2017-02-15 */
@@ -669,6 +693,25 @@ Function tbl_entity_households_ksm
     -- Pipe out the degrees
     For i in 1..(households.count) Loop
       Pipe row(households(i));
+    End Loop;
+    
+    Return;
+  End;
+
+/* Pipelined function returning Kellogg GAB committee members */
+Function tbl_committee_gab
+  Return t_committee_members Pipelined As
+  -- Declarations
+  committees t_committee_members;
+  
+  Begin
+    -- Open the GAB cursor
+    Open c_committee_gab;
+      Fetch c_committee_gab Bulk Collect Into committees;
+    Close c_committee_gab;
+    -- Pipe out the degrees
+    For i in 1..(committees.count) Loop
+      Pipe row(committees(i));
     End Loop;
     
     Return;
