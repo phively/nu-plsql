@@ -6,8 +6,26 @@ With
 
 -- Degrees concat
 deg As (
-  Select id_number, degrees_concat, program, program_group
-  From table(ksm_pkg.tbl_entity_degrees_concat_ksm)
+  Select deg.id_number, deg.degrees_concat, deg.program, deg.program_group
+  From table(ksm_pkg.tbl_entity_degrees_concat_ksm) deg
+),
+
+-- Housheholds
+hh As (
+  Select id_number, household_id
+  From table(ksm_pkg.tbl_entity_households_ksm) hh
+),
+
+-- Committee members
+kac As (
+  Select hh.household_id, comm.short_desc, comm.status, comm.role
+  From table(ksm_pkg.tbl_committee_kac) comm
+    Inner Join hh On hh.id_number = comm.id_number
+),
+gab As (
+  Select hh.household_id, comm.short_desc, comm.status, comm.role
+  From table(ksm_pkg.tbl_committee_gab) comm
+    Inner Join hh On hh.id_number = comm.id_number
 )
 
 -- Aggregated by entity and fiscal year
@@ -21,7 +39,9 @@ Select
   spouse_deg.degrees_concat As spouse_degrees_concat,
   spouse_deg.program As spouse_program,
   spouse_deg.program_group As spouse_program_group,
-  ksm_alum_flag,
+  -- Indicators
+  ksm_alum_flag, kac.short_desc As kac, gab.short_desc As gab,
+  Case When lower(institutional_suffix) Like '%trustee%' Then 'Trustee' Else NULL End As trustee,
   -- Date fields
   curr_fy, data_as_of,
   -- Aggregated giving amounts
@@ -56,10 +76,13 @@ Select
 From v_af_gifts_srcdnr_5fy af_gifts
   Left Join deg entity_deg On entity_deg.id_number = af_gifts.id_hh_src_dnr
   Left Join deg spouse_deg On spouse_deg.id_number = af_gifts.spouse_id_number
+  Left Join kac On id_hh_src_dnr = kac.household_id
+  Left Join gab On id_hh_src_dnr = gab.household_id
 Group By id_hh_src_dnr, pref_mail_name, pref_name_sort, person_or_org, record_status_code, institutional_suffix,
   entity_deg.degrees_concat, entity_deg.program, entity_deg.program_group, master_state, master_country, gender_code,
   spouse_id_number, spouse_pref_mail_name, spouse_deg.degrees_concat, spouse_deg.program, spouse_deg.program_group,
-  ksm_alum_flag,
+  -- Indicators
+  ksm_alum_flag, kac.short_desc, gab.short_desc,
   -- Date fields
   curr_fy, data_as_of
 Order By pref_name_sort Asc
