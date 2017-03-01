@@ -29,8 +29,8 @@ ksm_af_gifts As (
     gft.fiscal_year, gft.date_of_record,
     gft.legal_amount, gft.credit_amount, gft.nwu_af_amount,
     gft.id_number As legal_dnr_id,
-    ksm_pkg.get_gift_source_donor_ksm(tx_number) As id_hh_src_dnr,
-    households.household_id As ksm_household_src_dnr,
+    ksm_pkg.get_gift_source_donor_ksm(tx_number) As id_src_dnr,
+    households.household_id As id_hh_src_dnr,
     cal.curr_fy, cal.yesterday
   From cal, nu_gft_trp_gifttrans gft
     Inner Join ksm_af_allocs
@@ -59,5 +59,5 @@ Select
   -- Fiscal year number
   curr_fy, yesterday As data_as_of
 From ksm_af_gifts af
-  Inner Join entity e_src_dnr On af.ksm_household_src_dnr = e_src_dnr.id_number
+  Inner Join entity e_src_dnr On af.id_hh_src_dnr = e_src_dnr.id_number
 Where legal_amount > 0
