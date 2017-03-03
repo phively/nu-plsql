@@ -18,11 +18,9 @@ hh As (
 
 -- Prospect reporting table
 prs As (
-  Select p.id_number,
+  Select p.id_number, p.business_title,
   trim(p.employer_name1 || ' ' || p.employer_name2) As employer_name,
-  p.business_title,
-  p.prospect_id, p.prospect_manager, p.team,
-  p.prospect_stage, p.officer_rating
+  p.prospect_id, p.prospect_manager, p.team, p.prospect_stage, p.officer_rating, p.evaluation_rating
   From nu_prs_trp_prospect p
 ),
 
@@ -50,9 +48,7 @@ Select
   spouse_deg.program As spouse_program,
   spouse_deg.program_group As spouse_program_group,
   -- Prospect reporting table fields
-  prs.employer_name, prs.business_title,
-  prs.prospect_id, prs.prospect_manager, prs.team,
-  prs.prospect_stage, prs.officer_rating,
+  prs.employer_name, prs.business_title, prs.prospect_id, prs.prospect_manager, prs.team, prs.prospect_stage, prs.officer_rating, prs.evaluation_rating,
   -- Indicators
   ksm_alum_flag, kac.short_desc As kac, gab.short_desc As gab,
   Case When lower(institutional_suffix) Like '%trustee%' Then 'Trustee' Else NULL End As trustee,
@@ -97,9 +93,7 @@ Group By id_hh_src_dnr, pref_mail_name, pref_name_sort, person_or_org, record_st
   entity_deg.degrees_concat, entity_deg.program, entity_deg.program_group, master_state, master_country, gender_code,
   spouse_id_number, spouse_pref_mail_name, spouse_deg.degrees_concat, spouse_deg.program, spouse_deg.program_group,
   -- Prospect reporting table fields
-  prs.employer_name, prs.business_title,
-  prs.prospect_id, prs.prospect_manager, prs.team,
-  prs.prospect_stage, prs.officer_rating,
+  prs.employer_name, prs.business_title, prs.prospect_id, prs.prospect_manager, prs.team, prs.prospect_stage, prs.officer_rating, prs.evaluation_rating,
   -- Indicators
   ksm_alum_flag, kac.short_desc, gab.short_desc,
   -- Date fields
