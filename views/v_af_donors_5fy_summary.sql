@@ -16,6 +16,16 @@ hh As (
   From table(ksm_pkg.tbl_entity_households_ksm) hh
 ),
 
+-- Prospect reporting table
+prs As (
+  Select p.id_number,
+  trim(p.employer_name1 || ' ' || p.employer_name2) As employer_name,
+  p.business_title,
+  p.prospect_id, p.prospect_manager, p.team,
+  p.prospect_stage, p.officer_rating
+  From nu_prs_trp_prospect p
+),
+
 -- Committee members
 kac As (
   Select hh.household_id, comm.short_desc, comm.status, comm.role
@@ -39,6 +49,10 @@ Select
   spouse_deg.degrees_concat As spouse_degrees_concat,
   spouse_deg.program As spouse_program,
   spouse_deg.program_group As spouse_program_group,
+  -- Prospect reporting table fields
+  prs.employer_name, prs.business_title,
+  prs.prospect_id, prs.prospect_manager, prs.team,
+  prs.prospect_stage, prs.officer_rating,
   -- Indicators
   ksm_alum_flag, kac.short_desc As kac, gab.short_desc As gab,
   Case When lower(institutional_suffix) Like '%trustee%' Then 'Trustee' Else NULL End As trustee,
@@ -74,6 +88,7 @@ Select
   sum(Case When fiscal_year = (curr_fy - 1) then 1 Else 0 End) As gifts_prev_fy1,
   sum(Case When fiscal_year = (curr_fy - 2) then 1 Else 0 End) As gifts_prev_fy2
 From v_af_gifts_srcdnr_5fy af_gifts
+  Left Join prs On prs.id_number = af_gifts.id_hh_src_dnr
   Left Join deg entity_deg On entity_deg.id_number = af_gifts.id_hh_src_dnr
   Left Join deg spouse_deg On spouse_deg.id_number = af_gifts.spouse_id_number
   Left Join kac On id_hh_src_dnr = kac.household_id
@@ -81,8 +96,11 @@ From v_af_gifts_srcdnr_5fy af_gifts
 Group By id_hh_src_dnr, pref_mail_name, pref_name_sort, person_or_org, record_status_code, institutional_suffix,
   entity_deg.degrees_concat, entity_deg.program, entity_deg.program_group, master_state, master_country, gender_code,
   spouse_id_number, spouse_pref_mail_name, spouse_deg.degrees_concat, spouse_deg.program, spouse_deg.program_group,
+  -- Prospect reporting table fields
+  prs.employer_name, prs.business_title,
+  prs.prospect_id, prs.prospect_manager, prs.team,
+  prs.prospect_stage, prs.officer_rating,
   -- Indicators
   ksm_alum_flag, kac.short_desc, gab.short_desc,
   -- Date fields
   curr_fy, data_as_of
-Order By pref_name_sort Asc
