@@ -30,7 +30,7 @@ ksm_af_gifts As (
     gft.legal_amount, gft.credit_amount, gft.nwu_af_amount,
     gft.id_number As legal_dnr_id,
     ksm_pkg.get_gift_source_donor_ksm(tx_number) As id_src_dnr,
-    households.pref_mail_name, households.spouse_id_number, households.spouse_pref_mail_name,
+--    households.pref_mail_name, households.spouse_id_number, households.spouse_pref_mail_name,
     households.household_id As id_hh_src_dnr,
     cal.curr_fy, cal.yesterday
   From cal, nu_gft_trp_gifttrans gft
@@ -51,15 +51,16 @@ Select
   ksm_pkg.fytd_indicator(af.date_of_record) As ytd_ind, -- year to date flag
   af.legal_dnr_id, af.legal_amount, af.credit_amount, af.nwu_af_amount,
   -- Household source donor entity fields
-  af.id_hh_src_dnr, af.pref_mail_name, e_src_dnr.pref_name_sort, e_src_dnr.person_or_org, e_src_dnr.record_status_code,
+  af.id_hh_src_dnr, hh.pref_mail_name, e_src_dnr.pref_name_sort, e_src_dnr.person_or_org, e_src_dnr.record_status_code,
   e_src_dnr.institutional_suffix,
   ksm_pkg.get_entity_address(e_src_dnr.id_number, 'state_code') As master_state,
   ksm_pkg.get_entity_address(e_src_dnr.id_number, 'country') As master_country,
-  e_src_dnr.gender_code, af.spouse_id_number, af.spouse_pref_mail_name,
+  e_src_dnr.gender_code, hh.spouse_id_number, hh.spouse_pref_mail_name,
   -- KSM alumni flag
   Case When ksm_pkg.get_entity_degrees_concat_fast(e_src_dnr.id_number) Is Not Null Then 'Y' Else 'N' End As ksm_alum_flag,
   -- Fiscal year number
   curr_fy, yesterday As data_as_of
 From ksm_af_gifts af
   Inner Join entity e_src_dnr On af.id_hh_src_dnr = e_src_dnr.id_number
+  Inner Join households hh On hh.id_number = af.id_hh_src_dnr
 Where legal_amount > 0
