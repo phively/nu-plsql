@@ -19,8 +19,8 @@ hh As (
 -- Prospect reporting table
 prs As (
   Select p.id_number, p.business_title,
-  trim(p.employer_name1 || ' ' || p.employer_name2) As employer_name,
-  p.prospect_id, p.prospect_manager, p.team, p.prospect_stage, p.officer_rating, p.evaluation_rating
+    trim(p.employer_name1 || ' ' || p.employer_name2) As employer_name,
+    p.prospect_id, p.prospect_manager, p.team, p.prospect_stage, p.officer_rating, p.evaluation_rating
   From nu_prs_trp_prospect p
 ),
 
