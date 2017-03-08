@@ -4,6 +4,12 @@ With
 /* All Kellogg alumni households and annual fund giving behavior.
    Base table is nu_prs_trp_prospect so deceased entities are excluded. */
 
+-- Calendar date range from current_calendar
+cal As (
+  Select curr_fy, yesterday
+  From v_current_calendar
+),
+
 -- Housheholds
 hh As (
   Select hh.id_number, hh.pref_mail_name, hh.degrees_concat, hh.program_group,
@@ -31,12 +37,16 @@ Select Distinct
   hh.spouse_id_number, hh.spouse_pref_mail_name, hh.spouse_degrees_concat, hh.spouse_program_group,
   hh.household_program_group,
   -- Entity-based fields
-  prs.record_status_code, prs.pref_state, prs.preferred_country,
+  prs.record_status_code, prs.pref_state, tms_states.short_desc As pref_state_desc, prs.preferred_country,
   prs.business_title,
   trim(prs.employer_name1 || ' ' || prs.employer_name2) As employer_name,
   -- Giving fields
   af_summary.ksm_af_curr_fy, af_summary.ksm_af_prev_fy1, af_summary.ksm_af_prev_fy2, af_summary.ksm_af_prev_fy3,
-  af_summary.ksm_af_prev_fy4, af_summary.ksm_af_prev_fy5
-From nu_prs_trp_prospect prs
+  af_summary.ksm_af_prev_fy4, af_summary.ksm_af_prev_fy5,
+  -- Calendar objects
+  cal.curr_fy, cal.yesterday
+From cal, nu_prs_trp_prospect prs
   Inner Join hh On hh.household_id = prs.id_number
+  Left Join tms_states On tms_states.state_code = prs.pref_state
   Left Join v_af_donors_5fy_summary af_summary On af_summary.id_hh_src_dnr = hh.household_id
+Where hh.household_id = hh.id_number
