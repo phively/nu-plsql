@@ -172,12 +172,12 @@ Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
     Select id_number,
       -- Verbose degrees
       Listagg(
-        trim(degree_year || ' ' || degree_code || ' ' || school_code || ' ' ||
-          tms_dept_code.short_desc || ' ' || tms_class_section.short_desc), '; '
+        trim(degree_year || ' ' || tms_degree_level.short_desc || ' ' || tms_degrees.short_desc || ' ' ||
+        school_code || ' ' || tms_dept_code.short_desc || ' ' || tms_class_section.short_desc), '; '
       ) Within Group (Order By degree_year) As degrees_verbose,
       -- Terse degrees
       Listagg(
-        trim(degree_year || ' ' || degree_code || ' ' || school_code || ' ' || 
+        trim(degree_year || ' ' || degrees.degree_code || ' ' || school_code || ' ' || 
           -- Special handler for KSM and EMBA departments
             Case
               When degrees.dept_code = '01MDB' Then 'MDMBA'
@@ -202,6 +202,10 @@ Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
           On degrees.class_section = tms_class_section.section_code
         Left Join tms_dept_code -- For department short_desc
           On degrees.dept_code = tms_dept_code.dept_code
+        Left Join tms_degree_level -- For degree level short_desc
+          On degrees.degree_level_code = tms_degree_level.degree_level_code
+        Left Join tms_degrees -- For degreee short_desc (to replace degree_code)
+          On degrees.degree_code = tms_degrees.degree_code
       Where institution_code = '31173' -- Northwestern institution code
         And school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
         And (Case When id Is Not Null Then id_number Else 'T' End)
