@@ -27,7 +27,8 @@ Public type declarations
 /* Degreed alumi, for entity_degrees_concat */
 Type degreed_alumni Is Record (
   id_number entity.id_number%type, degrees_verbose varchar2(1024), degrees_concat varchar2(512),
-  first_ksm_year degrees.degree_year%type, program tms_dept_code.short_desc%type, program_group varchar2(20)
+  first_ksm_year degrees.degree_year%type, first_masters_year degrees.degree_year%type,
+  program tms_dept_code.short_desc%type, program_group varchar2(20)
 );
 
 /* Committee member list, for committee results */
@@ -195,7 +196,14 @@ Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
             || ' ' || class_section), '; '
       ) Within Group (Order By degree_year) As degrees_concat,
       -- First Kellogg year
-      min(trim(degree_year)) As first_ksm_year
+      min(trim(degree_year)) As first_ksm_year,
+      -- First MBA or other Master's year
+      min(Case
+        When degrees.degree_level_code = 'M' -- Master's level
+          Or degrees.degree_code In('MBA', 'MMGT', 'MS', 'MSDI', 'MSHA', 'MSMS') -- In case of data errors
+          Then trim(degree_year)
+        Else NULL
+      End) As first_masters_year
       -- Table joins, etc.
       From degrees
         Left Join tms_class_section -- For class section short_desc
@@ -250,7 +258,7 @@ Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
       From concat
     )
     -- Final results
-    Select concat.id_number, degrees_verbose, degrees_concat, first_ksm_year, prg.program,
+    Select concat.id_number, degrees_verbose, degrees_concat, first_ksm_year, first_masters_year, prg.program,
       -- program_group; use spaces to force non-alphabetic entries to apear first
       Case
         When program Like 'FT%' Then  '  FT'
