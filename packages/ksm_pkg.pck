@@ -224,6 +224,12 @@ Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
     prg As (
       Select id_number,
         Case
+          When degrees_concat Like '%KGS2Y%' Then 'FT-6Q'
+          When degrees_concat Like '%KGS1Y%' Then 'FT-4Q'
+          When degrees_concat Like '%JDMBA%' Then 'FT-JDMBA'
+          When degrees_concat Like '%MMM%' Then 'FT-MMM'
+          When degrees_concat Like '%MDMBA%' Then 'FT-MDMBA'
+          When degrees_concat Like '%KSM KEN%' Then 'FT-KENNEDY'
           When degrees_concat Like '%KSM TMP%' Then 'TMP'
           When degrees_concat Like '%KSM PTS%' Then 'TMP-SAT'
           When degrees_concat Like '%KSM PSA%' Then 'TMP-SATXCEL'
@@ -237,12 +243,6 @@ Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
           When degrees_concat Like '%KSM JNA%' Then 'EMP-JAP'
           When degrees_concat Like '%KSM RU%' Then 'EMP-ISR'
           When degrees_concat Like '%KSM AEP%' Then 'EMP-AEP'
-          When degrees_concat Like '%KGS2Y%' Then 'FT-6Q'
-          When degrees_concat Like '%KGS1Y%' Then 'FT-4Q'
-          When degrees_concat Like '%JDMBA%' Then 'FT-JDMBA'
-          When degrees_concat Like '%MMM%' Then 'FT-MMM'
-          When degrees_concat Like '%MDMBA%' Then 'FT-MDMBA'
-          When degrees_concat Like '%KSM KEN%' Then 'FT-KENNEDY'
           When degrees_concat Like '%KGS%' Then 'FT'
           When degrees_concat Like '%BEV%' Then 'FT-EB'
           When degrees_concat Like '%BCH%' Then 'FT-CB'
@@ -253,7 +253,9 @@ Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
           When degrees_concat Like '%Institute for Mgmt%' Then 'EXECED'
           When degrees_concat Like '%MS %' Then 'FT-MS'
           When degrees_concat Like '%LLM%' Then 'CERT-LLM'
-          When degrees_concat Like '%MMGT%' Then 'FT-MMGT' 
+          When degrees_concat Like '%MMGT%' Then 'FT-MMGT'
+          When degrees_verbose Like '%Certificate%' Then 'CERT'
+          Else 'UNK' -- Unable to determine program
         End As program
       From concat
     )
@@ -266,6 +268,7 @@ Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
         When program Like 'EMP%' Then ' EMP'
         When program Like 'PHD%' Then ' PHD'
         When program Like 'EXEC%' Or program Like 'CERT%' Then 'EXECED'
+        Else program
       End As program_group
     From concat
       Inner Join prg On concat.id_number = prg.id_number;
