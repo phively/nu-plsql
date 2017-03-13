@@ -17,19 +17,7 @@ hh As (
     hh.household_id, hh.household_program_group
   From table(ksm_pkg.tbl_entity_households_ksm) hh
   Where hh.household_ksm_year Is Not Null
-)/*,
-
--- Committee members
-kac As (
-  Select hh.household_id, comm.short_desc, comm.status, comm.role
-  From table(ksm_pkg.tbl_committee_kac) comm
-    Inner Join hh On hh.id_number = comm.id_number
-),
-gab As (
-  Select hh.household_id, comm.short_desc, comm.status, comm.role
-  From table(ksm_pkg.tbl_committee_gab) comm
-    Inner Join hh On hh.id_number = comm.id_number
-)*/
+)
 
 Select Distinct
   -- Household fields
@@ -43,10 +31,14 @@ Select Distinct
   -- Giving fields
   af_summary.ksm_af_curr_fy, af_summary.ksm_af_prev_fy1, af_summary.ksm_af_prev_fy2, af_summary.ksm_af_prev_fy3,
   af_summary.ksm_af_prev_fy4, af_summary.ksm_af_prev_fy5,
+  -- Prospect fields
+  prs.prospect_id, prs.prospect_manager, prs.team, prs.prospect_stage, prs.officer_rating, prs.evaluation_rating,
+  -- Indicators
+  af_summary.kac, af_summary.gab, af_summary.trustee,
   -- Calendar objects
   cal.curr_fy, cal.yesterday
 From cal, nu_prs_trp_prospect prs
   Inner Join hh On hh.household_id = prs.id_number
-  Left Join tms_states On tms_states.state_code = prs.pref_state
   Left Join v_af_donors_5fy_summary af_summary On af_summary.id_hh_src_dnr = hh.household_id
+  Left Join tms_states On tms_states.state_code = prs.pref_state
 Where hh.household_id = hh.id_number
