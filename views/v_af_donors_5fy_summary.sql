@@ -62,6 +62,7 @@ Select
   sum(Case When fiscal_year = (curr_fy - 3) Then legal_amount Else 0 End) As ksm_af_prev_fy3,
   sum(Case When fiscal_year = (curr_fy - 4) Then legal_amount Else 0 End) As ksm_af_prev_fy4,
   sum(Case When fiscal_year = (curr_fy - 5) Then legal_amount Else 0 End) As ksm_af_prev_fy5,
+  sum(Case When fiscal_year = (curr_fy - 6) Then legal_amount Else 0 End) As ksm_af_prev_fy6,
   -- Aggregated YTD giving amounts
   sum(Case When fiscal_year = (curr_fy - 0) And ytd_ind = 'Y' Then legal_amount Else 0 End) As ksm_af_curr_fy_ytd,
   sum(Case When fiscal_year = (curr_fy - 1) And ytd_ind = 'Y' Then legal_amount Else 0 End) As ksm_af_prev_fy1_ytd,
@@ -69,6 +70,7 @@ Select
   sum(Case When fiscal_year = (curr_fy - 3) And ytd_ind = 'Y' Then legal_amount Else 0 End) As ksm_af_prev_fy3_ytd,
   sum(Case When fiscal_year = (curr_fy - 4) And ytd_ind = 'Y' Then legal_amount Else 0 End) As ksm_af_prev_fy4_ytd,
   sum(Case When fiscal_year = (curr_fy - 5) And ytd_ind = 'Y' Then legal_amount Else 0 End) As ksm_af_prev_fy5_ytd,
+  sum(Case When fiscal_year = (curr_fy - 6) And ytd_ind = 'Y' Then legal_amount Else 0 End) As ksm_af_prev_fy6_ytd,
   -- Aggregated match amounts
   sum(Case When fiscal_year = (curr_fy - 0) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As ksm_af_curr_fy_match,
   sum(Case When fiscal_year = (curr_fy - 1) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As ksm_af_prev_fy1_match,
@@ -76,6 +78,7 @@ Select
   sum(Case When fiscal_year = (curr_fy - 3) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As ksm_af_prev_fy3_match,
   sum(Case When fiscal_year = (curr_fy - 4) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As ksm_af_prev_fy4_match,
   sum(Case When fiscal_year = (curr_fy - 5) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As ksm_af_prev_fy5_match,
+  sum(Case When fiscal_year = (curr_fy - 6) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As ksm_af_prev_fy6_match,
   -- Recent gift details
   max(Case When fiscal_year = (curr_fy - 0) then date_of_record Else NULL End) As last_gift_curr_fy,
   max(Case When fiscal_year = (curr_fy - 1) then date_of_record Else NULL End) As last_gift_prev_fy1,

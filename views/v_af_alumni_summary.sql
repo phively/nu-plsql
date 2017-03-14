@@ -30,7 +30,7 @@ Select Distinct
   trim(prs.employer_name1 || ' ' || prs.employer_name2) As employer_name,
   -- Giving fields
   af_summary.ksm_af_curr_fy, af_summary.ksm_af_prev_fy1, af_summary.ksm_af_prev_fy2, af_summary.ksm_af_prev_fy3,
-  af_summary.ksm_af_prev_fy4, af_summary.ksm_af_prev_fy5,
+  af_summary.ksm_af_prev_fy4, af_summary.ksm_af_prev_fy5, af_summary.ksm_af_prev_fy6,
   -- Prospect fields
   prs.prospect_id, prs.prospect_manager, prs.team, prs.prospect_stage, prs.officer_rating, prs.evaluation_rating,
   -- Indicators
