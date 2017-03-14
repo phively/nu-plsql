@@ -5,20 +5,17 @@
  *********************************************************/
 With fys As (
   Select
-    2017 As cur_fy, -- edit this
-    2016 As prev_fy -- edit this
-  From DUAL -- null table
+    curr_fy,
+    curr_fy - 1 As prev_fy
+  From rpt_pbh634.v_current_calendar
 ),
 /*********************************************************
  * Do not edit below here                                *
  *********************************************************/
 -- Allocations tagged as Kellogg Annual Fund
 ksm_af_allocs As (
-  Select Distinct allocation_code,
-    allocation.short_name
-  From advance.allocation
-  Where annual_sw = 'Y'
-    And alloc_school = 'KM'
+  Select allocation_code, short_name
+  From table(rpt_pbh634.ksm_pkg.tbl_alloc_annual_fund_ksm)
 )
 -- Select needed fields from nu_gft_trp_gifttrans
 Select ksm_af_allocs.allocation_code, short_name, tx_number, fiscal_year, date_of_record, legal_amount, nwu_af_amount,
@@ -37,6 +34,6 @@ From ksm_af_allocs, nu_gft_trp_gifttrans, fys
 -- Only use the KSM allocations
 Where nu_gft_trp_gifttrans.allocation_code = ksm_af_allocs.allocation_code
   -- Only pull specified fiscal years
-  And fiscal_year In (fys.cur_fy, fys.prev_fy)
+  And fiscal_year In (fys.curr_fy, fys.prev_fy)
   -- Drop pledges
   And tx_gypm_ind != 'P';

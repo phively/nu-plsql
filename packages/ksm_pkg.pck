@@ -24,6 +24,12 @@ Initial procedures
 Public type declarations
 *************************************************************************/
 
+/* Allocation information */
+Type allocation_info Is Record (
+  allocation_code allocation.allocation_code%type, status_code allocation.status_code%type,
+  short_name allocation.short_name%type
+);
+
 /* Degreed alumi, for entity_degrees_concat */
 Type degreed_alumni Is Record (
   id_number entity.id_number%type, degrees_verbose varchar2(1024), degrees_concat varchar2(512),
@@ -59,6 +65,7 @@ Type src_donor Is Record (
 Public table declarations
 *************************************************************************/
 Type t_varchar2_long Is Table Of varchar2(512);
+Type t_allocation Is Table Of allocation_info;
 Type t_degreed_alumni Is Table Of degreed_alumni;
 Type t_households Is Table Of household;
 Type t_src_donors Is Table Of src_donor;
@@ -119,7 +126,7 @@ Public pipelined functions declarations
 /* Return Kellogg Annual Fund allocations, both active and historical, as a pipelined function, e.g.
    Select * From table(ksm_pkg.get_alloc_annual_fund_ksm); */
 Function tbl_alloc_annual_fund_ksm
-  Return t_varchar2_long Pipelined; -- returns list of matching values
+  Return t_allocation Pipelined; -- returns list of matching values
 
 /* Return pipelined table of entity_degrees_concat_ksm */
 Function tbl_entity_degrees_concat_ksm
@@ -147,7 +154,7 @@ Private cursors -- data definitions
 /* Definition of current and historical Kellogg Annual Fund allocations
    2017-02-09 */
 Cursor c_alloc_annual_fund_ksm Is
-  Select Distinct allocation_code
+  Select Distinct allocation_code, status_code, short_name
   From allocation
   Where annual_sw = 'Y'
   And alloc_school = 'KM';
@@ -681,9 +688,9 @@ Pipelined functions
 /* Pipelined function returning Kellogg Annual Fund allocations, both active and historical
    2017-02-09 */
 Function tbl_alloc_annual_fund_ksm
-  Return t_varchar2_long Pipelined As
+  Return t_allocation Pipelined As
     -- Declarations
-    allocs t_varchar2_long;
+    allocs t_allocation;
 
   Begin
     Open c_alloc_annual_fund_ksm; -- Annual Fund allocations cursor

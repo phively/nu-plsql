@@ -3,7 +3,7 @@ With
 
 -- Kellogg Annual Fund allocations as defined in ksm_pkg
 ksm_af_allocs As (
-  Select COLUMN_VALUE As allocation_code
+  Select allocation_code
   From table(ksm_pkg.tbl_alloc_annual_fund_ksm)
 ),
 

@@ -6,13 +6,13 @@ With
 
 -- Kellogg Annual Fund allocations as defined in ksm_pkg
 ksm_af_allocs As (
-  Select COLUMN_VALUE As allocation_code
+  Select allocation_code
   From table(ksm_pkg.tbl_alloc_annual_fund_ksm)
 ),
 
 -- Calendar date range from current_calendar
 cal As (
-  Select curr_fy - 5 As prev_fy5, curr_fy, yesterday
+  Select curr_fy - 6 As prev_fy, curr_fy, yesterday
   From v_current_calendar
 ),
 
@@ -38,7 +38,7 @@ ksm_af_gifts As (
     Inner Join households On households.id_number = ksm_pkg.get_gift_source_donor_ksm(tx_number)
   -- Only pull KSM AF gifts in recent fiscal years
   Where gft.allocation_code = ksm_af_allocs.allocation_code
-    And fiscal_year Between cal.prev_fy5 And cal.curr_fy
+    And fiscal_year Between cal.prev_fy And cal.curr_fy
     -- Drop pledges
     And tx_gypm_ind != 'P'
 )

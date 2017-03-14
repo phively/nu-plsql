@@ -5,20 +5,17 @@
  *********************************************************/
 With fys As (
   Select
-    2017 As cur_fy, -- edit this
-    2016 As prev_fy -- edit this
-  From DUAL -- null table
+    curr_fy,
+    curr_fy - 1 As prev_fy
+  From rpt_pbh634.v_current_calendar
 ),
 /*********************************************************
  * Do not edit below here                                *
  *********************************************************/
 -- Allocations tagged as Kellogg Annual Fund
 ksm_af_allocs As (
-  Select Distinct allocation_code,
-    allocation.short_name
-  From advance.allocation
-  Where annual_sw = 'Y'
-    And alloc_school = 'KM'
+  Select allocation_code, short_name
+  From table(rpt_pbh634.ksm_pkg.tbl_alloc_annual_fund_ksm)
 ),
 -- Select needed fields from nu_gft_trp_gifttrans
 ksm_gifts As (
@@ -38,20 +35,20 @@ ksm_gifts As (
   -- Only use the KSM allocations
   Where nu_gft_trp_gifttrans.allocation_code = ksm_af_allocs.allocation_code
     -- Only pull recent fiscal years
-    And fiscal_year In (fys.cur_fy, fys.prev_fy)
+    And fiscal_year In (fys.curr_fy, fys.prev_fy)
     -- Drop pledges
     And tx_gypm_ind != 'P'
 )
 -- Final data is pulled from here down
   -- Informative header specifying the exact years pulled
 (
-  Select '--- Year ---' As af_bins, cur_fy, prev_fy
+  Select '--- Year ---' As af_bins, curr_fy, prev_fy
   From fys
 ) Union (
   -- Cross-tabulation step
   -- N.B. legal amount includes all gifts sitting in the chosen accounts; use nwu_af_amount to match CAT103
   Select ksm_af_bin,
-    Sum(Case When fiscal_year = fys.cur_fy Then legal_amount Else 0 End) As cur_fy,
+    Sum(Case When fiscal_year = fys.curr_fy Then legal_amount Else 0 End) As curr_fy,
     Sum(Case When fiscal_year = fys.prev_fy Then legal_amount Else 0 End) As prev_fy
   From ksm_gifts, fys
   Where ind_ytd = 'Y'
