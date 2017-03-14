@@ -55,6 +55,8 @@ Select
   Case When lower(institutional_suffix) Like '%trustee%' Then 'Trustee' Else NULL End As trustee,
   -- Date fields
   curr_fy, data_as_of,
+  -- Precalculated giving fields
+  first_af_gift_year,
   -- Aggregated giving amounts
   sum(Case When fiscal_year = (curr_fy - 0) Then legal_amount Else 0 End) As ksm_af_curr_fy,
   sum(Case When fiscal_year = (curr_fy - 1) Then legal_amount Else 0 End) As ksm_af_prev_fy1,
@@ -102,4 +104,6 @@ Group By id_hh_src_dnr, pref_mail_name, pref_name_sort, person_or_org, record_st
   -- Indicators
   ksm_alum_flag, kac.short_desc, gab.short_desc,
   -- Date fields
-  curr_fy, data_as_of
+  curr_fy, data_as_of,
+  -- Precalculated giving fields
+  first_af_gift_year

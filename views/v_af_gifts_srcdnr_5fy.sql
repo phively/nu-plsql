@@ -22,6 +22,18 @@ households As (
   From table(ksm_pkg.tbl_entity_households_ksm)
 ),
 
+-- First gift year
+first_af As (
+  Select households.household_id As id_hh_src_dnr,
+    min(gft.fiscal_year) As first_af_gift_year
+  From nu_gft_trp_gifttrans gft
+  Inner Join ksm_af_allocs
+    On ksm_af_allocs.allocation_code = gft.allocation_code
+  Inner Join households On households.id_number = ksm_pkg.get_gift_source_donor_ksm(tx_number)
+  Where tx_gypm_ind != 'P'
+  Group By households.household_id
+),
+
 -- Formatted giving table
 ksm_af_gifts As (
   Select ksm_af_allocs.allocation_code,
@@ -49,6 +61,7 @@ Select
   af.allocation_code, af.alloc_short_name, af.tx_number, af.tx_sequence, af.tx_gypm_ind, af.fiscal_year, af.date_of_record,
   ksm_pkg.fytd_indicator(af.date_of_record) As ytd_ind, -- year to date flag
   af.legal_dnr_id, af.legal_amount, af.credit_amount, af.nwu_af_amount,
+  first_af.first_af_gift_year,
   -- Household source donor entity fields
   af.id_hh_src_dnr, hh.pref_mail_name, e_src_dnr.pref_name_sort, e_src_dnr.person_or_org, e_src_dnr.record_status_code,
   e_src_dnr.institutional_suffix,
@@ -60,6 +73,7 @@ Select
   -- Fiscal year number
   curr_fy, yesterday As data_as_of
 From ksm_af_gifts af
+  Inner Join first_af On af.id_hh_src_dnr = first_af.id_hh_src_dnr
   Inner Join entity e_src_dnr On af.id_hh_src_dnr = e_src_dnr.id_number
   Inner Join households hh On hh.id_number = af.id_hh_src_dnr
 Where legal_amount > 0
