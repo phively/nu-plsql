@@ -95,6 +95,10 @@ Function fytd_indicator(
   day_offset In number Default -1) -- default offset in days; -1 means up to yesterday is year-to-date, 0 up to today, etc.
   Return character; -- Y or N
 
+/* Takes a date and returns the fiscal year */
+Function get_fiscal_year(dt In date)
+  Return number; -- Fiscal year part of date
+
 /* Quick SQL-only retrieval of KSM degrees concat */
 Function get_entity_degrees_concat_fast(id In varchar2)
   Return varchar2;
@@ -418,6 +422,23 @@ Function fytd_indicator(dt In date, day_offset In number)
     End If;
     
     Return(output);
+  End;
+
+/* Compute fiscal year from date parameter
+   2017-03-15 */
+Function get_fiscal_year(dt In date)
+  Return number Is
+  -- Declarations
+  this_year number;
+  
+  Begin
+    this_year := extract(year from dt);
+    -- If month is before fy_start_month, return this_year
+    If extract(month from dt) < fy_start_month Then
+      Return this_year;
+    End If;
+    -- Otherwise return out_year + 1
+    Return (this_year + 1);
   End;
 
 /* Fast degree years concat
