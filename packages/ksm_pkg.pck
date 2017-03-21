@@ -51,7 +51,9 @@ Type household Is Record (
   first_ksm_year degrees.degree_year%type, program_group varchar2(20), spouse_id_number entity.spouse_id_number%type,
   spouse_pref_mail_name entity.pref_mail_name%type, spouse_degrees_concat varchar2(512),
   spouse_first_ksm_year degrees.degree_year%type, spouse_program_group varchar2(20),
-  household_id entity.id_number%type, household_ksm_year degrees.degree_year%type, household_program_group varchar2(20)
+  household_id entity.id_number%type,
+  household_name entity.pref_mail_name%type, household_spouse entity.pref_mail_name%type,
+  household_ksm_year degrees.degree_year%type, household_program_group varchar2(20)
 );
 
 /* Source donor, for gift_source_donor */
@@ -331,7 +333,8 @@ With
   Select household.id_number, household.pref_mail_name, household.degrees_concat, household.first_ksm_year, household.program_group,
     household.spouse_id_number, household.spouse_pref_mail_name,
     household.spouse_degrees_concat, household.spouse_first_ksm_year, household.spouse_program_group,
-    household.household_id, couples.first_ksm_year As household_ksm_year, couples.program_group As household_program_group
+    household.household_id, couples.pref_mail_name As household_name, couples.spouse_pref_mail_name As household_spouse,
+    couples.first_ksm_year As household_ksm_year, couples.program_group As household_program_group
   From household
     Left Join couples On household.household_id = couples.id_number
   Where (Case When id Is Not Null Then household.id_number Else 'T' End)
