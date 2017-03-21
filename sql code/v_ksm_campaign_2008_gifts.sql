@@ -46,12 +46,12 @@ ksm_campaign As (
     -- Campaign priority coding
     -- Logic copied from function RPT_BTAYLOR.WT09931_EXTRACTTRANSACTIONS
     Case
-      When alloc_code In ('BE', 'LE') Then '1 Educational Mission Unrestricted'
+      When alloc_code In ('BE', 'LE') Then 'Educational Mission Unrestricted'
       When date_of_record >= to_date('20100901', 'YYYYMMDD') And annual_sw = 'Y'
-        Then '5 Global Innovation'
-      When alloc_code = '3303000882101GFT' Then '2 Global Hub'
+        Then 'Global Innovation'
+      When alloc_code = '3303000882101GFT' Then 'Global Hub'
       Else priorities.priority
-    End As category_code,
+    End As ksm_campaign_category,
     -- Replace null ksm_source_donor with id_number
     NVL(ksm_pkg.get_gift_source_donor_ksm(rcpt_or_plg_number), id_number) As ksm_source_donor
   From v_current_calendar cal, ksm_data
@@ -69,6 +69,6 @@ Select ksm_campaign.*,
     When household_record In ('CP', 'CF') Then '4 Corporations'
     When household_record = 'FP' Then '5 Foundations'
     Else '6 Other Organizations'
-  End As source_ksm
+  End As hh_source_ksm
 From ksm_campaign
   Inner Join table(ksm_pkg.tbl_entity_households_ksm) hh On ksm_campaign.ksm_source_donor = hh.id_number
