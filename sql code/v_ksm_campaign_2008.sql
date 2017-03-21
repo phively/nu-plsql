@@ -1,3 +1,5 @@
+Create Or Replace View v_ksm_campaign_2008 As
+
 With 
 /* KSM-specific campaign new gifts & commitments definition */
 ksm_data As (
@@ -40,7 +42,7 @@ ksm_campaign As (
       When record_type_code In ('CP', 'CF') Then '4 Corporations'
       When record_type_code = 'FP' Then '5 Foundations'
       Else '6 Other Organizations'
-    End As source_type,
+    End As source_ksm,
     -- Replace null ksm_source_donor with id_number
     NVL(ksm_pkg.get_gift_source_donor_ksm(rcpt_or_plg_number), id_number) As ksm_source_donor
   From ksm_data
