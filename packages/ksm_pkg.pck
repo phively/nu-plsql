@@ -51,7 +51,7 @@ Type household Is Record (
   first_ksm_year degrees.degree_year%type, program_group varchar2(20), spouse_id_number entity.spouse_id_number%type,
   spouse_pref_mail_name entity.pref_mail_name%type, spouse_degrees_concat varchar2(512),
   spouse_first_ksm_year degrees.degree_year%type, spouse_program_group varchar2(20),
-  household_id entity.id_number%type,
+  household_id entity.id_number%type, household_record entity.record_type_code%type,
   household_name entity.pref_mail_name%type, household_spouse entity.pref_mail_name%type,
   household_ksm_year degrees.degree_year%type, household_program_group varchar2(20)
 );
@@ -305,7 +305,7 @@ Cursor c_households_ksm (id In varchar2 Default NULL) Is
 With
   -- Entities and spouses, with Kellogg degrees concat fields
   couples As (
-    Select entity.id_number, entity.pref_mail_name, edc.degrees_concat, edc.first_ksm_year, edc.program_group,
+    Select entity.id_number, entity.pref_mail_name, entity.record_type_code, edc.degrees_concat, edc.first_ksm_year, edc.program_group,
       entity.spouse_id_number, spouse.pref_mail_name As spouse_pref_mail_name,
       sdc.degrees_concat As spouse_degrees_concat, sdc.first_ksm_year As spouse_first_ksm_year, sdc.program_group As spouse_program_group
     From entity
@@ -333,7 +333,8 @@ With
   Select household.id_number, household.pref_mail_name, household.degrees_concat, household.first_ksm_year, household.program_group,
     household.spouse_id_number, household.spouse_pref_mail_name,
     household.spouse_degrees_concat, household.spouse_first_ksm_year, household.spouse_program_group,
-    household.household_id, couples.pref_mail_name As household_name, couples.spouse_pref_mail_name As household_spouse,
+    household.household_id, couples.record_type_code As household_record,
+    couples.pref_mail_name As household_name, couples.spouse_pref_mail_name As household_spouse,
     couples.first_ksm_year As household_ksm_year, couples.program_group As household_program_group
   From household
     Left Join couples On household.household_id = couples.id_number

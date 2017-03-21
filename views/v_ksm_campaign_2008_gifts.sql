@@ -1,4 +1,4 @@
-Create Or Replace View v_ksm_campaign_2008 As
+Create Or Replace View v_ksm_campaign_2008_gifts As
 
 With 
 /* KSM-specific campaign new gifts & commitments definition */
@@ -26,6 +26,10 @@ ksm_data As (
 /* Additional KSM-specific derived fields */
 ksm_campaign As (
   Select ksm_data.*,
+    -- Fiscal year-to-date indicator
+    ksm_pkg.fytd_indicator(date_of_record) As ftyd_ind,
+    -- Calendar objects
+    cal.curr_fy,
     -- Giving bin
     Case
       When amount >= 1000000 Then 'A $1M+'
@@ -34,22 +38,22 @@ ksm_campaign As (
       When amount >= 2500    Then 'D $2.5K-$49.9K'
       When amount <  2500    Then 'E <$2.5K'
     End As giving_band,
-    -- Record type
-    Case
-      When record_type_code = 'ST' Then '3 Students'
-      When record_type_code In ('AL', 'FA') Then '1 Alumni'
-      When record_type_code In ('NA', 'FN') Then '2 Non-Alumni'
-      When record_type_code In ('CP', 'CF') Then '4 Corporations'
-      When record_type_code = 'FP' Then '5 Foundations'
-      Else '6 Other Organizations'
-    End As source_ksm,
     -- Replace null ksm_source_donor with id_number
     NVL(ksm_pkg.get_gift_source_donor_ksm(rcpt_or_plg_number), id_number) As ksm_source_donor
-  From ksm_data
+  From ksm_data, v_current_calendar cal
 )
 
 /* Main query */
 Select ksm_campaign.*,
-  hh.household_id, hh.household_name, hh.household_spouse, hh.household_ksm_year, hh.household_program_group
+  hh.household_id, hh.household_name, hh.household_spouse, hh.household_ksm_year, hh.household_program_group,
+  -- Record type
+  Case
+    When household_record = 'ST' Then '3 Students'
+    When household_record In ('AL', 'FA') Then '1 Alumni'
+    When household_record In ('NA', 'FN') Then '2 Non-Alumni'
+    When household_record In ('CP', 'CF') Then '4 Corporations'
+    When household_record = 'FP' Then '5 Foundations'
+    Else '6 Other Organizations'
+  End As source_ksm
 From ksm_campaign
 Inner Join table(ksm_pkg.tbl_entity_households_ksm) hh On ksm_campaign.ksm_source_donor = hh.id_number
