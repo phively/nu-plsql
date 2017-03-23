@@ -53,7 +53,8 @@ Type household Is Record (
   spouse_first_ksm_year degrees.degree_year%type, spouse_program_group varchar2(20),
   household_id entity.id_number%type, household_record entity.record_type_code%type,
   household_name entity.pref_mail_name%type, household_spouse entity.pref_mail_name%type,
-  household_ksm_year degrees.degree_year%type, household_program_group varchar2(20)
+  household_ksm_year degrees.degree_year%type, household_masters_year degrees.degree_year%type,
+  household_program_group varchar2(20)
 );
 
 /* Source donor, for gift_source_donor */
@@ -305,9 +306,11 @@ Cursor c_households_ksm (id In varchar2 Default NULL) Is
 With
   -- Entities and spouses, with Kellogg degrees concat fields
   couples As (
-    Select entity.id_number, entity.pref_mail_name, entity.record_type_code, edc.degrees_concat, edc.first_ksm_year, edc.program_group,
+    Select entity.id_number, entity.pref_mail_name, entity.record_type_code, edc.degrees_concat,
+      edc.first_ksm_year, edc.first_masters_year, edc.program_group,
       entity.spouse_id_number, spouse.pref_mail_name As spouse_pref_mail_name,
-      sdc.degrees_concat As spouse_degrees_concat, sdc.first_ksm_year As spouse_first_ksm_year, sdc.program_group As spouse_program_group
+      sdc.degrees_concat As spouse_degrees_concat, sdc.first_ksm_year As spouse_first_ksm_year,
+      sdc.first_masters_year As spouse_first_masters_year, sdc.program_group As spouse_program_group
     From entity
       Left Join table(ksm_pkg.tbl_entity_degrees_concat_ksm) edc On entity.id_number = edc.id_number
       Left Join table(ksm_pkg.tbl_entity_degrees_concat_ksm) sdc On entity.spouse_id_number = sdc.id_number
@@ -335,7 +338,8 @@ With
     household.spouse_degrees_concat, household.spouse_first_ksm_year, household.spouse_program_group,
     household.household_id, couples.record_type_code As household_record,
     couples.pref_mail_name As household_name, couples.spouse_pref_mail_name As household_spouse,
-    couples.first_ksm_year As household_ksm_year, couples.program_group As household_program_group
+    couples.first_ksm_year As household_ksm_year, couples.first_masters_year As household_masters_year,
+    couples.program_group As household_program_group
   From household
     Left Join couples On household.household_id = couples.id_number
   Where (Case When id Is Not Null Then household.id_number Else 'T' End)
