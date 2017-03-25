@@ -5,17 +5,21 @@ With
 ksm_data As (
   (
   -- Kellogg campaign new gifts & commitments
-  Select id_number, record_type_code, person_or_org, birth_dt, category_code, rcpt_or_plg_number, xsequence,
-    credited_amount, amount, prim_amount,
+  Select id_number, record_type_code, person_or_org, birth_dt, rcpt_or_plg_number, xsequence,
+    sum(amount) As amount,
     year_of_giving, date_of_record, alloc_code, alloc_school, alloc_purpose, annual_sw, restrict_code,
     transaction_type, pledge_status, gift_pledge_or_match, matched_donor_id, matched_receipt_number,
     this_date, first_processed_date, std_area, zipcountry
   From nu_rpt_t_cmmt_dtl_daily daily
   Where daily.alloc_school = 'KM'
+  Group By id_number, record_type_code, person_or_org, birth_dt, rcpt_or_plg_number, xsequence,
+    year_of_giving, date_of_record, alloc_code, alloc_school, alloc_purpose, annual_sw, restrict_code,
+    transaction_type, pledge_status, gift_pledge_or_match, matched_donor_id, matched_receipt_number,
+    this_date, first_processed_date, std_area, zipcountry
   ) Union All (
   -- Internal transfer; 344303 is 50%
-  Select id_number, record_type_code, person_or_org, birth_dt, category_code, rcpt_or_plg_number, xsequence,
-    344303 As credited_amount, 344303 As amount, 344303 As prim_amount,
+  Select id_number, record_type_code, person_or_org, birth_dt, rcpt_or_plg_number, xsequence,
+    344303 As amount,
     year_of_giving, date_of_record, alloc_code, alloc_school, alloc_purpose, annual_sw, restrict_code,
     transaction_type, pledge_status, gift_pledge_or_match, matched_donor_id, matched_receipt_number,
     this_date, first_processed_date, std_area, zipcountry
@@ -59,7 +63,8 @@ ksm_campaign As (
       When alloc_code = '3303000882101GFT'
         Then 'Global Hub'
       When priority = 'Kellogg Capital Projects'
-          Then 'Educational Mission'
+        And Not (date_of_record >= to_date('20100901', 'YYYYMMDD') And annual_sw = 'Y')
+        Then 'Educational Mission'
       -- Global Innovation logic
       When priority = 'Global Innovation' Or (date_of_record >= to_date('20100901', 'YYYYMMDD') And annual_sw = 'Y') Then (
         Case
