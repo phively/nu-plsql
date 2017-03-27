@@ -35,6 +35,8 @@ priorities As (
 /* Additional KSM-specific derived fields */
 ksm_campaign As (
   Select ksm_data.*,
+    -- Prospect data fields
+    prs.pref_state, prs.preferred_country, prs.evaluation_rating, prs.evaluation_date, prs.officer_rating,
     -- Fiscal year-to-date indicator
     ksm_pkg.fytd_indicator(date_of_record) As ftyd_ind,
     -- Calendar objects
@@ -81,9 +83,10 @@ ksm_campaign As (
       Else priority
     End As ksm_campaign_category,
     -- Replace null ksm_source_donor with id_number
-    NVL(ksm_pkg.get_gift_source_donor_ksm(rcpt_or_plg_number), id_number) As ksm_source_donor
+    NVL(ksm_pkg.get_gift_source_donor_ksm(rcpt_or_plg_number), ksm_data.id_number) As ksm_source_donor
   From v_current_calendar cal, ksm_data
     Left Join priorities On priorities.allocation_code = ksm_data.alloc_code
+    Left Join nu_prs_trp_prospect prs On prs.id_number = ksm_data.id_number
 )
 
 /* Main query */
