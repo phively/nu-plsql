@@ -37,7 +37,7 @@ first_af As (
 -- Formatted giving table
 ksm_af_gifts As (
   Select ksm_af_allocs.allocation_code,
-    gft.alloc_short_name, gft.tx_number, gft.tx_sequence, gft.tx_gypm_ind,
+    gft.alloc_short_name, gft.alloc_purpose_desc, gft.tx_number, gft.tx_sequence, gft.tx_gypm_ind,
     gft.fiscal_year, gft.date_of_record,
     gft.legal_amount, gft.credit_amount, gft.nwu_af_amount,
     gft.id_number As legal_dnr_id,
@@ -58,7 +58,8 @@ ksm_af_gifts As (
 -- Gift receipts and biographic information
 Select
   -- Giving fields
-  af.allocation_code, af.alloc_short_name, af.tx_number, af.tx_sequence, af.tx_gypm_ind, af.fiscal_year, af.date_of_record,
+  af.allocation_code, af.alloc_short_name, af.alloc_purpose_desc, af.tx_number, af.tx_sequence, af.tx_gypm_ind, af.fiscal_year,
+  af.date_of_record,
   ksm_pkg.fytd_indicator(af.date_of_record) As ytd_ind, -- year to date flag
   af.legal_dnr_id, af.legal_amount, af.credit_amount, af.nwu_af_amount,
   first_af.first_af_gift_year,

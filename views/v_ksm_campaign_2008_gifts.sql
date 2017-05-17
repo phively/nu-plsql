@@ -1,6 +1,11 @@
 Create Or Replace View v_ksm_campaign_2008_gifts As
 
 With 
+/* Current calendar */
+cal As (
+  Select yesterday
+  From v_current_calendar
+),
 /* KSM-specific campaign new gifts & commitments definition */
 ksm_data As (
   (
@@ -100,6 +105,8 @@ Select ksm_campaign.*,
     When household_record In ('CP', 'CF') Then '4 Corporations'
     When household_record = 'FP' Then '5 Foundations'
     Else '6 Other Organizations'
-  End As hh_source_ksm
-From ksm_campaign
+  End As hh_source_ksm,
+  -- Calendar
+  yesterday
+From cal, ksm_campaign
   Inner Join table(ksm_pkg.tbl_entity_households_ksm) hh On ksm_campaign.ksm_source_donor = hh.id_number
