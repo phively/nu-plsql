@@ -18,17 +18,18 @@ employ As (
 
 Select
   -- Entity fields
-  deg.id_number, entity.report_name, entity.pref_mail_name, entity.record_status_code, entity.institutional_suffix,
+  deg.id_number, entity.report_name, entity.record_status_code, entity.institutional_suffix,
   deg.degrees_concat, deg.first_ksm_year, trim(deg.program_group) As program,
   -- Employment fields
   prs.business_title, trim(prs.employer_name1 || ' ' || prs.employer_name2) As business_company,
   employ.job_title, employ.employer_name,
+  prs.business_city, prs.business_state, prs.business_country,
   -- Prospect fields
   prs.prospect_manager, prs.team
 From table(rpt_pbh634.ksm_pkg.tbl_entity_degrees_concat_ksm) deg -- KSM alumni definition
 Inner Join entity On deg.id_number = entity.id_number
   Left Join employ On deg.id_number = employ.id_number
-  Left Join nu_prs_trp_prospect prs On prs.id_number = deg.id_number
+  Left Join nu_prs_trp_prospect prs On deg.id_number = prs.id_number
 Where
   -- Matches pattern; user beware (Apple vs. Snapple)
   lower(employ.employer_name) Like lower('%' || '&company_name_pattern' || '%')
