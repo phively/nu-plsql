@@ -43,7 +43,7 @@ Select Distinct
   hh.spouse_id_number, hh.spouse_pref_mail_name, hh.spouse_degrees_concat, hh.spouse_program_group,
   hh.household_program_group,
   -- Entity-based fields
-  prs.record_status_code, prs.pref_state, tms_states.short_desc As pref_state_desc, prs.preferred_country,
+  prs.record_status_code, prs.pref_city, prs.pref_zip, prs.pref_state, tms_states.short_desc As pref_state_desc, prs.preferred_country,
   prs.business_title,
   trim(prs.employer_name1 || ' ' || prs.employer_name2) As employer_name,
   -- Giving fields

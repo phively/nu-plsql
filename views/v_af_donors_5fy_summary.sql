@@ -6,7 +6,7 @@ With
 
 -- Degrees concat
 deg As (
-  Select deg.id_number, deg.degrees_concat, deg.program, deg.program_group
+  Select deg.id_number, deg.degrees_concat, deg.first_ksm_year, deg.program, deg.program_group
   From table(ksm_pkg.tbl_entity_degrees_concat_ksm) deg
 ),
 
@@ -41,6 +41,7 @@ Select
   -- Entity fields
   id_hh_src_dnr, pref_mail_name, pref_name_sort, person_or_org, record_status_code, institutional_suffix,
   entity_deg.degrees_concat As src_dnr_degrees_concat,
+  entity_deg.first_ksm_year As src_dnr_first_ksm_year,
   entity_deg.program As src_dnr_program,
   entity_deg.program_group As src_dnr_program_group,
   master_state, master_country, gender_code, spouse_id_number, spouse_pref_mail_name,
@@ -96,7 +97,7 @@ From v_af_gifts_srcdnr_5fy af_gifts
   Left Join kac On id_hh_src_dnr = kac.household_id
   Left Join gab On id_hh_src_dnr = gab.household_id
 Group By id_hh_src_dnr, pref_mail_name, pref_name_sort, person_or_org, record_status_code, institutional_suffix,
-  entity_deg.degrees_concat, entity_deg.program, entity_deg.program_group, master_state, master_country, gender_code,
+  entity_deg.degrees_concat, entity_deg.first_ksm_year, entity_deg.program, entity_deg.program_group, master_state, master_country, gender_code,
   spouse_id_number, spouse_pref_mail_name, spouse_deg.degrees_concat, spouse_deg.program, spouse_deg.program_group,
   -- Prospect reporting table fields
   prs.employer_name, prs.business_title, prs.prospect_id, prs.prospect_manager, prs.team, prs.prospect_stage,
