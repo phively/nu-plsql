@@ -38,6 +38,7 @@ Select
     Else gft.nwu_std_alloc_group
     End As nwu_std_alloc_group,
   -- All gift table fields
+  gft.id_number,
   gft.*
 From nu_gft_trp_gifttrans gft
 Cross Join dts
