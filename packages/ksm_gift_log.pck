@@ -39,12 +39,15 @@ Public table declarations
 Type t_cat174 Is Table Of cat174;
 
 /*************************************************************************
-Public variable declarations
+Public procedure declarations
 *************************************************************************/
+/* Create the desired school_transaction_rpt table */
+Procedure school_transaction_rpt;
 
 /*************************************************************************
 Public pipelined function declarations
 *************************************************************************/
+
 /* Empty t_cat174 table */
 Function tbl_cat174
   Return t_cat174 Pipelined;
@@ -57,21 +60,24 @@ End ksm_gift_log;
 Create Or Replace Package Body ksm_gift_log Is
 
 /*************************************************************************
-Cursor functions
+Procedures
 *************************************************************************/
 
 /* Run CAT174, e.g. ADVANCE_NU.NU_RPT_PKG_SCHOOL_TRANSACTION, with desired parameters
    2017-06-14 */
-Procedure school_transaction_rpt Is
+Procedure school_transaction_rpt As
   -- Declarations
   refc sys_refcursor;
   results t_cat174;
 
   Begin
-  -- Run school transaction report
-    ADVANCE_NU.NU_RPT_PKG_SCHOOL_TRANSACTION.NU_RPT_P_SCHOOL_TRANS_REPORT(
-      p_start_date => '06/12/2017', p_end_date => '06/12/2017', 
-      p_fiscal_year => '2017', i_username => 'pbh634', O_RC => refc
+    -- Run school transaction report
+    rpt_pbh634.NU_RPT_PKG_SCHOOL_TRANSACTION.NU_RPT_P_SCHOOL_TRANS_REPORT(
+      p_start_date => to_char(add_months(trunc(sysdate, 'Month'), -1), 'mm/dd/yyyy'),
+      p_end_date => to_char(trunc(sysdate) - 1, 'mm/dd/yyyy'), 
+      p_fiscal_year => ksm_pkg.get_fiscal_year(dt => add_months(trunc(sysdate, 'Month'), -1)),
+      i_username => 'pbh634',
+      O_RC => refc
     );
     Fetch refc Bulk Collect Into results;
     Execute Immediate 'Truncate Table rpt_pbh634.t_giftlog';
@@ -79,7 +85,7 @@ Procedure school_transaction_rpt Is
     Forall i in 1..(results.count)
       Insert Into rpt_pbh634.t_giftlog Values results(i);
     Commit Work;
-  End;
+End;
 
 /*************************************************************************
 Pipelined functions
@@ -87,12 +93,13 @@ Pipelined functions
 
 /* Empty t_cat174 table
    2017-06-14 */
--- Example usage:
---  Drop Table t_giftlog;
---  Create Table t_giftlog As (
---    Select *
---    From table(ksm_gift_log.tbl_cat174)
---  );
+/* Example usage:
+  Drop Table t_giftlog;
+  Create Table t_giftlog As (
+    Select *
+    From table(ksm_gift_log.tbl_cat174)
+  );
+*/
 Function tbl_cat174
   Return t_cat174 Pipelined As
   -- Declarations
@@ -108,17 +115,23 @@ Function tbl_cat174
 Function tbl_daily_gift_log
   Return t_cat174 Pipelined As
     -- Declarations
-    results t_cat174;
-    refc sys_refcursor;
+    output t_cat174;
+    -- Cursor
+    Cursor cur Is
+      Select *
+      From t_giftlog
+      Where alloc_school_group = 'Kellogg School of Management';
     
   Begin
-    -- Run school transactions report
-    school_transaction_rpt();
+    -- Run school_transaction_rpt
+--    school_transaction_rpt;
     -- Pipe results
-    Fetch refc Bulk Collect Into results;
-    Close refc;
-    For i in 1..(results.count) Loop
-      Pipe row(results(i));
+    Open cur;
+    Fetch cur Bulk Collect Into output;
+    Close cur;
+    
+    For i in 1..(output.count) Loop
+      Pipe row(output(i));
     End Loop;
     
     Return;

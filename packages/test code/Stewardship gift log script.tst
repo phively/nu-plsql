@@ -1,5 +1,5 @@
 PL/SQL Developer Test script 3.0
-109
+122
 -- Created on 6/13/2017 by PBH634 
 Declare 
   -- Local variables here
@@ -108,6 +108,19 @@ Begin
 */
 
 ksm_gift_log.school_transaction_rpt;
+dbms_output.put_line(ksm_pkg.get_fiscal_year(dt => add_months(trunc(sysdate, 'Month'), -1)));
+dbms_output.put_line(to_char(add_months(trunc(sysdate, 'Month'), -1), 'mm/dd/yyyy'));
+dbms_output.put_line(to_char(trunc(sysdate) - 1, 'mm/dd/yyyy'));
+
+-- Scheduler test
+/*  dbms_scheduler.create_job(
+    job_name => 'rpt_pbh634.proc_ksm_gift_log',
+    job_type => 'PLSQL_BLOCK',
+    job_action => 'Begin ksm_gift_log.school_transaction_rpt; Commit; End;',
+    start_date => sysdate + 1/24/60, -- 1 minute in the future
+    enabled => True
+  );
+*/
 End;
 0
 0

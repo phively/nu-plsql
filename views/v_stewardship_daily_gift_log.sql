@@ -4,7 +4,9 @@ With
 
 /* Date range to use */
 dts As (
-  Select prev_month_start As dt1, yesterday As dt2
+--  Select prev_month_start As dt1, yesterday As dt2
+  -- Alternate date ranges for debugging
+  Select to_date('06/12/2017', 'mm/dd/yyyy') As dt1, to_date('06/12/2017', 'mm/dd/yyyy') As dt2
   From rpt_pbh634.v_current_calendar
 ),
 
@@ -28,6 +30,16 @@ dean_sal As (
     On ksm_alumni.id_number = dean.id_number
   Where signer_id_number = '0000299349' -- Dean Sally Blount
     And active_ind = 'Y'
+),
+
+/* Current faculty and staff */
+facstaff As (
+  Select Distinct af.id_number, tms_af.short_desc
+  From Affiliation af
+  Inner Join tms_affiliation_level tms_af
+    On af.affil_level_code = tms_af.affil_level_code
+  Where af.affil_level_code In ('ES', 'EF') -- Staff, Faculty
+    And af.affil_status_code = 'C'
 )
 
 /* Main query */
@@ -38,15 +50,20 @@ Select
     Else gft.nwu_std_alloc_group
     End As nwu_std_alloc_group,
   -- All gift table fields
-  gft.id_number,
+  gft.id_number, entity.pref_mail_name,
+  -- Faculty/staff indicator
+  -- Others
   gft.*
 From nu_gft_trp_gifttrans gft
 Cross Join dts
+Inner Join entity
+  On entity.id_number = gft.id_number
 Left Join pledge
   On pledge.pledge_pledge_number = gft.tx_number
   And pledge.pledge_sequence = gft.tx_sequence
 Where
   trunc(gft.first_processed_date) Between dts.dt1 And dts.dt2
+  And gft.legal_amount > 0
   And (
     nwu_std_alloc_group = 'KM'
     Or (gft.transaction_type In ('BE', 'LE') And gft.nwu_std_alloc_group = 'UO' And pledge.pledge_program_code = 'KM')
