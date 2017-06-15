@@ -48,11 +48,17 @@ ksm_af_gifts As (
     Inner Join ksm_af_allocs
       On ksm_af_allocs.allocation_code = gft.allocation_code
     Inner Join households On households.id_number = ksm_pkg.get_gift_source_donor_ksm(tx_number)
-  -- Only pull KSM AF gifts in recent fiscal years
-  Where gft.allocation_code = ksm_af_allocs.allocation_code
-    And fiscal_year Between cal.prev_fy And cal.curr_fy
+  
+  Where 
     -- Drop pledges
-    And tx_gypm_ind != 'P'
+    tx_gypm_ind != 'P'
+    And (
+      -- Only pull KSM AF gifts in recent fiscal years
+      (gft.allocation_code = ksm_af_allocs.allocation_code
+        And fiscal_year Between cal.prev_fy And cal.curr_fy)
+      -- Expendable bequest, moved into AF at the end of the year
+--      Or gft.allocation_code = '3203004290301GFT'
+    )
 )
 
 -- Gift receipts and biographic information
