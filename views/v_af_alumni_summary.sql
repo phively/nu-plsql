@@ -43,8 +43,8 @@ Select Distinct
   hh.spouse_id_number, hh.spouse_pref_mail_name, hh.spouse_degrees_concat, hh.spouse_program_group,
   hh.household_program_group,
   -- Entity-based fields
-  prs.record_status_code, prs.pref_city, prs.pref_zip, prs.pref_state, tms_states.short_desc As pref_state_desc, prs.preferred_country,
-  prs.business_title,
+  prs.record_status_code, prs.pref_city, prs.pref_zip, prs.pref_state, tms_states.short_desc As pref_state_desc,
+  tms_country.short_desc As preferred_country, prs.business_title,
   trim(prs.employer_name1 || ' ' || prs.employer_name2) As employer_name,
   -- Giving fields
   af_summary.ksm_af_curr_fy, af_summary.ksm_af_prev_fy1, af_summary.ksm_af_prev_fy2, af_summary.ksm_af_prev_fy3,
@@ -61,4 +61,5 @@ From cal, nu_prs_trp_prospect prs
   Left Join v_af_donors_5fy_summary af_summary On af_summary.id_hh_src_dnr = hh.household_id
   Left Join first_af On first_af.household_id = prs.id_number
   Left Join tms_states On tms_states.state_code = prs.pref_state
+  Left Join tms_country On tms_country.country_code = prs.preferred_country
 Where hh.household_id = hh.id_number
