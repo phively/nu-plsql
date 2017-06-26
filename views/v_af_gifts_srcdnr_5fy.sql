@@ -12,7 +12,7 @@ ksm_af_allocs As (
 
 -- Calendar date range from current_calendar
 cal As (
-  Select curr_fy - 6 As prev_fy, curr_fy, yesterday
+  Select curr_fy - 7 As prev_fy, curr_fy, yesterday
   From v_current_calendar
 ),
 
@@ -57,7 +57,7 @@ ksm_af_gifts As (
       (gft.allocation_code = ksm_af_allocs.allocation_code
         And fiscal_year Between cal.prev_fy And cal.curr_fy)
       -- Expendable bequest, moved into AF at the end of the year
---      Or gft.allocation_code = '3203004290301GFT'
+--      Or gft.allocation_code = '3203004290301GFT' -- Commented out June 2017
     )
 )
 
