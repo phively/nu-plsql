@@ -4,12 +4,12 @@ With
 
 /* Date range to use */
 dts As (
---  Select prev_month_start As dt1, yesterday As dt2
+  Select prev_month_start As dt1, yesterday As dt2
   /* Alternate date ranges for debugging */
-  Select to_date('06/12/2017', 'mm/dd/yyyy') As dt1, to_date('06/12/2017', 'mm/dd/yyyy') As dt2 -- point-in-time
+--  Select to_date('06/12/2017', 'mm/dd/yyyy') As dt1, to_date('06/12/2017', 'mm/dd/yyyy') As dt2 -- point-in-time
 --  Select something or other -- check joint_name for DAF donors
 --  Select something or other -- check spouse faculty/staff or both faculty/staff
--- Select something or other -- GAB members
+--  Select something or other -- GAB members
   From rpt_pbh634.v_current_calendar
 ),
 
@@ -29,6 +29,19 @@ gab_ind As ( -- Include all receipts where at least one GAB member is associated
   From nu_gft_trp_gifttrans gft
   Inner Join gab
     On gab.id_number = gft.id_number
+),
+
+/* KLC gift club */
+klc As (
+  Select gift_club_id_number As id_number, substr(gift_club_end_date, 0, 4) As fiscal_year
+  From gift_clubs
+  Where gift_club_code = 'LKM'
+),
+klc_years As (
+Select id_number,
+  listagg(fiscal_year, ', ') Within Group (Order By fiscal_year Desc) As klc_years
+From klc
+Group By id_number
 ),
 
 /* Dean's salutations */
@@ -92,14 +105,15 @@ joint_ind As ( -- Cleaned up from ADVANCE_NU.NU_RPT_PKG_SCHOOL_TRANSACTION
 )
 
 /* Main query */
-Select
+Select Distinct
   -- Recategorize BE and LE, as suggested by ADVANCE_NU.NU_RPT_PKG_SCHOOL_TRANSACTION
   Case When gft.transaction_type In ('BE', 'LE') And gft.nwu_std_alloc_group = 'UO'
     Then pledge.pledge_program_code
     Else gft.nwu_std_alloc_group
   End As nwu_std_alloc_group,
   -- Entity identifiers
-  gft.id_number, entity.pref_mail_name,
+  gft.id_number,
+  entity.pref_mail_name,
   -- Faculty/staff indicator
   Case
     When joint_ind.joint_ind Is Null Then facstaff.short_desc
@@ -145,6 +159,7 @@ Select
   -- Transaction data
   gft.tx_gypm_ind,
   gft.tx_number,
+  gft.tx_sequence,
   gft.pmt_on_pledge_number,
   tms_trans.transaction_type,
   gft.date_of_record,
@@ -155,9 +170,10 @@ Select
   prs.prospect_manager,
   prs.team,
   gft.nwu_trustee_credit,
-  gab_ind.gab_role
-  -- gift club
-  -- notations - what is actually used from this?
+  gab_ind.gab_role,
+  klc_years.klc_years,
+  Case When joint_ind.joint_ind Is Not Null Then jklc_years.klc_years End As joint_klc_years
+  -- notations - what is actually used from this? NU_RPT_PKG_SCHOOL_TRANSACTION cursor starts at line 1611
 -- Tables start here
 -- Gift reporting table
 From nu_gft_trp_gifttrans gft
@@ -203,8 +219,13 @@ Left Join addr
 Left Join nu_prs_trp_prospect prs
   On prs.id_number = gft.id_number
 -- GAB indicator
-Left join gab_ind
+Left Join gab_ind
   On gab_ind.tx_number = gft.tx_number
+-- KLC gift club
+Left Join klc_years
+  On klc_years.id_number = gft.id_number
+Left Join klc_years jklc_years
+  On jklc_years.id_number = entity.spouse_id_number
 -- Filters start here
 Where
   trunc(gft.first_processed_date) Between dts.dt1 And dts.dt2 -- Only selected dates
