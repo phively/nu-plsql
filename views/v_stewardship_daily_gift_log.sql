@@ -4,7 +4,7 @@ With
 
 /* Date range to use */
 dts As (
-  Select prev_month_start As dt1, yesterday As dt2
+  Select yesterday As dt1, yesterday As dt2
   /* Alternate date ranges for debugging */
 --  Select to_date('06/12/2017', 'mm/dd/yyyy') As dt1, to_date('06/12/2017', 'mm/dd/yyyy') As dt2 -- point-in-time
 --  Select something or other -- check joint_name for DAF donors
@@ -141,6 +141,12 @@ Select Distinct
     ) End As first_name2,
   -- Biodata
   tms_rt.short_desc As record_type,
+  Case When joint_ind.joint_ind Is Not Null Then (
+    Select tms_record_type.short_desc
+    From entity e
+    Left Join tms_record_type On tms_record_type.record_type_code = e.record_type_code
+    Where entity.spouse_id_number = e.id_number
+  ) End As joint_record_type,
   entity.pref_class_year,
   tms_school.short_desc As pref_school,
   ksm_deg.program_group As ksm_program,
