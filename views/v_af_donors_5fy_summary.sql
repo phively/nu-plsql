@@ -39,7 +39,7 @@ gab As (
 -- Aggregated by entity and fiscal year
 Select
   -- Entity fields
-  id_hh_src_dnr, pref_mail_name, pref_name_sort, person_or_org, record_status_code, institutional_suffix,
+  id_hh_src_dnr, pref_mail_name, pref_name_sort, report_name, person_or_org, record_status_code, institutional_suffix,
   entity_deg.degrees_concat As src_dnr_degrees_concat,
   entity_deg.first_ksm_year As src_dnr_first_ksm_year,
   entity_deg.program As src_dnr_program,
@@ -99,7 +99,7 @@ From v_af_gifts_srcdnr_5fy af_gifts
   Left Join deg spouse_deg On spouse_deg.id_number = af_gifts.spouse_id_number
   Left Join kac On id_hh_src_dnr = kac.household_id
   Left Join gab On id_hh_src_dnr = gab.household_id
-Group By id_hh_src_dnr, pref_mail_name, pref_name_sort, person_or_org, record_status_code, institutional_suffix,
+Group By id_hh_src_dnr, pref_mail_name, pref_name_sort, report_name, person_or_org, record_status_code, institutional_suffix,
   entity_deg.degrees_concat, entity_deg.first_ksm_year, entity_deg.program, entity_deg.program_group, master_state, master_country, gender_code,
   spouse_id_number, spouse_pref_mail_name, spouse_deg.degrees_concat, spouse_deg.program, spouse_deg.program_group,
   -- Prospect reporting table fields

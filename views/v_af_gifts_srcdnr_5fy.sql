@@ -70,7 +70,7 @@ Select
   af.legal_dnr_id, af.legal_amount, af.credit_amount, af.nwu_af_amount,
   first_af.first_af_gift_year,
   -- Household source donor entity fields
-  af.id_hh_src_dnr, hh.pref_mail_name, e_src_dnr.pref_name_sort, e_src_dnr.person_or_org, e_src_dnr.record_status_code,
+  af.id_hh_src_dnr, hh.pref_mail_name, e_src_dnr.pref_name_sort, e_src_dnr.report_name, e_src_dnr.person_or_org, e_src_dnr.record_status_code,
   e_src_dnr.institutional_suffix,
   ksm_pkg.get_entity_address(e_src_dnr.id_number, 'state_code') As master_state,
   ksm_pkg.get_entity_address(e_src_dnr.id_number, 'country') As master_country,
