@@ -1,11 +1,13 @@
 Create Or Replace View v_ksm_campaign_2008_gifts As
 
 With 
+
 /* Current calendar */
 cal As (
   Select yesterday
   From v_current_calendar
 ),
+
 /* KSM-specific campaign new gifts & commitments definition */
 ksm_data As (
   (
@@ -32,11 +34,13 @@ ksm_data As (
   Where daily.rcpt_or_plg_number = '0002275766'
   )
 ),
+
 /* Allocation-priority assignment, taken from RPT_BTAYLOR_WT09931_EXTRACTTRANSACTIONS */
 priorities As (
   Select field01 As allocation_code, field02 As priority
   From WT099030_ALLOCATIONS_20111130 wt
 ),
+
 /* Additional KSM-specific derived fields */
 ksm_campaign As (
   Select ksm_data.*,
@@ -89,9 +93,10 @@ ksm_campaign As (
     End As ksm_campaign_category,
     -- Replace null ksm_source_donor with id_number
     NVL(ksm_pkg.get_gift_source_donor_ksm(rcpt_or_plg_number), ksm_data.id_number) As ksm_source_donor
-  From v_current_calendar cal, ksm_data
-    Left Join priorities On priorities.allocation_code = ksm_data.alloc_code
-    Left Join nu_prs_trp_prospect prs On prs.id_number = ksm_data.id_number
+  From ksm_data
+  Cross Join v_current_calendar cal
+  Left Join priorities On priorities.allocation_code = ksm_data.alloc_code
+  Left Join nu_prs_trp_prospect prs On prs.id_number = ksm_data.id_number
 )
 
 /* Main query */
@@ -108,5 +113,6 @@ Select ksm_campaign.*,
   End As hh_source_ksm,
   -- Calendar
   yesterday
-From cal, ksm_campaign
-  Inner Join table(ksm_pkg.tbl_entity_households_ksm) hh On ksm_campaign.ksm_source_donor = hh.id_number
+From ksm_campaign
+Cross Join cal
+Inner Join table(ksm_pkg.tbl_entity_households_ksm) hh On ksm_campaign.ksm_source_donor = hh.id_number
