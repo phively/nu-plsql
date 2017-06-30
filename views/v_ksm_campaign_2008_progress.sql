@@ -47,8 +47,9 @@ goals As (
 -- Raised to date
 Select campaign.priority, campaign.field, sum(campaign.amount) As amount, sum(campaign.amount) As overall,
   goals.amount As goal_amt, yesterday
-From cal, campaign
-  Inner Join goals On campaign.priority = goals.priority
+From campaign
+Cross Join cal
+Inner Join goals On campaign.priority = goals.priority
 Group By campaign.priority, campaign.field, goals.amount, yesterday
 ) Union All (
 -- Goals
