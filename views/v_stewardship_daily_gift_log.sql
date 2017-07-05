@@ -4,9 +4,9 @@ With
 
 /* Date range to use */
 dts As (
-  Select yesterday As dt1, yesterday As dt2
+--  Select yesterday As dt1, yesterday As dt2
   /* Alternate date ranges for debugging */
---  Select to_date('06/12/2017', 'mm/dd/yyyy') As dt1, to_date('06/12/2017', 'mm/dd/yyyy') As dt2 -- point-in-time
+  Select to_date('06/29/2017', 'mm/dd/yyyy') As dt1, to_date('06/29/2017', 'mm/dd/yyyy') As dt2 -- point-in-time
 --  Select something or other -- check joint_name for DAF donors
 --  Select something or other -- check spouse faculty/staff or both faculty/staff
 --  Select something or other -- GAB members
@@ -56,10 +56,10 @@ dean_sal As ( -- id_number 0000299349 = Dean Sally Blount
 
 /* Current faculty and staff */
 facstaff As ( -- Based on NU_RPT_PKG_SCHOOL_TRANSACTION
-  Select Distinct af.id_number, tms_af.short_desc
+  Select Distinct af.id_number, tms_affil.short_desc
   From Affiliation af
-  Inner Join tms_affiliation_level tms_af
-    On af.affil_level_code = tms_af.affil_level_code
+  Inner Join tms_affiliation_level tms_affil
+    On af.affil_level_code = tms_affil.affil_level_code
   Where af.affil_level_code In ('ES', 'EF') -- Staff, Faculty
     And af.affil_status_code = 'C'
 ),
@@ -102,6 +102,49 @@ joint_ind As ( -- Cleaned up from ADVANCE_NU.NU_RPT_PKG_SCHOOL_TRANSACTION
         And e.spouse_id_number = gft.id_number
         And e.marital_status_code In ('M', 'P')
     )
+),
+
+/* Transactions to use */
+trans As (
+  Select gft.tx_number, gft.tx_sequence
+  From nu_gft_trp_gifttrans gft
+  Cross Join dts -- Date ranges; 1 row only so cross join has no performance impact
+  Left Join pledge
+    On pledge.pledge_pledge_number = gft.tx_number
+    And pledge.pledge_sequence = gft.tx_sequence
+  Where
+    trunc(gft.first_processed_date) Between dts.dt1 And dts.dt2 -- Only selected dates
+    And ( -- Only Kellogg, or BE/LE with Kellogg program code
+          -- IMPORTANT: nu_gft_trp_gifttrans does NOT include the BE/LE allocations! (June 2017)
+      nwu_std_alloc_group = 'KM'
+      Or (gft.transaction_type In ('BE', 'LE')
+          And gft.nwu_std_alloc_group = 'UO'
+          And pledge.pledge_program_code = 'KM')
+    )
+),
+
+/* Concatenated associated donor data */
+assoc_dnrs As ( -- One id_number per line
+  Select gft.tx_number, gft.tx_sequence, gft.id_number, gft.donor_name,
+    ksm_deg.degrees_concat, gab.gab_role, facstaff.short_desc, klc_years.klc_years
+  From nu_gft_trp_gifttrans gft
+  -- Only people attributed on the KSM receipts
+  Inner Join trans On trans.tx_number = gft.tx_number And trans.tx_sequence = gft.tx_sequence
+  -- Entity indicators
+  Left Join ksm_deg On ksm_deg.id_number = gft.id_number
+  Left Join gab On gab.id_number = gft.id_number
+  Left Join facstaff On facstaff.id_number = gft.id_number
+  Left Join klc_years On klc_years.id_number = gft.id_number
+),
+assoc_concat As ( -- Multiple id_numbers per line, separated by carriage return
+  Select tx_number,
+    Listagg(trim(donor_name) || ' (#' || id_number || ')', ';  ') Within Group (Order By tx_sequence) As assoc_donors,
+    Listagg(degrees_concat, ';  ') Within Group (Order By tx_sequence) As assoc_degrees,
+    Listagg(gab_role, ';  ') Within Group (Order By tx_sequence) As assoc_gab,
+    Listagg(short_desc, ';  ') Within Group (Order By tx_sequence) As assoc_facstaff,
+    Listagg(klc_years, ';  ') Within Group (Order By tx_sequence) As assoc_klc
+  From assoc_dnrs
+  Group By tx_number
 )
 
 /* Main query */
@@ -183,6 +226,10 @@ Select Distinct
 -- Tables start here
 -- Gift reporting table
 From nu_gft_trp_gifttrans gft
+-- Only include desired receipt numbers
+Inner Join trans
+  On trans.tx_number = gft.tx_number
+  And trans.tx_sequence = gft.tx_sequence
 -- Entity table
 Inner Join entity
   On entity.id_number = gft.id_number
@@ -192,8 +239,6 @@ Inner Join tms_record_type tms_rt
 -- Transaction type TMS definition
 Inner Join tms_trans
   On tms_trans.transaction_type_code = gft.transaction_type
--- Date ranges, 1 row only so cross join has no performance impact
-Cross Join dts
 -- Faculty/staff
 Left Join facstaff
   On facstaff.id_number = gft.id_number
@@ -232,14 +277,5 @@ Left Join klc_years
   On klc_years.id_number = gft.id_number
 Left Join klc_years jklc_years
   On jklc_years.id_number = entity.spouse_id_number
--- Filters start here
-Where
-  trunc(gft.first_processed_date) Between dts.dt1 And dts.dt2 -- Only selected dates
-  And gft.legal_amount > 0 -- Only the legal donor
-  And ( -- Only Kellogg, or BE/LE with Kellogg program code
-        -- IMPORTANT: nu_gft_trp_gifttrans does NOT include the BE/LE allocations! (June 2017)
-    nwu_std_alloc_group = 'KM'
-    Or (gft.transaction_type In ('BE', 'LE')
-        And gft.nwu_std_alloc_group = 'UO'
-        And pledge.pledge_program_code = 'KM')
-  )
+-- Conditions
+Where gft.legal_amount > 0 -- Only legal donors
