@@ -48,9 +48,14 @@ ksm_trans As (
     Left Join tms_trans On tms_trans.transaction_type_code = gft.transaction_type
     Where alloc_school = 'KM'
       And tx_gypm_ind = 'G'
+    ) Union All (
+    -- Matching gift matching company
+    Select match_gift_company_id, match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', match_gift_date_of_record, match_gift_amount
+    From matching_gift mg
+    Where match_gift_program_credit_code = 'KM'
   ) Union All (
-    -- Matching gift
-    Select match_gift_matched_donor_id, match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', match_gift_date_of_record, match_gift_amount
+    -- Matching gift matched donor
+    Select match_gift_matched_donor_id, match_gift_receipt_number, match_gift_matched_sequence, 'Matched Gift', match_gift_date_of_record, match_gift_amount
     From matching_gift mg
     Where match_gift_program_credit_code = 'KM'
   ) Union All (
@@ -80,7 +85,7 @@ Select
   ksm_trans.*
 From ksm_trans
 Inner Join entity On entity.id_number = ksm_trans.id_number
-Where entity.id_number = '0000598677'
+Where entity.id_number = '0000262748'
 
 */
 --/*
