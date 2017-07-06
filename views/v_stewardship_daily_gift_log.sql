@@ -7,8 +7,8 @@ dts As (
 --  Select yesterday As dt1, yesterday As dt2
   /* Alternate date ranges for debugging */
   Select to_date('06/29/2017', 'mm/dd/yyyy') As dt1, to_date('06/29/2017', 'mm/dd/yyyy') As dt2 -- point-in-time
---  Select something or other -- check joint_name for DAF donors
---  Select something or other -- check spouse faculty/staff or both faculty/staff
+/* Check spouse faculty/staff or both faculty/staff */
+--  Select to_date('06/29/2017', 'mm/dd/yyyy') As dt1, to_date('06/29/2017', 'mm/dd/yyyy') As dt2 
 --  Select something or other -- GAB members
   From rpt_pbh634.v_current_calendar
 ),
@@ -106,12 +106,20 @@ joint_ind As ( -- Cleaned up from ADVANCE_NU.NU_RPT_PKG_SCHOOL_TRANSACTION
 
 /* Transactions to use */
 trans As (
-  Select gft.tx_number, gft.tx_sequence
+  Select gft.tx_number, gft.tx_sequence,
+  -- Pledge comment, if applicable
+  Case
+    When gft.tx_gypm_ind = 'P' Then ppldg.prim_pledge_comment
+    Else ppldgpay.prim_pledge_comment
+  End As pledge_comment
+  -- Tables
   From nu_gft_trp_gifttrans gft
   Cross Join dts -- Date ranges; 1 row only so cross join has no performance impact
   Left Join pledge
     On pledge.pledge_pledge_number = gft.tx_number
     And pledge.pledge_sequence = gft.tx_sequence
+  Left Join primary_pledge ppldg On ppldg.prim_pledge_number = gft.tx_number -- For pledge trans types
+  Left Join primary_pledge ppldgpay On ppldgpay.prim_pledge_number = gft.pmt_on_pledge_number -- For pledge payment trans types
   Where
     trunc(gft.first_processed_date) Between dts.dt1 And dts.dt2 -- Only selected dates
     And ( -- Only Kellogg, or BE/LE with Kellogg program code
@@ -125,7 +133,7 @@ trans As (
 
 /* Concatenated associated donor data */
 assoc_dnrs As ( -- One id_number per line
-  Select gft.tx_number, gft.tx_sequence, gft.id_number, gft.donor_name,
+  Select gft.tx_number, gft.tx_sequence, gft.alloc_short_name, gft.id_number, gft.donor_name,
     -- Replace nulls with space
     nvl(ksm_deg.degrees_concat, ' ') As degrees_concat, nvl(gab.gab_role, ' ') As gab_role,
     nvl(facstaff.short_desc, ' ') As facstaff, nvl(klc_years.klc_years, ' ') As klc_years
@@ -139,14 +147,14 @@ assoc_dnrs As ( -- One id_number per line
   Left Join klc_years On klc_years.id_number = gft.id_number
 ),
 assoc_concat As ( -- Multiple id_numbers per line, separated by carriage return
-  Select tx_number,
+  Select tx_number, alloc_short_name,
     Listagg(trim(donor_name) || ' (#' || id_number || ')', ';  ') Within Group (Order By tx_sequence) As assoc_donors,
     Listagg(degrees_concat, ';  ') Within Group (Order By tx_sequence) As assoc_degrees,
     Listagg(gab_role, ';  ') Within Group (Order By tx_sequence) As assoc_gab,
     Listagg(facstaff, ';  ') Within Group (Order By tx_sequence) As assoc_facstaff,
     Listagg(klc_years, ';  ') Within Group (Order By tx_sequence) As assoc_klc
   From assoc_dnrs
-  Group By tx_number
+  Group By tx_number, alloc_short_name
 )
 
 /* Main query */
@@ -213,12 +221,15 @@ Select Distinct
   gft.tx_gypm_ind,
   gft.tx_number,
   gft.tx_sequence,
-  gft.pmt_on_pledge_number,
   tms_trans.transaction_type,
+  gft.pmt_on_pledge_number,
+  trans.pledge_comment,
   gft.date_of_record,
   gft.processed_date,
   gft.legal_amount,
   gft.alloc_short_name,
+  gft.appeal_code,
+  appeal_header.description As appeal_desc,
   -- Prospect fields
   prs.prospect_manager,
   prs.team
@@ -241,6 +252,7 @@ Inner Join tms_trans
 -- Associated donor fields
 Inner Join assoc_concat assoc
   On assoc.tx_number = gft.tx_number
+  And assoc.alloc_short_name = gft.alloc_short_name
 -- Salutations
 Left Join dean_sal
   On dean_sal.id_number = gft.id_number
@@ -266,5 +278,8 @@ Left Join addr
 -- Prospect reporting table
 Left Join nu_prs_trp_prospect prs
   On prs.id_number = gft.id_number
+-- Appeal code definitions
+Left Join appeal_header
+  On appeal_header.appeal_code = gft.appeal_code
 -- Conditions
 Where gft.legal_amount > 0 -- Only legal donors
