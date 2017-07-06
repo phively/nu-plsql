@@ -1,4 +1,4 @@
---Create Or Replace View v_stewardship_daily_gift_log As
+Create Or Replace View v_stewardship_daily_gift_log As
 
 With
 
@@ -126,7 +126,9 @@ trans As (
 /* Concatenated associated donor data */
 assoc_dnrs As ( -- One id_number per line
   Select gft.tx_number, gft.tx_sequence, gft.id_number, gft.donor_name,
-    ksm_deg.degrees_concat, gab.gab_role, facstaff.short_desc, klc_years.klc_years
+    -- Replace nulls with space
+    nvl(ksm_deg.degrees_concat, ' ') As degrees_concat, nvl(gab.gab_role, ' ') As gab_role,
+    nvl(facstaff.short_desc, ' ') As facstaff, nvl(klc_years.klc_years, ' ') As klc_years
   From nu_gft_trp_gifttrans gft
   -- Only people attributed on the KSM receipts
   Inner Join trans On trans.tx_number = gft.tx_number And trans.tx_sequence = gft.tx_sequence
@@ -141,7 +143,7 @@ assoc_concat As ( -- Multiple id_numbers per line, separated by carriage return
     Listagg(trim(donor_name) || ' (#' || id_number || ')', ';  ') Within Group (Order By tx_sequence) As assoc_donors,
     Listagg(degrees_concat, ';  ') Within Group (Order By tx_sequence) As assoc_degrees,
     Listagg(gab_role, ';  ') Within Group (Order By tx_sequence) As assoc_gab,
-    Listagg(short_desc, ';  ') Within Group (Order By tx_sequence) As assoc_facstaff,
+    Listagg(facstaff, ';  ') Within Group (Order By tx_sequence) As assoc_facstaff,
     Listagg(klc_years, ';  ') Within Group (Order By tx_sequence) As assoc_klc
   From assoc_dnrs
   Group By tx_number
@@ -157,12 +159,14 @@ Select Distinct
   -- Entity identifiers
   gft.id_number,
   entity.pref_mail_name,
-  -- Faculty/staff indicator
-  Case
-    When joint_ind.joint_ind Is Null Then facstaff.short_desc
-    When (facstaff.short_desc || jfacstaff.short_desc) Is Not Null
-      Then facstaff.short_desc || ', ' || jfacstaff.short_desc
-    End As faculty_staff_ind,
+  -- Associated donors
+  assoc.assoc_donors,
+  Case When trim(assoc.assoc_degrees) <> ';' Then trim(assoc.assoc_degrees) End As assoc_degrees,
+  -- Notations
+  Case When trim(assoc.assoc_facstaff) <> ';' Then trim(assoc.assoc_facstaff) End As assoc_facstaff,
+  Case When trim(assoc.assoc_gab) <> ';' Then trim(assoc.assoc_gab) End As assoc_gab,
+  Case When trim(assoc.assoc_klc) <> ';' Then trim(assoc.assoc_klc) End As assoc_klc,
+  gft.nwu_trustee_credit,
   -- Joint gift data
   Case When joint_ind.joint_ind Is Not Null Then 'Y' Else 'N' End As joint_ind,
   Case When joint_ind.joint_ind Is Not Null Then entity.spouse_id_number End As joint_id_number,
@@ -215,14 +219,9 @@ Select Distinct
   gft.processed_date,
   gft.legal_amount,
   gft.alloc_short_name,
-  -- Prospect and special credit fields
+  -- Prospect fields
   prs.prospect_manager,
-  prs.team,
-  gft.nwu_trustee_credit,
-  gab_ind.gab_role,
-  klc_years.klc_years,
-  Case When joint_ind.joint_ind Is Not Null Then jklc_years.klc_years End As joint_klc_years
-  -- notations - what is actually used from this? NU_RPT_PKG_SCHOOL_TRANSACTION cursor starts at line 1611
+  prs.team
 -- Tables start here
 -- Gift reporting table
 From nu_gft_trp_gifttrans gft
@@ -239,11 +238,9 @@ Inner Join tms_record_type tms_rt
 -- Transaction type TMS definition
 Inner Join tms_trans
   On tms_trans.transaction_type_code = gft.transaction_type
--- Faculty/staff
-Left Join facstaff
-  On facstaff.id_number = gft.id_number
-Left Join facstaff jfacstaff
-  On jfacstaff.id_number = entity.spouse_id_number
+-- Associated donor fields
+Inner Join assoc_concat assoc
+  On assoc.tx_number = gft.tx_number
 -- Salutations
 Left Join dean_sal
   On dean_sal.id_number = gft.id_number
@@ -269,13 +266,5 @@ Left Join addr
 -- Prospect reporting table
 Left Join nu_prs_trp_prospect prs
   On prs.id_number = gft.id_number
--- GAB indicator
-Left Join gab_ind
-  On gab_ind.tx_number = gft.tx_number
--- KLC gift club
-Left Join klc_years
-  On klc_years.id_number = gft.id_number
-Left Join klc_years jklc_years
-  On jklc_years.id_number = entity.spouse_id_number
 -- Conditions
 Where gft.legal_amount > 0 -- Only legal donors
