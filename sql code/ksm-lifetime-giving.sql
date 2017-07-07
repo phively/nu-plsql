@@ -51,12 +51,14 @@ ksm_trans As (
     ) Union All (
     -- Matching gift matching company
     Select match_gift_company_id, match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', match_gift_date_of_record, match_gift_amount
-    From matching_gift mg
+    From matching_gift
     Where match_gift_program_credit_code = 'KM'
   ) Union All (
-    -- Matching gift matched donor
-    Select match_gift_matched_donor_id, match_gift_receipt_number, match_gift_matched_sequence, 'Matched Gift', match_gift_date_of_record, match_gift_amount
-    From matching_gift mg
+    -- Matching gift matched donors; inner join to add all attributed donor ids
+    Select gft.id_number, match_gift_receipt_number, match_gift_matched_sequence, 'Matched Gift', match_gift_date_of_record, match_gift_amount
+    From matching_gift
+    Inner Join (Select id_number, tx_number From nu_gft_trp_gifttrans) gft
+      On matching_gift.match_gift_matched_receipt = gft.tx_number
     Where match_gift_program_credit_code = 'KM'
   ) Union All (
     -- Pledges, including BE and LE program credit
@@ -79,16 +81,16 @@ ksm_trans As (
   )
 )
 
-/*
+--/*
 Select
   entity.report_name,
   ksm_trans.*
 From ksm_trans
 Inner Join entity On entity.id_number = ksm_trans.id_number
-Where entity.id_number = '0000262748'
+Where entity.id_number = '0000393892'
 
-*/
---/*
+--*/
+/*
 Select
   ksm_trans.id_number,
   entity.report_name,
@@ -96,4 +98,4 @@ Select
 From ksm_trans
 Inner Join entity On entity.id_number = ksm_trans.id_number
 Group By ksm_trans.id_number, entity.report_name
---*/
+*/
