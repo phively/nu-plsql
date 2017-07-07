@@ -22,11 +22,7 @@ plg_discount As (
   From primary_pledge pplg
   Inner Join pledge On pledge.pledge_pledge_number = pplg.prim_pledge_number
   Where pledge.pledge_program_code = 'KM'
-    Or (
-      -- No program code, but Kellogg allocation school
-      pledge_program_code = ' '
-      And pledge_alloc_school = 'KM'
-    )
+    Or pledge_alloc_school = 'KM'
 ),
 
 /* Transaction and pledge TMS table definition */
@@ -55,8 +51,7 @@ ksm_trans As (
     Where match_gift_program_credit_code = 'KM'
   ) Union All (
     -- Matching gift matched donors; inner join to add all attributed donor ids
-    -- Use Distinct to account for joint split gifts
-    Select Distinct gft.id_number, match_gift_receipt_number, match_gift_matched_sequence, 'Matched Gift', match_gift_date_of_record, match_gift_amount
+    Select gft.id_number, match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', match_gift_date_of_record, match_gift_amount
     From matching_gift
     Inner Join (Select id_number, tx_number From nu_gft_trp_gifttrans) gft
       On matching_gift.match_gift_matched_receipt = gft.tx_number
@@ -70,6 +65,7 @@ ksm_trans As (
     Where (
       -- KSM pledge credit
       pledge_program_code = 'KM'
+      Or pledge_alloc_school = 'KM'
     ) Or (
       -- No program code, but Kellogg allocation school
       pledge_program_code = ' '
@@ -82,22 +78,22 @@ ksm_trans As (
   )
 )
 
---/*
+/*
 Select
   entity.report_name,
   ksm_trans.*
-From ksm_trans
+From (Select Distinct * From ksm_trans) ksm_trans -- Remove any duplicate matching gifts
 Inner Join entity On entity.id_number = ksm_trans.id_number
 Where entity.id_number = '0000393892'
---*/
+*/
 
-/*
+--/*
 Select
   ksm_trans.id_number,
   entity.report_name,
   sum(ksm_trans.credit_amount) As credit_amount
-From ksm_trans
+From (Select Distinct * From ksm_trans) ksm_trans -- Remove any duplicate matching gifts
 Inner Join entity On entity.id_number = ksm_trans.id_number
 --Where ksm_trans.id_number = '0000450440'
 Group By ksm_trans.id_number, entity.report_name
-*/
+--*/
