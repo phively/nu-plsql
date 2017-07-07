@@ -3,7 +3,8 @@ With
 /* Primary pledge discounted amounts */
 plg_discount As (
   Select pledge.pledge_pledge_number As pledge_number, pledge.pledge_sequence, pplg.prim_pledge_type, pplg.prim_pledge_status,
-    pledge.pledge_amount, pplg.prim_pledge_amount, pplg.prim_pledge_amount_paid, pplg.prim_pledge_original_amount, pplg.discounted_amt,
+    pledge.pledge_amount, pledge.pledge_associated_credit_amt, pplg.prim_pledge_amount, pplg.prim_pledge_amount_paid,
+    pplg.prim_pledge_original_amount, pplg.discounted_amt,
     -- Discounted pledge credit amounts
     Case
       -- Not inactive, not a BE or LE
@@ -12,11 +13,13 @@ plg_discount As (
       -- Not inactive, is BE or LE
       When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status Not In ('I', 'R'))
         And pplg.prim_pledge_type In ('BE', 'LE') Then pplg.discounted_amt
-      -- If inactive, take % of amount paid
+      -- If inactive, take amount paid
       Else Case
-        When pplg.prim_pledge_original_amount > 0
-          Then pledge.pledge_associated_credit_amt * (pplg.prim_pledge_amount_paid / pplg.prim_pledge_original_amount)
-        Else 0
+        When pledge.pledge_amount = 0 And pplg.prim_pledge_amount > 0
+          Then pplg.prim_pledge_amount_paid * pledge.pledge_associated_credit_amt / pplg.prim_pledge_amount
+        When pplg.prim_pledge_amount > 0
+          Then pplg.prim_pledge_amount_paid * pledge.pledge_amount / pplg.prim_pledge_amount
+        Else pplg.prim_pledge_amount_paid
       End
     End As credit
   From primary_pledge pplg
@@ -66,10 +69,6 @@ ksm_trans As (
       -- KSM pledge credit
       pledge_program_code = 'KM'
       Or pledge_alloc_school = 'KM'
-    ) Or (
-      -- No program code, but Kellogg allocation school
-      pledge_program_code = ' '
-      And pledge_alloc_school = 'KM'
     ) Or (
       -- KSM program code
       pledge_allocation_name In ('BE', 'LE') -- BE and LE discounted amounts
