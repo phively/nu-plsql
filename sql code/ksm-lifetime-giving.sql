@@ -55,7 +55,8 @@ ksm_trans As (
     Where match_gift_program_credit_code = 'KM'
   ) Union All (
     -- Matching gift matched donors; inner join to add all attributed donor ids
-    Select gft.id_number, match_gift_receipt_number, match_gift_matched_sequence, 'Matched Gift', match_gift_date_of_record, match_gift_amount
+    -- Use Distinct to account for joint split gifts
+    Select Distinct gft.id_number, match_gift_receipt_number, match_gift_matched_sequence, 'Matched Gift', match_gift_date_of_record, match_gift_amount
     From matching_gift
     Inner Join (Select id_number, tx_number From nu_gft_trp_gifttrans) gft
       On matching_gift.match_gift_matched_receipt = gft.tx_number
@@ -88,8 +89,8 @@ Select
 From ksm_trans
 Inner Join entity On entity.id_number = ksm_trans.id_number
 Where entity.id_number = '0000393892'
-
 --*/
+
 /*
 Select
   ksm_trans.id_number,
@@ -97,5 +98,6 @@ Select
   sum(ksm_trans.credit_amount) As credit_amount
 From ksm_trans
 Inner Join entity On entity.id_number = ksm_trans.id_number
+--Where ksm_trans.id_number = '0000450440'
 Group By ksm_trans.id_number, entity.report_name
 */
