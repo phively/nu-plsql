@@ -28,6 +28,13 @@ plg_discount As (
     Or pledge_alloc_school = 'KM'
 ),
 
+/* KSM allocations */
+ksm_allocs As (
+  Select allocation_code
+  From allocation
+  Where alloc_school = 'KM'
+),
+
 /* Transaction and pledge TMS table definition */
 tms_trans As (
   (
@@ -39,6 +46,7 @@ tms_trans As (
   )
 ),
 
+/* Kellogg transactions list */
 ksm_trans As (
   (
     -- Outright gift
@@ -51,25 +59,21 @@ ksm_trans As (
     -- Matching gift matching company
     Select match_gift_company_id, match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', match_gift_date_of_record, match_gift_amount
     From matching_gift
-    Where match_gift_program_credit_code = 'KM'
+    Inner Join ksm_allocs On ksm_allocs.allocation_code = matching_gift.match_gift_allocation_name
   ) Union All (
     -- Matching gift matched donors; inner join to add all attributed donor ids
     Select gft.id_number, match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', match_gift_date_of_record, match_gift_amount
     From matching_gift
     Inner Join (Select id_number, tx_number From nu_gft_trp_gifttrans) gft
       On matching_gift.match_gift_matched_receipt = gft.tx_number
-    Where match_gift_program_credit_code = 'KM'
+    Inner Join ksm_allocs On ksm_allocs.allocation_code = matching_gift.match_gift_allocation_name
   ) Union All (
     -- Pledges, including BE and LE program credit
     Select pledge_donor_id, pledge_pledge_number, pledge.pledge_sequence, tms_trans.transaction_type, pledge_date_of_record, plgd.credit
     From pledge
     Inner Join tms_trans On tms_trans.transaction_type_code = pledge.pledge_pledge_type
     Left Join plg_discount plgd On plgd.pledge_number = pledge.pledge_pledge_number And plgd.pledge_sequence = pledge.pledge_sequence
-    Where (
-      -- KSM pledge credit
-      pledge_program_code = 'KM'
-      Or pledge_alloc_school = 'KM'
-    ) Or (
+    Where pledge_alloc_school = 'KM' Or (
       -- KSM program code
       pledge_allocation_name In ('BE', 'LE') -- BE and LE discounted amounts
       And pledge_program_code = 'KM'
@@ -93,6 +97,6 @@ Select
   sum(ksm_trans.credit_amount) As credit_amount
 From (Select Distinct * From ksm_trans) ksm_trans -- Remove any duplicate matching gifts
 Inner Join entity On entity.id_number = ksm_trans.id_number
---Where ksm_trans.id_number = '0000450440'
+Where ksm_trans.id_number = '0000271445'
 Group By ksm_trans.id_number, entity.report_name
 --*/
