@@ -73,11 +73,13 @@ ksm_trans As (
     From pledge
     Inner Join tms_trans On tms_trans.transaction_type_code = pledge.pledge_pledge_type
     Left Join plg_discount plgd On plgd.pledge_number = pledge.pledge_pledge_number And plgd.pledge_sequence = pledge.pledge_sequence
-    Where pledge_alloc_school = 'KM' Or (
-      -- KSM program code
-      pledge_allocation_name In ('BE', 'LE') -- BE and LE discounted amounts
-      And pledge_program_code = 'KM'
-    )
+    Left Join ksm_allocs On ksm_allocs.allocation_code = pledge.pledge_allocation_name
+    Where ksm_allocs.allocation_code Is Not Null
+      Or (
+        -- KSM program code
+        pledge_allocation_name In ('BE', 'LE') -- BE and LE discounted amounts
+        And pledge_program_code = 'KM'
+      )
   )
 )
 
@@ -97,6 +99,6 @@ Select
   sum(ksm_trans.credit_amount) As credit_amount
 From (Select Distinct * From ksm_trans) ksm_trans -- Remove any duplicate matching gifts
 Inner Join entity On entity.id_number = ksm_trans.id_number
-Where ksm_trans.id_number = '0000271445'
+--Where ksm_trans.id_number = '0000271445'
 Group By ksm_trans.id_number, entity.report_name
 --*/
