@@ -1,3 +1,5 @@
+/* Implementation of KSM Lifetime New Gifts & Commitments Credit; not householded */
+
 With
 
 /* Primary pledge discounted amounts */
@@ -55,7 +57,7 @@ ksm_trans As (
     Left Join tms_trans On tms_trans.transaction_type_code = gft.transaction_type
     Where alloc_school = 'KM'
       And tx_gypm_ind = 'G'
-    ) Union All (
+  ) Union All (
     -- Matching gift matching company
     Select match_gift_company_id, match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', NULL, match_gift_date_of_record, match_gift_amount
     From matching_gift
@@ -76,12 +78,14 @@ ksm_trans As (
     Left Join ksm_allocs On ksm_allocs.allocation_code = pledge.pledge_allocation_name
     Where ksm_allocs.allocation_code Is Not Null
       Or (
-        -- KSM program code
+      -- KSM program code
         pledge_allocation_name In ('BE', 'LE') -- BE and LE discounted amounts
         And pledge_program_code = 'KM'
       )
   )
 )
+
+/* Main query */
 
 -- To check transaction list for a specific ID, uncomment this section and comment out the next
 /*
