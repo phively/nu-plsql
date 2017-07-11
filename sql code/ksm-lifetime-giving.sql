@@ -83,6 +83,7 @@ ksm_trans As (
   )
 )
 
+-- To check transaction list for a specific ID, uncomment this section and comment out the next
 /*
 Select
   entity.report_name,
@@ -92,6 +93,7 @@ Inner Join entity On entity.id_number = ksm_trans.id_number
 Where entity.id_number = '0000393892'
 */
 
+-- Returns lifetime giving for all entities; to debug transaction list comment out this section
 --/*
 Select
   ksm_trans.id_number,
