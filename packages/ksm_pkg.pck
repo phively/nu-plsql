@@ -27,7 +27,7 @@ Public type declarations
 /* Allocation information */
 Type allocation_info Is Record (
   allocation_code allocation.allocation_code%type, status_code allocation.status_code%type,
-  short_name allocation.short_name%type
+  short_name allocation.short_name%type, af_flag allocation.annual_sw%type
 );
 
 /* Degreed alumi, for entity_degrees_concat */
@@ -130,9 +130,12 @@ Function get_gift_source_donor_ksm(
 Public pipelined functions declarations
 *************************************************************************/
 
-/* Return Kellogg Annual Fund allocations, both active and historical, as a pipelined function, e.g.
+/* Return allocations, both active and historical, as a pipelined function, e.g.
    Select * From table(ksm_pkg.get_alloc_annual_fund_ksm); */
 Function tbl_alloc_annual_fund_ksm
+  Return t_allocation Pipelined; -- returns list of matching values
+
+Function tbl_alloc_curr_use_ksm
   Return t_allocation Pipelined; -- returns list of matching values
 
 /* Return pipelined table of entity_degrees_concat_ksm */
@@ -161,11 +164,20 @@ Private cursors -- data definitions
 /* Definition of current and historical Kellogg Annual Fund allocations
    2017-02-09 */
 Cursor c_alloc_annual_fund_ksm Is
-  Select Distinct allocation_code, status_code, short_name
+  Select Distinct allocation_code, status_code, short_name, 'Y' As af_flag
   From allocation
   Where (annual_sw = 'Y' And alloc_school = 'KM')
     -- 2017-07-11 include AF Excellence Grant scholarships
     Or allocation_code In ('3203003665401GFT', '3203004227201GFT');
+
+/* Definition of Kellogg Current Use allocations
+   2017-07-11 */
+Cursor c_alloc_curr_use_ksm Is
+  Select Distinct alloc.allocation_code, alloc.status_code, alloc.short_name, nvl(af_flag, 'N') As af_flag
+  From allocation alloc
+  Left Join table(tbl_alloc_annual_fund_ksm) ksm_af On ksm_af.allocation_code = alloc.allocation_code
+  Where agency = 'CRU'
+    And alloc_school = 'KM';
 
 /* Definition of current Kellogg committee members
    2017-03-01 */
@@ -726,6 +738,24 @@ Function tbl_alloc_annual_fund_ksm
     Open c_alloc_annual_fund_ksm; -- Annual Fund allocations cursor
       Fetch c_alloc_annual_fund_ksm Bulk Collect Into allocs;
     Close c_alloc_annual_fund_ksm;
+    -- Pipe out the allocations
+    For i in 1..(allocs.count) Loop
+      Pipe row(allocs(i));
+    End Loop;
+    Return;
+  End;
+
+/* Pipelined function returnign Kellogg current use allocations
+   2017-07-11 */
+Function tbl_alloc_curr_use_ksm
+  Return t_allocation Pipelined As
+    -- Declarations
+    allocs t_allocation;
+
+  Begin
+    Open c_alloc_curr_use_ksm; -- Annual Fund allocations cursor
+      Fetch c_alloc_curr_use_ksm Bulk Collect Into allocs;
+    Close c_alloc_curr_use_ksm;
     -- Pipe out the allocations
     For i in 1..(allocs.count) Loop
       Pipe row(allocs(i));
