@@ -163,8 +163,9 @@ Private cursors -- data definitions
 Cursor c_alloc_annual_fund_ksm Is
   Select Distinct allocation_code, status_code, short_name
   From allocation
-  Where annual_sw = 'Y'
-  And alloc_school = 'KM';
+  Where (annual_sw = 'Y' And alloc_school = 'KM')
+    -- 2017-07-11 include AF Excellence Grant scholarships
+    Or allocation_code In ('3203003665401GFT', '3203004227201GFT');
 
 /* Definition of current Kellogg committee members
    2017-03-01 */
