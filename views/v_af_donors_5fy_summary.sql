@@ -34,6 +34,24 @@ gab As (
   Select hh.household_id, comm.short_desc, comm.status, comm.role
   From table(ksm_pkg.tbl_committee_gab) comm
     Inner Join hh On hh.id_number = comm.id_number
+),
+
+-- KLC segments
+klc_cfy As (
+  Select gift_club_id_number As id_number, gift_club_end_date, tms_lvl.short_desc As gc_level, 'Y' As klc0
+  From gift_clubs
+  Cross Join rpt_pbh634.v_current_calendar cal
+  Left Join nu_mem_v_tmsclublevel tms_lvl On tms_lvl.level_code = gift_clubs.school_code
+  Where gift_club_code = 'LKM'
+    And substr(gift_club_end_date, 0, 4) = cal.curr_fy
+),
+klc_pfy As (
+  Select gift_club_id_number As id_number, gift_club_end_date, tms_lvl.short_desc As gc_level, 'Y' As klc1
+  From gift_clubs
+  Cross Join rpt_pbh634.v_current_calendar cal
+  Left Join nu_mem_v_tmsclublevel tms_lvl On tms_lvl.level_code = gift_clubs.school_code
+  Where gift_club_code = 'LKM'
+    And substr(gift_club_end_date, 0, 4) = cal.curr_fy - 1
 )
 
 -- Aggregated by entity and fiscal year
@@ -54,6 +72,8 @@ Select
   -- Indicators
   ksm_alum_flag, kac.short_desc As kac, gab.short_desc As gab,
   Case When lower(institutional_suffix) Like '%trustee%' Then 'Trustee' Else NULL End As trustee,
+  klc_cfy.klc0 As klc_cfy,
+  klc_pfy.klc1 As klc_pfy,
   -- Date fields
   curr_fy, data_as_of,
   -- Precalculated giving fields
@@ -99,6 +119,8 @@ From v_af_gifts_srcdnr_5fy af_gifts
   Left Join deg spouse_deg On spouse_deg.id_number = af_gifts.spouse_id_number
   Left Join kac On id_hh_src_dnr = kac.household_id
   Left Join gab On id_hh_src_dnr = gab.household_id
+  Left Join klc_cfy On klc_cfy.id_number = af_gifts.id_hh_src_dnr
+  Left Join klc_pfy On klc_pfy.id_number = af_gifts.id_hh_src_dnr
 Group By id_hh_src_dnr, pref_mail_name, pref_name_sort, report_name, person_or_org, record_status_code, institutional_suffix,
   entity_deg.degrees_concat, entity_deg.first_ksm_year, entity_deg.program, entity_deg.program_group, master_state, master_country, gender_code,
   spouse_id_number, spouse_pref_mail_name, spouse_deg.degrees_concat, spouse_deg.program, spouse_deg.program_group,
@@ -106,7 +128,7 @@ Group By id_hh_src_dnr, pref_mail_name, pref_name_sort, report_name, person_or_o
   prs.employer_name, prs.business_title, prs.prospect_id, prs.prospect_manager, prs.team, prs.prospect_stage,
   prs.officer_rating, prs.evaluation_rating,
   -- Indicators
-  ksm_alum_flag, kac.short_desc, gab.short_desc,
+  ksm_alum_flag, kac.short_desc, gab.short_desc, klc_cfy.klc0, klc_pfy.klc1,
   -- Date fields
   curr_fy, data_as_of,
   -- Precalculated giving fields
