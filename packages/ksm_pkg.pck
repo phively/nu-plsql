@@ -636,7 +636,7 @@ Function get_entity_address(id In varchar2, field In varchar2, debug In Boolean 
     Return(master_addr);
   End;
 
-/* Takes an receipt number and returns the ID number of the entity who should receive primary Kellogg gift credit.
+/* Takes a receipt number and returns the ID number of the entity who should receive primary Kellogg gift credit.
    Relies on nu_gft_trp_gifttrans, which combines gifts and matching gifts into a single table.
    Kellogg alumni status is defined as get_entity_degrees_concat_ksm(id_number) returning a non-null result.
    2017-02-09 */
