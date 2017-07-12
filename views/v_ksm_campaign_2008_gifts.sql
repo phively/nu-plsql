@@ -45,6 +45,8 @@ priorities As (
 ksm_campaign As (
   Select ksm_data.*,
     -- Prospect data fields
+    entity.report_name, entity.institutional_suffix,
+    prs.business_title, trim(prs.employer_name1 || ' ' || prs.employer_name2) As employer_name,
     prs.pref_state, prs.preferred_country, prs.evaluation_rating, prs.evaluation_date, prs.officer_rating,
     -- Fiscal year-to-date indicator
     ksm_pkg.fytd_indicator(date_of_record) As ftyd_ind,
@@ -95,13 +97,16 @@ ksm_campaign As (
     NVL(ksm_pkg.get_gift_source_donor_ksm(rcpt_or_plg_number), ksm_data.id_number) As ksm_source_donor
   From ksm_data
   Cross Join v_current_calendar cal
+  Inner Join entity On ksm_data.id_number = entity.id_number
   Left Join priorities On priorities.allocation_code = ksm_data.alloc_code
   Left Join nu_prs_trp_prospect prs On prs.id_number = ksm_data.id_number
 )
 
 /* Main query */
 Select ksm_campaign.*,
-  hh.household_id, hh.household_name, hh.household_spouse, hh.household_ksm_year, hh.household_program_group,
+  hh.household_id, hh.household_name, hh.household_rpt_name, hh.household_ksm_year, hh.household_program_group, hh.household_suffix,
+  hh.household_spouse, hh.household_spouse_suffix,
+  hh.household_city, hh.household_state, hh.household_country,
   -- Record type
   Case
     When household_record = 'ST' Then '3 Students'

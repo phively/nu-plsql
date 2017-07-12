@@ -52,9 +52,13 @@ Type household Is Record (
   spouse_pref_mail_name entity.pref_mail_name%type, spouse_degrees_concat varchar2(512),
   spouse_first_ksm_year degrees.degree_year%type, spouse_program_group varchar2(20),
   household_id entity.id_number%type, household_record entity.record_type_code%type,
-  household_name entity.pref_mail_name%type, household_spouse entity.pref_mail_name%type,
+  household_name entity.pref_mail_name%type, household_rpt_name entity.report_name%type,
+  household_spouse entity.pref_mail_name%type, household_suffix entity.institutional_suffix%type,
+  household_spouse_suffix entity.institutional_suffix%type,
   household_ksm_year degrees.degree_year%type, household_masters_year degrees.degree_year%type,
-  household_program_group varchar2(20)
+  household_program_group varchar2(20),
+  household_city address.city%type, household_state address.state_code%type,
+  household_country tms_country.short_desc%type
 );
 
 /* Source donor, for gift_source_donor */
@@ -319,9 +323,10 @@ Cursor c_households_ksm (id In varchar2 Default NULL) Is
 With
   -- Entities and spouses, with Kellogg degrees concat fields
   couples As (
-    Select entity.id_number, entity.pref_mail_name, entity.record_type_code, edc.degrees_concat,
-      edc.first_ksm_year, edc.first_masters_year, edc.program_group,
+    Select entity.id_number, entity.pref_mail_name, entity.report_name, entity.record_type_code,
+      entity.institutional_suffix, edc.degrees_concat, edc.first_ksm_year, edc.first_masters_year, edc.program_group,
       entity.spouse_id_number, spouse.pref_mail_name As spouse_pref_mail_name,
+      spouse.institutional_suffix As spouse_suffix,
       sdc.degrees_concat As spouse_degrees_concat, sdc.first_ksm_year As spouse_first_ksm_year,
       sdc.first_masters_year As spouse_first_masters_year, sdc.program_group As spouse_program_group
     From entity
@@ -345,16 +350,27 @@ With
         When spouse_program_group < program_group Then spouse_id_number
       End As household_id
     From couples
+  ),
+  pref_addr As (
+    Select addr.id_number, addr.city As pref_city, addr.state_code As pref_state,
+      tms_country.short_desc As pref_country
+    From address addr
+    Left Join tms_country On addr.country_code = tms_country.country_code
+    Where addr.addr_pref_ind = 'Y'
   )
   Select household.id_number, household.pref_mail_name, household.degrees_concat, household.first_ksm_year, household.program_group,
     household.spouse_id_number, household.spouse_pref_mail_name,
     household.spouse_degrees_concat, household.spouse_first_ksm_year, household.spouse_program_group,
     household.household_id, couples.record_type_code As household_record,
-    couples.pref_mail_name As household_name, couples.spouse_pref_mail_name As household_spouse,
+    couples.pref_mail_name As household_name, couples.report_name As household_rpt_name,
+    couples.spouse_pref_mail_name As household_spouse,
+    couples.institutional_suffix As household_suffix, couples.spouse_suffix As household_spouse_suffix,
     couples.first_ksm_year As household_ksm_year, couples.first_masters_year As household_masters_year,
-    couples.program_group As household_program_group
+    couples.program_group As household_program_group,
+    pref_addr.pref_city, pref_addr.pref_state, pref_addr.pref_country
   From household
     Left Join couples On household.household_id = couples.id_number
+    Left Join pref_addr On household.household_id = pref_addr.id_number
   Where (Case When id Is Not Null Then household.id_number Else 'T' End)
             = (Case When id Is Not Null Then id Else 'T' End);
 
