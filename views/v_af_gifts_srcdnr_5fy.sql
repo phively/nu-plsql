@@ -9,6 +9,10 @@ ksm_af_allocs As (
   Select allocation_code
   From table(ksm_pkg.tbl_alloc_annual_fund_ksm)
 ),
+ksm_cru_allocs As (
+  Select allocation_code, af_flag
+  From table(ksm_pkg.tbl_alloc_curr_use_ksm)
+),
 
 -- Calendar date range from current_calendar
 cal As (
@@ -22,21 +26,9 @@ households As (
   From table(ksm_pkg.tbl_entity_households_ksm)
 ),
 
--- First gift year
-first_af As (
-  Select households.household_id As id_hh_src_dnr,
-    min(gft.fiscal_year) As first_af_gift_year
-  From nu_gft_trp_gifttrans gft
-  Inner Join ksm_af_allocs
-    On ksm_af_allocs.allocation_code = gft.allocation_code
-  Inner Join households On households.id_number = ksm_pkg.get_gift_source_donor_ksm(tx_number)
-  Where tx_gypm_ind != 'P'
-  Group By households.household_id
-),
-
 -- Formatted giving table
-ksm_af_gifts As (
-  Select ksm_af_allocs.allocation_code,
+ksm_cru_gifts As (
+  Select ksm_cru_allocs.allocation_code, ksm_cru_allocs.af_flag,
     gft.alloc_short_name, gft.alloc_purpose_desc, gft.tx_number, gft.tx_sequence, gft.tx_gypm_ind,
     gft.fiscal_year, gft.date_of_record,
     gft.legal_amount, gft.credit_amount, gft.nwu_af_amount,
@@ -45,42 +37,37 @@ ksm_af_gifts As (
     households.household_id As id_hh_src_dnr,
     cal.curr_fy, cal.yesterday
   From cal, nu_gft_trp_gifttrans gft
-    Inner Join ksm_af_allocs
-      On ksm_af_allocs.allocation_code = gft.allocation_code
+    Inner Join ksm_cru_allocs
+      On ksm_cru_allocs.allocation_code = gft.allocation_code
     Inner Join households On households.id_number = ksm_pkg.get_gift_source_donor_ksm(tx_number)
-  
   Where 
     -- Drop pledges
     tx_gypm_ind != 'P'
     And (
-      -- Only pull KSM AF gifts in recent fiscal years
-      (gft.allocation_code = ksm_af_allocs.allocation_code
+      -- Only pull KSM current use gifts in recent fiscal years
+      (gft.allocation_code = ksm_cru_allocs.allocation_code
         And fiscal_year Between cal.prev_fy And cal.curr_fy)
-      -- Expendable bequest, moved into AF at the end of the year
---      Or gft.allocation_code = '3203004290301GFT' -- Commented out June 2017
     )
 )
 
 -- Gift receipts and biographic information
 Select
   -- Giving fields
-  af.allocation_code, af.alloc_short_name, af.alloc_purpose_desc, af.tx_number, af.tx_sequence, af.tx_gypm_ind, af.fiscal_year,
+  af.allocation_code, af.af_flag, af.alloc_short_name, af.alloc_purpose_desc, af.tx_number, af.tx_sequence, af.tx_gypm_ind, af.fiscal_year,
   af.date_of_record,
   ksm_pkg.fytd_indicator(af.date_of_record) As ytd_ind, -- year to date flag
   af.legal_dnr_id, af.legal_amount, af.credit_amount, af.nwu_af_amount,
-  first_af.first_af_gift_year,
   -- Household source donor entity fields
   af.id_hh_src_dnr, hh.pref_mail_name, e_src_dnr.pref_name_sort, e_src_dnr.report_name, e_src_dnr.person_or_org, e_src_dnr.record_status_code,
   e_src_dnr.institutional_suffix,
-  ksm_pkg.get_entity_address(e_src_dnr.id_number, 'state_code') As master_state,
-  ksm_pkg.get_entity_address(e_src_dnr.id_number, 'country') As master_country,
+--  ksm_pkg.get_entity_address(e_src_dnr.id_number, 'state_code') As master_state,
+--  ksm_pkg.get_entity_address(e_src_dnr.id_number, 'country') As master_country,
   e_src_dnr.gender_code, hh.spouse_id_number, hh.spouse_pref_mail_name,
   -- KSM alumni flag
-  Case When ksm_pkg.get_entity_degrees_concat_fast(e_src_dnr.id_number) Is Not Null Then 'Y' Else 'N' End As ksm_alum_flag,
+  Case When hh.household_program_group Is Not Null Then 'Y' Else 'N' End As ksm_alum_flag,
   -- Fiscal year number
   curr_fy, yesterday As data_as_of
-From ksm_af_gifts af
-  Inner Join first_af On af.id_hh_src_dnr = first_af.id_hh_src_dnr
-  Inner Join entity e_src_dnr On af.id_hh_src_dnr = e_src_dnr.id_number
-  Inner Join households hh On hh.id_number = af.id_hh_src_dnr
+From ksm_cru_gifts af
+Inner Join entity e_src_dnr On af.id_hh_src_dnr = e_src_dnr.id_number
+Inner Join households hh On hh.id_number = af.id_hh_src_dnr
 Where legal_amount > 0

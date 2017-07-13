@@ -50,16 +50,18 @@ Select Distinct
   af_summary.ksm_af_curr_fy, af_summary.ksm_af_prev_fy1, af_summary.ksm_af_prev_fy2, af_summary.ksm_af_prev_fy3,
   af_summary.ksm_af_prev_fy4, af_summary.ksm_af_prev_fy5, af_summary.ksm_af_prev_fy6, af_summary.ksm_af_prev_fy7,
   first_af.first_af_gift_year,
+  cru_curr_fy, cru_prev_fy1, cru_prev_fy2, cru_curr_fy_ytd, cru_prev_fy1_ytd, cru_prev_fy2_ytd,
   -- Prospect fields
   prs.prospect_id, prs.prospect_manager, prs.team, prs.prospect_stage, prs.officer_rating, prs.evaluation_rating,
   -- Indicators
   af_summary.kac, af_summary.gab, af_summary.trustee, af_summary.klc_cfy, af_summary.klc_pfy1, af_summary.klc_pfy2,
   -- Calendar objects
   cal.curr_fy, cal.yesterday
-From cal, nu_prs_trp_prospect prs
-  Inner Join hh On hh.household_id = prs.id_number
-  Left Join v_af_donors_5fy_summary af_summary On af_summary.id_hh_src_dnr = hh.household_id
-  Left Join first_af On first_af.household_id = prs.id_number
-  Left Join tms_states On tms_states.state_code = prs.pref_state
-  Left Join tms_country On tms_country.country_code = prs.preferred_country
+From nu_prs_trp_prospect prs
+Cross Join cal
+Inner Join hh On hh.household_id = prs.id_number
+Left Join v_af_donors_5fy_summary af_summary On af_summary.id_hh_src_dnr = hh.household_id
+Left Join first_af On first_af.household_id = prs.id_number
+Left Join tms_states On tms_states.state_code = prs.pref_state
+Left Join tms_country On tms_country.country_code = prs.preferred_country
 Where hh.household_id = hh.id_number
