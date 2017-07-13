@@ -13,6 +13,7 @@ campaign As (
   Select rcpt_or_plg_number, amount, 'Raised' As field,
     -- Campaign category grouper
     Case
+      When ksm_campaign_category Is Null Or ksm_campaign_category = '' Then 'TBD'
       When ksm_campaign_category Like 'Education%' Then 'Educational Mission'
       When ksm_campaign_category Like 'Global Innovation%' Then 'Global Innovation'
       Else ksm_campaign_category
@@ -24,6 +25,10 @@ campaign As (
 /* Campaign goals */
 goals As (
   (
+  Select 'TBD' As priority, 'Goal' As field,
+    0 As amount
+  From DUAL
+  ) Union All (
   Select 'Educational Mission' As priority, 'Goal' As field,
     60000000 As amount
   From DUAL
