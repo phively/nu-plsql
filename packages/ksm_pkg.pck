@@ -53,7 +53,8 @@ Type household Is Record (
   spouse_first_ksm_year degrees.degree_year%type, spouse_program_group varchar2(20),
   household_id entity.id_number%type, household_record entity.record_type_code%type,
   household_name entity.pref_mail_name%type, household_rpt_name entity.report_name%type,
-  household_spouse entity.pref_mail_name%type, household_suffix entity.institutional_suffix%type,
+  household_spouse_id entity.id_number%type, household_spouse entity.pref_mail_name%type,
+  household_suffix entity.institutional_suffix%type,
   household_spouse_suffix entity.institutional_suffix%type,
   household_ksm_year degrees.degree_year%type, household_masters_year degrees.degree_year%type,
   household_program_group varchar2(20),
@@ -177,11 +178,13 @@ Cursor c_alloc_annual_fund_ksm Is
 /* Definition of Kellogg Current Use allocations
    2017-07-11 */
 Cursor c_alloc_curr_use_ksm Is
+  With
+  ksm_af As (Select allocation_code, af_flag From table(tbl_alloc_annual_fund_ksm))
   Select Distinct alloc.allocation_code, alloc.status_code, alloc.short_name, nvl(af_flag, 'N') As af_flag
   From allocation alloc
-  Left Join table(tbl_alloc_annual_fund_ksm) ksm_af On ksm_af.allocation_code = alloc.allocation_code
-  Where agency = 'CRU'
-    And alloc_school = 'KM';
+  Left Join ksm_af On ksm_af.allocation_code = alloc.allocation_code
+  Where (agency = 'CRU' And alloc_school = 'KM')
+    Or alloc.allocation_code In ksm_af.allocation_code; -- Include AF allocations that happen to not match criteria
 
 /* Definition of current Kellogg committee members
    2017-03-01 */
@@ -363,7 +366,7 @@ With
     household.spouse_degrees_concat, household.spouse_first_ksm_year, household.spouse_program_group,
     household.household_id, couples.record_type_code As household_record,
     couples.pref_mail_name As household_name, couples.report_name As household_rpt_name,
-    couples.spouse_pref_mail_name As household_spouse,
+    couples.spouse_id_number As household_spouse_id, couples.spouse_pref_mail_name As household_spouse,
     couples.institutional_suffix As household_suffix, couples.spouse_suffix As household_spouse_suffix,
     couples.first_ksm_year As household_ksm_year, couples.first_masters_year As household_masters_year,
     couples.program_group As household_program_group,
