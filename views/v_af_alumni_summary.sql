@@ -53,7 +53,7 @@ Select Distinct
   -- Prospect fields
   prs.prospect_id, prs.prospect_manager, prs.team, prs.prospect_stage, prs.officer_rating, prs.evaluation_rating,
   -- Indicators
-  af_summary.kac, af_summary.gab, af_summary.trustee, af_summary.klc_cfy, af_summary.klc_pfy,
+  af_summary.kac, af_summary.gab, af_summary.trustee, af_summary.klc_cfy, af_summary.klc_pfy1, af_summary.klc_pfy2,
   -- Calendar objects
   cal.curr_fy, cal.yesterday
 From cal, nu_prs_trp_prospect prs

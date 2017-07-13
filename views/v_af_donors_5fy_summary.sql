@@ -46,7 +46,7 @@ klc_cfy As (
   Where gift_club_code = 'LKM'
     And substr(gift_club_end_date, 0, 4) = cal.curr_fy
 ),
-klc_pfy As (
+klc_pfy1 As (
   Select Distinct household_id, 'Y' As klc1
   From gift_clubs
   Cross Join rpt_pbh634.v_current_calendar cal
@@ -54,6 +54,15 @@ klc_pfy As (
   Left Join nu_mem_v_tmsclublevel tms_lvl On tms_lvl.level_code = gift_clubs.school_code
   Where gift_club_code = 'LKM'
     And substr(gift_club_end_date, 0, 4) = cal.curr_fy - 1
+),
+klc_pfy2 As (
+  Select Distinct household_id, 'Y' As klc2
+  From gift_clubs
+  Cross Join rpt_pbh634.v_current_calendar cal
+  Inner Join hh On hh.id_number = gift_clubs.gift_club_id_number
+  Left Join nu_mem_v_tmsclublevel tms_lvl On tms_lvl.level_code = gift_clubs.school_code
+  Where gift_club_code = 'LKM'
+    And substr(gift_club_end_date, 0, 4) = cal.curr_fy - 2
 ),
 
 -- Aggregated by entity and fiscal year
@@ -117,8 +126,7 @@ Select Distinct
   -- Indicators
   ksm_alum_flag, kac.short_desc As kac, gab.short_desc As gab,
   Case When lower(institutional_suffix) Like '%trustee%' Then 'Trustee' Else NULL End As trustee,
-  klc_cfy.klc0 As klc_cfy,
-  klc_pfy.klc1 As klc_pfy,
+  klc_cfy.klc0 As klc_cfy, klc_pfy1.klc1 As klc_pfy1, klc_pfy2.klc2 As klc_pfy2,
   -- Date fields
   curr_fy, data_as_of,
   -- Precalculated giving fields
@@ -138,4 +146,5 @@ From v_af_gifts_srcdnr_5fy af_gifts
   Left Join kac On totals.id_hh_src_dnr = kac.household_id
   Left Join gab On totals.id_hh_src_dnr = gab.household_id
   Left Join klc_cfy On klc_cfy.household_id = af_gifts.id_hh_src_dnr
-  Left Join klc_pfy On klc_pfy.household_id = af_gifts.id_hh_src_dnr
+  Left Join klc_pfy1 On klc_pfy1.household_id = af_gifts.id_hh_src_dnr
+  Left Join klc_pfy2 On klc_pfy2.household_id = af_gifts.id_hh_src_dnr
