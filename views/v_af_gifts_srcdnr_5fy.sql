@@ -2,7 +2,8 @@ Create Or Replace View v_af_gifts_srcdnr_5fy As
 With
 
 /* Core Annual Fund transaction-level view; current and previous 5 fiscal years. Rolls data up to the household giving source donor
-   level, e.g. Kellogg-specific giving source donor, then householded for married entities. */
+   level, e.g. Kellogg-specific giving source donor, then householded for married entities.
+   2017-07-17: added ytd_dts; removing function call from select led to ~32x speed-up! */
 
 -- Kellogg Annual Fund allocations as defined in ksm_pkg
 ksm_af_allocs As (
@@ -19,6 +20,13 @@ cal As (
   Select curr_fy - 7 As prev_fy, curr_fy, yesterday
   From v_current_calendar
 ),
+ytd_dts As (
+  Select to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1 As dt,
+    ksm_pkg.fytd_indicator(to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1) As ytd_ind
+  From cal
+  Connect By
+    rownum <= (to_date('09/01/' || cal.curr_fy, 'mm/dd/yyyy') - to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy'))
+),
 
 -- KSM householding
 households As (
@@ -30,7 +38,7 @@ households As (
 ksm_cru_gifts As (
   Select ksm_cru_allocs.allocation_code, ksm_cru_allocs.af_flag,
     gft.alloc_short_name, gft.alloc_purpose_desc, gft.tx_number, gft.tx_sequence, gft.tx_gypm_ind,
-    gft.fiscal_year, gft.date_of_record,
+    gft.fiscal_year, gft.date_of_record, ytd_dts.ytd_ind, -- year to date flag
     gft.legal_amount, gft.credit_amount, gft.nwu_af_amount,
     gft.id_number As legal_dnr_id,
     ksm_pkg.get_gift_source_donor_ksm(tx_number) As id_src_dnr,
@@ -40,6 +48,7 @@ ksm_cru_gifts As (
     Inner Join ksm_cru_allocs
       On ksm_cru_allocs.allocation_code = gft.allocation_code
     Inner Join households On households.id_number = ksm_pkg.get_gift_source_donor_ksm(tx_number)
+    Inner Join ytd_dts On ytd_dts.dt = gft.date_of_record
   Where 
     -- Drop pledges
     tx_gypm_ind != 'P'
@@ -54,8 +63,7 @@ ksm_cru_gifts As (
 Select
   -- Giving fields
   af.allocation_code, af.af_flag, af.alloc_short_name, af.alloc_purpose_desc, af.tx_number, af.tx_sequence, af.tx_gypm_ind, af.fiscal_year,
-  af.date_of_record,
-  ksm_pkg.fytd_indicator(af.date_of_record) As ytd_ind, -- year to date flag
+  af.date_of_record, af.ytd_ind,
   af.legal_dnr_id, af.legal_amount, af.credit_amount, af.nwu_af_amount,
   -- Household source donor entity fields
   af.id_hh_src_dnr, hh.pref_mail_name, e_src_dnr.pref_name_sort, e_src_dnr.report_name, e_src_dnr.person_or_org, e_src_dnr.record_status_code,
