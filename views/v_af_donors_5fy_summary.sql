@@ -146,6 +146,7 @@ Select Distinct
   spouse_deg.degrees_concat As spouse_degrees_concat,
   spouse_deg.program As spouse_program,
   spouse_deg.program_group As spouse_program_group,
+  master_state, master_country,
   -- Prospect reporting table fields
   prs.employer_name, prs.business_title, prs.prospect_id, prs.prospect_manager, prs.team, prs.prospect_stage,
   prs.officer_rating, prs.evaluation_rating,

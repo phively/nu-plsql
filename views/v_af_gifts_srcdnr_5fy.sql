@@ -68,8 +68,8 @@ Select
   -- Household source donor entity fields
   af.id_hh_src_dnr, hh.pref_mail_name, e_src_dnr.pref_name_sort, e_src_dnr.report_name, e_src_dnr.person_or_org, e_src_dnr.record_status_code,
   e_src_dnr.institutional_suffix,
---  ksm_pkg.get_entity_address(e_src_dnr.id_number, 'state_code') As master_state,
---  ksm_pkg.get_entity_address(e_src_dnr.id_number, 'country') As master_country,
+  ksm_pkg.get_entity_address(e_src_dnr.id_number, 'state_code') As master_state,
+  ksm_pkg.get_entity_address(e_src_dnr.id_number, 'country') As master_country,
   e_src_dnr.gender_code, hh.spouse_id_number, hh.spouse_pref_mail_name,
   -- KSM alumni flag
   Case When hh.household_program_group Is Not Null Then 'Y' Else 'N' End As ksm_alum_flag,

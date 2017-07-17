@@ -19,7 +19,7 @@ Select
   entity_deg.program_group As src_dnr_program_group,
   gender_code, spouse_id_number,
   spouse_deg.degrees_concat As spouse_degrees_concat,
-  ksm_alum_flag,
+  ksm_alum_flag, master_state, master_country,
   -- Giving fields
   af_flag, allocation_code, alloc_short_name, alloc_purpose_desc, fiscal_year, ytd_ind,
   -- Date fields
@@ -30,9 +30,8 @@ From v_af_gifts_srcdnr_5fy af_gifts
   Left Join deg entity_deg On entity_deg.id_number = af_gifts.id_hh_src_dnr
   Left Join deg spouse_deg On spouse_deg.id_number = af_gifts.spouse_id_number
 Group By id_hh_src_dnr, pref_name_sort, report_name, person_or_org, record_status_code, institutional_suffix, entity_deg.degrees_concat, entity_deg.program,
-  entity_deg.program_group, gender_code, spouse_id_number, spouse_deg.degrees_concat, ksm_alum_flag,
+  entity_deg.program_group, gender_code, spouse_id_number, spouse_deg.degrees_concat, ksm_alum_flag, master_state, master_country,
   -- Giving fields
   af_flag, allocation_code, alloc_short_name, alloc_purpose_desc, fiscal_year, ytd_ind,
   -- Date fields
   curr_fy, data_as_of
-Order By pref_name_sort Asc, fiscal_year Desc, ytd_ind Asc
