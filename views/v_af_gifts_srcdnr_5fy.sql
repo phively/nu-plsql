@@ -48,7 +48,7 @@ ksm_cru_gifts As (
     Inner Join ksm_cru_allocs
       On ksm_cru_allocs.allocation_code = gft.allocation_code
     Inner Join households On households.id_number = ksm_pkg.get_gift_source_donor_ksm(tx_number)
-    Inner Join ytd_dts On ytd_dts.dt = gft.date_of_record
+    Inner Join ytd_dts On ytd_dts.dt = trunc(gft.date_of_record)
   Where 
     -- Drop pledges
     tx_gypm_ind != 'P'
