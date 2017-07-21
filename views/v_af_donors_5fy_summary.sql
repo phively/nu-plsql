@@ -126,10 +126,16 @@ totals As (
     sum(Case When fiscal_year = (curr_fy - 0) Then legal_amount Else 0 End) As cru_curr_fy,
     sum(Case When fiscal_year = (curr_fy - 1) Then legal_amount Else 0 End) As cru_prev_fy1,
     sum(Case When fiscal_year = (curr_fy - 2) Then legal_amount Else 0 End) As cru_prev_fy2,
+    sum(Case When fiscal_year = (curr_fy - 3) Then legal_amount Else 0 End) As cru_prev_fy3,
+    sum(Case When fiscal_year = (curr_fy - 4) Then legal_amount Else 0 End) As cru_prev_fy4,
+    sum(Case When fiscal_year = (curr_fy - 5) Then legal_amount Else 0 End) As cru_prev_fy5,
     -- Aggregated YTD current use
     sum(Case When fiscal_year = (curr_fy - 0) And ytd_ind = 'Y' Then legal_amount Else 0 End) As cru_curr_fy_ytd,
     sum(Case When fiscal_year = (curr_fy - 1) And ytd_ind = 'Y' Then legal_amount Else 0 End) As cru_prev_fy1_ytd,
-    sum(Case When fiscal_year = (curr_fy - 2) And ytd_ind = 'Y' Then legal_amount Else 0 End) As cru_prev_fy2_ytd
+    sum(Case When fiscal_year = (curr_fy - 2) And ytd_ind = 'Y' Then legal_amount Else 0 End) As cru_prev_fy2_ytd,
+    sum(Case When fiscal_year = (curr_fy - 3) And ytd_ind = 'Y' Then legal_amount Else 0 End) As cru_prev_fy3_ytd,
+    sum(Case When fiscal_year = (curr_fy - 4) And ytd_ind = 'Y' Then legal_amount Else 0 End) As cru_prev_fy4_ytd,
+    sum(Case When fiscal_year = (curr_fy - 5) And ytd_ind = 'Y' Then legal_amount Else 0 End) As cru_prev_fy5_ytd
   From v_af_gifts_srcdnr_5fy af_gifts
   Group By id_hh_src_dnr
 )
@@ -165,7 +171,8 @@ Select Distinct
   ksm_af_prev_fy6_match, ksm_af_prev_fy7_match,
   last_gift_curr_fy, last_gift_prev_fy1, last_gift_prev_fy2,
   gifts_curr_fy, gifts_prev_fy1, gifts_prev_fy2,
-  cru_curr_fy, cru_prev_fy1, cru_prev_fy2, cru_curr_fy_ytd, cru_prev_fy1_ytd, cru_prev_fy2_ytd
+  cru_curr_fy, cru_prev_fy1, cru_prev_fy2, cru_prev_fy3, cru_prev_fy4, cru_prev_fy5,
+  cru_curr_fy_ytd, cru_prev_fy1_ytd, cru_prev_fy2_ytd, cru_prev_fy3_ytd, cru_prev_fy4_ytd, cru_prev_fy5_ytd
 From v_af_gifts_srcdnr_5fy af_gifts
 Inner Join totals On totals.id_hh_src_dnr = af_gifts.id_hh_src_dnr
 Left Join prs On prs.id_number = af_gifts.id_hh_src_dnr
