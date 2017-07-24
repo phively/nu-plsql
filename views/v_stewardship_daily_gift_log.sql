@@ -4,13 +4,13 @@ With
 
 /* Date range to use */
 dts As (
---  Select yesterday As dt1, yesterday As dt2
+  Select prev_month_start As dt1, yesterday As dt2
   /* Alternate date ranges for debugging */
-  Select to_date('06/29/2017', 'mm/dd/yyyy') As dt1, to_date('06/29/2017', 'mm/dd/yyyy') As dt2 -- point-in-time
+--  Select to_date('06/29/2017', 'mm/dd/yyyy') As dt1, to_date('06/29/2017', 'mm/dd/yyyy') As dt2 -- point-in-time
 /* Check spouse faculty/staff or both faculty/staff */
 --  Select to_date('06/29/2017', 'mm/dd/yyyy') As dt1, to_date('06/29/2017', 'mm/dd/yyyy') As dt2 
 --  Select something or other -- GAB members
-  From rpt_pbh634.v_current_calendar
+  From rpt_pbh634.v_current_calendar cal
 ),
 
 /* KSM degrees and programs */
