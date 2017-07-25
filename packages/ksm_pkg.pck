@@ -69,6 +69,20 @@ Type src_donor Is Record (
   associated_code nu_gft_trp_gifttrans.associated_code%type, credit_amount nu_gft_trp_gifttrans.credit_amount%type
 );
 
+/* Employee record type for company queries */
+Type employee Is Record(
+  id_number entity.id_number%type, report_name entity.report_name%type,
+  record_status_code entity.record_status_code%type, institutional_suffix entity.institutional_suffix%type,
+  degrees_concat varchar2(512), first_ksm_year degrees.degree_year%type, program varchar2(20),
+  business_title nu_prs_trp_prospect.business_title%type,
+  business_company varchar2(1024), job_title varchar2(1024), employer_name varchar2(1024),
+  business_city nu_prs_trp_prospect.business_city%type,
+  business_state nu_prs_trp_prospect.business_state%type,
+  business_country nu_prs_trp_prospect.business_country%type,
+  prospect_manager nu_prs_trp_prospect.prospect_manager%type,
+  team nu_prs_trp_prospect.team%type
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
@@ -78,6 +92,7 @@ Type t_degreed_alumni Is Table Of degreed_alumni;
 Type t_households Is Table Of household;
 Type t_src_donors Is Table Of src_donor;
 Type t_committee_members Is Table Of committee_member;
+Type t_employees Is Table Of employee;
 
 /*************************************************************************
 Public constant declarations
@@ -150,6 +165,11 @@ Function tbl_entity_degrees_concat_ksm
 /* Return pipelined table of entity_households_ksm */
 Function tbl_entity_households_ksm
   Return t_households Pipelined;
+
+/* Return pipelined table of company employees with Kellogg degrees
+   N.B. uses matches pattern, user beware! */
+Function tbl_entity_employees_ksm (company In varchar2)
+  Return t_employees Pipelined;
 
 /* Return pipelined table of committee members */
 Function tbl_committee_gab
@@ -376,6 +396,44 @@ With
     Left Join pref_addr On household.household_id = pref_addr.id_number
   Where (Case When id Is Not Null Then household.id_number Else 'T' End)
             = (Case When id Is Not Null Then id Else 'T' End);
+
+/* Definition of a Kellogg alum employed by a company */
+Cursor c_employees_ksm (company In varchar2) Is
+  With
+  -- Employment table subquery
+  employ As (
+    Select id_number, job_title, 
+      -- If there's an employer ID filled in, use the entity name
+      Case
+        When employer_id_number Is Not Null And employer_id_number != ' ' Then (
+          Select pref_mail_name
+          From entity
+          Where id_number = employer_id_number
+        )
+        -- Otherwise use the write-in field
+        Else trim(employer_name1 || ' ' || employer_name2)
+      End As employer_name
+    From employment
+    Where employment.primary_emp_ind = 'Y'
+  )
+  Select
+    -- Entity fields
+    deg.id_number, entity.report_name, entity.record_status_code, entity.institutional_suffix,
+    deg.degrees_concat, deg.first_ksm_year, trim(deg.program_group) As program,
+    -- Employment fields
+    prs.business_title, trim(prs.employer_name1 || ' ' || prs.employer_name2) As business_company,
+    employ.job_title, employ.employer_name,
+    prs.business_city, prs.business_state, prs.business_country,
+    -- Prospect fields
+    prs.prospect_manager, prs.team
+  From table(rpt_pbh634.ksm_pkg.tbl_entity_degrees_concat_ksm) deg -- KSM alumni definition
+  Inner Join entity On deg.id_number = entity.id_number
+    Left Join employ On deg.id_number = employ.id_number
+    Left Join nu_prs_trp_prospect prs On deg.id_number = prs.id_number
+  Where
+    -- Matches pattern; user beware (Apple vs. Snapple)
+    lower(employ.employer_name) Like lower('%' || company || '%')
+    Or lower(prs.employer_name1) Like lower('%' || company || '%');
 
 /*************************************************************************
 Private type declarations
@@ -812,6 +870,24 @@ Function tbl_entity_households_ksm
     Close c_households_ksm;
     For i in 1..(households.count) Loop
       Pipe row(households(i));
+    End Loop;
+    Return;
+  End;
+
+/* Pipelined function returning Kellogg alumni (per c_degrees_concat_ksm) who
+   work for the specified company
+   2017-07-25 */
+Function tbl_entity_employees_ksm (company In varchar2)
+  Return t_employees Pipelined As
+  -- Declarations
+  employees t_employees;
+  
+  Begin
+    Open c_employees_ksm (company => company);
+      Fetch c_employees_ksm Bulk Collect Into employees;
+    Close c_employees_ksm;
+    For i in 1..(employees.count) Loop
+      Pipe row(employees(i));
     End Loop;
     Return;
   End;
