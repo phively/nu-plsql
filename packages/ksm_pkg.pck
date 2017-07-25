@@ -72,13 +72,13 @@ Type src_donor Is Record (
 /* Employee record type for company queries */
 Type employee Is Record(
   id_number entity.id_number%type, report_name entity.report_name%type,
-  record_status_code entity.record_status_code%type, institutional_suffix entity.institutional_suffix%type,
+  record_status tms_record_status.short_desc%type, institutional_suffix entity.institutional_suffix%type,
   degrees_concat varchar2(512), first_ksm_year degrees.degree_year%type, program varchar2(20),
   business_title nu_prs_trp_prospect.business_title%type,
   business_company varchar2(1024), job_title varchar2(1024), employer_name varchar2(1024),
   business_city nu_prs_trp_prospect.business_city%type,
   business_state nu_prs_trp_prospect.business_state%type,
-  business_country nu_prs_trp_prospect.business_country%type,
+  business_country tms_country.short_desc%type,
   prospect_manager nu_prs_trp_prospect.prospect_manager%type,
   team nu_prs_trp_prospect.team%type
 );
@@ -415,21 +415,32 @@ Cursor c_employees_ksm (company In varchar2) Is
       End As employer_name
     From employment
     Where employment.primary_emp_ind = 'Y'
+  ),
+  -- Record status tms table
+  tms_rec_status As (
+    Select record_status_code, short_desc As record_status
+    From tms_record_status
+  ),
+  tms_ctry As (
+    Select country_code, short_desc As country
+    From tms_country
   )
   Select
     -- Entity fields
-    deg.id_number, entity.report_name, entity.record_status_code, entity.institutional_suffix,
+    deg.id_number, entity.report_name, tms_rec_status.record_status, entity.institutional_suffix,
     deg.degrees_concat, deg.first_ksm_year, trim(deg.program_group) As program,
     -- Employment fields
     prs.business_title, trim(prs.employer_name1 || ' ' || prs.employer_name2) As business_company,
     employ.job_title, employ.employer_name,
-    prs.business_city, prs.business_state, prs.business_country,
+    prs.business_city, prs.business_state, tms_ctry.country As business_country,
     -- Prospect fields
     prs.prospect_manager, prs.team
   From table(rpt_pbh634.ksm_pkg.tbl_entity_degrees_concat_ksm) deg -- KSM alumni definition
   Inner Join entity On deg.id_number = entity.id_number
+  Inner Join tms_rec_status On tms_rec_status.record_status_code = entity.record_status_code
     Left Join employ On deg.id_number = employ.id_number
     Left Join nu_prs_trp_prospect prs On deg.id_number = prs.id_number
+    Left Join tms_ctry On tms_ctry.country_code = prs.business_country
   Where
     -- Matches pattern; user beware (Apple vs. Snapple)
     lower(employ.employer_name) Like lower('%' || company || '%')
