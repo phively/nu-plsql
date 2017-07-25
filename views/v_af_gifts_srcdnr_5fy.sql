@@ -38,7 +38,7 @@ households As (
 ksm_cru_gifts As (
   Select ksm_cru_allocs.allocation_code, ksm_cru_allocs.af_flag,
     gft.alloc_short_name, gft.alloc_purpose_desc, gft.tx_number, gft.tx_sequence, gft.tx_gypm_ind,
-    gft.fiscal_year, gft.date_of_record, ytd_dts.ytd_ind, -- year to date flag
+    gft.fiscal_year, trunc(gft.date_of_record) As date_of_record, ytd_dts.ytd_ind, -- year to date flag
     gft.legal_amount, gft.credit_amount, gft.nwu_af_amount,
     gft.id_number As legal_dnr_id,
     ksm_pkg.get_gift_source_donor_ksm(tx_number) As id_src_dnr,
