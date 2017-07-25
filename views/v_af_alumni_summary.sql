@@ -14,7 +14,7 @@ cal As (
 hh As (
   Select hh.id_number, hh.pref_mail_name, hh.degrees_concat, hh.program_group,
     hh.spouse_id_number, hh.spouse_pref_mail_name, hh.spouse_degrees_concat, hh.spouse_program_group,
-    hh.household_id, hh.household_masters_year, hh.household_program_group
+    hh.household_id, hh.household_ksm_year, hh.household_masters_year, hh.household_program_group
   From table(ksm_pkg.tbl_entity_households_ksm) hh
   Where hh.household_ksm_year Is Not Null
 ),
@@ -39,9 +39,9 @@ first_af As (
 
 Select Distinct
   -- Household fields
-  hh.household_id, hh.pref_mail_name, hh.degrees_concat, hh.household_masters_year, hh.program_group,
-  hh.spouse_id_number, hh.spouse_pref_mail_name, hh.spouse_degrees_concat, hh.spouse_program_group,
-  hh.household_program_group,
+  hh.household_id, hh.pref_mail_name, hh.degrees_concat, hh.household_masters_year, hh.household_ksm_year,
+  hh.program_group, hh.spouse_id_number, hh.spouse_pref_mail_name, hh.spouse_degrees_concat,
+  hh.spouse_program_group, hh.household_program_group,
   -- Entity-based fields
   prs.record_status_code, prs.pref_city, prs.pref_zip, prs.pref_state, tms_states.short_desc As pref_state_desc,
   tms_country.short_desc As preferred_country, prs.business_title,
