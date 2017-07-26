@@ -69,6 +69,17 @@ Type src_donor Is Record (
   associated_code nu_gft_trp_gifttrans.associated_code%type, credit_amount nu_gft_trp_gifttrans.credit_amount%type
 );
 
+/* KLC member */
+Type klc_member Is Record (
+  klc_level tms_gift_club_type.short_desc%type, fiscal_year integer,
+  household_id entity.id_number%type,
+  household_record entity.record_type_code%type, household_rpt_name entity.report_name%type,
+  household_spouse_id entity.id_number%type, household_spouse entity.pref_mail_name%type,
+  household_suffix entity.institutional_suffix%type,
+  household_ksm_year degrees.degree_year%type, household_masters_year degrees.degree_year%type,
+  household_program_group varchar2(20)
+);
+
 /* Employee record type for company queries */
 Type employee Is Record(
   id_number entity.id_number%type, report_name entity.report_name%type,
@@ -92,6 +103,7 @@ Type t_degreed_alumni Is Table Of degreed_alumni;
 Type t_households Is Table Of household;
 Type t_src_donors Is Table Of src_donor;
 Type t_committee_members Is Table Of committee_member;
+Type t_klc_members Is Table Of klc_member;
 Type t_employees Is Table Of employee;
 
 /*************************************************************************
@@ -165,6 +177,10 @@ Function tbl_entity_degrees_concat_ksm
 /* Return pipelined table of entity_households_ksm */
 Function tbl_entity_households_ksm
   Return t_households Pipelined;
+  
+/* Return pipelined table of KLC members */
+Function tbl_klc_history
+  Return t_klc_members Pipelined;
 
 /* Return pipelined table of company employees with Kellogg degrees
    N.B. uses matches pattern, user beware! */
@@ -445,6 +461,16 @@ Cursor c_employees_ksm (company In varchar2) Is
     -- Matches pattern; user beware (Apple vs. Snapple)
     lower(employ.employer_name) Like lower('%' || company || '%')
     Or lower(prs.employer_name1) Like lower('%' || company || '%');
+
+/* Definition of a KLC member */
+Cursor c_klc_members Is
+  Select tms_lvl.short_desc As klc_level, substr(gift_club_end_date, 0, 4) As fiscal_year,
+    hh.household_id, hh.household_record, hh.household_rpt_name, hh.household_spouse_id, hh.household_spouse, hh.household_suffix,
+    hh.household_ksm_year, hh.household_masters_year, hh.household_program_group
+  From gift_clubs
+  Inner Join table(tbl_entity_households_ksm) hh On hh.id_number = gift_clubs.gift_club_id_number
+  Left Join nu_mem_v_tmsclublevel tms_lvl On tms_lvl.level_code = gift_clubs.school_code
+  Where gift_club_code = 'LKM';
 
 /*************************************************************************
 Private type declarations
@@ -899,6 +925,23 @@ Function tbl_entity_employees_ksm (company In varchar2)
     Close c_employees_ksm;
     For i in 1..(employees.count) Loop
       Pipe row(employees(i));
+    End Loop;
+    Return;
+  End;
+
+/* Pipelined function returning KLC members (per c_klc_members)
+   2017-07-26 */
+Function tbl_klc_history
+  Return t_klc_members Pipelined As
+  -- Declarations
+  klc t_klc_members;
+  
+  Begin
+    Open c_klc_members;
+      Fetch c_klc_members Bulk Collect Into klc;
+    Close c_klc_members;
+    For i in 1..(klc.count) Loop
+      Pipe row(klc(i));
     End Loop;
     Return;
   End;
