@@ -64,6 +64,15 @@ klc_pfy2 As (
   Where gift_club_code = 'LKM'
     And substr(gift_club_end_date, 0, 4) = cal.curr_fy - 2
 ),
+klc_pfy3 As (
+  Select Distinct household_id, 'Y' As klc3
+  From gift_clubs
+  Cross Join rpt_pbh634.v_current_calendar cal
+  Inner Join hh On hh.id_number = gift_clubs.gift_club_id_number
+  Left Join nu_mem_v_tmsclublevel tms_lvl On tms_lvl.level_code = gift_clubs.school_code
+  Where gift_club_code = 'LKM'
+    And substr(gift_club_end_date, 0, 4) = cal.curr_fy - 3
+),
 
 -- Kellogg Annual Fund allocations as defined in ksm_pkg
 ksm_af_allocs As (
@@ -135,7 +144,14 @@ totals As (
     sum(Case When fiscal_year = (curr_fy - 2) And ytd_ind = 'Y' Then legal_amount Else 0 End) As cru_prev_fy2_ytd,
     sum(Case When fiscal_year = (curr_fy - 3) And ytd_ind = 'Y' Then legal_amount Else 0 End) As cru_prev_fy3_ytd,
     sum(Case When fiscal_year = (curr_fy - 4) And ytd_ind = 'Y' Then legal_amount Else 0 End) As cru_prev_fy4_ytd,
-    sum(Case When fiscal_year = (curr_fy - 5) And ytd_ind = 'Y' Then legal_amount Else 0 End) As cru_prev_fy5_ytd
+    sum(Case When fiscal_year = (curr_fy - 5) And ytd_ind = 'Y' Then legal_amount Else 0 End) As cru_prev_fy5_ytd,
+    -- Aggregated current use matches
+    sum(Case When fiscal_year = (curr_fy - 0) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As cru_curr_fy_match,
+    sum(Case When fiscal_year = (curr_fy - 1) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As cru_prev_fy1_match,
+    sum(Case When fiscal_year = (curr_fy - 2) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As cru_prev_fy2_match,
+    sum(Case When fiscal_year = (curr_fy - 3) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As cru_prev_fy3_match,
+    sum(Case When fiscal_year = (curr_fy - 4) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As cru_prev_fy4_match,
+    sum(Case When fiscal_year = (curr_fy - 5) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As cru_prev_fy5_match
   From v_af_gifts_srcdnr_5fy af_gifts
   Group By id_hh_src_dnr
 )
@@ -159,7 +175,7 @@ Select Distinct
   -- Indicators
   ksm_alum_flag, kac.short_desc As kac, gab.short_desc As gab,
   Case When lower(institutional_suffix) Like '%trustee%' Then 'Trustee' Else NULL End As trustee,
-  klc_cfy.klc0 As klc_cfy, klc_pfy1.klc1 As klc_pfy1, klc_pfy2.klc2 As klc_pfy2,
+  klc_cfy.klc0 As klc_cfy, klc_pfy1.klc1 As klc_pfy1, klc_pfy2.klc2 As klc_pfy2, klc_pfy3.klc3 As klc_pfy3,
   -- Date fields
   curr_fy, data_as_of,
   -- Precalculated giving fields
@@ -172,7 +188,8 @@ Select Distinct
   last_gift_curr_fy, last_gift_prev_fy1, last_gift_prev_fy2,
   gifts_curr_fy, gifts_prev_fy1, gifts_prev_fy2,
   cru_curr_fy, cru_prev_fy1, cru_prev_fy2, cru_prev_fy3, cru_prev_fy4, cru_prev_fy5,
-  cru_curr_fy_ytd, cru_prev_fy1_ytd, cru_prev_fy2_ytd, cru_prev_fy3_ytd, cru_prev_fy4_ytd, cru_prev_fy5_ytd
+  cru_curr_fy_ytd, cru_prev_fy1_ytd, cru_prev_fy2_ytd, cru_prev_fy3_ytd, cru_prev_fy4_ytd, cru_prev_fy5_ytd,
+  cru_curr_fy_match, cru_prev_fy1_match, cru_prev_fy2_match, cru_prev_fy3_match, cru_prev_fy4_match, cru_prev_fy5_match
 From v_af_gifts_srcdnr_5fy af_gifts
 Inner Join totals On totals.id_hh_src_dnr = af_gifts.id_hh_src_dnr
 Left Join prs On prs.id_number = af_gifts.id_hh_src_dnr
@@ -184,3 +201,4 @@ Left Join gab On totals.id_hh_src_dnr = gab.household_id
 Left Join klc_cfy On klc_cfy.household_id = af_gifts.id_hh_src_dnr
 Left Join klc_pfy1 On klc_pfy1.household_id = af_gifts.id_hh_src_dnr
 Left Join klc_pfy2 On klc_pfy2.household_id = af_gifts.id_hh_src_dnr
+Left Join klc_pfy3 On klc_pfy3.household_id = af_gifts.id_hh_src_dnr
