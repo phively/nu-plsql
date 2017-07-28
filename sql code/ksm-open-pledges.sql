@@ -44,15 +44,26 @@ pledge_allocs As (
 
 /* Pledge payments */
 ksm_payments As (
-  Select gft.pmt_on_pledge_number, gft.allocation_code, gft.date_of_record, gft.legal_amount
+  Select gft.tx_number, gft.tx_sequence, gft.pmt_on_pledge_number, gft.allocation_code, gft.date_of_record, gft.legal_amount
   From nu_gft_trp_gifttrans gft
   Inner Join ksm_allocs On ksm_allocs.allocation_code = gft.allocation_code
   Inner Join ksm_pledges On ksm_pledges.pledge_pledge_number = gft.pmt_on_pledge_number
+  Where gft.legal_amount > 0
+  Order By pmt_on_pledge_number Asc, date_of_record Desc
 ),
 ksm_paid_amt As (
   Select pmt_on_pledge_number, allocation_code, sum(legal_amount) As total_paid
   From ksm_payments
   Group By pmt_on_pledge_number, allocation_code
+),
+recent_payments As (
+  Select min(tx_number) keep(dense_rank First Order By pmt_on_pledge_number Asc, date_of_record Desc) As recent_pmt_nbr,
+  pmt_on_pledge_number,
+  min(date_of_record) keep(dense_rank First Order By pmt_on_pledge_number Asc, date_of_record Desc) As date_of_record,
+  min(legal_amount) keep(dense_rank First Order By pmt_on_pledge_number Asc, date_of_record Desc) As pmt_amount
+  From ksm_payments
+  Group By pmt_on_pledge_number
+  Order By pmt_on_pledge_number Asc
 ),
 
 /* Pledge reminder entity notes */
@@ -64,24 +75,15 @@ reminders As (
     And trunc(note_date) Between cal.curr_fy_start And cal.next_fy_start
     And lower(description) Like '%pledge reminder%'
 ),
-recent_reminder_id As (
-  -- ID number of most recent reminder
-  Select reminders.id_number, max(reminders.note_id) As recent_note_id
+recent_reminders As (
+  Select reminders.id_number,
+    min(note_id) keep(dense_rank First Order By reminders.id_number Asc, note_date Desc, note_id Desc) As note_id,
+    min(note_date) keep(dense_rank First Order By reminders.id_number Asc, note_date Desc, note_id Desc) As note_date,
+    min(description) keep(dense_rank First Order By reminders.id_number Asc, note_date Desc, note_id Desc) As note_desc,
+    min(brief_note) keep(dense_rank First Order By reminders.id_number Asc, note_date Desc, note_id Desc) As brief_note,
+    min(date_added) keep(dense_rank First Order By reminders.id_number Asc, note_date Desc, note_id Desc) As date_added
   From reminders
-  Inner Join (
-    -- Date of most recent reminder
-    Select id_number, max(note_date) As max_date
-    From reminders
-    Group By id_number
-  ) recent_reminder_dt On recent_reminder_dt.id_number = reminders.id_number
-  Where max_date = note_date
   Group By reminders.id_number
-),
-recent_reminder As (
-  Select reminders.*
-  From reminders
-  Inner Join recent_reminder_id On recent_reminder_id.recent_note_id = reminders.note_id
-    And recent_reminder_id.id_number = reminders.id_number
 )
 
 /* Main query */
@@ -97,7 +99,7 @@ Select
   -- Allocation fields
   pledge_allocation_name As allocation_code,
   allocation.short_name As allocation_name,
-  -- Payment fields
+  -- Amount fields
   pledge.pledge_amount,
   ksm_paid_amt.total_paid,
   pledge.pledge_amount - nvl(ksm_paid_amt.total_paid, 0) As alloc_pledge_balance,
@@ -105,10 +107,14 @@ Select
   pp.prim_pledge_amount,
   pp.prim_pledge_amount_paid,
   pp.prim_pledge_amount - nvl(pp.prim_pledge_amount_paid, 0) As prim_pledge_balance,
+  -- Recent payment fields
+  pmts.recent_pmt_nbr,
+  pmts.date_of_record,
+  pmts.pmt_amount,
   -- Pledge reminders
   remind.note_id As most_recent_note_id,
   remind.note_date,
-  remind.description,
+  remind.note_desc,
   remind.brief_note,
   remind.date_added
 From pledge
@@ -125,8 +131,10 @@ Inner Join pledge_allocs On pledge_allocs.pledge_pledge_number = pledge.pledge_p
 -- Paid amounts toward Kellogg allocations
 Left Join ksm_paid_amt On ksm_paid_amt.pmt_on_pledge_number = pledge.pledge_pledge_number
   And ksm_paid_amt.allocation_code = pledge.pledge_allocation_name
+-- Most recent payment info
+Left Join recent_payments pmts On pmts.pmt_on_pledge_number = pledge.pledge_pledge_number
 -- Any recent GRS reminders sent?
-Left Join recent_reminder remind On remind.id_number = pledge.pledge_donor_id
+Left Join recent_reminders remind On remind.id_number = pledge.pledge_donor_id
 -- Conditions
 Where
   -- Only unfulfilled commitments
