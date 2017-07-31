@@ -34,11 +34,12 @@ ksm_pledges As (
       )
     )
 ),
-pledge_allocs As (
-  Select pledge.pledge_pledge_number, count(pledge.pledge_allocation_name) As allocs_count
+pledge_counts As (
+  Select pledge.pledge_pledge_number,
+    count(Distinct pledge.pledge_allocation_name) As allocs_count,
+    count(Distinct pledge.pledge_donor_id) - 1 As attr_donors_count -- Subtract 1 for the legal donor
   From pledge
   Inner Join ksm_pledges On ksm_pledges.pledge_pledge_number = pledge.pledge_pledge_number
-  Where pledge.pledge_amount > 0
   Group By pledge.pledge_pledge_number
 ),
 
@@ -85,14 +86,32 @@ reminders As (
     And lower(description) Like '%pledge reminder%'
 ),
 recent_reminders As (
-  Select reminders.id_number,
-    min(note_id) Keep (dense_rank First Order By reminders.id_number Asc, note_date Desc, note_id Desc) As note_id,
-    max(note_date) Keep (dense_rank First Order By reminders.id_number Asc, note_date Desc, note_id Desc) As note_date,
-    min(description) Keep (dense_rank First Order By reminders.id_number Asc, note_date Desc, note_id Desc) As note_desc,
-    min(brief_note) Keep (dense_rank First Order By reminders.id_number Asc, note_date Desc, note_id Desc) As brief_note,
-    max(date_added) Keep (dense_rank First Order By reminders.id_number Asc, note_date Desc, note_id Desc) As date_added
+  Select id_number,
+    min(note_id) Keep (dense_rank First Order By id_number Asc, note_date Desc, note_id Desc) As note_id,
+    max(note_date) Keep (dense_rank First Order By id_number Asc, note_date Desc, note_id Desc) As note_date,
+    min(description) Keep (dense_rank First Order By id_number Asc, note_date Desc, note_id Desc) As note_desc,
+    min(brief_note) Keep (dense_rank First Order By id_number Asc, note_date Desc, note_id Desc) As brief_note,
+    max(date_added) Keep (dense_rank First Order By id_number Asc, note_date Desc, note_id Desc) As date_added
   From reminders
-  Group By reminders.id_number
+  Group By id_number
+),
+ksm_reminders As (
+  Select id_number, note_id, note_date, description, brief_note, date_added
+  From notes
+  Cross Join v_current_calendar cal
+  Where data_source_code = 'KSM'
+    And trunc(note_date) Between cal.curr_fy_start And cal.next_fy_start
+    And lower(description) Like '%pledge reminder%'
+),
+recent_ksm_reminders As (
+  Select id_number,
+    min(note_id) Keep (dense_rank First Order By id_number Asc, note_date Desc, note_id Desc) As ksm_note_id,
+    max(note_date) Keep (dense_rank First Order By id_number Asc, note_date Desc, note_id Desc) As ksm_note_date,
+    min(description) Keep (dense_rank First Order By id_number Asc, note_date Desc, note_id Desc) As ksm_note_desc,
+    min(brief_note) Keep (dense_rank First Order By id_number Asc, note_date Desc, note_id Desc) As ksm_brief_note,
+    max(date_added) Keep (dense_rank First Order By id_number Asc, note_date Desc, note_id Desc) As ksm_date_added
+  From ksm_reminders
+  Group By id_number
 )
 
 /* Main query */
@@ -100,7 +119,9 @@ recent_reminders As (
 Select
   -- Donor fields
   pledge.pledge_donor_id As legal_donor_id,
+  entity.report_name As legal_donor_name,
   -- Pledge fields
+  Case When pledge_counts.attr_donors_count > 0 Then pledge_counts.attr_donors_count End As attr_donors_count,
   pledge.pledge_pledge_number As pledge_number,
   pp.prim_pledge_date_of_record As date_of_record,
   pp.prim_pledge_year_of_giving As fiscal_year,
@@ -112,7 +133,7 @@ Select
   pledge.pledge_amount,
   ksm_paid_amt.total_paid,
   pledge.pledge_amount - nvl(ksm_paid_amt.total_paid, 0) As alloc_pledge_balance,
-  Case When pledge_allocs.allocs_count > 1 Then pledge_allocs.allocs_count End As split_gift_allocs,
+  Case When pledge_counts.allocs_count > 1 Then pledge_counts.allocs_count End As split_gift_allocs,
   pp.prim_pledge_amount,
   pp.prim_pledge_amount_paid,
   pp.prim_pledge_amount - nvl(pp.prim_pledge_amount_paid, 0) As prim_pledge_balance,
@@ -124,14 +145,22 @@ Select
   pmtsa.date_of_record_alloc,
   pmtsa.pmt_amount_alloc,
   -- Pledge reminders
-  remind.note_id As most_recent_note_id,
+  Case When remind.note_id || remindk.ksm_note_id Is Null Then 'N' Else 'Y' End As recent_reminder,
+  remind.note_id As grs_most_recent_note_id,
   remind.note_date,
   remind.note_desc,
   remind.brief_note,
-  remind.date_added
+  remind.date_added,
+  remindk.ksm_note_id As ksm_most_recent_note_id,
+  remindk.ksm_note_date,
+  remindk.ksm_note_desc,
+  remindk.ksm_brief_note,
+  remindk.ksm_date_added
 -- Pledge tables
 From pledge
 Inner Join primary_pledge pp On pp.prim_pledge_number = pledge.pledge_pledge_number
+-- Entity data
+Inner Join entity On entity.id_number = pledge.pledge_donor_id
 -- Descriptions from codes
 Inner Join tms_trans On tms_trans.transaction_type_code = pp.prim_pledge_type
 Inner Join allocation On allocation.allocation_code = pledge.pledge_allocation_name
@@ -140,7 +169,7 @@ Inner Join ksm_pledges On ksm_pledges.pledge_pledge_number = pledge.pledge_pledg
 -- Only Kellogg portion of split pledges
 Inner Join ksm_allocs On ksm_allocs.allocation_code = pledge.pledge_allocation_name
 -- Split gift allocations count
-Inner Join pledge_allocs On pledge_allocs.pledge_pledge_number = pledge.pledge_pledge_number
+Inner Join pledge_counts On pledge_counts.pledge_pledge_number = pledge.pledge_pledge_number
 -- Paid amounts toward Kellogg allocations
 Left Join ksm_paid_amt On ksm_paid_amt.pmt_on_pledge_number = pledge.pledge_pledge_number
   And ksm_paid_amt.allocation_code = pledge.pledge_allocation_name
@@ -148,8 +177,9 @@ Left Join ksm_paid_amt On ksm_paid_amt.pmt_on_pledge_number = pledge.pledge_pled
 Left Join recent_payments pmts On pmts.pmt_on_pledge_number = pledge.pledge_pledge_number
 Left Join recent_payments_alloc pmtsa On pmtsa.pmt_on_pledge_number = pledge.pledge_pledge_number
   And pmtsa.allocation_code = pledge.pledge_allocation_name
--- Any recent GRS reminders sent?
+-- Any recent reminders sent? (Assumes to the LEGAL donor)
 Left Join recent_reminders remind On remind.id_number = pledge.pledge_donor_id
+Left Join recent_ksm_reminders remindk On remindk.id_number = pledge.pledge_donor_id
 -- Conditions
 Where pledge_amount > 0
   -- Only unfulfilled commitments
