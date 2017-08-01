@@ -17,6 +17,10 @@ ksm_allocs As (
   From allocation
   Where alloc_school = 'KM'
 ),
+ksm_af_allocs As (
+  Select allocation_code, af_flag
+  From table(ksm_pkg.tbl_alloc_annual_fund_ksm)
+),
 
 /* Pledge numbers of interest */
 ksm_pledges As (
@@ -76,12 +80,43 @@ recent_payments_alloc As (
   Order By pmt_on_pledge_number Asc
 ),
 
+/* Pledge payment schedules */
+pay_sch As (
+  Select ksm_pledges.pledge_pledge_number, psched.payment_schedule_status, psched.payment_schedule_date,
+    Case When payment_schedule_date Not Like '0000%' And payment_schedule_date Not Like '____00%'
+      Then ksm_pkg.get_fiscal_year(to_date(psched.payment_schedule_date, 'YYYYMMDD'))
+    End As payment_schedule_fiscal_year,
+    psched.payment_schedule_amount, psched.payment_schedule_balance
+  From payment_schedule psched
+  Inner Join ksm_pledges On ksm_pledges.pledge_pledge_number = psched.payment_schedule_pledge_nbr
+),
+pay_last As (
+  Select pledge_pledge_number,
+    min(payment_schedule_date) Keep (dense_rank First Order By payment_schedule_date Desc, payment_schedule_balance Desc) As last_sched_date,
+    min(payment_schedule_fiscal_year) Keep (dense_rank First Order By payment_schedule_date Desc, payment_schedule_balance Desc) As last_sched_year,
+    min(payment_schedule_amount) Keep (dense_rank First Order By payment_schedule_date Desc, payment_schedule_balance Desc) As last_sched_amount,
+    min(payment_schedule_balance) Keep (dense_rank First Order By payment_schedule_date Desc, payment_schedule_balance Desc) As last_sched_balance
+  From pay_sch
+  Where payment_schedule_status = 'P'
+  Group By pledge_pledge_number
+),
+pay_next As (
+  Select pledge_pledge_number,
+    min(payment_schedule_date) Keep (dense_rank First Order By payment_schedule_date Asc, payment_schedule_balance Desc) As next_sched_date,
+    min(payment_schedule_fiscal_year) Keep (dense_rank First Order By payment_schedule_date Asc, payment_schedule_balance Desc) As next_sched_year,
+    min(payment_schedule_amount) Keep (dense_rank First Order By payment_schedule_date Asc, payment_schedule_balance Desc) As next_sched_amount,
+    min(payment_schedule_balance) Keep (dense_rank First Order By payment_schedule_date Asc, payment_schedule_balance Desc) As next_sched_balance
+  From pay_sch
+  Where payment_schedule_status = 'U'
+  Group By pledge_pledge_number
+),
+
 /* Pledge reminder entity notes */
 reminders As (
   Select id_number, note_id, note_date, description, brief_note, date_added
   From notes
   Cross Join v_current_calendar cal
-  Where note_type = 'GP'
+  Where note_type In ('GP', 'GS')
     And trunc(note_date) Between cal.curr_fy_start And cal.next_fy_start
     And lower(description) Like '%pledge reminder%'
 ),
@@ -120,15 +155,22 @@ Select
   -- Donor fields
   pledge.pledge_donor_id As legal_donor_id,
   entity.report_name As legal_donor_name,
-  -- Pledge fields
+  entity.institutional_suffix,
   Case When pledge_counts.attr_donors_count > 0 Then pledge_counts.attr_donors_count End As attr_donors_count,
+  -- Pledge overview
+  tms_trans.transaction_type,
+  ksm_pkg.get_fiscal_year(pmts.date_of_record_plg) As last_payment_fy,
+  pay_last.last_sched_year,
+  pay_next.next_sched_year,
+  Case When remind.note_id || remindk.ksm_note_id Is Null Then 'N' Else 'Y' End As recent_reminder,
+  -- Pledge fields
   pledge.pledge_pledge_number As pledge_number,
   pp.prim_pledge_date_of_record As date_of_record,
   pp.prim_pledge_year_of_giving As fiscal_year,
-  tms_trans.transaction_type,
   -- Allocation fields
   pledge_allocation_name As allocation_code,
   allocation.short_name As allocation_name,
+  ksm_af_allocs.af_flag,
   -- Amount fields
   pledge.pledge_amount,
   ksm_paid_amt.total_paid,
@@ -144,8 +186,13 @@ Select
   pmtsa.recent_pmt_nbr_alloc,
   pmtsa.date_of_record_alloc,
   pmtsa.pmt_amount_alloc,
+  -- Scheduled payment fields
+  pay_last.last_sched_date,
+  pay_last.last_sched_amount,
+  pay_next.next_sched_date,
+  pay_next.next_sched_amount,
+  pay_next.next_sched_balance,
   -- Pledge reminders
-  Case When remind.note_id || remindk.ksm_note_id Is Null Then 'N' Else 'Y' End As recent_reminder,
   remind.note_id As grs_most_recent_note_id,
   remind.note_date,
   remind.note_desc,
@@ -170,6 +217,8 @@ Inner Join ksm_pledges On ksm_pledges.pledge_pledge_number = pledge.pledge_pledg
 Inner Join ksm_allocs On ksm_allocs.allocation_code = pledge.pledge_allocation_name
 -- Split gift allocations count
 Inner Join pledge_counts On pledge_counts.pledge_pledge_number = pledge.pledge_pledge_number
+-- AF flag
+Left Join ksm_af_allocs On ksm_af_allocs.allocation_code = pledge.pledge_allocation_name
 -- Paid amounts toward Kellogg allocations
 Left Join ksm_paid_amt On ksm_paid_amt.pmt_on_pledge_number = pledge.pledge_pledge_number
   And ksm_paid_amt.allocation_code = pledge.pledge_allocation_name
@@ -177,11 +226,21 @@ Left Join ksm_paid_amt On ksm_paid_amt.pmt_on_pledge_number = pledge.pledge_pled
 Left Join recent_payments pmts On pmts.pmt_on_pledge_number = pledge.pledge_pledge_number
 Left Join recent_payments_alloc pmtsa On pmtsa.pmt_on_pledge_number = pledge.pledge_pledge_number
   And pmtsa.allocation_code = pledge.pledge_allocation_name
+-- Payment schedule
+Left Join pay_last On pay_last.pledge_pledge_number = pledge.pledge_pledge_number
+Left Join pay_next On pay_next.pledge_pledge_number = pledge.pledge_pledge_number
 -- Any recent reminders sent? (Assumes to the LEGAL donor)
 Left Join recent_reminders remind On remind.id_number = pledge.pledge_donor_id
 Left Join recent_ksm_reminders remindk On remindk.id_number = pledge.pledge_donor_id
 -- Conditions
-Where pledge_amount > 0
+Where
+  -- Only legal donor
+  pledge_amount > 0
   -- Only unfulfilled commitments
   And (pledge.pledge_amount > ksm_paid_amt.total_paid Or ksm_paid_amt.total_paid Is Null)
-Order By pledge.pledge_pledge_number Asc, pp.prim_pledge_date_of_record Desc, pledge.pledge_donor_id Asc, pledge.pledge_allocation_name Asc
+-- Sort for easier comparison
+Order By
+  pledge.pledge_pledge_number Asc,
+  pp.prim_pledge_date_of_record Desc,
+  pledge.pledge_donor_id Asc,
+  pledge.pledge_allocation_name Asc
