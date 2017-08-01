@@ -208,7 +208,10 @@ Cursor c_alloc_annual_fund_ksm Is
   From allocation
   Where (annual_sw = 'Y' And alloc_school = 'KM')
     -- 2017-07-11 include AF Excellence Grant scholarships
-    Or allocation_code In ('3203003665401GFT', '3203004227201GFT');
+    Or allocation_code In (
+      '3203003665401GFT', '3203004227201GFT', -- Expendable Excellence Grant
+      '3203000861201GFT' -- Real Estate Conference
+    );
 
 /* Definition of Kellogg Current Use allocations
    2017-07-11 */
