@@ -147,6 +147,23 @@ recent_ksm_reminders As (
     max(date_added) Keep (dense_rank First Order By id_number Asc, note_date Desc, note_id Desc) As ksm_date_added
   From ksm_reminders
   Group By id_number
+),
+
+/* Preferred address and email */
+addr As (
+  Select id_number, line_1, line_2, line_3, line_4, line_5, line_6, line_7, line_8
+  From address
+  Where addr_pref_ind = 'Y'
+),
+emails As (
+  Select id_number,
+    max(Case When preferred_ind = 'Y' Then email_address End) As pref_email,
+    max(email_address) Keep (dense_rank First Order By (Case When email_type_code = 'X' Then 1 End) Asc, xsequence Desc) As home_email,
+    max(email_address) Keep (dense_rank First Order By (Case When email_type_code = 'Y' Then 1 End) Asc, xsequence Desc) As bus_email
+  From email
+  Where email_status_code = 'A'
+  And id_number = '0000451522'
+  Group By id_number
 )
 
 /* Main query */
@@ -202,7 +219,21 @@ Select
   remindk.ksm_note_date,
   remindk.ksm_note_desc,
   remindk.ksm_brief_note,
-  remindk.ksm_date_added
+  remindk.ksm_date_added,
+  -- Mailing data
+  entity.first_name,
+  entity.pref_mail_name,
+  addr.line_1,
+  addr.line_2,
+  addr.line_3,
+  addr.line_4,
+  addr.line_5,
+  addr.line_6,
+  addr.line_7,
+  addr.line_8,
+  emails.pref_email,
+  emails.home_email,
+  emails.bus_email
 -- Pledge tables
 From pledge
 Inner Join primary_pledge pp On pp.prim_pledge_number = pledge.pledge_pledge_number
@@ -232,6 +263,9 @@ Left Join pay_next On pay_next.pledge_pledge_number = pledge.pledge_pledge_numbe
 -- Any recent reminders sent? (Assumes to the LEGAL donor)
 Left Join recent_reminders remind On remind.id_number = pledge.pledge_donor_id
 Left Join recent_ksm_reminders remindk On remindk.id_number = pledge.pledge_donor_id
+-- Contact info
+Left Join addr on addr.id_number = pledge.pledge_donor_id
+Left Join emails On emails.id_number = pledge.pledge_donor_id
 -- Conditions
 Where
   -- Only legal donor
