@@ -63,9 +63,9 @@ ksm_paid_amt As (
 ),
 recent_payments As (
   Select pmt_on_pledge_number,
-    min(tx_number) keep(dense_rank First Order By pmt_on_pledge_number Asc, date_of_record Desc, tx_number Desc) As recent_pmt_nbr_plg,
-    max(date_of_record) keep(dense_rank First Order By pmt_on_pledge_number Asc, date_of_record Desc, tx_number Desc) As date_of_record_plg,
-    sum(legal_amount) keep(dense_rank First Order By pmt_on_pledge_number Asc, date_of_record Desc, tx_number Desc) As pmt_amount_plg
+    min(tx_number) keep(dense_rank First Order By pmt_on_pledge_number Asc, date_of_record Desc, tx_number Desc) As recent_pmt_nbr_prim_plg,
+    max(date_of_record) keep(dense_rank First Order By pmt_on_pledge_number Asc, date_of_record Desc, tx_number Desc) As date_of_record_prim_plg,
+    sum(legal_amount) keep(dense_rank First Order By pmt_on_pledge_number Asc, date_of_record Desc, tx_number Desc) As pmt_amount_prim_plg
   From ksm_payments
   Group By pmt_on_pledge_number
   Order By pmt_on_pledge_number Asc
@@ -92,8 +92,8 @@ pay_sch As (
 ),
 pay_last As (
   Select pledge_pledge_number,
-    min(payment_schedule_date) Keep (dense_rank First Order By payment_schedule_date Desc, payment_schedule_balance Desc) As last_sched_date,
-    min(payment_schedule_fiscal_year) Keep (dense_rank First Order By payment_schedule_date Desc, payment_schedule_balance Desc) As last_sched_year,
+    min(payment_schedule_date) Keep (dense_rank First Order By payment_schedule_date Desc, payment_schedule_balance Desc) As last_sched_date_paid,
+    min(payment_schedule_fiscal_year) Keep (dense_rank First Order By payment_schedule_date Desc, payment_schedule_balance Desc) As last_sched_year_paid,
     min(payment_schedule_amount) Keep (dense_rank First Order By payment_schedule_date Desc, payment_schedule_balance Desc) As last_sched_amount,
     min(payment_schedule_balance) Keep (dense_rank First Order By payment_schedule_date Desc, payment_schedule_balance Desc) As last_sched_balance
   From pay_sch
@@ -162,7 +162,6 @@ emails As (
     max(email_address) Keep (dense_rank First Order By (Case When email_type_code = 'Y' Then 1 End) Asc, xsequence Desc) As bus_email
   From email
   Where email_status_code = 'A'
-  And id_number = '0000451522'
   Group By id_number
 )
 
@@ -176,8 +175,8 @@ Select
   Case When pledge_counts.attr_donors_count > 0 Then pledge_counts.attr_donors_count End As attr_donors_count,
   -- Pledge overview
   tms_trans.transaction_type,
-  ksm_pkg.get_fiscal_year(pmts.date_of_record_plg) As last_payment_fy,
-  pay_last.last_sched_year,
+  ksm_pkg.get_fiscal_year(pmts.date_of_record_prim_plg) As last_payment_fy_prim_plg,
+  pay_last.last_sched_year_paid,
   pay_next.next_sched_year,
   Case When remind.note_id || remindk.ksm_note_id Is Null Then 'N' Else 'Y' End As recent_reminder,
   -- Pledge fields
@@ -189,22 +188,22 @@ Select
   allocation.short_name As allocation_name,
   ksm_af_allocs.af_flag,
   -- Amount fields
-  pledge.pledge_amount,
-  ksm_paid_amt.total_paid,
+  pledge.pledge_amount As alloc_pledge_amount,
+  ksm_paid_amt.total_paid As alloc_total_paid,
   pledge.pledge_amount - nvl(ksm_paid_amt.total_paid, 0) As alloc_pledge_balance,
   Case When pledge_counts.allocs_count > 1 Then pledge_counts.allocs_count End As split_gift_allocs,
   pp.prim_pledge_amount,
   pp.prim_pledge_amount_paid,
   pp.prim_pledge_amount - nvl(pp.prim_pledge_amount_paid, 0) As prim_pledge_balance,
   -- Recent payment fields
-  pmts.recent_pmt_nbr_plg,
-  pmts.date_of_record_plg,
-  pmts.pmt_amount_plg,
+  pmts.recent_pmt_nbr_prim_plg,
+  pmts.date_of_record_prim_plg,
+  pmts.pmt_amount_prim_plg,
   pmtsa.recent_pmt_nbr_alloc,
   pmtsa.date_of_record_alloc,
   pmtsa.pmt_amount_alloc,
   -- Scheduled payment fields
-  pay_last.last_sched_date,
+  pay_last.last_sched_date_paid,
   pay_last.last_sched_amount,
   pay_next.next_sched_date,
   pay_next.next_sched_amount,
