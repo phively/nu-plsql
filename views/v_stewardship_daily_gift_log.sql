@@ -4,7 +4,7 @@ With
 
 /* Date range to use */
 dts As (
-  Select prev_month_start As dt1, yesterday As dt2
+  Select prev_month_start As dt1, yesterday As dt2, curr_fy
   /* Alternate date ranges for debugging */
 --  Select to_date('06/29/2017', 'mm/dd/yyyy') As dt1, to_date('06/29/2017', 'mm/dd/yyyy') As dt2 -- point-in-time
 /* Check spouse faculty/staff or both faculty/staff */
@@ -232,10 +232,14 @@ Select Distinct
   appeal_header.description As appeal_desc,
   -- Prospect fields
   prs.prospect_manager,
-  prs.team
+  prs.team,
+  -- Dates
+  dts.curr_fy
 -- Tables start here
 -- Gift reporting table
 From nu_gft_trp_gifttrans gft
+-- Calendar objects
+Cross Join dts
 -- Only include desired receipt numbers
 Inner Join trans
   On trans.tx_number = gft.tx_number
