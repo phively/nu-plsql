@@ -271,6 +271,13 @@ Select
   emails.pref_email,
   emails.home_email,
   emails.bus_email,
+    -- Logic for including/excluding
+  Case
+    When pp.prim_pledge_type In ('BE', 'GP') Then 'N'
+    When lower(inst_suffixes.inst_suffixes) Like '%trustee%' Then 'N'
+    When pp.prim_pledge_type In ('ST', 'NB') And pay_next.next_sched_year > cal.curr_fy Then 'N'
+    Else 'Y'
+  End As include_pledge
 -- Pledge tables
 From pledge
 Inner Join primary_pledge pp On pp.prim_pledge_number = pledge.pledge_pledge_number
@@ -286,6 +293,8 @@ Inner Join ksm_pledges On ksm_pledges.pledge_pledge_number = pledge.pledge_pledg
 Inner Join ksm_allocs On ksm_allocs.allocation_code = pledge.pledge_allocation_name
 -- Split gift allocations count
 Inner Join pledge_counts On pledge_counts.pledge_pledge_number = pledge.pledge_pledge_number
+-- Current calendar
+Cross Join v_current_calendar cal
 -- AF flag
 Left Join ksm_af_allocs On ksm_af_allocs.allocation_code = pledge.pledge_allocation_name
 -- Paid amounts toward Kellogg allocations
