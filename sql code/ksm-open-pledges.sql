@@ -47,6 +47,20 @@ pledge_counts As (
   Group By pledge.pledge_pledge_number
 ),
 
+/* Associated donors */
+plg_assoc_dnrs As (
+  Select pledge.pledge_pledge_number, pledge.pledge_donor_id, entity.institutional_suffix
+  From pledge
+  Inner Join ksm_pledges On ksm_pledges.pledge_pledge_number = pledge.pledge_pledge_number
+  Inner Join entity On entity.id_number = pledge.pledge_donor_id
+),
+inst_suffixes As (
+  Select pledge_pledge_number,
+    listagg(institutional_suffix, '; ') Within Group (Order By pledge_donor_id) As inst_suffixes
+  From plg_assoc_dnrs
+  Group By pledge_pledge_number
+),
+
 /* Pledge payments */
 ksm_payments As (
   Select gft.tx_number, gft.tx_sequence, gft.pmt_on_pledge_number, gft.allocation_code, gft.date_of_record, gft.legal_amount
@@ -163,6 +177,26 @@ emails As (
   From email
   Where email_status_code = 'A'
   Group By id_number
+),
+
+/* Special handling */
+spec_hnd As (
+  Select Distinct handling.id_number, handling.hnd_type_code, tms_ht.short_desc As hnd_type
+  From handling
+  Inner Join plg_assoc_dnrs On plg_assoc_dnrs.pledge_donor_id = handling.id_number
+  Inner Join tms_handling_type tms_ht On tms_ht.handling_type = handling.hnd_type_code
+  Where hnd_status_code = 'A'
+    And hnd_type_code In (
+    -- No Contact, Do Not Solicit, No Pledge Reminder, No Mail/Solicit, No Email/Solicit, Opt In Only
+    'NC', 'DNS', 'NPR', 'NM', 'NMS', 'NE', 'NES', 'OIO'
+  )
+),
+spec_hnd_conc As (
+  Select id_number,
+    Listagg(hnd_type_code, '; ') Within Group (Order By hnd_type_code) As hnd_type_code_concat,
+    Listagg(hnd_type, '; ') Within Group (Order By hnd_type_code) As hnd_type_concat
+  From spec_hnd
+  Group By id_number
 )
 
 /* Main query */
@@ -219,7 +253,11 @@ Select
   remindk.ksm_note_desc,
   remindk.ksm_brief_note,
   remindk.ksm_date_added,
-  -- Mailing data
+  -- Special handling
+  Case When lower(inst_suffixes.inst_suffixes) Like '%trustee%' Then 'Trustee' End As trustee, -- Are ANY attr donors trustees
+  spec_hnd_conc.hnd_type_code_concat,
+  spec_hnd_conc.hnd_type_concat,
+  -- Contact info
   entity.first_name,
   entity.pref_mail_name,
   addr.line_1,
@@ -232,12 +270,13 @@ Select
   addr.line_8,
   emails.pref_email,
   emails.home_email,
-  emails.bus_email
+  emails.bus_email,
 -- Pledge tables
 From pledge
 Inner Join primary_pledge pp On pp.prim_pledge_number = pledge.pledge_pledge_number
 -- Entity data
 Inner Join entity On entity.id_number = pledge.pledge_donor_id
+Inner Join inst_suffixes On inst_suffixes.pledge_pledge_number = pledge.pledge_pledge_number
 -- Descriptions from codes
 Inner Join tms_trans On tms_trans.transaction_type_code = pp.prim_pledge_type
 Inner Join allocation On allocation.allocation_code = pledge.pledge_allocation_name
@@ -263,7 +302,8 @@ Left Join pay_next On pay_next.pledge_pledge_number = pledge.pledge_pledge_numbe
 Left Join recent_reminders remind On remind.id_number = pledge.pledge_donor_id
 Left Join recent_ksm_reminders remindk On remindk.id_number = pledge.pledge_donor_id
 -- Contact info
-Left Join addr on addr.id_number = pledge.pledge_donor_id
+Left Join spec_hnd_conc On spec_hnd_conc.id_number = pledge.pledge_donor_id
+Left Join addr On addr.id_number = pledge.pledge_donor_id
 Left Join emails On emails.id_number = pledge.pledge_donor_id
 -- Conditions
 Where
