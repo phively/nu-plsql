@@ -62,48 +62,40 @@ tms_trans As (
 ksm_trans As (
   (
     -- Outright gifts and payments
-    Select gft.id_number, hhid.household_id,
+    Select gft.id_number,
       tx_number, tx_sequence, tms_trans.transaction_type, tx_gypm_ind,
       gft.allocation_code, gft.alloc_short_name, af_flag,
-      NULL As pledge_status, date_of_record, to_number(fiscal_year) As fiscal_year, credit_amount,
-      Case When gft.id_number = household_id Then credit_amount Else 0 End As hh_credit
+      NULL As pledge_status, date_of_record, to_number(fiscal_year) As fiscal_year, credit_amount
     From nu_gft_trp_gifttrans gft
-    Inner Join hhid On hhid.id_number = gft.id_number
     Left Join tms_trans On tms_trans.transaction_type_code = gft.transaction_type
     Left Join ksm_af_allocs On ksm_af_allocs.allocation_code = gft.allocation_code
     Where alloc_school = 'KM'
       And tx_gypm_ind In ('G', 'Y')
   ) Union All (
     -- Matching gift matching company
-    Select match_gift_company_id, hhid.household_id,
+    Select match_gift_company_id,
       match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', 'M',
       match_gift_allocation_name, ksm_allocs.short_name, af_flag,
-      NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record), match_gift_amount,
-      Case When id_number = household_id Then match_gift_amount Else 0 End As hh_credit
+      NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record), match_gift_amount
     From matching_gift
-    Inner Join hhid On hhid.id_number = matching_gift.match_gift_company_id
     Inner Join ksm_allocs On ksm_allocs.allocation_code = matching_gift.match_gift_allocation_name
   ) Union All (
     -- Matching gift matched donors; inner join to add all attributed donor ids
-    Select gft.id_number, hhid.household_id,
+    Select gft.id_number,
       match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', 'M',
       match_gift_allocation_name, ksm_allocs.short_name, af_flag,
-      NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record), match_gift_amount,
-      Case When gft.id_number = household_id Then match_gift_amount Else 0 End As hh_credit
+      NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record), match_gift_amount
     From matching_gift
     Inner Join (Select id_number, tx_number From nu_gft_trp_gifttrans) gft
       On matching_gift.match_gift_matched_receipt = gft.tx_number
-    Inner Join hhid On hhid.id_number = gft.id_number
     Inner Join ksm_allocs On ksm_allocs.allocation_code = matching_gift.match_gift_allocation_name
   ) Union All (
     -- Pledges, including BE and LE program credit
-    Select pledge_donor_id, hhid.household_id,
+    Select pledge_donor_id,
       pledge_pledge_number, pledge.pledge_sequence, tms_trans.transaction_type, 'P',
       pledge.pledge_allocation_name, ksm_allocs.short_name, ksm_allocs.af_flag,
-      prim_pledge_status, pledge_date_of_record, ksm_pkg.get_fiscal_year(pledge_date_of_record), plgd.credit,
-      Case When pledge_donor_id = household_id Then plgd.credit Else 0 End As hh_credit
+      prim_pledge_status, pledge_date_of_record, ksm_pkg.get_fiscal_year(pledge_date_of_record), plgd.credit
     From pledge
-    Inner Join hhid On hhid.id_number = pledge.pledge_donor_id
     Inner Join tms_trans On tms_trans.transaction_type_code = pledge.pledge_pledge_type
     Left Join plg_discount plgd On plgd.pledge_number = pledge.pledge_pledge_number And plgd.pledge_sequence = pledge.pledge_sequence
     Left Join ksm_allocs On ksm_allocs.allocation_code = pledge.pledge_allocation_name
@@ -116,5 +108,9 @@ ksm_trans As (
   )
 )
 
-Select Distinct *
+/* Main query */
+
+Select Distinct hhid.household_id, ksm_trans.*,
+  Case When ksm_trans.id_number = household_id Then credit_amount Else 0 End As hh_credit
 From ksm_trans
+Inner Join hhid On hhid.id_number = ksm_trans.id_number
