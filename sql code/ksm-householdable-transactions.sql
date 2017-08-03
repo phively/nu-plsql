@@ -65,7 +65,7 @@ ksm_trans As (
     Select gft.id_number, hhid.household_id,
       tx_number, tx_sequence, tms_trans.transaction_type, tx_gypm_ind,
       gft.allocation_code, gft.alloc_short_name, af_flag,
-      NULL As pledge_status, date_of_record, credit_amount,
+      NULL As pledge_status, date_of_record, to_number(fiscal_year) As fiscal_year, credit_amount,
       Case When gft.id_number = household_id Then credit_amount Else 0 End As hh_credit
     From nu_gft_trp_gifttrans gft
     Inner Join hhid On hhid.id_number = gft.id_number
@@ -78,7 +78,7 @@ ksm_trans As (
     Select match_gift_company_id, hhid.household_id,
       match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', 'M',
       match_gift_allocation_name, ksm_allocs.short_name, af_flag,
-      NULL, match_gift_date_of_record, match_gift_amount,
+      NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record), match_gift_amount,
       Case When id_number = household_id Then match_gift_amount Else 0 End As hh_credit
     From matching_gift
     Inner Join hhid On hhid.id_number = matching_gift.match_gift_company_id
@@ -88,7 +88,7 @@ ksm_trans As (
     Select gft.id_number, hhid.household_id,
       match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', 'M',
       match_gift_allocation_name, ksm_allocs.short_name, af_flag,
-      NULL, match_gift_date_of_record, match_gift_amount,
+      NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record), match_gift_amount,
       Case When gft.id_number = household_id Then match_gift_amount Else 0 End As hh_credit
     From matching_gift
     Inner Join (Select id_number, tx_number From nu_gft_trp_gifttrans) gft
@@ -100,7 +100,7 @@ ksm_trans As (
     Select pledge_donor_id, hhid.household_id,
       pledge_pledge_number, pledge.pledge_sequence, tms_trans.transaction_type, 'P',
       pledge.pledge_allocation_name, ksm_allocs.short_name, ksm_allocs.af_flag,
-      prim_pledge_status, pledge_date_of_record, plgd.credit,
+      prim_pledge_status, pledge_date_of_record, ksm_pkg.get_fiscal_year(pledge_date_of_record), plgd.credit,
       Case When pledge_donor_id = household_id Then plgd.credit Else 0 End As hh_credit
     From pledge
     Inner Join hhid On hhid.id_number = pledge.pledge_donor_id
@@ -116,5 +116,5 @@ ksm_trans As (
   )
 )
 
-Select *
+Select Distinct *
 From ksm_trans
