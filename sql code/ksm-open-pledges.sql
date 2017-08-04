@@ -271,6 +271,9 @@ Select
   emails.pref_email,
   emails.home_email,
   emails.bus_email,
+  -- Prospect managers
+  prs.prospect_manager,
+  prs.team,
     -- Logic for including/excluding
   Case
     When pp.prim_pledge_type In ('BE', 'GP') Then 'N'
@@ -314,6 +317,8 @@ Left Join recent_ksm_reminders remindk On remindk.id_number = pledge.pledge_dono
 Left Join spec_hnd_conc On spec_hnd_conc.id_number = pledge.pledge_donor_id
 Left Join addr On addr.id_number = pledge.pledge_donor_id
 Left Join emails On emails.id_number = pledge.pledge_donor_id
+-- Prospect manager
+Left Join nu_prs_trp_prospect prs On prs.id_number = pledge.pledge_donor_id
 -- Conditions
 Where
   -- Only legal donor
