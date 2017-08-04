@@ -609,7 +609,8 @@ Cursor c_ksm_trans_credit Is
   Select Distinct ksm_trans.*
   From ksm_trans;
   
-/* Definition of householded KSM giving transactions for summable credit */
+/* Definition of householded KSM giving transactions for summable credit
+   Depends on c_ksm_trans_credit, through tbl_gift_credit_ksm table function */
 Cursor c_ksm_trans_hh_credit Is
   With
   hhid As (
@@ -644,21 +645,6 @@ Private variable declarations
 /*************************************************************************
 Functions
 *************************************************************************/
-
-/* Generic function returning 'C'urrent or 'A'ctive (deprecated) committee members
-   2017-03-01 */
-Function committee_members (my_committee_cd In varchar2)
-  Return t_committee_members As
-  -- Declarations
-  committees t_committee_members;
-  
-  -- Return table results
-  Begin
-    Open c_committee (my_committee_cd => my_committee_cd);
-      Fetch c_committee Bulk Collect Into committees;
-    Close c_committee;
-    Return committees;
-  End;
 
 /* Calculates the modulo function; needed to correct Oracle mod() weirdness
    2017-02-08 */
@@ -1134,6 +1120,21 @@ Function tbl_klc_history
 
 /* Pipelined function for Kellogg committees */
   
+  /* Generic function returning 'C'urrent or 'A'ctive (deprecated) committee members
+     2017-03-01 */
+  Function committee_members (my_committee_cd In varchar2)
+    Return t_committee_members As
+    -- Declarations
+    committees t_committee_members;
+    
+    -- Return table results
+    Begin
+      Open c_committee (my_committee_cd => my_committee_cd);
+        Fetch c_committee Bulk Collect Into committees;
+      Close c_committee;
+      Return committees;
+    End;
+
   /* GAB */
   Function tbl_committee_gab
     Return t_committee_members Pipelined As
