@@ -80,7 +80,7 @@ Type klc_member Is Record (
 );
 
 /* Employee record type for company queries */
-Type employee Is Record(
+Type employee Is Record (
   id_number entity.id_number%type, report_name entity.report_name%type,
   record_status tms_record_status.short_desc%type, institutional_suffix entity.institutional_suffix%type,
   degrees_concat varchar2(512), first_ksm_year degrees.degree_year%type, program varchar2(20),
@@ -91,6 +91,28 @@ Type employee Is Record(
   business_country tms_country.short_desc%type,
   prospect_manager nu_prs_trp_prospect.prospect_manager%type,
   team nu_prs_trp_prospect.team%type
+);
+
+/* Entity transaction for credit */
+Type trans_entity Is Record (
+  id_number entity.id_number%type,
+  tx_number gift.gift_receipt_number%type, tx_sequence gift.gift_sequence%type,
+  transaction_type varchar2(40), tx_gypm_ind varchar2(1),
+  allocation_code allocation.allocation_code%type, alloc_short_name allocation.short_name%type,
+  af_flag varchar2(1), pledge_status primary_pledge.prim_pledge_status%type,
+  date_of_record gift.gift_date_of_record%type, fiscal_year number,
+  credit_amount gift.gift_associated_amount%type
+);
+
+/* Householdable transaction for credit */
+Type trans_household Is Record (
+  household_id entity.id_number%type, id_number entity.id_number%type,
+  tx_number gift.gift_receipt_number%type, tx_sequence gift.gift_sequence%type,
+  transaction_type varchar2(40), tx_gypm_ind varchar2(1),
+  allocation_code allocation.allocation_code%type, alloc_short_name allocation.short_name%type,
+  af_flag varchar2(1), pledge_status primary_pledge.prim_pledge_status%type,
+  date_of_record gift.gift_date_of_record%type, fiscal_year number,
+  credit_amount gift.gift_associated_amount%type, hh_credit gift.gift_associated_amount%type
 );
 
 /*************************************************************************
@@ -104,6 +126,8 @@ Type t_src_donors Is Table Of src_donor;
 Type t_committee_members Is Table Of committee_member;
 Type t_klc_members Is Table Of klc_member;
 Type t_employees Is Table Of employee;
+Type t_trans_entity Is Table Of trans_entity;
+Type t_trans_household Is Table Of trans_household;
 
 /*************************************************************************
 Public constant declarations
@@ -185,6 +209,13 @@ Function tbl_klc_history
    N.B. uses matches pattern, user beware! */
 Function tbl_entity_employees_ksm (company In varchar2)
   Return t_employees Pipelined;
+
+/* Returns pipelined table of Kellogg transactions with household info */
+Function tbl_gift_credit_ksm
+  Return t_trans_entity Pipelined;
+  
+Function tbl_gift_credit_hh_ksm
+  Return t_trans_household Pipelined;
 
 /* Return pipelined table of committee members */
 Function tbl_committee_gab
@@ -473,6 +504,123 @@ Cursor c_klc_members Is
   Inner Join table(tbl_entity_households_ksm) hh On hh.id_number = gift_clubs.gift_club_id_number
   Left Join nu_mem_v_tmsclublevel tms_lvl On tms_lvl.level_code = gift_clubs.school_code
   Where gift_club_code = 'LKM';
+
+/* Definition of KSM giving transactions for summable credit */
+Cursor c_ksm_trans_credit Is
+  With
+  /* Primary pledge discounted amounts */
+  plg_discount As (
+    Select pledge.pledge_pledge_number As pledge_number, pledge.pledge_sequence, pplg.prim_pledge_type, pplg.prim_pledge_status,
+      pledge.pledge_amount, pledge.pledge_associated_credit_amt, pplg.prim_pledge_amount, pplg.prim_pledge_amount_paid,
+      pplg.prim_pledge_original_amount, pplg.discounted_amt,
+      -- Discounted pledge credit amounts
+      Case
+        -- Not inactive, not a BE or LE
+        When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status Not In ('I', 'R'))
+          And pplg.prim_pledge_type Not In ('BE', 'LE') Then pledge.pledge_associated_credit_amt
+        -- Not inactive, is BE or LE
+        When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status Not In ('I', 'R'))
+          And pplg.prim_pledge_type In ('BE', 'LE') Then pplg.discounted_amt
+        -- If inactive, take amount paid
+        Else Case
+          When pledge.pledge_amount = 0 And pplg.prim_pledge_amount > 0
+            Then pplg.prim_pledge_amount_paid * pledge.pledge_associated_credit_amt / pplg.prim_pledge_amount
+          When pplg.prim_pledge_amount > 0
+            Then pplg.prim_pledge_amount_paid * pledge.pledge_amount / pplg.prim_pledge_amount
+          Else pplg.prim_pledge_amount_paid
+        End
+      End As credit
+    From primary_pledge pplg
+    Inner Join pledge On pledge.pledge_pledge_number = pplg.prim_pledge_number
+    Where pledge.pledge_program_code = 'KM'
+      Or pledge_alloc_school = 'KM'
+  ),
+  /* KSM allocations */
+  ksm_af_allocs As (
+    Select allocation_code, af_flag
+    From table(ksm_pkg.tbl_alloc_annual_fund_ksm) af
+  ),
+  ksm_allocs As (
+    Select allocation.allocation_code, allocation.short_name, ksm_af_allocs.af_flag
+    From allocation
+    Left Join ksm_af_allocs On ksm_af_allocs.allocation_code = allocation.allocation_code
+    Where alloc_school = 'KM'
+  ),
+  /* Transaction and pledge TMS table definition */
+  tms_trans As (
+    (
+      Select transaction_type_code, short_desc As transaction_type
+      From tms_transaction_type
+    ) Union All (
+      Select pledge_type_code, short_desc
+      From tms_pledge_type
+    )
+  ),
+  /* Kellogg transactions list */
+  ksm_trans As (
+    (
+      -- Outright gifts and payments
+      Select gft.id_number,
+        tx_number, tx_sequence, tms_trans.transaction_type, tx_gypm_ind,
+        gft.allocation_code, gft.alloc_short_name, af_flag,
+        NULL As pledge_status, date_of_record, to_number(fiscal_year) As fiscal_year, credit_amount
+      From nu_gft_trp_gifttrans gft
+      Left Join tms_trans On tms_trans.transaction_type_code = gft.transaction_type
+      Left Join ksm_af_allocs On ksm_af_allocs.allocation_code = gft.allocation_code
+      Where alloc_school = 'KM'
+        And tx_gypm_ind In ('G', 'Y')
+    ) Union All (
+      -- Matching gift matching company
+      Select match_gift_company_id,
+        match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', 'M',
+        match_gift_allocation_name, ksm_allocs.short_name, af_flag,
+        NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record), match_gift_amount
+      From matching_gift
+      Inner Join ksm_allocs On ksm_allocs.allocation_code = matching_gift.match_gift_allocation_name
+    ) Union All (
+      -- Matching gift matched donors; inner join to add all attributed donor ids
+      Select gft.id_number,
+        match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', 'M',
+        match_gift_allocation_name, ksm_allocs.short_name, af_flag,
+        NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record), match_gift_amount
+      From matching_gift
+      Inner Join (Select id_number, tx_number From nu_gft_trp_gifttrans) gft
+        On matching_gift.match_gift_matched_receipt = gft.tx_number
+      Inner Join ksm_allocs On ksm_allocs.allocation_code = matching_gift.match_gift_allocation_name
+    ) Union All (
+      -- Pledges, including BE and LE program credit
+      Select pledge_donor_id,
+        pledge_pledge_number, pledge.pledge_sequence, tms_trans.transaction_type, 'P',
+        pledge.pledge_allocation_name, ksm_allocs.short_name, ksm_allocs.af_flag,
+        prim_pledge_status, pledge_date_of_record, ksm_pkg.get_fiscal_year(pledge_date_of_record), plgd.credit
+      From pledge
+      Inner Join tms_trans On tms_trans.transaction_type_code = pledge.pledge_pledge_type
+      Left Join plg_discount plgd On plgd.pledge_number = pledge.pledge_pledge_number And plgd.pledge_sequence = pledge.pledge_sequence
+      Left Join ksm_allocs On ksm_allocs.allocation_code = pledge.pledge_allocation_name
+      Where ksm_allocs.allocation_code Is Not Null
+        Or (
+        -- KSM program code
+          pledge_allocation_name In ('BE', 'LE') -- BE and LE discounted amounts
+          And pledge_program_code = 'KM'
+        )
+    )
+  )
+  /* Main query */
+  Select Distinct ksm_trans.*
+  From ksm_trans;
+  
+/* Definition of householded KSM giving transactions for summable credit */
+Cursor c_ksm_trans_hh_credit Is
+  With
+  hhid As (
+    Select id_number, household_id
+    From table(ksm_pkg.tbl_entity_households_ksm)
+  )
+  /* Main query */
+  Select hhid.household_id, ksm_trans.*,
+    Case When ksm_trans.id_number = household_id Then credit_amount Else 0 End As hh_credit
+  From table(tbl_gift_credit_ksm) ksm_trans
+  Inner Join hhid On hhid.id_number = ksm_trans.id_number;
 
 /*************************************************************************
 Private type declarations
@@ -947,6 +1095,42 @@ Function tbl_klc_history
     End Loop;
     Return;
   End;
+
+/* Pipelined function returning giving credit for entities or households */
+
+  /* Individual entity giving, based on c_ksm_trans_credit
+     2017-08-04 */
+  Function tbl_gift_credit_ksm
+    Return t_trans_entity Pipelined As
+    -- Declarations
+    trans t_trans_entity;
+    
+    Begin
+      Open c_ksm_trans_credit;
+        Fetch c_ksm_trans_credit Bulk Collect Into trans;
+      Close c_ksm_trans_credit;
+      For i in 1..(trans.count) Loop
+        Pipe row(trans(i));
+      End Loop;
+      Return;
+    End;
+
+  /* Householdable entity giving, based on c_ksm_trans_hh_credit
+     2017-08-04 */
+  Function tbl_gift_credit_hh_ksm
+    Return t_trans_household Pipelined As
+    -- Declarations
+    trans t_trans_household;
+    
+    Begin
+      Open c_ksm_trans_hh_credit;
+        Fetch c_ksm_trans_hh_credit Bulk Collect Into trans;
+      Close c_ksm_trans_hh_credit;
+      For i in 1..(trans.count) Loop
+        Pipe row(trans(i));
+      End Loop;
+      Return;
+    End;
 
 /* Pipelined function for Kellogg committees */
   
