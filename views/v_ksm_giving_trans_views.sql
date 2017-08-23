@@ -12,15 +12,6 @@ From table(ksm_pkg.tbl_gift_credit_hh_ksm);
 
 Create Or Replace View v_ksm_giving_summary As
 -- View implementing Kellogg gift credit, householded, with several common types
-With
--- Aggregated household giving
-gfts As (
-  Select household_id, tx_gypm_ind, af_flag, fiscal_year,
-    sum(hh_credit) As hh_credit
-  From table(ksm_pkg.tbl_gift_credit_hh_ksm) ksm_trans
-  Group By household_id, id_number, tx_gypm_ind, af_flag, fiscal_year
-)
--- Main query
 Select Distinct hh.id_number, hh.household_id, hh.household_rpt_name, hh.household_spouse_id, hh.household_spouse,
   sum(Case When tx_gypm_ind != 'Y' Then hh_credit Else 0 End) As ngc_lifetime,
   sum(Case When tx_gypm_ind != 'Y' And cal.curr_fy = fiscal_year     Then hh_credit Else 0 End) As ngc_cfy,
@@ -42,6 +33,6 @@ Select Distinct hh.id_number, hh.household_id, hh.household_rpt_name, hh.househo
   sum(Case When cal.curr_fy = fiscal_year + 3 Then hh_credit Else 0 End) As stewardship_pfy3
 From table(ksm_pkg.tbl_entity_households_ksm) hh
 Cross Join v_current_calendar cal
-Inner Join gfts On gfts.household_id = hh.household_id
+Inner Join v_ksm_giving_trans_hh gfts On gfts.household_id = hh.household_id
 Group By hh.id_number, hh.household_id, hh.household_rpt_name, hh.household_spouse_id, hh.household_spouse;
 /
