@@ -71,7 +71,7 @@ Type src_donor Is Record (
 
 /* KLC member */
 Type klc_member Is Record (
-  fiscal_year integer, household_id entity.id_number%type,
+  fiscal_year integer, id_number entity.id_number%type, household_id entity.id_number%type,
   household_record entity.record_type_code%type, household_rpt_name entity.report_name%type,
   household_spouse_id entity.id_number%type, household_spouse entity.pref_mail_name%type,
   household_suffix entity.institutional_suffix%type,
@@ -498,6 +498,7 @@ Cursor c_employees_ksm (company In varchar2) Is
 /* Definition of a KLC member */
 Cursor c_klc_members Is
   Select substr(gift_club_end_date, 0, 4) As fiscal_year,
+    hh.id_number,
     hh.household_id, hh.household_record, hh.household_rpt_name, hh.household_spouse_id, hh.household_spouse, hh.household_suffix,
     hh.household_ksm_year, hh.household_masters_year, hh.household_program_group
   From gift_clubs
