@@ -4,8 +4,9 @@ With
 
 /* Date range to use */
 dts As (
-  Select prev_month_start As dt1, yesterday As dt2, curr_fy
+--  Select prev_month_start As dt1, yesterday As dt2, curr_fy
   /* Alternate date ranges for debugging */
+Select cal.prev_fy_start As dt1, yesterday As dt2, curr_fy -- multi year data
 --  Select to_date('06/29/2017', 'mm/dd/yyyy') As dt1, to_date('06/29/2017', 'mm/dd/yyyy') As dt2 -- point-in-time
 /* Check spouse faculty/staff or both faculty/staff */
 --  Select to_date('06/29/2017', 'mm/dd/yyyy') As dt1, to_date('06/29/2017', 'mm/dd/yyyy') As dt2 
