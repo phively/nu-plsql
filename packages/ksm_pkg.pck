@@ -115,6 +115,22 @@ Type trans_household Is Record (
   credit_amount gift.gift_associated_amount%type, hh_credit gift.gift_associated_amount%type
 );
 
+/* Campaign transactions */
+Type trans_campaign Is Record (
+  id_number nu_rpt_t_cmmt_dtl_daily.id_number%type, record_type_code nu_rpt_t_cmmt_dtl_daily.record_type_code%type,
+  person_or_org nu_rpt_t_cmmt_dtl_daily.person_or_org%type, birth_dt nu_rpt_t_cmmt_dtl_daily.birth_dt%type,
+  rcpt_or_plg_number nu_rpt_t_cmmt_dtl_daily.rcpt_or_plg_number%type, xsequence nu_rpt_t_cmmt_dtl_daily.xsequence%type,
+  amount nu_rpt_t_cmmt_dtl_daily.amount%type, credited_amount nu_rpt_t_cmmt_dtl_daily.credited_amount%type,
+  year_of_giving nu_rpt_t_cmmt_dtl_daily.year_of_giving%type, date_of_record nu_rpt_t_cmmt_dtl_daily.date_of_record%type,
+  alloc_code nu_rpt_t_cmmt_dtl_daily.alloc_code%type, alloc_school nu_rpt_t_cmmt_dtl_daily.alloc_school%type,
+  alloc_purpose nu_rpt_t_cmmt_dtl_daily.alloc_purpose%type, annual_sw nu_rpt_t_cmmt_dtl_daily.annual_sw%type,
+  restrict_code nu_rpt_t_cmmt_dtl_daily.restrict_code%type, transaction_type nu_rpt_t_cmmt_dtl_daily.transaction_type%type,
+  pledge_status nu_rpt_t_cmmt_dtl_daily.pledge_status%type, gift_pledge_or_match nu_rpt_t_cmmt_dtl_daily.gift_pledge_or_match%type,
+  matched_donor_id nu_rpt_t_cmmt_dtl_daily.matched_donor_id%type, matched_receipt_number nu_rpt_t_cmmt_dtl_daily.matched_receipt_number%type,
+  this_date nu_rpt_t_cmmt_dtl_daily.this_date%type, first_processed_date nu_rpt_t_cmmt_dtl_daily.first_processed_date%type,
+  std_area nu_rpt_t_cmmt_dtl_daily.std_area%type, zipcountry nu_rpt_t_cmmt_dtl_daily.zipcountry%type
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
@@ -128,6 +144,7 @@ Type t_klc_members Is Table Of klc_member;
 Type t_employees Is Table Of employee;
 Type t_trans_entity Is Table Of trans_entity;
 Type t_trans_household Is Table Of trans_household;
+Type t_trans_campaign Is Table Of trans_campaign;
 
 /*************************************************************************
 Public constant declarations
@@ -216,6 +233,9 @@ Function tbl_gift_credit_ksm
   
 Function tbl_gift_credit_hh_ksm
   Return t_trans_household Pipelined;
+
+Function tbl_gift_credit_campaign
+    Return t_trans_campaign Pipelined;
 
 /* Return pipelined table of committee members */
 Function tbl_committee_gab
@@ -623,6 +643,34 @@ Cursor c_ksm_trans_hh_credit Is
     Case When ksm_trans.id_number = household_id Then credit_amount Else 0 End As hh_credit
   From table(tbl_gift_credit_ksm) ksm_trans
   Inner Join hhid On hhid.id_number = ksm_trans.id_number;
+  
+/* Definition of Transforming Together Campaign (2008) new gifts & commitments
+   2017-08-25 */
+Cursor c_trans_campaign_2008 Is
+  (
+  Select id_number, record_type_code, person_or_org, birth_dt, rcpt_or_plg_number, xsequence,
+    sum(amount) As amount,
+    sum(credited_amount) As credited_amount,
+    year_of_giving, date_of_record, alloc_code, alloc_school, alloc_purpose, annual_sw, restrict_code,
+    transaction_type, pledge_status, gift_pledge_or_match, matched_donor_id, matched_receipt_number,
+    this_date, first_processed_date, std_area, zipcountry
+  From nu_rpt_t_cmmt_dtl_daily daily
+  Where daily.alloc_school = 'KM'
+  Group By id_number, record_type_code, person_or_org, birth_dt, rcpt_or_plg_number, xsequence,
+    year_of_giving, date_of_record, alloc_code, alloc_school, alloc_purpose, annual_sw, restrict_code,
+    transaction_type, pledge_status, gift_pledge_or_match, matched_donor_id, matched_receipt_number,
+    this_date, first_processed_date, std_area, zipcountry
+  ) Union All (
+  -- Internal transfer; 344303 is 50%
+  Select id_number, record_type_code, person_or_org, birth_dt, rcpt_or_plg_number, xsequence,
+    344303 As amount,
+    344303 As credited_amount,
+    year_of_giving, date_of_record, alloc_code, alloc_school, alloc_purpose, annual_sw, restrict_code,
+    transaction_type, pledge_status, gift_pledge_or_match, matched_donor_id, matched_receipt_number,
+    this_date, first_processed_date, std_area, zipcountry
+  From nu_rpt_t_cmmt_dtl_daily daily
+  Where daily.rcpt_or_plg_number = '0002275766'
+  );
 
 /*************************************************************************
 Private type declarations
@@ -1113,6 +1161,23 @@ Function tbl_klc_history
       Open c_ksm_trans_hh_credit;
         Fetch c_ksm_trans_hh_credit Bulk Collect Into trans;
       Close c_ksm_trans_hh_credit;
+      For i in 1..(trans.count) Loop
+        Pipe row(trans(i));
+      End Loop;
+      Return;
+    End;
+
+  /* Campaign giving by entity, based on c_gifts_campaign_2008
+     2017-08-04 */
+  Function tbl_gift_credit_campaign
+    Return t_trans_campaign Pipelined As
+    -- Declarations
+    trans t_trans_campaign;
+    
+    Begin
+      Open c_trans_campaign_2008;
+        Fetch c_trans_campaign_2008 Bulk Collect Into trans;
+      Close c_trans_campaign_2008;
       For i in 1..(trans.count) Loop
         Pipe row(trans(i));
       End Loop;

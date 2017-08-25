@@ -10,29 +10,8 @@ cal As (
 
 /* KSM-specific campaign new gifts & commitments definition */
 ksm_data As (
-  (
-  -- Kellogg campaign new gifts & commitments
-  Select id_number, record_type_code, person_or_org, birth_dt, rcpt_or_plg_number, xsequence,
-    sum(amount) As amount,
-    year_of_giving, date_of_record, alloc_code, alloc_school, alloc_purpose, annual_sw, restrict_code,
-    transaction_type, pledge_status, gift_pledge_or_match, matched_donor_id, matched_receipt_number,
-    this_date, first_processed_date, std_area, zipcountry
-  From nu_rpt_t_cmmt_dtl_daily daily
-  Where daily.alloc_school = 'KM'
-  Group By id_number, record_type_code, person_or_org, birth_dt, rcpt_or_plg_number, xsequence,
-    year_of_giving, date_of_record, alloc_code, alloc_school, alloc_purpose, annual_sw, restrict_code,
-    transaction_type, pledge_status, gift_pledge_or_match, matched_donor_id, matched_receipt_number,
-    this_date, first_processed_date, std_area, zipcountry
-  ) Union All (
-  -- Internal transfer; 344303 is 50%
-  Select id_number, record_type_code, person_or_org, birth_dt, rcpt_or_plg_number, xsequence,
-    344303 As amount,
-    year_of_giving, date_of_record, alloc_code, alloc_school, alloc_purpose, annual_sw, restrict_code,
-    transaction_type, pledge_status, gift_pledge_or_match, matched_donor_id, matched_receipt_number,
-    this_date, first_processed_date, std_area, zipcountry
-  From nu_rpt_t_cmmt_dtl_daily daily
-  Where daily.rcpt_or_plg_number = '0002275766'
-  )
+  Select *
+  From table(ksm_pkg.tbl_gift_credit_campaign)
 ),
 
 /* Allocation-priority assignment, taken from RPT_BTAYLOR_WT09931_EXTRACTTRANSACTIONS */
