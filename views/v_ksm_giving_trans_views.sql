@@ -36,3 +36,44 @@ Cross Join v_current_calendar cal
 Inner Join v_ksm_giving_trans_hh gfts On gfts.household_id = hh.household_id
 Group By hh.id_number, hh.household_id, hh.household_rpt_name, hh.household_spouse_id, hh.household_spouse;
 /
+
+/* Campaign giving */
+
+Create Or Replace View v_ksm_giving_campaign_trans As
+-- Campaign transactions
+Select *
+From table(ksm_pkg.tbl_gift_credit_campaign)
+/
+
+Create or Replace View v_ksm_giving_campaign As
+With
+-- View implementing householded campaign giving
+hhid As (
+  Select id_number, household_id, household_rpt_name, household_spouse_id, household_spouse
+  From table(ksm_pkg.tbl_entity_households_ksm)
+),
+cgft As (
+  Select hhid.*,
+  Case When gft.id_number = household_id Then gft.credited_amount Else 0 End As hh_credit
+  From hhid
+  Inner Join v_ksm_giving_campaign_trans gft On gft.id_number = hhid.id_number
+)
+Select Distinct hhid.id_number, entity.report_name, hhid.household_id, hhid.household_rpt_name, hhid.household_spouse_id, hhid.household_spouse,
+  sum(cgft.hh_credit) As campaign_giving
+From hhid
+Inner Join cgft On hhid.household_id = cgft.household_id
+Inner Join entity On entity.id_number = hhid.id_number
+Group By hhid.id_number, entity.report_name, hhid.household_id, hhid.household_rpt_name, hhid.household_spouse_id, hhid.household_spouse
+
+/*
+  With
+  hhid As (
+    Select id_number, household_id
+    From table(ksm_pkg.tbl_entity_households_ksm)
+  )
+  Select hhid.household_id, ksm_trans.*,
+    Case When ksm_trans.id_number = household_id Then credit_amount Else 0 End As hh_credit
+  From table(tbl_gift_credit_ksm) ksm_trans
+  Inner Join hhid On hhid.id_number = ksm_trans.id_number;
+  */
+/
