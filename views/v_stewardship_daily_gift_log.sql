@@ -6,10 +6,10 @@ With
 dts As (
 --  Select prev_month_start As dt1, yesterday As dt2, curr_fy
   /* Alternate date ranges for debugging */
-Select cal.prev_fy_start As dt1, yesterday As dt2, curr_fy -- multi year data
---  Select to_date('06/29/2017', 'mm/dd/yyyy') As dt1, to_date('06/29/2017', 'mm/dd/yyyy') As dt2 -- point-in-time
+  Select cal.prev_fy_start As dt1, yesterday As dt2, curr_fy -- multi year data
+--  Select to_date('06/29/2017', 'mm/dd/yyyy') As dt1, to_date('06/29/2017', 'mm/dd/yyyy') As dt2, curr_fy -- point-in-time
 /* Check spouse faculty/staff or both faculty/staff */
---  Select to_date('06/29/2017', 'mm/dd/yyyy') As dt1, to_date('06/29/2017', 'mm/dd/yyyy') As dt2 
+--  Select to_date('06/29/2017', 'mm/dd/yyyy') As dt1, to_date('06/29/2017', 'mm/dd/yyyy') As dt2, curr_fy
 --  Select something or other -- GAB members
   From rpt_pbh634.v_current_calendar cal
 ),
@@ -229,6 +229,10 @@ Select Distinct
   gft.processed_date,
   gft.legal_amount,
   gft.alloc_short_name,
+  gft.alloc_purpose_desc,
+  Case
+    When lower(gft.alloc_short_name) Like '%scholarship%' Or lower(gft.alloc_purpose_desc) Like '%scholarship%' Then 'Y'
+  End As scholarship_flag,
   gft.appeal_code,
   appeal_header.description As appeal_desc,
   -- Prospect fields
