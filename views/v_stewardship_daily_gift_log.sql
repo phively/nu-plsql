@@ -83,6 +83,13 @@ tms_trans As (
   )
 ),
 
+/* First gift made to Kellogg */
+first_gift As (
+  Select id_number, min(date_of_record) as first_ksm_gift_dt
+  From v_ksm_giving_trans
+  Group By id_number
+),
+
 /* Joint gift indicator */
 joint_ind As ( -- Cleaned up from ADVANCE_NU.NU_RPT_PKG_SCHOOL_TRANSACTION
   Select gft.tx_number, gft.tx_sequence, 'Y' As joint_ind
@@ -134,26 +141,31 @@ trans As (
 
 /* Concatenated associated donor data */
 assoc_dnrs As ( -- One id_number per line
-  Select gft.tx_number, gft.tx_sequence, gft.alloc_short_name, gft.id_number, gft.donor_name,
+  Select gft.tx_number, gft.tx_sequence, gft.alloc_short_name, gft.id_number, gft.donor_name, entity.institutional_suffix,
     -- Replace nulls with space
     nvl(ksm_deg.degrees_concat, ' ') As degrees_concat, nvl(gab.gab_role, ' ') As gab_role,
-    nvl(facstaff.short_desc, ' ') As facstaff, nvl(klc_years.klc_years, ' ') As klc_years
+    nvl(facstaff.short_desc, ' ') As facstaff, nvl(klc_years.klc_years, ' ') As klc_years,
+    to_char(first_gift.first_ksm_gift_dt, 'mm/dd/yyyy') As first_ksm_gift_dt
   From nu_gft_trp_gifttrans gft
   -- Only people attributed on the KSM receipts
   Inner Join trans On trans.tx_number = gft.tx_number And trans.tx_sequence = gft.tx_sequence
+  Inner Join entity On entity.id_number = gft.id_number
   -- Entity indicators
   Left Join ksm_deg On ksm_deg.id_number = gft.id_number
   Left Join gab On gab.id_number = gft.id_number
   Left Join facstaff On facstaff.id_number = gft.id_number
   Left Join klc_years On klc_years.id_number = gft.id_number
+  Left Join first_gift On first_gift.id_number = gft.id_number
 ),
 assoc_concat As ( -- Multiple id_numbers per line, separated by carriage return
   Select tx_number, alloc_short_name,
+    Listagg(institutional_suffix, ';  ') Within Group (Order By tx_sequence) As inst_suffixes,
     Listagg(trim(donor_name) || ' (#' || id_number || ')', ';  ') Within Group (Order By tx_sequence) As assoc_donors,
     Listagg(degrees_concat, ';  ') Within Group (Order By tx_sequence) As assoc_degrees,
     Listagg(gab_role, ';  ') Within Group (Order By tx_sequence) As assoc_gab,
     Listagg(facstaff, ';  ') Within Group (Order By tx_sequence) As assoc_facstaff,
-    Listagg(klc_years, ';  ') Within Group (Order By tx_sequence) As assoc_klc
+    Listagg(klc_years, ';  ') Within Group (Order By tx_sequence) As assoc_klc,
+    Listagg(first_ksm_gift_dt, ';  ') Within Group (Order By tx_sequence) As first_ksm_gifts
   From assoc_dnrs
   Group By tx_number, alloc_short_name
 )
@@ -171,6 +183,8 @@ Select Distinct
   -- Associated donors
   assoc.assoc_donors,
   Case When trim(assoc.assoc_degrees) <> ';' Then trim(assoc.assoc_degrees) End As assoc_degrees,
+  assoc.inst_suffixes,
+  assoc.first_ksm_gifts,
   -- Notations
   Case When trim(assoc.assoc_facstaff) <> ';' Then trim(assoc.assoc_facstaff) End As assoc_facstaff,
   Case When trim(assoc.assoc_gab) <> ';' Then trim(assoc.assoc_gab) End As assoc_gab,
@@ -226,9 +240,11 @@ Select Distinct
   gft.pmt_on_pledge_number,
   trans.pledge_comment,
   gft.date_of_record,
+  Case When trunc(gft.date_of_record) = trunc(first_gift.first_ksm_gift_dt) Then 'Y' End As first_gift,
   gft.processed_date,
   gft.legal_amount,
   gft.alloc_short_name,
+  allocation.long_name As alloc_long_name,
   gft.alloc_purpose_desc,
   Case
     When lower(gft.alloc_short_name) Like '%scholarship%' Or lower(gft.alloc_purpose_desc) Like '%scholarship%' Then 'Y'
@@ -252,6 +268,9 @@ Inner Join trans
 -- Entity table
 Inner Join entity
   On entity.id_number = gft.id_number
+-- Allocation table
+Inner Join allocation
+  On allocation.allocation_code = gft.allocation_code
 -- Entity record type TMS definition
 Inner Join tms_record_type tms_rt
   On tms_rt.record_type_code = gft.record_type_code
@@ -274,6 +293,9 @@ Left Join joint_ind
 Left Join pledge
   On pledge.pledge_pledge_number = gft.tx_number
   And pledge.pledge_sequence = gft.tx_sequence
+-- Other gift attributes
+Left Join first_gift
+  On first_gift.id_number = gft.id_number
 -- Degree info
 Left Join tms_school
   On tms_school.school_code = entity.pref_school_code
