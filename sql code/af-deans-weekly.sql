@@ -5,7 +5,7 @@
  *********************************************************/
 With fys As (
   Select
-    curr_fy,
+    curr_fy - 0 As curr_fy,
     curr_fy - 1 As prev_fy
   From rpt_pbh634.v_current_calendar
 ),
