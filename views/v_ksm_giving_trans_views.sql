@@ -45,29 +45,28 @@ Select *
 From table(ksm_pkg.tbl_gift_credit_campaign)
 /
 
+Create Or Replace View v_ksm_giving_campaign_trans_hh As
+-- Householded campaign transactions
+Select *
+From table(ksm_pkg.tbl_gift_credit_hh_campaign)
+/
+
 Create or Replace View v_ksm_giving_campaign As
 With
--- View implementing householded campaign giving based on new gifts & commitments
-hhid As (
-  Select id_number, household_id, household_rpt_name, household_spouse_id, household_spouse
+hh As (
+  Select *
   From table(ksm_pkg.tbl_entity_households_ksm)
-),
-cgft As (
-  Select hhid.*,
-  Case When gft.id_number = household_id Then gft.credited_amount Else 0 End As hh_credit,
-  gft.year_of_giving fiscal_year
-  From hhid
-  Inner Join v_ksm_giving_campaign_trans gft On gft.id_number = hhid.id_number
 )
-Select Distinct hhid.id_number, entity.report_name, hhid.household_id, hhid.household_rpt_name, hhid.household_spouse_id, hhid.household_spouse,
+-- View implementing householded campaign giving based on new gifts & commitments
+Select Distinct cgft.id_number, entity.report_name, hh.degrees_concat, cgft.household_id, hh.household_rpt_name, hh.household_spouse_id, hh.household_spouse,
   sum(cgft.hh_credit) As campaign_giving,
-  sum(Case When cal.curr_fy = fiscal_year     Then hh_credit Else 0 End) As campaign_cfy,
-  sum(Case When cal.curr_fy = fiscal_year + 1 Then hh_credit Else 0 End) As campaign_pfy1,
-  sum(Case When cal.curr_fy = fiscal_year + 2 Then hh_credit Else 0 End) As campaign_pfy2,
-  sum(Case When cal.curr_fy = fiscal_year + 3 Then hh_credit Else 0 End) As campaign_pfy3
-From hhid
+  sum(Case When cal.curr_fy = year_of_giving     Then hh_credit Else 0 End) As campaign_cfy,
+  sum(Case When cal.curr_fy = year_of_giving + 1 Then hh_credit Else 0 End) As campaign_pfy1,
+  sum(Case When cal.curr_fy = year_of_giving + 2 Then hh_credit Else 0 End) As campaign_pfy2,
+  sum(Case When cal.curr_fy = year_of_giving + 3 Then hh_credit Else 0 End) As campaign_pfy3
+From hh
 Cross Join v_current_calendar cal
-Inner Join cgft On hhid.household_id = cgft.household_id
-Inner Join entity On entity.id_number = hhid.id_number
-Group By hhid.id_number, entity.report_name, hhid.household_id, hhid.household_rpt_name, hhid.household_spouse_id, hhid.household_spouse
+Inner Join v_ksm_giving_campaign_trans_hh cgft On cgft.household_id = hh.household_id
+Inner Join entity On entity.id_number = hh.id_number
+Group By cgft.id_number, entity.report_name, hh.degrees_concat, cgft.household_id, hh.household_rpt_name, hh.household_spouse_id, hh.household_spouse
 /

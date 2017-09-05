@@ -132,6 +132,24 @@ Type trans_campaign Is Record (
   std_area nu_rpt_t_cmmt_dtl_daily.std_area%type, zipcountry nu_rpt_t_cmmt_dtl_daily.zipcountry%type
 );
 
+/* Householded campaign transactions */
+Type trans_campaign_household Is Record (
+  household_id entity.id_number%type,
+  id_number nu_rpt_t_cmmt_dtl_daily.id_number%type, record_type_code nu_rpt_t_cmmt_dtl_daily.record_type_code%type,
+  person_or_org nu_rpt_t_cmmt_dtl_daily.person_or_org%type, birth_dt nu_rpt_t_cmmt_dtl_daily.birth_dt%type,
+  rcpt_or_plg_number nu_rpt_t_cmmt_dtl_daily.rcpt_or_plg_number%type, xsequence nu_rpt_t_cmmt_dtl_daily.xsequence%type,
+  amount nu_rpt_t_cmmt_dtl_daily.amount%type, credited_amount nu_rpt_t_cmmt_dtl_daily.credited_amount%type,
+  year_of_giving nu_rpt_t_cmmt_dtl_daily.year_of_giving%type, date_of_record nu_rpt_t_cmmt_dtl_daily.date_of_record%type,
+  alloc_code nu_rpt_t_cmmt_dtl_daily.alloc_code%type, alloc_school nu_rpt_t_cmmt_dtl_daily.alloc_school%type,
+  alloc_purpose nu_rpt_t_cmmt_dtl_daily.alloc_purpose%type, annual_sw nu_rpt_t_cmmt_dtl_daily.annual_sw%type,
+  restrict_code nu_rpt_t_cmmt_dtl_daily.restrict_code%type, transaction_type nu_rpt_t_cmmt_dtl_daily.transaction_type%type,
+  pledge_status nu_rpt_t_cmmt_dtl_daily.pledge_status%type, gift_pledge_or_match nu_rpt_t_cmmt_dtl_daily.gift_pledge_or_match%type,
+  matched_donor_id nu_rpt_t_cmmt_dtl_daily.matched_donor_id%type, matched_receipt_number nu_rpt_t_cmmt_dtl_daily.matched_receipt_number%type,
+  this_date nu_rpt_t_cmmt_dtl_daily.this_date%type, first_processed_date nu_rpt_t_cmmt_dtl_daily.first_processed_date%type,
+  std_area nu_rpt_t_cmmt_dtl_daily.std_area%type, zipcountry nu_rpt_t_cmmt_dtl_daily.zipcountry%type,
+  hh_credit gift.gift_associated_amount%type
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
@@ -146,6 +164,7 @@ Type t_employees Is Table Of employee;
 Type t_trans_entity Is Table Of trans_entity;
 Type t_trans_household Is Table Of trans_household;
 Type t_trans_campaign Is Table Of trans_campaign;
+Type t_trans_campaign_hh Is Table Of trans_campaign_household;
 
 /*************************************************************************
 Public constant declarations
@@ -237,6 +256,9 @@ Function tbl_gift_credit_hh_ksm
 
 Function tbl_gift_credit_campaign
     Return t_trans_campaign Pipelined;
+    
+Function tbl_gift_credit_hh_campaign
+    Return t_trans_campaign_hh Pipelined;
 
 /* Return pipelined table of committee members */
 Function tbl_committee_gab
@@ -637,7 +659,7 @@ Cursor c_ksm_trans_hh_credit Is
   With
   hhid As (
     Select hh.household_id, ksm_trans.*
-    From table(ksm_pkg.tbl_entity_households_ksm) hh
+    From table(tbl_entity_households_ksm) hh
     Inner Join table(tbl_gift_credit_ksm) ksm_trans On ksm_trans.id_number = hh.id_number
   ),
   giftcount As (
@@ -683,6 +705,30 @@ Cursor c_trans_campaign_2008 Is
   From nu_rpt_t_cmmt_dtl_daily daily
   Where daily.rcpt_or_plg_number = '0002275766'
   );
+  
+/* Definition of householded KSM campaign transactions for summable credit */
+Cursor c_trans_hh_campaign_2008 Is
+  With
+  hhid As (
+    Select hh.household_id, ksm_trans.*
+    From table(tbl_entity_households_ksm) hh
+    Inner Join table(tbl_gift_credit_campaign) ksm_trans On ksm_trans.id_number = hh.id_number
+  ),
+  giftcount As (
+    Select household_id, rcpt_or_plg_number, count(id_number) As id_cnt
+    From hhid
+    Group By household_id, rcpt_or_plg_number
+  )
+  /* Main query */
+  Select Distinct hhid.*,
+    Case
+      When hhid.id_number = hhid.household_id Then hhid.credited_amount
+      When id_cnt = 1 Then hhid.credited_amount
+      Else 0
+    End As hh_credit
+  From hhid
+  Inner Join giftcount gc On gc.household_id = hhid.household_id
+    And gc.rcpt_or_plg_number = hhid.rcpt_or_plg_number;
 
 /*************************************************************************
 Private type declarations
@@ -1190,6 +1236,23 @@ Function tbl_klc_history
       Open c_trans_campaign_2008;
         Fetch c_trans_campaign_2008 Bulk Collect Into trans;
       Close c_trans_campaign_2008;
+      For i in 1..(trans.count) Loop
+        Pipe row(trans(i));
+      End Loop;
+      Return;
+    End;
+
+  /* Householdable entity campaign giving, based on c_ksm_trans_hh_campaign_2008
+     2017-09-05 */
+  Function tbl_gift_credit_hh_campaign
+    Return t_trans_campaign_hh Pipelined As
+    -- Declarations
+    trans t_trans_campaign_hh;
+    
+    Begin
+      Open c_trans_hh_campaign_2008;
+        Fetch c_trans_hh_campaign_2008 Bulk Collect Into trans;
+      Close c_trans_hh_campaign_2008;
       For i in 1..(trans.count) Loop
         Pipe row(trans(i));
       End Loop;
