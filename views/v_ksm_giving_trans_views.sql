@@ -63,7 +63,21 @@ Select Distinct hh.id_number, entity.report_name, hh.degrees_concat, cgft.househ
   sum(Case When cal.curr_fy = year_of_giving     Then hh_credit Else 0 End) As campaign_cfy,
   sum(Case When cal.curr_fy = year_of_giving + 1 Then hh_credit Else 0 End) As campaign_pfy1,
   sum(Case When cal.curr_fy = year_of_giving + 2 Then hh_credit Else 0 End) As campaign_pfy2,
-  sum(Case When cal.curr_fy = year_of_giving + 3 Then hh_credit Else 0 End) As campaign_pfy3
+  sum(Case When cal.curr_fy = year_of_giving + 3 Then hh_credit Else 0 End) As campaign_pfy3,
+  sum(Case When year_of_giving < 2008 Then hh_credit Else 0 End) As campaign_reachbacks,
+  sum(Case When year_of_giving = 2008 Then hh_credit Else 0 End) As campaign_fy08,
+  sum(Case When year_of_giving = 2009 Then hh_credit Else 0 End) As campaign_fy09,
+  sum(Case When year_of_giving = 2010 Then hh_credit Else 0 End) As campaign_fy10,
+  sum(Case When year_of_giving = 2011 Then hh_credit Else 0 End) As campaign_fy11,
+  sum(Case When year_of_giving = 2012 Then hh_credit Else 0 End) As campaign_fy12,
+  sum(Case When year_of_giving = 2013 Then hh_credit Else 0 End) As campaign_fy13,
+  sum(Case When year_of_giving = 2014 Then hh_credit Else 0 End) As campaign_fy14,
+  sum(Case When year_of_giving = 2015 Then hh_credit Else 0 End) As campaign_fy15,
+  sum(Case When year_of_giving = 2016 Then hh_credit Else 0 End) As campaign_fy16,
+  sum(Case When year_of_giving = 2017 Then hh_credit Else 0 End) As campaign_fy17,
+  sum(Case When year_of_giving = 2018 Then hh_credit Else 0 End) As campaign_fy18,
+  sum(Case When year_of_giving = 2019 Then hh_credit Else 0 End) As campaign_fy19,
+  sum(Case When year_of_giving = 2020 Then hh_credit Else 0 End) As campaign_fy20
 From hh
 Cross Join v_current_calendar cal
 Inner Join v_ksm_giving_campaign_trans_hh cgft On cgft.household_id = hh.household_id

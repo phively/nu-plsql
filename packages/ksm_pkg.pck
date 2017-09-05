@@ -147,6 +147,7 @@ Type trans_campaign_household Is Record (
   matched_donor_id nu_rpt_t_cmmt_dtl_daily.matched_donor_id%type, matched_receipt_number nu_rpt_t_cmmt_dtl_daily.matched_receipt_number%type,
   this_date nu_rpt_t_cmmt_dtl_daily.this_date%type, first_processed_date nu_rpt_t_cmmt_dtl_daily.first_processed_date%type,
   std_area nu_rpt_t_cmmt_dtl_daily.std_area%type, zipcountry nu_rpt_t_cmmt_dtl_daily.zipcountry%type,
+  hh_undiscounted gift.gift_associated_amount%type,
   hh_credit gift.gift_associated_amount%type
 );
 
@@ -710,9 +711,11 @@ Cursor c_trans_campaign_2008 Is
 Cursor c_trans_hh_campaign_2008 Is
   With
   hhid As (
-    Select hh.household_id, ksm_trans.*
+    Select hh.household_id, ksm_trans.*, ksm_gft.credit_amount
     From table(tbl_entity_households_ksm) hh
     Inner Join table(tbl_gift_credit_campaign) ksm_trans On ksm_trans.id_number = hh.id_number
+    Inner Join table(tbl_gift_credit_ksm) ksm_gft
+      On ksm_gft.tx_number = ksm_trans.rcpt_or_plg_number And ksm_gft.tx_sequence = ksm_trans.xsequence
   ),
   giftcount As (
     Select household_id, rcpt_or_plg_number, count(id_number) As id_cnt
@@ -722,8 +725,8 @@ Cursor c_trans_hh_campaign_2008 Is
   /* Main query */
   Select Distinct hhid.*,
     Case
-      When hhid.id_number = hhid.household_id Then hhid.credited_amount
-      When id_cnt = 1 Then hhid.credited_amount
+      When hhid.id_number = hhid.household_id Then hhid.credit_amount
+      When id_cnt = 1 Then hhid.credit_amount
       Else 0
     End As hh_credit
   From hhid
