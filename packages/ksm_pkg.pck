@@ -112,7 +112,8 @@ Type trans_household Is Record (
   allocation_code allocation.allocation_code%type, alloc_short_name allocation.short_name%type,
   af_flag varchar2(1), pledge_status primary_pledge.prim_pledge_status%type,
   date_of_record gift.gift_date_of_record%type, fiscal_year number,
-  credit_amount gift.gift_associated_amount%type, hh_credit gift.gift_associated_amount%type
+  credit_amount gift.gift_associated_amount%type,
+  hh_credit gift.gift_associated_amount%type
 );
 
 /* Campaign transactions */
@@ -537,10 +538,10 @@ Cursor c_ksm_trans_credit Is
       -- Discounted pledge credit amounts
       Case
         -- Not inactive, not a BE or LE
-        When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status Not In ('I', 'R'))
+        When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A')
           And pplg.prim_pledge_type Not In ('BE', 'LE') Then pledge.pledge_associated_credit_amt
         -- Not inactive, is BE or LE
-        When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status Not In ('I', 'R'))
+        When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A')
           And pplg.prim_pledge_type In ('BE', 'LE') Then pplg.discounted_amt
         -- If inactive, take amount paid
         Else Case
@@ -635,14 +636,25 @@ Cursor c_ksm_trans_credit Is
 Cursor c_ksm_trans_hh_credit Is
   With
   hhid As (
-    Select id_number, household_id
-    From table(ksm_pkg.tbl_entity_households_ksm)
+    Select hh.household_id, ksm_trans.*
+    From table(ksm_pkg.tbl_entity_households_ksm) hh
+    Inner Join table(tbl_gift_credit_ksm) ksm_trans On ksm_trans.id_number = hh.id_number
+  ),
+  giftcount As (
+    Select household_id, tx_number, count(id_number) As id_cnt
+    From hhid
+    Group By household_id, tx_number
   )
   /* Main query */
-  Select hhid.household_id, ksm_trans.*,
-    Case When ksm_trans.id_number = household_id Then credit_amount Else 0 End As hh_credit
-  From table(tbl_gift_credit_ksm) ksm_trans
-  Inner Join hhid On hhid.id_number = ksm_trans.id_number;
+  Select hhid.*,
+    Case
+      When hhid.id_number = hhid.household_id Then hhid.credit_amount
+      When id_cnt = 1 Then hhid.credit_amount
+      Else 0
+    End As hh_credit
+  From hhid
+  Inner Join giftcount gc On gc.household_id = hhid.household_id
+    And gc.tx_number = hhid.tx_number;
   
 /* Definition of Transforming Together Campaign (2008) new gifts & commitments
    2017-08-25 */
