@@ -58,7 +58,7 @@ hh As (
   From table(ksm_pkg.tbl_entity_households_ksm)
 )
 -- View implementing householded campaign giving based on new gifts & commitments
-Select Distinct cgft.id_number, entity.report_name, hh.degrees_concat, cgft.household_id, hh.household_rpt_name, hh.household_spouse_id, hh.household_spouse,
+Select Distinct hh.id_number, entity.report_name, hh.degrees_concat, cgft.household_id, hh.household_rpt_name, hh.household_spouse_id, hh.household_spouse,
   sum(cgft.hh_credit) As campaign_giving,
   sum(Case When cal.curr_fy = year_of_giving     Then hh_credit Else 0 End) As campaign_cfy,
   sum(Case When cal.curr_fy = year_of_giving + 1 Then hh_credit Else 0 End) As campaign_pfy1,
@@ -68,5 +68,5 @@ From hh
 Cross Join v_current_calendar cal
 Inner Join v_ksm_giving_campaign_trans_hh cgft On cgft.household_id = hh.household_id
 Inner Join entity On entity.id_number = hh.id_number
-Group By cgft.id_number, entity.report_name, hh.degrees_concat, cgft.household_id, hh.household_rpt_name, hh.household_spouse_id, hh.household_spouse
+Group By hh.id_number, entity.report_name, hh.degrees_concat, cgft.household_id, hh.household_rpt_name, hh.household_spouse_id, hh.household_spouse
 /
