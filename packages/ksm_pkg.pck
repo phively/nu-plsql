@@ -34,6 +34,7 @@ Type allocation_info Is Record (
 Type degreed_alumni Is Record (
   id_number entity.id_number%type, degrees_verbose varchar2(1024), degrees_concat varchar2(512),
   first_ksm_year degrees.degree_year%type, first_masters_year degrees.degree_year%type,
+  stewardship_years varchar2(80),
   program tms_dept_code.short_desc%type, program_group varchar2(20)
 );
 
@@ -71,7 +72,7 @@ Type src_donor Is Record (
 
 /* KLC member */
 Type klc_member Is Record (
-  fiscal_year integer, id_number entity.id_number%type, household_id entity.id_number%type,
+  fiscal_year integer, level_desc varchar2(40), id_number entity.id_number%type, household_id entity.id_number%type,
   household_record entity.record_type_code%type, household_rpt_name entity.report_name%type,
   household_spouse_id entity.id_number%type, household_spouse entity.pref_mail_name%type,
   household_suffix entity.institutional_suffix%type,
@@ -314,8 +315,25 @@ Cursor c_committee (my_committee_cd In varchar2) Is
 /* Definition of Kellogg degrees concatenated
    2017-02-15 */
 Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
-  -- Concatenated degrees subquery
   With
+  -- Stewardship concatenated years; uses Distinct to de-dupe multiple degrees in one year
+  stwrd_yrs As (
+    Select Distinct id_number, trim('''' || substr(trim(degree_year), -2)) As degree_year
+    From degrees
+    Where institution_code = '31173' -- Northwestern institution code
+      And school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
+      And (Case When id Is Not Null Then id_number Else 'T' End)
+          = (Case When id Is Not Null Then id Else 'T' End)
+  ),
+  stwrd_deg As (
+    Select Distinct id_number,
+      Listagg(degree_year, ', '
+      ) Within Group (Order By degree_year) As stewardship_years
+    From stwrd_yrs
+    Where degree_year <> ''''
+    Group By id_number
+  ),
+  -- Concatenated degrees subquery
   concat As (
     Select id_number,
       -- Verbose degrees
@@ -366,7 +384,7 @@ Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
         And (Case When id Is Not Null Then id_number Else 'T' End)
             = (Case When id Is Not Null Then id Else 'T' End)
       Group By id_number
-    ),
+    ),      
     -- Extract program
     prg As (
       Select id_number,
@@ -407,7 +425,8 @@ Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
       From concat
     )
     -- Final results
-    Select concat.id_number, degrees_verbose, degrees_concat, first_ksm_year, first_masters_year, prg.program,
+    Select concat.id_number, degrees_verbose, degrees_concat, first_ksm_year, first_masters_year,
+      stwrd_deg.stewardship_years, prg.program,
       -- program_group; use spaces to force non-alphabetic entries to apear first
       Case
         When program Like 'FT%' Then  '  FT'
@@ -418,7 +437,8 @@ Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
         Else program
       End As program_group
     From concat
-      Inner Join prg On concat.id_number = prg.id_number;
+      Inner Join prg On concat.id_number = prg.id_number
+      Left Join stwrd_deg On stwrd_deg.id_number = concat.id_number;
 
 /* Definition of Kellogg gift source donor
    2017-02-27 */
@@ -542,6 +562,7 @@ Cursor c_employees_ksm (company In varchar2) Is
 /* Definition of a KLC member */
 Cursor c_klc_members Is
   Select substr(gift_club_end_date, 0, 4) As fiscal_year,
+    tms_lvl.short_desc As level_desc,
     hh.id_number,
     hh.household_id, hh.household_record, hh.household_rpt_name, hh.household_spouse_id, hh.household_spouse, hh.household_suffix,
     hh.household_ksm_year, hh.household_masters_year, hh.household_program_group
