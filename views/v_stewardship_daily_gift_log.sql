@@ -32,6 +32,14 @@ gab_ind As ( -- Include all receipts where at least one GAB member is associated
     On gab.id_number = gft.id_number
 ),
 
+/* Stewardship */
+stw_loyal As (
+  Select id_number, stewardship_cfy, stewardship_pfy1, stewardship_pfy2, stewardship_pfy3,
+    Case When stewardship_cfy > 0 And stewardship_pfy1 > 0 And stewardship_pfy2 > 0 Then 'Y' End As loyal_this_year,
+    Case When stewardship_pfy1 > 0 And stewardship_pfy2 > 0 And stewardship_pfy3 > 0 Then 'Y' End As loyal_last_year
+  From v_ksm_giving_summary giving
+),
+
 /* KLC gift club */
 klc As (
   Select gift_club_id_number As id_number, substr(gift_club_end_date, 0, 4) As fiscal_year
@@ -145,7 +153,8 @@ assoc_dnrs As ( -- One id_number per line
     -- Replace nulls with space
     nvl(ksm_deg.degrees_concat, ' ') As degrees_concat, nvl(gab.gab_role, ' ') As gab_role,
     nvl(facstaff.short_desc, ' ') As facstaff, nvl(klc_years.klc_years, ' ') As klc_years,
-    to_char(first_gift.first_ksm_gift_dt, 'mm/dd/yyyy') As first_ksm_gift_dt
+    to_char(first_gift.first_ksm_gift_dt, 'mm/dd/yyyy') As first_ksm_gift_dt,
+    stw_loyal.loyal_this_year, stw_loyal.loyal_last_year
   From nu_gft_trp_gifttrans gft
   -- Only people attributed on the KSM receipts
   Inner Join trans On trans.tx_number = gft.tx_number And trans.tx_sequence = gft.tx_sequence
@@ -156,6 +165,7 @@ assoc_dnrs As ( -- One id_number per line
   Left Join facstaff On facstaff.id_number = gft.id_number
   Left Join klc_years On klc_years.id_number = gft.id_number
   Left Join first_gift On first_gift.id_number = gft.id_number
+  Left Join stw_loyal On stw_loyal.id_number = gft.id_number
 ),
 assoc_concat As ( -- Multiple id_numbers per line, separated by carriage return
   Select tx_number, alloc_short_name,
@@ -165,7 +175,9 @@ assoc_concat As ( -- Multiple id_numbers per line, separated by carriage return
     Listagg(gab_role, ';  ') Within Group (Order By tx_sequence) As assoc_gab,
     Listagg(facstaff, ';  ') Within Group (Order By tx_sequence) As assoc_facstaff,
     Listagg(klc_years, ';  ') Within Group (Order By tx_sequence) As assoc_klc,
-    Listagg(first_ksm_gift_dt, ';  ') Within Group (Order By tx_sequence) As first_ksm_gifts
+    Listagg(first_ksm_gift_dt, ';  ') Within Group (Order By tx_sequence) As first_ksm_gifts,
+    Listagg(loyal_this_year, ';  ') Within Group (Order By tx_sequence) As loyal_this_fy,
+    Listagg(loyal_last_year, ';  ') Within Group (Order By tx_sequence) As loyal_last_fy
   From assoc_dnrs
   Group By tx_number, alloc_short_name
 )
@@ -190,6 +202,8 @@ Select Distinct
   Case When trim(assoc.assoc_gab) <> ';' Then trim(assoc.assoc_gab) End As assoc_gab,
   Case When trim(assoc.assoc_klc) <> ';' Then trim(assoc.assoc_klc) End As assoc_klc,
   gft.nwu_trustee_credit,
+  assoc.loyal_this_fy,
+  assoc.loyal_last_fy,
   -- Joint gift data
   Case When joint_ind.joint_ind Is Not Null Then 'Y' Else 'N' End As joint_ind,
   Case When joint_ind.joint_ind Is Not Null Then entity.spouse_id_number End As joint_id_number,
