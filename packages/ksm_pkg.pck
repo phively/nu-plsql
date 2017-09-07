@@ -96,7 +96,7 @@ Type employee Is Record (
 
 /* Entity transaction for credit */
 Type trans_entity Is Record (
-  id_number entity.id_number%type,
+  id_number entity.id_number%type, anonymous gift.gift_associated_anonymous%type,
   tx_number gift.gift_receipt_number%type, tx_sequence gift.gift_sequence%type,
   transaction_type varchar2(40), tx_gypm_ind varchar2(1),
   allocation_code allocation.allocation_code%type, alloc_short_name allocation.short_name%type,
@@ -107,7 +107,7 @@ Type trans_entity Is Record (
 
 /* Householdable transaction for credit */
 Type trans_household Is Record (
-  household_id entity.id_number%type, id_number entity.id_number%type,
+  household_id entity.id_number%type, id_number entity.id_number%type, anonymous gift.gift_associated_anonymous%type,
   tx_number gift.gift_receipt_number%type, tx_sequence gift.gift_sequence%type,
   transaction_type varchar2(40), tx_gypm_ind varchar2(1),
   allocation_code allocation.allocation_code%type, alloc_short_name allocation.short_name%type,
@@ -148,7 +148,7 @@ Type trans_campaign_household Is Record (
   matched_donor_id nu_rpt_t_cmmt_dtl_daily.matched_donor_id%type, matched_receipt_number nu_rpt_t_cmmt_dtl_daily.matched_receipt_number%type,
   this_date nu_rpt_t_cmmt_dtl_daily.this_date%type, first_processed_date nu_rpt_t_cmmt_dtl_daily.first_processed_date%type,
   std_area nu_rpt_t_cmmt_dtl_daily.std_area%type, zipcountry nu_rpt_t_cmmt_dtl_daily.zipcountry%type,
-  hh_undiscounted gift.gift_associated_amount%type,
+  hh_undiscounted gift.gift_associated_amount%type, anonymous gift.gift_associated_anonymous%type,
   hh_credit gift.gift_associated_amount%type
 );
 
@@ -626,36 +626,51 @@ Cursor c_ksm_trans_credit Is
   ksm_trans As (
     (
       -- Outright gifts and payments
-      Select gft.id_number,
+      Select gft.id_number, gift.gift_associated_anonymous As anon,
         tx_number, tx_sequence, tms_trans.transaction_type, tx_gypm_ind,
         gft.allocation_code, gft.alloc_short_name, af_flag,
         NULL As pledge_status, date_of_record, to_number(fiscal_year) As fiscal_year, credit_amount
       From nu_gft_trp_gifttrans gft
+      Inner Join gift On gift.gift_receipt_number = gft.tx_number And gift.gift_sequence = gft.tx_sequence
       Left Join tms_trans On tms_trans.transaction_type_code = gft.transaction_type
       Left Join ksm_af_allocs On ksm_af_allocs.allocation_code = gft.allocation_code
       Where alloc_school = 'KM'
         And tx_gypm_ind In ('G', 'Y')
     ) Union All (
       -- Matching gift matching company
-      Select match_gift_company_id,
+      Select match_gift_company_id, gftanon.anon,
         match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', 'M',
         match_gift_allocation_name, ksm_allocs.short_name, af_flag,
         NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record), match_gift_amount
       From matching_gift
       Inner Join ksm_allocs On ksm_allocs.allocation_code = matching_gift.match_gift_allocation_name
+      Inner Join (
+        -- Most strict anonymous association on the gift
+        Select gift_receipt_number, max(gift_associated_anonymous) As anon
+        From gift
+        Where gift.gift_sequence = 1
+        Group By gift_receipt_number
+      ) gftanon On gftanon.gift_receipt_number = matching_gift.match_gift_matched_receipt        
     ) Union All (
       -- Matching gift matched donors; inner join to add all attributed donor ids
-      Select gft.id_number,
+      Select gft.id_number, gftanon.anon,
         match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', 'M',
         match_gift_allocation_name, ksm_allocs.short_name, af_flag,
         NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record), match_gift_amount
       From matching_gift
-      Inner Join (Select id_number, tx_number From nu_gft_trp_gifttrans) gft
-        On matching_gift.match_gift_matched_receipt = gft.tx_number
+      Inner Join (Select gift_donor_id As id_number, gift.gift_receipt_number From gift) gft
+        On matching_gift.match_gift_matched_receipt = gft.gift_receipt_number
       Inner Join ksm_allocs On ksm_allocs.allocation_code = matching_gift.match_gift_allocation_name
+      Inner Join (
+        -- Most strict anonymous association on the gift
+        Select gift_donor_id, gift_receipt_number, max(gift_associated_anonymous) As anon
+        From gift
+        Group By gift_donor_id, gift_receipt_number
+      ) gftanon On gftanon.gift_donor_id = gft.id_number
+          And gftanon.gift_receipt_number = matching_gift.match_gift_matched_receipt
     ) Union All (
       -- Pledges, including BE and LE program credit
-      Select pledge_donor_id,
+      Select pledge_donor_id, pledge_anonymous,
         pledge_pledge_number, pledge.pledge_sequence, tms_trans.transaction_type, 'P',
         pledge.pledge_allocation_name, ksm_allocs.short_name, ksm_allocs.af_flag,
         prim_pledge_status, pledge_date_of_record, ksm_pkg.get_fiscal_year(pledge_date_of_record), plgd.credit
@@ -732,7 +747,7 @@ Cursor c_trans_campaign_2008 Is
 Cursor c_trans_hh_campaign_2008 Is
   With
   hhid As (
-    Select hh.household_id, ksm_trans.*, ksm_gft.credit_amount
+    Select hh.household_id, ksm_trans.*, ksm_gft.credit_amount, ksm_gft.anonymous
     From table(tbl_entity_households_ksm) hh
     Inner Join table(tbl_gift_credit_campaign) ksm_trans On ksm_trans.id_number = hh.id_number
     Inner Join table(tbl_gift_credit_ksm) ksm_gft
