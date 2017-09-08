@@ -285,8 +285,9 @@ Cursor c_alloc_annual_fund_ksm Is
   Where (annual_sw = 'Y' And alloc_school = 'KM')
     -- 2017-07-11 include AF Excellence Grant scholarships
     Or allocation_code In (
-      '3203003665401GFT', '3203004227201GFT', -- Expendable Excellence Grant
-      '3203000861201GFT' -- Real Estate Conference
+      '3203003665401GFT', '3203004227201GFT', -- Expendable Excellence Grant (Flanagan, Chai)
+      '3203000861201GFT', -- Real Estate Conference
+      '3203004707901GFT' -- GIM Trip Scholarship (Samuels)
     );
 
 /* Definition of Kellogg Current Use allocations
@@ -751,7 +752,7 @@ Cursor c_trans_hh_campaign_2008 Is
     From table(tbl_entity_households_ksm) hh
     Inner Join table(tbl_gift_credit_campaign) ksm_trans On ksm_trans.id_number = hh.id_number
     Inner Join table(tbl_gift_credit_ksm) ksm_gft
-      On ksm_gft.tx_number = ksm_trans.rcpt_or_plg_number And ksm_gft.tx_sequence = ksm_trans.xsequence
+      On ksm_gft.tx_number = ksm_trans.rcpt_or_plg_number And ksm_gft.allocation_code = ksm_trans.alloc_code
   ),
   giftcount As (
     Select household_id, rcpt_or_plg_number, count(id_number) As id_cnt
