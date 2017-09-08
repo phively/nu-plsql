@@ -272,10 +272,11 @@ Function tbl_gift_credit_hh_ksm
   Return t_trans_household Pipelined;
 
 Function tbl_gift_credit_campaign
-    Return t_trans_campaign Pipelined;
+  Return t_trans_campaign Pipelined;
     
 Function tbl_gift_credit_hh_campaign
-    Return t_trans_campaign_hh Pipelined;
+--    Return t_trans_campaign_hh Pipelined;
+  Return t_trans_household Pipelined;
 
 /* Return pipelined table of committee members */
 Function tbl_committee_gab
@@ -790,46 +791,21 @@ Cursor c_trans_campaign_2008 Is
   
 /* Definition of householded KSM campaign transactions for summable credit */
 Cursor c_trans_hh_campaign_2008 Is
-  With
-  hhid As (
-    Select hh.household_id, ksm_trans.*
-    From table(tbl_entity_households_ksm) hh
-    Inner Join table(tbl_gift_credit_campaign) ksm_trans On ksm_trans.id_number = hh.id_number
-  ),
-  giftcount As (
-    Select household_id, rcpt_or_plg_number, count(id_number) As id_cnt
-    From hhid
-    Group By household_id, rcpt_or_plg_number
-  ),
-  -- Primary pledge discounted amounts
-  plg_discount As (
-    Select *
-    From table(plg_discount)
-  ),
-  -- Summed giving amounts
-  amts_for_sum As (
-    Select Distinct rcpt_or_plg_number, xsequence, amount,
-      Case When gift_pledge_or_match = 'P' Then plg_discount.credit Else credited_amount End As credited_amount
-    From nu_rpt_t_cmmt_dtl_daily daily
-    Left Join plg_discount
-      On plg_discount.pledge_number = daily.rcpt_or_plg_number And plg_discount.pledge_sequence = daily.xsequence
-  ),
-  amts_summed As (
-    Select rcpt_or_plg_number, xsequence,
-      sum(amount) As amount, sum(credited_amount) As credited_amount
-    From amts_for_sum
-    Group By rcpt_or_plg_number, xsequence
-  )
-  /* Main query */
-  Select Distinct hhid.*,
-    Case
-      When hhid.id_number = hhid.household_id Then hhid.credited_amount
-      When id_cnt = 1 Then hhid.credited_amount
-      Else 0
-    End As hh_credit
-  From hhid
-  Inner Join giftcount gc On gc.household_id = hhid.household_id
-    And gc.rcpt_or_plg_number = hhid.rcpt_or_plg_number;
+  (
+  Select hh_cred.*
+  From table(tbl_gift_credit_hh_ksm) hh_cred
+  Where hh_cred.tx_number In (Select Distinct rcpt_or_plg_number From nu_rpt_t_cmmt_dtl_daily)
+  ) Union All (
+  -- Internal transfer; 344303 is 50%
+  Select daily.id_number, daily.id_number, ' ' As anonymous, daily.rcpt_or_plg_number, daily.xsequence,
+    'Internal Transfer' As transaction_type, daily.gift_pledge_or_match,
+    daily.alloc_code, allocation.short_name, 'N' As af_flag,
+    daily.pledge_status, daily.date_of_record, to_number(daily.year_of_giving) As fiscal_year,
+    344303 As credit_amount, 344303 As hh_credit
+  From nu_rpt_t_cmmt_dtl_daily daily
+  Inner Join allocation On allocation.allocation_code = daily.alloc_code
+  Where daily.rcpt_or_plg_number = '0002275766'
+  );
 
 /*************************************************************************
 Private type declarations
@@ -1366,9 +1342,11 @@ Function tbl_klc_history
   /* Householdable entity campaign giving, based on c_ksm_trans_hh_campaign_2008
      2017-09-05 */
   Function tbl_gift_credit_hh_campaign
-    Return t_trans_campaign_hh Pipelined As
+    Return t_trans_household Pipelined As
+--    Return t_trans_campaign_hh Pipelined As
     -- Declarations
-    trans t_trans_campaign_hh;
+--    trans t_trans_campaign_hh;
+    trans t_trans_household;
     
     Begin
       Open c_trans_hh_campaign_2008;
