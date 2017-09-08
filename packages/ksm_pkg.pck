@@ -160,7 +160,6 @@ Type trans_campaign_household Is Record (
   matched_donor_id nu_rpt_t_cmmt_dtl_daily.matched_donor_id%type, matched_receipt_number nu_rpt_t_cmmt_dtl_daily.matched_receipt_number%type,
   this_date nu_rpt_t_cmmt_dtl_daily.this_date%type, first_processed_date nu_rpt_t_cmmt_dtl_daily.first_processed_date%type,
   std_area nu_rpt_t_cmmt_dtl_daily.std_area%type, zipcountry nu_rpt_t_cmmt_dtl_daily.zipcountry%type,
-  hh_undiscounted gift.gift_associated_amount%type,
   hh_credit gift.gift_associated_amount%type
 );
 
@@ -749,7 +748,7 @@ Cursor c_ksm_trans_hh_credit Is
    2017-08-25 */
 Cursor c_trans_campaign_2008 Is
   -- Anonymous indicators
-  With Anons As (
+  With anons As (
     (
       Select gift_receipt_number As tx_number, gift_sequence As tx_sequence, gift_associated_anonymous As anon
       From gift
@@ -769,18 +768,13 @@ Cursor c_trans_campaign_2008 Is
   -- Main query
   (
   Select id_number, record_type_code, person_or_org, birth_dt, rcpt_or_plg_number, xsequence, anons.anon,
-    sum(amount) As amount,
-    sum(credited_amount) As credited_amount,
+    amount, credited_amount,
     year_of_giving, date_of_record, alloc_code, alloc_school, alloc_purpose, annual_sw, restrict_code,
     transaction_type, pledge_status, gift_pledge_or_match, matched_donor_id, matched_receipt_number,
     this_date, first_processed_date, std_area, zipcountry
   From nu_rpt_t_cmmt_dtl_daily daily
   Left Join anons On anons.tx_number = daily.rcpt_or_plg_number And anons.tx_sequence = daily.xsequence
   Where daily.alloc_school = 'KM'
-  Group By id_number, record_type_code, person_or_org, birth_dt, rcpt_or_plg_number, xsequence, anons.anon,
-    year_of_giving, date_of_record, alloc_code, alloc_school, alloc_purpose, annual_sw, restrict_code,
-    transaction_type, pledge_status, gift_pledge_or_match, matched_donor_id, matched_receipt_number,
-    this_date, first_processed_date, std_area, zipcountry
   ) Union All (
   -- Internal transfer; 344303 is 50%
   Select id_number, record_type_code, person_or_org, birth_dt, rcpt_or_plg_number, xsequence, anons.anon,
@@ -798,23 +792,39 @@ Cursor c_trans_campaign_2008 Is
 Cursor c_trans_hh_campaign_2008 Is
   With
   hhid As (
-    Select hh.household_id, ksm_trans.*,
-      Case When ksm_trans.gift_pledge_or_match = 'P' Then ksm_gft.credit_amount Else ksm_trans.credited_amount End As credit_amount
+    Select hh.household_id, ksm_trans.*
     From table(tbl_entity_households_ksm) hh
     Inner Join table(tbl_gift_credit_campaign) ksm_trans On ksm_trans.id_number = hh.id_number
-    Left Join table(tbl_gift_credit_ksm) ksm_gft
-      On ksm_gft.tx_number = ksm_trans.rcpt_or_plg_number And ksm_gft.tx_sequence = ksm_trans.xsequence
   ),
   giftcount As (
     Select household_id, rcpt_or_plg_number, count(id_number) As id_cnt
     From hhid
     Group By household_id, rcpt_or_plg_number
+  ),
+  -- Primary pledge discounted amounts
+  plg_discount As (
+    Select *
+    From table(plg_discount)
+  ),
+  -- Summed giving amounts
+  amts_for_sum As (
+    Select Distinct rcpt_or_plg_number, xsequence, amount,
+      Case When gift_pledge_or_match = 'P' Then plg_discount.credit Else credited_amount End As credited_amount
+    From nu_rpt_t_cmmt_dtl_daily daily
+    Left Join plg_discount
+      On plg_discount.pledge_number = daily.rcpt_or_plg_number And plg_discount.pledge_sequence = daily.xsequence
+  ),
+  amts_summed As (
+    Select rcpt_or_plg_number, xsequence,
+      sum(amount) As amount, sum(credited_amount) As credited_amount
+    From amts_for_sum
+    Group By rcpt_or_plg_number, xsequence
   )
   /* Main query */
   Select Distinct hhid.*,
     Case
-      When hhid.id_number = hhid.household_id Then hhid.credit_amount
-      When id_cnt = 1 Then hhid.credit_amount
+      When hhid.id_number = hhid.household_id Then hhid.credited_amount
+      When id_cnt = 1 Then hhid.credited_amount
       Else 0
     End As hh_credit
   From hhid
