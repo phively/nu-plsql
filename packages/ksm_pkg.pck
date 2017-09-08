@@ -94,6 +94,16 @@ Type employee Is Record (
   team nu_prs_trp_prospect.team%type
 );
 
+/* Discounted pledge amounts */
+Type plg_disc Is Record (
+  pledge_number pledge.pledge_pledge_number%type, pledge_sequence pledge.pledge_sequence%type,
+  prim_pledge_type primary_pledge.prim_pledge_type%type, prim_pledge_status primary_pledge.prim_pledge_status%type,
+  pledge_amount pledge.pledge_amount%type,	pledge_associated_credit_amt pledge.pledge_associated_credit_amt%type,
+  prim_pledge_amount primary_pledge.prim_pledge_amount%type, prim_pledge_amount_paid primary_pledge.prim_pledge_amount_paid%type,
+  prim_pledge_original_amount primary_pledge.prim_pledge_original_amount%type,
+  discounted_amt primary_pledge.prim_pledge_amount%type, credit primary_pledge.prim_pledge_amount%type
+);
+
 /* Entity transaction for credit */
 Type trans_entity Is Record (
   id_number entity.id_number%type, anonymous gift.gift_associated_anonymous%type,
@@ -122,6 +132,7 @@ Type trans_campaign Is Record (
   id_number nu_rpt_t_cmmt_dtl_daily.id_number%type, record_type_code nu_rpt_t_cmmt_dtl_daily.record_type_code%type,
   person_or_org nu_rpt_t_cmmt_dtl_daily.person_or_org%type, birth_dt nu_rpt_t_cmmt_dtl_daily.birth_dt%type,
   rcpt_or_plg_number nu_rpt_t_cmmt_dtl_daily.rcpt_or_plg_number%type, xsequence nu_rpt_t_cmmt_dtl_daily.xsequence%type,
+  anonymous varchar2(1),
   amount nu_rpt_t_cmmt_dtl_daily.amount%type, credited_amount nu_rpt_t_cmmt_dtl_daily.credited_amount%type,
   year_of_giving nu_rpt_t_cmmt_dtl_daily.year_of_giving%type, date_of_record nu_rpt_t_cmmt_dtl_daily.date_of_record%type,
   alloc_code nu_rpt_t_cmmt_dtl_daily.alloc_code%type, alloc_school nu_rpt_t_cmmt_dtl_daily.alloc_school%type,
@@ -139,6 +150,7 @@ Type trans_campaign_household Is Record (
   id_number nu_rpt_t_cmmt_dtl_daily.id_number%type, record_type_code nu_rpt_t_cmmt_dtl_daily.record_type_code%type,
   person_or_org nu_rpt_t_cmmt_dtl_daily.person_or_org%type, birth_dt nu_rpt_t_cmmt_dtl_daily.birth_dt%type,
   rcpt_or_plg_number nu_rpt_t_cmmt_dtl_daily.rcpt_or_plg_number%type, xsequence nu_rpt_t_cmmt_dtl_daily.xsequence%type,
+  anonymous varchar2(1),
   amount nu_rpt_t_cmmt_dtl_daily.amount%type, credited_amount nu_rpt_t_cmmt_dtl_daily.credited_amount%type,
   year_of_giving nu_rpt_t_cmmt_dtl_daily.year_of_giving%type, date_of_record nu_rpt_t_cmmt_dtl_daily.date_of_record%type,
   alloc_code nu_rpt_t_cmmt_dtl_daily.alloc_code%type, alloc_school nu_rpt_t_cmmt_dtl_daily.alloc_school%type,
@@ -148,7 +160,7 @@ Type trans_campaign_household Is Record (
   matched_donor_id nu_rpt_t_cmmt_dtl_daily.matched_donor_id%type, matched_receipt_number nu_rpt_t_cmmt_dtl_daily.matched_receipt_number%type,
   this_date nu_rpt_t_cmmt_dtl_daily.this_date%type, first_processed_date nu_rpt_t_cmmt_dtl_daily.first_processed_date%type,
   std_area nu_rpt_t_cmmt_dtl_daily.std_area%type, zipcountry nu_rpt_t_cmmt_dtl_daily.zipcountry%type,
-  hh_undiscounted gift.gift_associated_amount%type, anonymous gift.gift_associated_anonymous%type,
+  hh_undiscounted gift.gift_associated_amount%type,
   hh_credit gift.gift_associated_amount%type
 );
 
@@ -163,6 +175,7 @@ Type t_src_donors Is Table Of src_donor;
 Type t_committee_members Is Table Of committee_member;
 Type t_klc_members Is Table Of klc_member;
 Type t_employees Is Table Of employee;
+Type t_plg_disc Is Table Of plg_disc;
 Type t_trans_entity Is Table Of trans_entity;
 Type t_trans_household Is Table Of trans_household;
 Type t_trans_campaign Is Table Of trans_campaign;
@@ -250,6 +263,9 @@ Function tbl_entity_employees_ksm (company In varchar2)
   Return t_employees Pipelined;
 
 /* Returns pipelined table of Kellogg transactions with household info */
+Function plg_discount
+  Return t_plg_disc Pipelined;
+
 Function tbl_gift_credit_ksm
   Return t_trans_entity Pipelined;
   
@@ -572,35 +588,40 @@ Cursor c_klc_members Is
   Left Join nu_mem_v_tmsclublevel tms_lvl On tms_lvl.level_code = gift_clubs.school_code
   Where gift_club_code = 'LKM';
 
+/* Definition of discounted pledge amounts */
+Cursor c_plg_discount Is
+  Select pledge.pledge_pledge_number As pledge_number, pledge.pledge_sequence, pplg.prim_pledge_type, pplg.prim_pledge_status,
+    pledge.pledge_amount, pledge.pledge_associated_credit_amt, pplg.prim_pledge_amount, pplg.prim_pledge_amount_paid,
+    pplg.prim_pledge_original_amount, pplg.discounted_amt,
+    -- Discounted pledge credit amounts
+    Case
+      -- Not inactive, not a BE or LE
+      When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A')
+        And pplg.prim_pledge_type Not In ('BE', 'LE') Then pledge.pledge_associated_credit_amt
+      -- Not inactive, is BE or LE
+      When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A')
+        And pplg.prim_pledge_type In ('BE', 'LE') Then pplg.discounted_amt
+      -- If inactive, take amount paid
+      Else Case
+        When pledge.pledge_amount = 0 And pplg.prim_pledge_amount > 0
+          Then pplg.prim_pledge_amount_paid * pledge.pledge_associated_credit_amt / pplg.prim_pledge_amount
+        When pplg.prim_pledge_amount > 0
+          Then pplg.prim_pledge_amount_paid * pledge.pledge_amount / pplg.prim_pledge_amount
+        Else pplg.prim_pledge_amount_paid
+      End
+    End As credit
+  From primary_pledge pplg
+  Inner Join pledge On pledge.pledge_pledge_number = pplg.prim_pledge_number
+  Where pledge.pledge_program_code = 'KM'
+    Or pledge_alloc_school = 'KM';
+
 /* Definition of KSM giving transactions for summable credit */
 Cursor c_ksm_trans_credit Is
   With
   /* Primary pledge discounted amounts */
   plg_discount As (
-    Select pledge.pledge_pledge_number As pledge_number, pledge.pledge_sequence, pplg.prim_pledge_type, pplg.prim_pledge_status,
-      pledge.pledge_amount, pledge.pledge_associated_credit_amt, pplg.prim_pledge_amount, pplg.prim_pledge_amount_paid,
-      pplg.prim_pledge_original_amount, pplg.discounted_amt,
-      -- Discounted pledge credit amounts
-      Case
-        -- Not inactive, not a BE or LE
-        When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A')
-          And pplg.prim_pledge_type Not In ('BE', 'LE') Then pledge.pledge_associated_credit_amt
-        -- Not inactive, is BE or LE
-        When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A')
-          And pplg.prim_pledge_type In ('BE', 'LE') Then pplg.discounted_amt
-        -- If inactive, take amount paid
-        Else Case
-          When pledge.pledge_amount = 0 And pplg.prim_pledge_amount > 0
-            Then pplg.prim_pledge_amount_paid * pledge.pledge_associated_credit_amt / pplg.prim_pledge_amount
-          When pplg.prim_pledge_amount > 0
-            Then pplg.prim_pledge_amount_paid * pledge.pledge_amount / pplg.prim_pledge_amount
-          Else pplg.prim_pledge_amount_paid
-        End
-      End As credit
-    From primary_pledge pplg
-    Inner Join pledge On pledge.pledge_pledge_number = pplg.prim_pledge_number
-    Where pledge.pledge_program_code = 'KM'
-      Or pledge_alloc_school = 'KM'
+    Select *
+    From table(plg_discount)
   ),
   /* KSM allocations */
   ksm_af_allocs As (
@@ -727,28 +748,49 @@ Cursor c_ksm_trans_hh_credit Is
 /* Definition of Transforming Together Campaign (2008) new gifts & commitments
    2017-08-25 */
 Cursor c_trans_campaign_2008 Is
+  -- Anonymous indicators
+  With Anons As (
+    (
+      Select gift_receipt_number As tx_number, gift_sequence As tx_sequence, gift_associated_anonymous As anon
+      From gift
+    ) Union All (
+      Select pledge.pledge_pledge_number, pledge.pledge_sequence, pledge.pledge_anonymous
+      From pledge
+    ) Union All (
+      Select match_gift_receipt_number, 1, gftanon.anon
+      From matching_gift
+      Inner Join (
+          Select gift_receipt_number, gift_sequence, gift_associated_anonymous As anon
+          From gift
+        ) gftanon On gftanon.gift_receipt_number = matching_gift.match_gift_matched_receipt
+          And gftanon.gift_sequence = matching_gift.match_gift_matched_sequence
+    )
+  )
+  -- Main query
   (
-  Select id_number, record_type_code, person_or_org, birth_dt, rcpt_or_plg_number, xsequence,
+  Select id_number, record_type_code, person_or_org, birth_dt, rcpt_or_plg_number, xsequence, anons.anon,
     sum(amount) As amount,
     sum(credited_amount) As credited_amount,
     year_of_giving, date_of_record, alloc_code, alloc_school, alloc_purpose, annual_sw, restrict_code,
     transaction_type, pledge_status, gift_pledge_or_match, matched_donor_id, matched_receipt_number,
     this_date, first_processed_date, std_area, zipcountry
   From nu_rpt_t_cmmt_dtl_daily daily
+  Left Join anons On anons.tx_number = daily.rcpt_or_plg_number And anons.tx_sequence = daily.xsequence
   Where daily.alloc_school = 'KM'
-  Group By id_number, record_type_code, person_or_org, birth_dt, rcpt_or_plg_number, xsequence,
+  Group By id_number, record_type_code, person_or_org, birth_dt, rcpt_or_plg_number, xsequence, anons.anon,
     year_of_giving, date_of_record, alloc_code, alloc_school, alloc_purpose, annual_sw, restrict_code,
     transaction_type, pledge_status, gift_pledge_or_match, matched_donor_id, matched_receipt_number,
     this_date, first_processed_date, std_area, zipcountry
   ) Union All (
   -- Internal transfer; 344303 is 50%
-  Select id_number, record_type_code, person_or_org, birth_dt, rcpt_or_plg_number, xsequence,
+  Select id_number, record_type_code, person_or_org, birth_dt, rcpt_or_plg_number, xsequence, anons.anon,
     344303 As amount,
     344303 As credited_amount,
     year_of_giving, date_of_record, alloc_code, alloc_school, alloc_purpose, annual_sw, restrict_code,
     transaction_type, pledge_status, gift_pledge_or_match, matched_donor_id, matched_receipt_number,
     this_date, first_processed_date, std_area, zipcountry
   From nu_rpt_t_cmmt_dtl_daily daily
+  Left Join anons On anons.tx_number = daily.rcpt_or_plg_number And anons.tx_sequence = daily.xsequence
   Where daily.rcpt_or_plg_number = '0002275766'
   );
   
@@ -756,10 +798,11 @@ Cursor c_trans_campaign_2008 Is
 Cursor c_trans_hh_campaign_2008 Is
   With
   hhid As (
-    Select hh.household_id, ksm_trans.*, ksm_gft.credit_amount, ksm_gft.anonymous
+    Select hh.household_id, ksm_trans.*,
+      Case When ksm_trans.gift_pledge_or_match = 'P' Then ksm_gft.credit_amount Else ksm_trans.credited_amount End As credit_amount
     From table(tbl_entity_households_ksm) hh
     Inner Join table(tbl_gift_credit_campaign) ksm_trans On ksm_trans.id_number = hh.id_number
-    Inner Join table(tbl_gift_credit_ksm) ksm_gft
+    Left Join table(tbl_gift_credit_ksm) ksm_gft
       On ksm_gft.tx_number = ksm_trans.rcpt_or_plg_number And ksm_gft.tx_sequence = ksm_trans.xsequence
   ),
   giftcount As (
@@ -780,6 +823,10 @@ Cursor c_trans_hh_campaign_2008 Is
 
 /*************************************************************************
 Private type declarations
+*************************************************************************/
+
+/*************************************************************************
+Private table declarations
 *************************************************************************/
 
 /*************************************************************************
@@ -1238,6 +1285,22 @@ Function tbl_klc_history
   End;
 
 /* Pipelined function returning giving credit for entities or households */
+
+  /* Function to return discounted pledge amounts */
+  Function plg_discount
+    Return t_plg_disc Pipelined As
+    -- Declarations
+    trans t_plg_disc;
+    
+    Begin
+      Open c_plg_discount;
+        Fetch c_plg_discount Bulk Collect Into trans;
+      Close c_plg_discount;
+      For i in 1..(trans.count) Loop
+        Pipe row(trans(i));
+      End Loop;
+      Return;
+    End;
 
   /* Individual entity giving, based on c_ksm_trans_credit
      2017-08-04 */
