@@ -626,59 +626,67 @@ Cursor c_ksm_trans_credit Is
   /* Kellogg transactions list */
   ksm_trans As (
     (
-      -- Outright gifts and payments
+    -- Outright gifts and payments
       Select gft.id_number, gift.gift_associated_anonymous As anon,
         tx_number, tx_sequence, tms_trans.transaction_type, tx_gypm_ind,
         gft.allocation_code, gft.alloc_short_name, af_flag,
         NULL As pledge_status, date_of_record, to_number(fiscal_year) As fiscal_year, credit_amount
       From nu_gft_trp_gifttrans gft
+      -- Anonymous association
       Inner Join gift On gift.gift_receipt_number = gft.tx_number And gift.gift_sequence = gft.tx_sequence
+      -- Trans type descriptions
       Left Join tms_trans On tms_trans.transaction_type_code = gft.transaction_type
+      -- KSM Annual Fund indicator
       Left Join ksm_af_allocs On ksm_af_allocs.allocation_code = gft.allocation_code
       Where alloc_school = 'KM'
         And tx_gypm_ind In ('G', 'Y')
     ) Union All (
-      -- Matching gift matching company
+    -- Matching gift matching company
       Select match_gift_company_id, gftanon.anon,
         match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', 'M',
         match_gift_allocation_name, ksm_allocs.short_name, af_flag,
         NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record), match_gift_amount
       From matching_gift
+      -- Only KSM allocations
       Inner Join ksm_allocs On ksm_allocs.allocation_code = matching_gift.match_gift_allocation_name
+      -- Anonymous association on the matched gift
       Inner Join (
-        -- Most strict anonymous association on the gift
-        Select gift_receipt_number, max(gift_associated_anonymous) As anon
+        Select gift_receipt_number, gift_sequence, gift_associated_anonymous As anon
         From gift
-        Where gift.gift_sequence = 1
-        Group By gift_receipt_number
-      ) gftanon On gftanon.gift_receipt_number = matching_gift.match_gift_matched_receipt        
+      ) gftanon On gftanon.gift_receipt_number = matching_gift.match_gift_matched_receipt
+        And gftanon.gift_sequence = matching_gift.match_gift_matched_sequence
     ) Union All (
-      -- Matching gift matched donors; inner join to add all attributed donor ids
+    -- Matching gift matched donors
       Select gft.id_number, gftanon.anon,
         match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', 'M',
         match_gift_allocation_name, ksm_allocs.short_name, af_flag,
         NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record), match_gift_amount
       From matching_gift
+      -- Inner join to add all attributed donor IDs on the original gift
       Inner Join (Select gift_donor_id As id_number, gift.gift_receipt_number From gift) gft
         On matching_gift.match_gift_matched_receipt = gft.gift_receipt_number
+      -- Only KSM allocations
       Inner Join ksm_allocs On ksm_allocs.allocation_code = matching_gift.match_gift_allocation_name
+      -- Anonymous association on the matched gift
       Inner Join (
-        -- Most strict anonymous association on the gift
-        Select gift_donor_id, gift_receipt_number, max(gift_associated_anonymous) As anon
+        Select gift_donor_id, gift_receipt_number, gift_sequence, gift_associated_anonymous As anon
         From gift
-        Group By gift_donor_id, gift_receipt_number
-      ) gftanon On gftanon.gift_donor_id = gft.id_number
-          And gftanon.gift_receipt_number = matching_gift.match_gift_matched_receipt
+      ) gftanon On gftanon.gift_receipt_number = matching_gift.match_gift_matched_receipt
+          And gftanon.gift_sequence = matching_gift.match_gift_matched_sequence
     ) Union All (
-      -- Pledges, including BE and LE program credit
+    -- Pledges, including BE and LE program credit
       Select pledge_donor_id, pledge_anonymous,
         pledge_pledge_number, pledge.pledge_sequence, tms_trans.transaction_type, 'P',
         pledge.pledge_allocation_name, ksm_allocs.short_name, ksm_allocs.af_flag,
         prim_pledge_status, pledge_date_of_record, ksm_pkg.get_fiscal_year(pledge_date_of_record), plgd.credit
       From pledge
+      -- Trans type descriptions
       Inner Join tms_trans On tms_trans.transaction_type_code = pledge.pledge_pledge_type
+      -- Discounted pledge amounts where applicable
       Left Join plg_discount plgd On plgd.pledge_number = pledge.pledge_pledge_number And plgd.pledge_sequence = pledge.pledge_sequence
+      -- KSM AF flag
       Left Join ksm_allocs On ksm_allocs.allocation_code = pledge.pledge_allocation_name
+      -- Include KSM allocations as well as the BE/LE account gifts where the gift is counted toward the KM program
       Where ksm_allocs.allocation_code Is Not Null
         Or (
         -- KSM program code
@@ -752,7 +760,7 @@ Cursor c_trans_hh_campaign_2008 Is
     From table(tbl_entity_households_ksm) hh
     Inner Join table(tbl_gift_credit_campaign) ksm_trans On ksm_trans.id_number = hh.id_number
     Inner Join table(tbl_gift_credit_ksm) ksm_gft
-      On ksm_gft.tx_number = ksm_trans.rcpt_or_plg_number And ksm_gft.allocation_code = ksm_trans.alloc_code
+      On ksm_gft.tx_number = ksm_trans.rcpt_or_plg_number And ksm_gft.tx_sequence = ksm_trans.xsequence
   ),
   giftcount As (
     Select household_id, rcpt_or_plg_number, count(id_number) As id_cnt
