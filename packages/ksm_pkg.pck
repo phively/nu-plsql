@@ -598,9 +598,10 @@ Cursor c_plg_discount Is
       -- Not inactive, not a BE or LE
       When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A')
         And pplg.prim_pledge_type Not In ('BE', 'LE') Then pledge.pledge_associated_credit_amt
-      -- Not inactive, is BE or LE
+      -- Not inactive, is BE or LE; make sure to allocate proportionally to program code allocation
       When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A')
-        And pplg.prim_pledge_type In ('BE', 'LE') Then pplg.discounted_amt
+        And pplg.prim_pledge_type In ('BE', 'LE') Then pplg.discounted_amt * pledge.pledge_associated_credit_amt /
+          (Case When pplg.discounted_amt = 0 Then 1 Else pplg.discounted_amt End)
       -- If inactive, take amount paid
       Else Case
         When pledge.pledge_amount = 0 And pplg.prim_pledge_amount > 0
