@@ -533,8 +533,12 @@ With
     couples.spouse_id_number As household_spouse_id, couples.spouse_pref_mail_name As household_spouse,
     couples.institutional_suffix As household_suffix, couples.spouse_suffix As household_spouse_suffix,
     couples.first_ksm_year As household_ksm_year, couples.first_masters_year As household_masters_year,
-    (Case When household.last_noncert_year > household.spouse_last_noncert_year
-      Then household.last_noncert_year Else household.spouse_last_noncert_year
+    -- Household last non-certificate year, for young alumni designation
+    (Case
+      When household.spouse_last_noncert_year Is Null Then household.last_noncert_year
+      When household.last_noncert_year Is Null Then household.spouse_last_noncert_year
+      When household.last_noncert_year > household.spouse_last_noncert_year Then household.last_noncert_year
+      Else household.spouse_last_noncert_year
     End) As household_last_noncert_year,
     couples.program_group As household_program_group,
     pref_addr.pref_city, pref_addr.pref_state, pref_addr.pref_country
