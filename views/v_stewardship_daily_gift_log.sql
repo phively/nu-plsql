@@ -238,6 +238,8 @@ Select Distinct
   Case When joint_ind.joint_ind Is Not Null Then jksm_deg.program_group End As joint_ksm_program,
   Case When joint_ind.joint_ind Is Not Null Then jksm_deg.degrees_concat End As joint_ksm_degrees,
   -- Address data
+  entity.pref_jnt_mail_name1,
+  entity.pref_jnt_mail_name2,
   addr.line_1,
   addr.line_2,
   addr.line_3,
