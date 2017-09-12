@@ -50,16 +50,17 @@ Type committee_member Is Record (
 Type household Is Record (
   id_number entity.id_number%type, pref_mail_name entity.pref_mail_name%type,
   record_status_code entity.record_status_code%type, degrees_concat varchar2(512),
-  first_ksm_year degrees.degree_year%type, program_group varchar2(20), spouse_id_number entity.spouse_id_number%type,
-  spouse_pref_mail_name entity.pref_mail_name%type, spouse_degrees_concat varchar2(512),
-  spouse_first_ksm_year degrees.degree_year%type, spouse_program_group varchar2(20),
+  first_ksm_year degrees.degree_year%type, program_group varchar2(20), last_noncert_year degrees.degree_year%type,
+  spouse_id_number entity.spouse_id_number%type, spouse_pref_mail_name entity.pref_mail_name%type,
+  spouse_degrees_concat varchar2(512), spouse_first_ksm_year degrees.degree_year%type, spouse_program_group varchar2(20),
+  spouse_last_noncert_year degrees.degree_year%type,
   household_id entity.id_number%type, household_record entity.record_type_code%type,
   household_name entity.pref_mail_name%type, household_rpt_name entity.report_name%type,
   household_spouse_id entity.id_number%type, household_spouse entity.pref_mail_name%type,
   household_suffix entity.institutional_suffix%type,
   household_spouse_suffix entity.institutional_suffix%type,
   household_ksm_year degrees.degree_year%type, household_masters_year degrees.degree_year%type,
-  household_last_noncert_year degrees.degree_year%type, household_program_group varchar2(20),
+  household_program_group varchar2(20),
   household_city address.city%type, household_state address.state_code%type,
   household_country tms_country.short_desc%type
 );
@@ -525,21 +526,16 @@ With
     Where addr.addr_pref_ind = 'Y'
   )
   Select household.id_number, household.pref_mail_name, household.record_status_code,
-    household.degrees_concat, household.first_ksm_year, household.program_group,
+    household.degrees_concat, household.first_ksm_year, household.program_group, household.last_noncert_year,
     household.spouse_id_number, household.spouse_pref_mail_name,
     household.spouse_degrees_concat, household.spouse_first_ksm_year, household.spouse_program_group,
+    household.spouse_last_noncert_year,
     household.household_id, couples.record_type_code As household_record,
     couples.pref_mail_name As household_name, couples.report_name As household_rpt_name,
     couples.spouse_id_number As household_spouse_id, couples.spouse_pref_mail_name As household_spouse,
     couples.institutional_suffix As household_suffix, couples.spouse_suffix As household_spouse_suffix,
     couples.first_ksm_year As household_ksm_year, couples.first_masters_year As household_masters_year,
     -- Household last non-certificate year, for young alumni designation
-    (Case
-      When household.spouse_last_noncert_year Is Null Then household.last_noncert_year
-      When household.last_noncert_year Is Null Then household.spouse_last_noncert_year
-      When household.last_noncert_year > household.spouse_last_noncert_year Then household.last_noncert_year
-      Else household.spouse_last_noncert_year
-    End) As household_last_noncert_year,
     couples.program_group As household_program_group,
     pref_addr.pref_city, pref_addr.pref_state, pref_addr.pref_country
   From household
