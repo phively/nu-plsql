@@ -34,7 +34,7 @@ Type allocation_info Is Record (
 Type degreed_alumni Is Record (
   id_number entity.id_number%type, degrees_verbose varchar2(1024), degrees_concat varchar2(512),
   first_ksm_year degrees.degree_year%type, first_masters_year degrees.degree_year%type,
-  stewardship_years varchar2(80),
+  last_noncert_year degrees.degree_year%type, stewardship_years varchar2(80),
   program tms_dept_code.short_desc%type, program_group varchar2(20)
 );
 
@@ -48,7 +48,8 @@ Type committee_member Is Record (
 
 /* Household, for entity_households */
 Type household Is Record (
-  id_number entity.id_number%type, pref_mail_name entity.pref_mail_name%type, degrees_concat varchar2(512),
+  id_number entity.id_number%type, pref_mail_name entity.pref_mail_name%type,
+  record_status_code entity.record_status_code%type, degrees_concat varchar2(512),
   first_ksm_year degrees.degree_year%type, program_group varchar2(20), spouse_id_number entity.spouse_id_number%type,
   spouse_pref_mail_name entity.pref_mail_name%type, spouse_degrees_concat varchar2(512),
   spouse_first_ksm_year degrees.degree_year%type, spouse_program_group varchar2(20),
@@ -58,7 +59,7 @@ Type household Is Record (
   household_suffix entity.institutional_suffix%type,
   household_spouse_suffix entity.institutional_suffix%type,
   household_ksm_year degrees.degree_year%type, household_masters_year degrees.degree_year%type,
-  household_program_group varchar2(20),
+  household_last_noncert_year degrees.degree_year%type, household_program_group varchar2(20),
   household_city address.city%type, household_state address.state_code%type,
   household_country tms_country.short_desc%type
 );
@@ -385,7 +386,13 @@ Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
           Or degrees.degree_code In('MBA', 'MMGT', 'MS', 'MSDI', 'MSHA', 'MSMS') -- In case of data errors
           Then trim(degree_year)
         Else NULL
-      End) As first_masters_year
+      End) As first_masters_year,
+      -- Last non-certificate year, e.g. for young alumni status
+      max(Case
+        When degrees.degree_level_code In('B', 'D', 'M')
+        Then trim(degree_year)
+        Else NULL
+      End) As last_noncert_year
       -- Table joins, etc.
       From degrees
         Left Join tms_class_section -- For class section short_desc
@@ -442,7 +449,7 @@ Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
       From concat
     )
     -- Final results
-    Select concat.id_number, degrees_verbose, degrees_concat, first_ksm_year, first_masters_year,
+    Select concat.id_number, degrees_verbose, degrees_concat, first_ksm_year, first_masters_year, last_noncert_year,
       stwrd_deg.stewardship_years, prg.program,
       -- program_group; use spaces to force non-alphabetic entries to apear first
       Case
@@ -475,22 +482,28 @@ Cursor c_source_donor_ksm (receipt In varchar2) Is
 Cursor c_households_ksm (id In varchar2 Default NULL) Is
 With
   -- Entities and spouses, with Kellogg degrees concat fields
+  degs As (
+    Select deg.*
+    From table(tbl_entity_degrees_concat_ksm) deg
+  ),
   couples As (
-    Select entity.id_number, entity.pref_mail_name, entity.report_name, entity.record_type_code,
-      entity.institutional_suffix, edc.degrees_concat, edc.first_ksm_year, edc.first_masters_year, edc.program_group,
+    Select entity.id_number, entity.pref_mail_name, entity.report_name, entity.record_type_code, entity.record_status_code,
+      entity.institutional_suffix, edc.degrees_concat, edc.first_ksm_year, edc.first_masters_year, edc.last_noncert_year,
+      edc.program_group,
       entity.spouse_id_number, spouse.pref_mail_name As spouse_pref_mail_name,
       spouse.institutional_suffix As spouse_suffix,
       sdc.degrees_concat As spouse_degrees_concat, sdc.first_ksm_year As spouse_first_ksm_year,
-      sdc.first_masters_year As spouse_first_masters_year, sdc.program_group As spouse_program_group
+      sdc.first_masters_year As spouse_first_masters_year, sdc.last_noncert_year As spouse_last_noncert_year,
+      sdc.program_group As spouse_program_group
     From entity
-      Left Join table(ksm_pkg.tbl_entity_degrees_concat_ksm) edc On entity.id_number = edc.id_number
-      Left Join table(ksm_pkg.tbl_entity_degrees_concat_ksm) sdc On entity.spouse_id_number = sdc.id_number
+      Left Join degs edc On entity.id_number = edc.id_number
+      Left Join degs sdc On entity.spouse_id_number = sdc.id_number
       Left Join entity spouse On entity.spouse_id_number = spouse.id_number
   ),
   household As (
-    Select id_number, pref_mail_name, degrees_concat, first_ksm_year, program_group,
+    Select id_number, record_status_code, pref_mail_name, degrees_concat, first_ksm_year, last_noncert_year, program_group,
       spouse_id_number, spouse_pref_mail_name,
-      spouse_degrees_concat, spouse_first_ksm_year, spouse_program_group,
+      spouse_degrees_concat, spouse_first_ksm_year, spouse_program_group, spouse_last_noncert_year,
       -- Choose which spouse is primary based on program_group
       Case
         When length(spouse_id_number) < 10 Or spouse_id_number Is Null Then id_number -- if no spouse, use id_number
@@ -511,7 +524,8 @@ With
     Left Join tms_country On addr.country_code = tms_country.country_code
     Where addr.addr_pref_ind = 'Y'
   )
-  Select household.id_number, household.pref_mail_name, household.degrees_concat, household.first_ksm_year, household.program_group,
+  Select household.id_number, household.pref_mail_name, household.record_status_code,
+    household.degrees_concat, household.first_ksm_year, household.program_group,
     household.spouse_id_number, household.spouse_pref_mail_name,
     household.spouse_degrees_concat, household.spouse_first_ksm_year, household.spouse_program_group,
     household.household_id, couples.record_type_code As household_record,
@@ -519,6 +533,9 @@ With
     couples.spouse_id_number As household_spouse_id, couples.spouse_pref_mail_name As household_spouse,
     couples.institutional_suffix As household_suffix, couples.spouse_suffix As household_spouse_suffix,
     couples.first_ksm_year As household_ksm_year, couples.first_masters_year As household_masters_year,
+    (Case When household.last_noncert_year > household.spouse_last_noncert_year
+      Then household.last_noncert_year Else household.spouse_last_noncert_year
+    End) As household_last_noncert_year,
     couples.program_group As household_program_group,
     pref_addr.pref_city, pref_addr.pref_state, pref_addr.pref_country
   From household
