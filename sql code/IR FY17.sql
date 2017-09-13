@@ -113,34 +113,34 @@ cgft As (
   -- Giving level string
   Case
     When entity.person_or_org = 'O' Then 'Z. Org'
-    When campaign_giving >= 10000000 Then 'A. 10M+'
-    When campaign_giving >=  5000000 Then 'B. 5M+'
-    When campaign_giving >=  2000000 Then 'C. 2M+'
-    When campaign_giving >=  1000000 Then 'D. 1M+'
-    When campaign_giving >=   500000 Then 'E. 500K+'
-    When campaign_giving >=   250000 Then 'F. 250K+'
-    When campaign_giving >=   100000 Then 'F. 100K+'
-    When campaign_giving >=    50000 Then 'G. 50K+'
-    When campaign_giving >=    25000 Then 'H. 25K+'
-    When campaign_giving >=    10000 Then 'I. 10K+'
-    When campaign_giving >=     5000 Then 'J. 5K+'
-    When campaign_giving >=     2500 Then 'K. 2.5K+'
+    When campaign_thru_fy17 >= 10000000 Then 'A. 10M+'
+    When campaign_thru_fy17 >=  5000000 Then 'B. 5M+'
+    When campaign_thru_fy17 >=  2000000 Then 'C. 2M+'
+    When campaign_thru_fy17 >=  1000000 Then 'D. 1M+'
+    When campaign_thru_fy17 >=   500000 Then 'E. 500K+'
+    When campaign_thru_fy17 >=   250000 Then 'F. 250K+'
+    When campaign_thru_fy17 >=   100000 Then 'F. 100K+'
+    When campaign_thru_fy17 >=    50000 Then 'G. 50K+'
+    When campaign_thru_fy17 >=    25000 Then 'H. 25K+'
+    When campaign_thru_fy17 >=    10000 Then 'I. 10K+'
+    When campaign_thru_fy17 >=     5000 Then 'J. 5K+'
+    When campaign_thru_fy17 >=     2500 Then 'K. 2.5K+'
     Else 'L. Under 2.5K'
   End As proposed_giving_level,
   Case
     When entity.person_or_org = 'O' Then 'Z. Org'
-    When campaign_nonanonymous >= 10000000 Then 'A. 10M+'
-    When campaign_nonanonymous >=  5000000 Then 'B. 5M+'
-    When campaign_nonanonymous >=  2000000 Then 'C. 2M+'
-    When campaign_nonanonymous >=  1000000 Then 'D. 1M+'
-    When campaign_nonanonymous >=   500000 Then 'E. 500K+'
-    When campaign_nonanonymous >=   250000 Then 'F. 250K+'
-    When campaign_nonanonymous >=   100000 Then 'F. 100K+'
-    When campaign_nonanonymous >=    50000 Then 'G. 50K+'
-    When campaign_nonanonymous >=    25000 Then 'H. 25K+'
-    When campaign_nonanonymous >=    10000 Then 'I. 10K+'
-    When campaign_nonanonymous >=     5000 Then 'J. 5K+'
-    When campaign_nonanonymous >=     2500 Then 'K. 2.5K+'
+    When nonanon_thru_fy17 >= 10000000 Then 'A. 10M+'
+    When nonanon_thru_fy17 >=  5000000 Then 'B. 5M+'
+    When nonanon_thru_fy17 >=  2000000 Then 'C. 2M+'
+    When nonanon_thru_fy17 >=  1000000 Then 'D. 1M+'
+    When nonanon_thru_fy17 >=   500000 Then 'E. 500K+'
+    When nonanon_thru_fy17 >=   250000 Then 'F. 250K+'
+    When nonanon_thru_fy17 >=   100000 Then 'F. 100K+'
+    When nonanon_thru_fy17 >=    50000 Then 'G. 50K+'
+    When nonanon_thru_fy17 >=    25000 Then 'H. 25K+'
+    When nonanon_thru_fy17 >=    10000 Then 'I. 10K+'
+    When nonanon_thru_fy17 >=     5000 Then 'J. 5K+'
+    When nonanon_thru_fy17 >=     2500 Then 'K. 2.5K+'
     Else 'L. Under 2.5K'
   End As nonanon_giving_level
   From v_ksm_giving_campaign gft
@@ -201,8 +201,9 @@ donorlist As (
 
 /* Main query */
 Select Distinct
-  -- Recognition string
-  -- Anonymous is just Anonymous
+  -- Print in IR flag, for household deduping
+  'Y' As print_in_report
+  -- Recognition name string; fully anonymous donors are just Anonymous
   Case When anon.anon Is Not Null Then 'Anonymous'
   Else
     -- All others
@@ -229,20 +230,20 @@ Select Distinct
           End
         End
     End
-  -- Add loyal tag if applicable
+    -- Add loyal tag if applicable
     || loyal.loyal
-  -- Add KLC tag if applicable
+    -- Add KLC tag if applicable
     || fy_klc.klc)
   End As proposed_recognition_name,
   -- Giving level string
   proposed_giving_level,
   -- Anonymous flags
-  Case When proposed_giving_level <> nonanon_giving_level And anon.anon Is Null Then 'Y' End As different_nonanon_level,
+  Case When proposed_giving_level <> nonanon_giving_level And anon.anon Is Null Then nonanon_giving_level End As different_nonanon_level,
   anon.anon,
-  campaign_anonymous,
-  campaign_nonanonymous,
+  anon_thru_fy17,
+  nonanon_thru_fy17,
   -- Fields
-  campaign_giving,
+  campaign_thru_fy17,
   assign_conc.managers,
   donorlist.id_number,
   report_name,
@@ -266,6 +267,9 @@ Select Distinct
   loyal.stewardship_cfy,
   loyal.stewardship_pfy1,
   loyal.stewardship_pfy2,
+  campaign_anonymous,
+  campaign_nonanonymous,
+  campaign_giving,
   campaign_reachbacks,
   campaign_fy08,
   campaign_fy09,
@@ -276,7 +280,8 @@ Select Distinct
   campaign_fy14,
   campaign_fy15,
   campaign_fy16,
-  campaign_fy17
+  campaign_fy17,
+  campaign_fy18
 From donorlist
 Left Join assign_conc On assign_conc.household_id = donorlist.household_id
 Left Join dec_spouse_conc On dec_spouse_conc.id_number = donorlist.id_number
