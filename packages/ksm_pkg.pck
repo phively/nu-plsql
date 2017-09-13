@@ -54,6 +54,8 @@ Type household Is Record (
   spouse_id_number entity.spouse_id_number%type, spouse_pref_mail_name entity.pref_mail_name%type,
   spouse_degrees_concat varchar2(512), spouse_first_ksm_year degrees.degree_year%type, spouse_program_group varchar2(20),
   spouse_last_noncert_year degrees.degree_year%type,
+  fmr_spouse_id entity.id_number%type, fmr_spouse_name entity.report_name%type,
+  fmr_marital_status tms_marital_status.short_desc%type,
   household_id entity.id_number%type, household_record entity.record_type_code%type,
   household_name entity.pref_mail_name%type, household_rpt_name entity.report_name%type,
   household_spouse_id entity.id_number%type, household_spouse entity.pref_mail_name%type,
@@ -525,12 +527,49 @@ With
     From address addr
     Left Join tms_country On addr.country_code = tms_country.country_code
     Where addr.addr_pref_ind = 'Y'
+  ),
+  -- Deceased spouse logic
+  deceased_spouses As (
+  Select Distinct id_number, spouse_id_number, marital_status_chg_dt, xsequence,
+    tms.short_desc As marital_status
+  From former_spouse
+  Inner Join tms_marital_status tms On tms.marital_status_code = former_spouse.marital_status_code
+  Where tms.marital_status_code In
+    -- Marriage ended by death, married at time of death, widowed, widowed at time of death
+    ('I', 'Q', 'Z', 'W', 'N')
+  ),
+  -- Deduping
+  deceased_spouse As (
+    Select ds.id_number,
+      -- If multiple keep only most recent (determined by change date, then xsequence) deceased spouse
+      min(spouse_id_number) keep(dense_rank First Order By marital_status_chg_dt Desc, xsequence Desc) As spouse_id_number
+    From deceased_spouses ds
+    Group By ds.id_number
+  ),
+  fmr_spouse As (
+    Select entity.id_number, entity.report_name,
+      tms.short_desc As record_status, tms_ms.short_desc As marital_status,
+      ds.spouse_id_number, spouse.report_name As spouse_name,
+      tmsd.short_desc As spouse_record_status, tms_sms.short_desc As spouse_marital_status
+    From entity
+    Left Join tms_record_status tms On tms.record_status_code = entity.record_status_code
+    Left Join deceased_spouse ds On ds.id_number = entity.id_number
+    Left Join tms_marital_status tms_ms On tms_ms.marital_status_code = entity.marital_status_code
+    Left Join entity spouse On spouse.id_number = ds.spouse_id_number
+    Left Join tms_record_status tmsd On tmsd.record_status_code = spouse.record_status_code
+    Left Join tms_marital_status tms_sms On tms_sms.marital_status_code = spouse.marital_status_code
+    Where entity.id_number In (
+      (Select id_number From deceased_spouse) Union All (Select spouse_id_number From deceased_spouse)
+    )
   )
+  -- Main query
   Select household.id_number, household.pref_mail_name, household.record_status_code,
     household.degrees_concat, household.first_ksm_year, household.program_group, household.last_noncert_year,
     household.spouse_id_number, household.spouse_pref_mail_name,
     household.spouse_degrees_concat, household.spouse_first_ksm_year, household.spouse_program_group,
     household.spouse_last_noncert_year,
+    fmr_spouse.spouse_id_number As fmr_spouse_id, fmr_spouse.spouse_name As fmr_spouse_name,
+    fmr_spouse.marital_status As fmr_marital_status,
     household.household_id, couples.record_type_code As household_record,
     couples.pref_mail_name As household_name, couples.report_name As household_rpt_name,
     couples.spouse_id_number As household_spouse_id, couples.spouse_pref_mail_name As household_spouse,
@@ -543,6 +582,7 @@ With
   From household
     Left Join couples On household.household_id = couples.id_number
     Left Join pref_addr On household.household_id = pref_addr.id_number
+    Left Join fmr_spouse On household.id_number = fmr_spouse.id_number
   Where (Case When id Is Not Null Then household.id_number Else 'T' End)
             = (Case When id Is Not Null Then id Else 'T' End);
 
