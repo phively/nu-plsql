@@ -79,7 +79,10 @@ Select Distinct hh.id_number, entity.report_name, hh.degrees_concat, cgft.househ
   sum(Case When fiscal_year = 2017 Then hh_credit Else 0 End) As campaign_fy17,
   sum(Case When fiscal_year = 2018 Then hh_credit Else 0 End) As campaign_fy18,
   sum(Case When fiscal_year = 2019 Then hh_credit Else 0 End) As campaign_fy19,
-  sum(Case When fiscal_year = 2020 Then hh_credit Else 0 End) As campaign_fy20
+  sum(Case When fiscal_year = 2020 Then hh_credit Else 0 End) As campaign_fy20,
+  sum(Case When fiscal_year <= 2017 Then hh_credit Else 0 End) As campaign_thru_fy17,
+  sum(Case When fiscal_year <= 2017 And cgft.anonymous In (Select Distinct anonymous_code From tms_anonymous) Then hh_credit Else 0 End) As anon_thru_fy17,
+  sum(Case When fiscal_year <= 2017 And cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_credit Else 0 End) As nonanon_thru_fy17 
 From hh
 Cross Join v_current_calendar cal
 Inner Join v_ksm_giving_campaign_trans_hh cgft On cgft.household_id = hh.household_id
