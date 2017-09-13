@@ -95,6 +95,7 @@ tms_trans As (
 first_gift As (
   Select id_number, min(date_of_record) as first_ksm_gift_dt
   From v_ksm_giving_trans
+  Where transaction_type <> 'Telefund Pledge' -- Should not consider telefund pledges
   Group By id_number
 ),
 
