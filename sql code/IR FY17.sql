@@ -123,13 +123,12 @@ cgft As (
     When campaign_thru_fy17 >=  1000000 Then 'D. 1M+'
     When campaign_thru_fy17 >=   500000 Then 'E. 500K+'
     When campaign_thru_fy17 >=   250000 Then 'F. 250K+'
-    When campaign_thru_fy17 >=   100000 Then 'F. 100K+'
-    When campaign_thru_fy17 >=    50000 Then 'G. 50K+'
-    When campaign_thru_fy17 >=    25000 Then 'H. 25K+'
-    When campaign_thru_fy17 >=    10000 Then 'I. 10K+'
-    When campaign_thru_fy17 >=     5000 Then 'J. 5K+'
-    When campaign_thru_fy17 >=     2500 Then 'K. 2.5K+'
-    Else 'L. Under 2.5K'
+    When campaign_thru_fy17 >=   100000 Then 'G. 100K+'
+    When campaign_thru_fy17 >=    50000 Then 'H. 50K+'
+    When campaign_thru_fy17 >=    25000 Then 'I. 25K+'
+    When campaign_thru_fy17 >=    10000 Then 'J. 10K+'
+    When campaign_thru_fy17 >=     5000 Then 'K. 5K+'
+    Else 'L. 2.5K+'
   End As proposed_giving_level,
   Case
     When entity.person_or_org = 'O' Then 'Z. Org'
@@ -139,13 +138,12 @@ cgft As (
     When nonanon_thru_fy17 >=  1000000 Then 'D. 1M+'
     When nonanon_thru_fy17 >=   500000 Then 'E. 500K+'
     When nonanon_thru_fy17 >=   250000 Then 'F. 250K+'
-    When nonanon_thru_fy17 >=   100000 Then 'F. 100K+'
-    When nonanon_thru_fy17 >=    50000 Then 'G. 50K+'
-    When nonanon_thru_fy17 >=    25000 Then 'H. 25K+'
-    When nonanon_thru_fy17 >=    10000 Then 'I. 10K+'
-    When nonanon_thru_fy17 >=     5000 Then 'J. 5K+'
-    When nonanon_thru_fy17 >=     2500 Then 'K. 2.5K+'
-    Else 'L. Under 2.5K'
+    When nonanon_thru_fy17 >=   100000 Then 'G. 100K+'
+    When nonanon_thru_fy17 >=    50000 Then 'H. 50K+'
+    When nonanon_thru_fy17 >=    25000 Then 'I. 25K+'
+    When nonanon_thru_fy17 >=    10000 Then 'J. 10K+'
+    When nonanon_thru_fy17 >=     5000 Then 'K. 5K+'
+    Else 'L. 2.5K+'
   End As nonanon_giving_level
   From v_ksm_giving_campaign gft
   Inner Join entity On entity.id_number = gft.id_number
@@ -172,7 +170,7 @@ donorlist As (
   -- $2500+ cumulative campaign giving
   Select cgft.*, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix,
     hh.household_masters_year, hh.primary_name, hh.gender, hh.primary_name_spouse, hh.gender_spouse,
-    hh.person_or_org, hh.yrs, hh.yrs_spouse
+    hh.person_or_org, hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status
   From cgft
   Inner Join hh On hh.id_number = cgft.id_number
   Where cgft.campaign_giving >= 2500
@@ -180,7 +178,7 @@ donorlist As (
   -- Young alumni giving $1000+ from FY12 on
   Select cgft.*, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix,
     hh.household_masters_year, hh.primary_name, hh.gender, hh.primary_name_spouse, hh.gender_spouse,
-    hh.person_or_org, hh.yrs, hh.yrs_spouse
+    hh.person_or_org, hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status
   From cgft
   Inner Join hh On hh.id_number = cgft.id_number
   Left Join cash On cash.id_number = cgft.id_number
@@ -255,7 +253,7 @@ rec_name As (
     ) As proposed_recognition_name,
     -- Proposed sort name within groups
     Case
-      When rn.name_order = 'Anon' Then '00Anonymous'
+      When rn.name_order = 'Anon' Then ' ' -- Single space sorts before double space, 0-9, A-z, etc.
       When rn.name_order = 'Org' Then household_rpt_name
       When rn.name_order = 'Self' Then household_rpt_name
       When rn.name_order = 'Self Spouse' Then household_rpt_name || '; ' || household_spouse_rpt_name
@@ -288,6 +286,9 @@ Select Distinct
   report_name,
   degrees_concat,
   dec_spouse_conc.dec_spouse_ids,
+  fmr_spouse_id,
+  fmr_spouse_name,
+  fmr_marital_status,
   donorlist.household_id,
   person_or_org,
   record_status_code,
