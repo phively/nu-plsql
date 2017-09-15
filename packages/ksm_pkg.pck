@@ -106,7 +106,8 @@ Type plg_disc Is Record (
   pledge_amount pledge.pledge_amount%type,	pledge_associated_credit_amt pledge.pledge_associated_credit_amt%type,
   prim_pledge_amount primary_pledge.prim_pledge_amount%type, prim_pledge_amount_paid primary_pledge.prim_pledge_amount_paid%type,
   prim_pledge_original_amount primary_pledge.prim_pledge_original_amount%type,
-  discounted_amt primary_pledge.prim_pledge_amount%type, credit primary_pledge.prim_pledge_amount%type
+  discounted_amt primary_pledge.prim_pledge_amount%type, credit primary_pledge.prim_pledge_amount%type,
+  recognition_credit pledge.pledge_amount%type
 );
 
 /* Entity transaction for credit */
@@ -117,7 +118,7 @@ Type trans_entity Is Record (
   allocation_code allocation.allocation_code%type, alloc_short_name allocation.short_name%type,
   af_flag varchar2(1), pledge_status primary_pledge.prim_pledge_status%type,
   date_of_record gift.gift_date_of_record%type, fiscal_year number,
-  credit_amount gift.gift_associated_amount%type
+  credit_amount gift.gift_associated_amount%type, recognition_credit gift.gift_associated_amount%type
 );
 
 /* Householdable transaction for credit */
@@ -128,8 +129,8 @@ Type trans_household Is Record (
   allocation_code allocation.allocation_code%type, alloc_short_name allocation.short_name%type,
   af_flag varchar2(1), pledge_status primary_pledge.prim_pledge_status%type,
   date_of_record gift.gift_date_of_record%type, fiscal_year number,
-  credit_amount gift.gift_associated_amount%type,
-  hh_credit gift.gift_associated_amount%type
+  credit_amount gift.gift_associated_amount%type, recognition_credit gift.gift_associated_amount%type,
+  hh_credit gift.gift_associated_amount%type, hh_recognition_credit gift.gift_associated_amount%type
 );
 
 /* Campaign transactions */
@@ -673,7 +674,20 @@ Cursor c_plg_discount Is
           Then pplg.prim_pledge_amount_paid * pledge.pledge_amount / pplg.prim_pledge_amount
         Else pplg.prim_pledge_amount_paid
       End
-    End As credit
+    End As credit,
+  -- Discounted pledge credit with face value on bequests
+  Case
+    -- All active pledges
+      When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A') Then pledge.pledge_associated_credit_amt
+      -- If not active, take amount paid
+      Else Case
+        When pledge.pledge_amount = 0 And pplg.prim_pledge_amount > 0
+          Then pplg.prim_pledge_amount_paid * pledge.pledge_associated_credit_amt / pplg.prim_pledge_amount
+        When pplg.prim_pledge_amount > 0
+          Then pplg.prim_pledge_amount_paid * pledge.pledge_amount / pplg.prim_pledge_amount
+        Else pplg.prim_pledge_amount_paid
+      End
+  End As recognition_credit
   From primary_pledge pplg
   Inner Join pledge On pledge.pledge_pledge_number = pplg.prim_pledge_number
   Where pledge.pledge_program_code = 'KM'
@@ -715,7 +729,8 @@ Cursor c_ksm_trans_credit Is
       Select gft.id_number, gift.gift_associated_anonymous As anon,
         tx_number, tx_sequence, tms_trans.transaction_type, tx_gypm_ind,
         gft.allocation_code, gft.alloc_short_name, af_flag,
-        NULL As pledge_status, date_of_record, to_number(fiscal_year) As fiscal_year, credit_amount
+        NULL As pledge_status, date_of_record, to_number(fiscal_year) As fiscal_year, credit_amount,
+        credit_amount As recognition_credit
       From nu_gft_trp_gifttrans gft
       -- Anonymous association
       Inner Join gift On gift.gift_receipt_number = gft.tx_number And gift.gift_sequence = gft.tx_sequence
@@ -730,7 +745,8 @@ Cursor c_ksm_trans_credit Is
       Select match_gift_company_id, gftanon.anon,
         match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', 'M',
         match_gift_allocation_name, ksm_allocs.short_name, af_flag,
-        NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record), match_gift_amount
+        NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record), match_gift_amount,
+        match_gift_amount
       From matching_gift
       -- Only KSM allocations
       Inner Join ksm_allocs On ksm_allocs.allocation_code = matching_gift.match_gift_allocation_name
@@ -745,7 +761,8 @@ Cursor c_ksm_trans_credit Is
       Select gft.id_number, gftanon.anon,
         match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', 'M',
         match_gift_allocation_name, ksm_allocs.short_name, af_flag,
-        NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record), match_gift_amount
+        NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record), match_gift_amount,
+        match_gift_amount
       From matching_gift
       -- Inner join to add all attributed donor IDs on the original gift
       Inner Join (Select gift_donor_id As id_number, gift.gift_receipt_number From gift) gft
@@ -763,7 +780,8 @@ Cursor c_ksm_trans_credit Is
       Select pledge_donor_id, pledge_anonymous,
         pledge_pledge_number, pledge.pledge_sequence, tms_trans.transaction_type, 'P',
         pledge.pledge_allocation_name, ksm_allocs.short_name, ksm_allocs.af_flag,
-        prim_pledge_status, pledge_date_of_record, ksm_pkg.get_fiscal_year(pledge_date_of_record), plgd.credit
+        prim_pledge_status, pledge_date_of_record, ksm_pkg.get_fiscal_year(pledge_date_of_record), plgd.credit,
+        plgd.recognition_credit
       From pledge
       -- Trans type descriptions
       Inner Join tms_trans On tms_trans.transaction_type_code = pledge.pledge_pledge_type
@@ -800,11 +818,18 @@ Cursor c_ksm_trans_hh_credit Is
   )
   /* Main query */
   Select hhid.*,
+    -- Household primary credit
     Case
       When hhid.id_number = hhid.household_id Then hhid.credit_amount
       When id_cnt = 1 Then hhid.credit_amount
       Else 0
-    End As hh_credit
+    End As hh_credit,
+    -- Household recognition credit
+    Case
+      When hhid.id_number = hhid.household_id Then hhid.recognition_credit
+      When id_cnt = 1 Then hhid.recognition_credit
+      Else 0
+    End As hh_recognition_credit
   From hhid
   Inner Join giftcount gc On gc.household_id = hhid.household_id
     And gc.tx_number = hhid.tx_number;
@@ -865,7 +890,7 @@ Cursor c_trans_hh_campaign_2008 Is
     'Internal Transfer' As transaction_type, daily.gift_pledge_or_match,
     daily.alloc_code, allocation.short_name, 'N' As af_flag,
     daily.pledge_status, daily.date_of_record, to_number(daily.year_of_giving) As fiscal_year,
-    344303 As credit_amount, 344303 As hh_credit
+    344303 As credit_amount, 344303 As recognition_amount, 344303 As hh_credit, 344303 As hh_recognition_credit
   From nu_rpt_t_cmmt_dtl_daily daily
   Inner Join allocation On allocation.allocation_code = daily.alloc_code
   Where daily.rcpt_or_plg_number = '0002275766'
