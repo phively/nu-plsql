@@ -117,32 +117,32 @@ cgft As (
   -- Giving level string
   Case
     When entity.person_or_org = 'O' Then 'Z. Org'
-    When campaign_thru_fy17 >= 10000000 Then 'A. 10M+'
-    When campaign_thru_fy17 >=  5000000 Then 'B. 5M+'
-    When campaign_thru_fy17 >=  2000000 Then 'C. 2M+'
-    When campaign_thru_fy17 >=  1000000 Then 'D. 1M+'
-    When campaign_thru_fy17 >=   500000 Then 'E. 500K+'
-    When campaign_thru_fy17 >=   250000 Then 'F. 250K+'
-    When campaign_thru_fy17 >=   100000 Then 'G. 100K+'
-    When campaign_thru_fy17 >=    50000 Then 'H. 50K+'
-    When campaign_thru_fy17 >=    25000 Then 'I. 25K+'
-    When campaign_thru_fy17 >=    10000 Then 'J. 10K+'
-    When campaign_thru_fy17 >=     5000 Then 'K. 5K+'
+    When campaign_steward_thru_fy17 >= 10000000 Then 'A. 10M+'
+    When campaign_steward_thru_fy17 >=  5000000 Then 'B. 5M+'
+    When campaign_steward_thru_fy17 >=  2000000 Then 'C. 2M+'
+    When campaign_steward_thru_fy17 >=  1000000 Then 'D. 1M+'
+    When campaign_steward_thru_fy17 >=   500000 Then 'E. 500K+'
+    When campaign_steward_thru_fy17 >=   250000 Then 'F. 250K+'
+    When campaign_steward_thru_fy17 >=   100000 Then 'G. 100K+'
+    When campaign_steward_thru_fy17 >=    50000 Then 'H. 50K+'
+    When campaign_steward_thru_fy17 >=    25000 Then 'I. 25K+'
+    When campaign_steward_thru_fy17 >=    10000 Then 'J. 10K+'
+    When campaign_steward_thru_fy17 >=     5000 Then 'K. 5K+'
     Else 'L. 2.5K+'
   End As proposed_giving_level,
   Case
     When entity.person_or_org = 'O' Then 'Z. Org'
-    When nonanon_thru_fy17 >= 10000000 Then 'A. 10M+'
-    When nonanon_thru_fy17 >=  5000000 Then 'B. 5M+'
-    When nonanon_thru_fy17 >=  2000000 Then 'C. 2M+'
-    When nonanon_thru_fy17 >=  1000000 Then 'D. 1M+'
-    When nonanon_thru_fy17 >=   500000 Then 'E. 500K+'
-    When nonanon_thru_fy17 >=   250000 Then 'F. 250K+'
-    When nonanon_thru_fy17 >=   100000 Then 'G. 100K+'
-    When nonanon_thru_fy17 >=    50000 Then 'H. 50K+'
-    When nonanon_thru_fy17 >=    25000 Then 'I. 25K+'
-    When nonanon_thru_fy17 >=    10000 Then 'J. 10K+'
-    When nonanon_thru_fy17 >=     5000 Then 'K. 5K+'
+    When nonanon_steward_thru_fy17 >= 10000000 Then 'A. 10M+'
+    When nonanon_steward_thru_fy17 >=  5000000 Then 'B. 5M+'
+    When nonanon_steward_thru_fy17 >=  2000000 Then 'C. 2M+'
+    When nonanon_steward_thru_fy17 >=  1000000 Then 'D. 1M+'
+    When nonanon_steward_thru_fy17 >=   500000 Then 'E. 500K+'
+    When nonanon_steward_thru_fy17 >=   250000 Then 'F. 250K+'
+    When nonanon_steward_thru_fy17 >=   100000 Then 'G. 100K+'
+    When nonanon_steward_thru_fy17 >=    50000 Then 'H. 50K+'
+    When nonanon_steward_thru_fy17 >=    25000 Then 'I. 25K+'
+    When nonanon_steward_thru_fy17 >=    10000 Then 'J. 10K+'
+    When nonanon_steward_thru_fy17 >=     5000 Then 'K. 5K+'
     Else 'L. 2.5K+'
   End As nonanon_giving_level
   From v_ksm_giving_campaign gft
@@ -277,10 +277,10 @@ Select Distinct
   -- Anonymous flags
   Case When proposed_giving_level <> nonanon_giving_level And rec_name.anon Is Null Then nonanon_giving_level End As different_nonanon_level,
   rec_name.anon,
-  anon_thru_fy17,
-  nonanon_thru_fy17,
+  anon_steward_thru_fy17,
+  nonanon_steward_thru_fy17,
   -- Fields
-  campaign_thru_fy17,
+  campaign_steward_thru_fy17,
   assign_conc.managers,
   donorlist.id_number,
   report_name,

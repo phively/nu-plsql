@@ -14,6 +14,7 @@ Create Or Replace View v_ksm_giving_summary As
 -- View implementing Kellogg gift credit, householded, with several common types
 Select Distinct hh.id_number, hh.household_id, hh.household_rpt_name, hh.household_spouse_id, hh.household_spouse,
   sum(Case When tx_gypm_ind != 'Y' Then hh_credit Else 0 End) As ngc_lifetime,
+  sum(Case When tx_gypm_ind != 'Y' Then hh_recognition_credit Else 0 End) As ngc_lifetime_beq_fv, -- Count bequests at face value
   sum(Case When tx_gypm_ind != 'Y' And cal.curr_fy = fiscal_year     Then hh_credit Else 0 End) As ngc_cfy,
   sum(Case When tx_gypm_ind != 'Y' And cal.curr_fy = fiscal_year + 1 Then hh_credit Else 0 End) As ngc_pfy1,
   sum(Case When tx_gypm_ind != 'Y' And cal.curr_fy = fiscal_year + 2 Then hh_credit Else 0 End) As ngc_pfy2,
