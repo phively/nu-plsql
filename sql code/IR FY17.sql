@@ -64,6 +64,15 @@ dec_spouse_conc As (
   Group By id_number
 ),
 
+/* Deceased spouse TABLE -- update rpt_pbh634.tbl_ir_fy17_dec_spouse */
+dec_spouse_ids As (
+  Select ds.id_number, hh.gender, hh.primary_name As pn, hh.yrs, hh.household_rpt_name As sn,
+    ds.id_join, hhd.gender As gender_join, hhd.primary_name As pnj, hhd.yrs As yrs_join, hhd.household_rpt_name As snj
+  From rpt_pbh634.tbl_ir_fy17_dec_spouse ds
+  Inner Join hh On hh.id_number = ds.id_number
+  Inner Join hh hhd On hhd.id_number = ds.id_join
+),
+
 /* Prospect assignments */
 assign As (
   Select Distinct hh.household_id, assignment.prospect_id, office_code, assignment_id_number, entity.report_name
@@ -203,35 +212,38 @@ donorlist As (
 
 /* Name ordering helper */
 rec_name_logic As (
-  Select id_number, donorlist.household_id, primary_name, primary_name_spouse, household_rpt_name, household_spouse_rpt_name,
+  Select donorlist.id_number, donorlist.household_id, primary_name, primary_name_spouse, household_rpt_name, household_spouse_rpt_name,
     -- Name ordering based on rules we had discussed: alum first, if both or neither are alums then female first
     Case
       -- Anonymous donors take precedence
       When anon.anon Is Not Null Or lower(primary_name) Like '%anonymous%donor%'
         Then 'Anon'
       -- Organizations next
-      When person_or_org = 'O' Then 'Org'
+      When donorlist.person_or_org = 'O' Then 'Org'
+      -- If on deceased spouse list, override
+      When dec_spouse_ids.id_number Is Not Null Then 'Dec Spouse'
       -- If no spouse, use own name
-      When primary_name_spouse Is Null Then 'Self'
+      When donorlist.primary_name_spouse Is Null Then 'Self'
       -- If spouse, check if either/both have degrees
-      When primary_name_spouse Is Not Null Then
+      When donorlist.primary_name_spouse Is Not Null Then
         Case
           -- If primary is only one with degrees, order is primary spouse
-          When yrs Is Not Null And yrs_spouse Is Null then 'Self Spouse'
+          When donorlist.yrs Is Not Null And donorlist.yrs_spouse Is Null Then 'Self Spouse'
           -- If spouse is only one with degrees, order is spouse primary
-          When yrs Is Null And yrs_spouse Is Not Null Then 'Spouse Self'
+          When donorlist.yrs Is Null And donorlist.yrs_spouse Is Not Null Then 'Spouse Self'
           -- Check gender
           Else Case
             -- If primary is female list primary first
-            When gender = 'F' Then 'Self Spouse'
+            When donorlist.gender = 'F' Then 'Self Spouse'
             -- If spouse is female list spouse first
-            When gender_spouse = 'F' Then 'Spouse Self'
+            When donorlist.gender_spouse = 'F' Then 'Spouse Self'
             -- Fallback
             Else 'Self Spouse'
           End
         End
     End As name_order  
   From donorlist
+  Left Join dec_spouse_ids On dec_spouse_ids.id_number = donorlist.id_number
   Left Join anon On anon.household_id = donorlist.household_id
 ),
 rec_name As (
@@ -242,6 +254,16 @@ rec_name As (
       When rn.name_order = 'Anon' Then 'Anonymous'
       -- Orgs get their full name
       When rn.name_order = 'Org' Then household_rpt_name
+      -- Deceased spouses -- have to manually join
+      When rn.name_order = 'Dec Spouse' Then
+        Case
+          When dec_spouse_ids.yrs Is Not Null and yrs_join Is Null Then trim(pn || ' and ' || pnj)
+          When dec_spouse_ids.yrs Is Null and yrs_join Is Not Null Then trim(pnj || ' and ' || pn)
+          When dec_spouse_ids.gender = 'F' Then trim(pn || ' and ' || pnj)
+          When dec_spouse_ids.gender_join = 'F' Then trim(pnj || ' and ' || pn)
+          Else trim(pn || ' and ' || pnj)
+        End
+      -- Everyone else
       When rn.name_order = 'Self' Then trim(primary_name)
       When rn.name_order = 'Self Spouse' Then trim(primary_name || ' and ' || primary_name_spouse)
       When rn.name_order = 'Spouse Self' Then trim(primary_name_spouse || ' and ' || primary_name)
@@ -255,11 +277,20 @@ rec_name As (
     Case
       When rn.name_order = 'Anon' Then ' ' -- Single space sorts before double space, 0-9, A-z, etc.
       When rn.name_order = 'Org' Then household_rpt_name
+      When rn.name_order = 'Dec Spouse' Then
+        Case
+          When dec_spouse_ids.yrs Is Not Null and yrs_join Is Null Then trim(sn || '; ' || snj)
+          When dec_spouse_ids.yrs Is Null and yrs_join Is Not Null Then trim(snj || '; ' || sn)
+          When dec_spouse_ids.gender = 'F' Then trim(sn || '; ' || snj)
+          When dec_spouse_ids.gender_join = 'F' Then trim(snj || '; ' || sn)
+          Else trim(sn || '; ' || snj)
+        End
       When rn.name_order = 'Self' Then household_rpt_name
       When rn.name_order = 'Self Spouse' Then household_rpt_name || '; ' || household_spouse_rpt_name
       When rn.name_order = 'Spouse Self' Then household_spouse_rpt_name || '; ' || household_rpt_name
     End As proposed_sort_name
   From rec_name_logic rn
+  Left Join dec_spouse_ids On dec_spouse_ids.id_number = rn.id_number
   Left Join fy_klc On fy_klc.household_id = rn.household_id
   Left Join loyal On loyal.household_id = rn.household_id
   Left Join anon On anon.household_id = rn.household_id
@@ -268,7 +299,10 @@ rec_name As (
 /* Main query */
 Select Distinct
   -- Print in IR flag, for household deduping
---  'Y' As print_in_report
+  dense_rank() Over(Partition By proposed_sort_name, proposed_giving_level
+    Order By proposed_giving_level Asc, donorlist.id_number Asc) As name_rank,
+  Case When dense_rank() Over(Partition By proposed_sort_name, proposed_giving_level
+    Order By proposed_giving_level Asc, donorlist.id_number Asc) = 1 Then 'Y' End As print_in_report,
   -- Recognition name string
   rec_name.proposed_sort_name,
   rec_name.proposed_recognition_name,
