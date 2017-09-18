@@ -341,17 +341,18 @@ Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
   With
   -- Stewardship concatenated years; uses Distinct to de-dupe multiple degrees in one year
   stwrd_yrs As (
-    Select Distinct id_number, trim('''' || substr(trim(degree_year), -2)) As degree_year
+    Select Distinct id_number, degree_year, trim('''' || substr(trim(degree_year), -2)) As degree_yr
     From degrees
     Where institution_code = '31173' -- Northwestern institution code
       And school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
       And (Case When id Is Not Null Then id_number Else 'T' End)
           = (Case When id Is Not Null Then id Else 'T' End)
+    Order By id_number, degree_year Asc
   ),
   stwrd_deg As (
     Select Distinct id_number,
-      Listagg(degree_year, ', '
-      ) Within Group (Order By degree_year) As stewardship_years
+      Listagg(degree_yr, ', '
+      ) Within Group (Order By degree_year Asc) As stewardship_years
     From stwrd_yrs
     Where degree_year <> ''''
     Group By id_number
