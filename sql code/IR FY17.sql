@@ -299,10 +299,11 @@ rec_name As (
 /* Main query */
 Select Distinct
   -- Print in IR flag, for household deduping
-  dense_rank() Over(Partition By proposed_sort_name, proposed_giving_level
-    Order By proposed_giving_level Asc, donorlist.id_number Asc) As name_rank,
-  Case When dense_rank() Over(Partition By proposed_sort_name, proposed_giving_level
-    Order By proposed_giving_level Asc, donorlist.id_number Asc) = 1 Then 'Y' End As print_in_report,
+  dense_rank() Over(Partition By proposed_sort_name Order By proposed_giving_level Asc, donorlist.id_number Asc) As name_rank,
+  Case
+    When rec_name.proposed_recognition_name = 'Anonymous' Then 'Y'
+    When dense_rank() Over(Partition By proposed_sort_name Order By proposed_giving_level Asc, donorlist.id_number Asc) = 1 Then 'Y'
+  End As print_in_report,
   -- Recognition name string
   rec_name.proposed_sort_name,
   rec_name.proposed_recognition_name,
