@@ -119,7 +119,7 @@ cgft As (
     When entity.person_or_org = 'O' Then 'Z. Org'
     When campaign_steward_thru_fy17 >= 10000000 Then 'A. 10M+'
     When campaign_steward_thru_fy17 >=  5000000 Then 'B. 5M+'
-    When campaign_steward_thru_fy17 >=  2000000 Then 'C. 2M+'
+    When campaign_steward_thru_fy17 >=  2500000 Then 'C. 2.5M+'
     When campaign_steward_thru_fy17 >=  1000000 Then 'D. 1M+'
     When campaign_steward_thru_fy17 >=   500000 Then 'E. 500K+'
     When campaign_steward_thru_fy17 >=   250000 Then 'F. 250K+'
@@ -134,7 +134,7 @@ cgft As (
     When entity.person_or_org = 'O' Then 'Z. Org'
     When nonanon_steward_thru_fy17 >= 10000000 Then 'A. 10M+'
     When nonanon_steward_thru_fy17 >=  5000000 Then 'B. 5M+'
-    When nonanon_steward_thru_fy17 >=  2000000 Then 'C. 2M+'
+    When nonanon_steward_thru_fy17 >=  2500000 Then 'C. 2.5M+'
     When nonanon_steward_thru_fy17 >=  1000000 Then 'D. 1M+'
     When nonanon_steward_thru_fy17 >=   500000 Then 'E. 500K+'
     When nonanon_steward_thru_fy17 >=   250000 Then 'F. 250K+'
@@ -173,7 +173,7 @@ donorlist As (
     hh.person_or_org, hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status
   From cgft
   Inner Join hh On hh.id_number = cgft.id_number
-  Where cgft.campaign_giving >= 2500
+  Where cgft.campaign_steward_thru_fy17 >= 2500
   ) Union All (
   -- Young alumni giving $1000+ from FY12 on
   Select cgft.*, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix,
@@ -307,6 +307,7 @@ Select Distinct
   loyal.stewardship_cfy,
   loyal.stewardship_pfy1,
   loyal.stewardship_pfy2,
+  campaign_steward_giving,
   campaign_anonymous,
   campaign_nonanonymous,
   campaign_giving,
