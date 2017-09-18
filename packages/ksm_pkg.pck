@@ -309,7 +309,8 @@ Cursor c_alloc_annual_fund_ksm Is
     Or allocation_code In (
       '3203003665401GFT', '3203004227201GFT', -- Expendable Excellence Grant (Flanagan, Chai)
       '3203000861201GFT', -- Real Estate Conference
-      '3203004707901GFT' -- GIM Trip Scholarship (Samuels)
+      '3203004707901GFT', -- GIM Trip Scholarship (Samuels)
+      '3203002954201GFT' -- KSM Student Club Support
     );
 
 /* Definition of Kellogg Current Use allocations
