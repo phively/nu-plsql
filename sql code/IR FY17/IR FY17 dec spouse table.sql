@@ -118,6 +118,15 @@ Insert All
   Into tbl_IR_FY17_dec_spouse Values('0000072539', '0000156792')
   Into tbl_IR_FY17_dec_spouse Values('0000100582', '0000590070')
   Into tbl_IR_FY17_dec_spouse Values('0000047555', '0000644207')
+  Into tbl_IR_FY17_dec_spouse Values('0000576809', '0000301878')
+  Into tbl_IR_FY17_dec_spouse Values('0000394437', '0000190472')
+  Into tbl_IR_FY17_dec_spouse Values('0000190472', '0000394437')
+  Into tbl_IR_FY17_dec_spouse Values('0000049909', '0000422583')
+  Into tbl_IR_FY17_dec_spouse Values('0000422583', '0000049909')
+  Into tbl_IR_FY17_dec_spouse Values('0000541580', '0000103232')
+  Into tbl_IR_FY17_dec_spouse Values('0000103232', '0000541580')
+  Into tbl_IR_FY17_dec_spouse Values('0000017732', '0000017733')
+  Into tbl_IR_FY17_dec_spouse Values('0000017733', '0000017732')
 -- Commit table
 Select * From DUAL;
 Commit Work;

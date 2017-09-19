@@ -324,6 +324,7 @@ Select Distinct
   fmr_spouse_id,
   fmr_spouse_name,
   fmr_marital_status,
+  Case When dec_ids.id_number Is Not Null Then 'Y' End As manually_householded,
   donorlist.household_id,
   person_or_org,
   record_status_code,
@@ -363,4 +364,5 @@ Inner Join rec_name On rec_name.id_number = donorlist.id_number
 Left Join assign_conc On assign_conc.household_id = donorlist.household_id
 Left Join loyal On loyal.household_id = donorlist.household_id
 Left Join dec_spouse_conc On dec_spouse_conc.id_number = donorlist.id_number
+Left Join (Select id_number From dec_spouse_ids) dec_ids On dec_ids.id_number = donorlist.id_number
 Order By proposed_giving_level Asc, rec_name.proposed_sort_name Asc
