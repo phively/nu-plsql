@@ -538,9 +538,9 @@ With
   From former_spouse
   Inner Join tms_marital_status tms On tms.marital_status_code = former_spouse.marital_status_code
   Where
-    -- Marriage ended by death, married at time of death, widowed, widowed at time of death
+    -- Marriage ended by death, married at time of death, widowed, widowed at time of death, former spouse
     -- If updated, also change below in fmr_spouse query
-    tms.marital_status_code In ('I', 'Q', 'Z', 'W', 'N', ' ')
+    tms.marital_status_code In ('I', 'Q', 'Z', 'W', 'N', 'F', ' ')
   ),
   -- Deduping
   deceased_spouse As (
@@ -566,8 +566,8 @@ With
       (Select id_number From deceased_spouse) Union All (Select spouse_id_number From deceased_spouse)
     )
       -- If updated, also change above in deceased_spouses query
-      And entity.marital_status_code In ('I', 'Q', 'Z', 'W', 'N', ' ')
-      And spouse.marital_status_code In ('I', 'Q', 'Z', 'W', 'N', ' ')
+      And entity.marital_status_code In ('I', 'Q', 'Z', 'W', 'N', 'F', ' ')
+      And spouse.marital_status_code In ('I', 'Q', 'Z', 'W', 'N', 'F', ' ')
   )
   -- Main query
   Select household.id_number, household.pref_mail_name, household.record_status_code,
