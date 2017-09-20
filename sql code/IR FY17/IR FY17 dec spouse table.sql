@@ -1,10 +1,10 @@
 Drop Table tbl_IR_FY17_dec_spouse;
-
+/
 Create Table tbl_IR_FY17_dec_spouse (
-  id_number varchar2(10),
-  id_join varchar2(10)
+  id_number varchar2(10), -- entity.id_number of entity on the report
+  id_join varchar2(10) -- entity.id_number of former spouse to manually household
 );
-
+/
 Insert All
   Into tbl_IR_FY17_dec_spouse Values('0000124299', '0000575542')
   Into tbl_IR_FY17_dec_spouse Values('0000072318', '0000072317')
@@ -130,3 +130,6 @@ Insert All
 -- Commit table
 Select * From DUAL;
 Commit Work;
+/
+Select *
+From tbl_IR_FY17_dec_spouse;
