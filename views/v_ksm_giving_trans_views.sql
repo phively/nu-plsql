@@ -38,6 +38,15 @@ Inner Join v_ksm_giving_trans_hh gfts On gfts.household_id = hh.household_id
 Group By hh.id_number, hh.household_id, hh.household_rpt_name, hh.household_spouse_id, hh.household_spouse;
 /
 
+Create Or Replace View v_ksm_giving_lifetime As
+-- Replacement lifetime giving view, based on giving summary to household lifetime giving amounts. Kept for historical purposes.
+Select ksm.id_number, entity.report_name,
+  ksm.ngc_lifetime As credit_amount,
+  ksm.ngc_lifetime_beq_fv As credit_amount_full_BE
+From v_ksm_giving_summary ksm
+Inner Join entity On entity.id_number = ksm.id_number;
+/
+
 /* Campaign giving */
 
 Create Or Replace View v_ksm_giving_campaign_trans As
