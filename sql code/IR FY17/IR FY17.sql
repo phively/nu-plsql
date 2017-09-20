@@ -247,9 +247,11 @@ rec_name_logic As (
   Left Join anon On anon.household_id = donorlist.household_id
 ),
 rec_name As (
-  Select rn.id_number, anon.anon,
+  Select rn.id_number, rn.name_order, anon.anon,
     -- Proposed recognition name
     (Case
+      -- If custom name, use that instead
+      When cust_name.id_number Is Not Null Then cust_name.custom_name
       -- Fully anonymous donors are just Anonymous
       When rn.name_order = 'Anon' Then 'Anonymous'
       -- Orgs get their full name
@@ -269,9 +271,9 @@ rec_name As (
       When rn.name_order = 'Spouse Self' Then trim(primary_name_spouse || ' and ' || primary_name)
     End
       -- Add loyal tag if applicable
-      || (Case When rn.name_order <> 'Anon' Then loyal.loyal End)
+      || (Case When rn.name_order <> 'Anon' And cust_name.override_suffixes Is Null Then loyal.loyal End)
       -- Add KLC tag if applicable
-      || (Case When rn.name_order Not In('Anon', 'Org') Then fy_klc.klc End)
+      || (Case When rn.name_order Not In('Anon', 'Org') And cust_name.override_suffixes Is Null Then fy_klc.klc End)
     ) As proposed_recognition_name,
     -- Proposed sort name within groups
     Case
@@ -294,6 +296,7 @@ rec_name As (
   Left Join fy_klc On fy_klc.household_id = rn.household_id
   Left Join loyal On loyal.household_id = rn.household_id
   Left Join anon On anon.household_id = rn.household_id
+  Left Join tbl_IR_FY17_custom_name cust_name On cust_name.id_number = rn.id_number
 )
 
 /* Main query */
@@ -324,7 +327,7 @@ Select Distinct
   fmr_spouse_id,
   fmr_spouse_name,
   fmr_marital_status,
-  Case When dec_ids.id_number Is Not Null Then 'Y' End As manually_householded,
+  Case When rec_name.name_order = 'Dec Spouse' Then 'Y' End As manually_householded,
   donorlist.household_id,
   person_or_org,
   record_status_code,
@@ -364,5 +367,4 @@ Inner Join rec_name On rec_name.id_number = donorlist.id_number
 Left Join assign_conc On assign_conc.household_id = donorlist.household_id
 Left Join loyal On loyal.household_id = donorlist.household_id
 Left Join dec_spouse_conc On dec_spouse_conc.id_number = donorlist.id_number
-Left Join (Select id_number From dec_spouse_ids) dec_ids On dec_ids.id_number = donorlist.id_number
 Order By proposed_giving_level Asc, rec_name.proposed_sort_name Asc
