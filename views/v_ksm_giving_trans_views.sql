@@ -82,6 +82,7 @@ Select Distinct hh.id_number, entity.report_name, hh.degrees_concat, cgft.househ
   sum(Case When fiscal_year = 2019 Then hh_credit Else 0 End) As campaign_fy19,
   sum(Case When fiscal_year = 2020 Then hh_credit Else 0 End) As campaign_fy20,
   -- Recognition amounts for stewardship purposes; includes face value of bequests and life expectancy intentions
+  sum(cgft.hh_recognition_credit - cgft.hh_credit) As campaign_discounted_bequests,
   sum(cgft.hh_recognition_credit) As campaign_steward_giving,
   sum(Case When fiscal_year <= 2017 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy17,
   sum(Case When fiscal_year <= 2017 And cgft.anonymous In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End) As anon_steward_thru_fy17,
