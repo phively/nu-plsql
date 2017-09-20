@@ -15,6 +15,9 @@ hh As (
   Select hhs.*,
     entity.gender_code As gender, entity_s.gender_code As gender_spouse,
     entity.person_or_org, entity.record_status_code As record_status, entity_s.record_status_code As record_status_spouse,
+    -- Is either spouse no joint gifts?
+    Case When hhs.household_spouse_rpt_name Is Not Null And
+      (entity.jnt_gifts_ind = 'N' Or entity_s.jnt_gifts_ind = 'N') Then 'Y' End As no_joint_gifts_flag,
     -- First Middle Last Suffix 'YY
     trim(
       trim(
@@ -179,7 +182,8 @@ donorlist As (
   -- $2500+ cumulative campaign giving
   Select cgft.*, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix,
     hh.household_masters_year, hh.primary_name, hh.gender, hh.primary_name_spouse, hh.gender_spouse,
-    hh.person_or_org, hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status
+    hh.person_or_org, hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status,
+    hh.no_joint_gifts_flag
   From cgft
   Inner Join hh On hh.id_number = cgft.id_number
   Where cgft.campaign_steward_thru_fy17 >= 2500
@@ -187,7 +191,8 @@ donorlist As (
   -- Young alumni giving $1000+ from FY12 on
   Select cgft.*, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix,
     hh.household_masters_year, hh.primary_name, hh.gender, hh.primary_name_spouse, hh.gender_spouse,
-    hh.person_or_org, hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status
+    hh.person_or_org, hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status,
+    no_joint_gifts_flag
   From cgft
   Inner Join hh On hh.id_number = cgft.id_number
   Left Join cash On cash.id_number = cgft.id_number
@@ -212,14 +217,17 @@ donorlist As (
 
 /* Name ordering helper */
 rec_name_logic As (
-  Select donorlist.id_number, donorlist.household_id, primary_name, primary_name_spouse, household_rpt_name, household_spouse_rpt_name,
+  Select donorlist.id_number, donorlist.report_name, donorlist.household_id, donorlist.household_spouse_id,
+    primary_name, primary_name_spouse, household_rpt_name, household_spouse_rpt_name,
+    id_join,
     -- Name ordering based on rules we had discussed: alum first, if both or neither are alums then female first
     Case
       -- Anonymous donors take precedence
-      When anon.anon Is Not Null Or lower(primary_name) Like '%anonymous%donor%'
-        Then 'Anon'
+      When anon.anon Is Not Null Or lower(primary_name) Like '%anonymous%donor%' Then 'Anon'
       -- Organizations next
       When donorlist.person_or_org = 'O' Then 'Org'
+      -- If no joint gift indicator, self only
+      When no_joint_gifts_flag Is Not Null Then 'No Joint'
       -- If on deceased spouse list, override
       When dec_spouse_ids.id_number Is Not Null Then 'Dec Spouse'
       -- If no spouse, use own name
@@ -248,6 +256,8 @@ rec_name_logic As (
 ),
 rec_name As (
   Select rn.id_number, rn.name_order, anon.anon,
+    -- Custom name flag
+    Case When cust_name.id_number Is Not Null Then 'Y' End As manually_named,
     -- Proposed recognition name
     (Case
       -- If custom name, use that instead
@@ -256,6 +266,11 @@ rec_name As (
       When rn.name_order = 'Anon' Then 'Anonymous'
       -- Orgs get their full name
       When rn.name_order = 'Org' Then household_rpt_name
+      -- If no joint gift indicator, use personal name
+      When rn.name_order = 'No Joint' Then Case
+        When rn.id_number = rn.household_id Then trim(primary_name)
+        Else trim(primary_name_spouse)
+      End
       -- Deceased spouses -- have to manually join
       When rn.name_order = 'Dec Spouse' Then
         Case
@@ -279,6 +294,7 @@ rec_name As (
     Case
       When rn.name_order = 'Anon' Then ' ' -- Single space sorts before double space, 0-9, A-z, etc.
       When rn.name_order = 'Org' Then household_rpt_name
+      When rn.name_order = 'No Joint' Then report_name
       When rn.name_order = 'Dec Spouse' Then
         Case
           When dec_spouse_ids.yrs Is Not Null and yrs_join Is Null Then trim(sn || '; ' || snj)
@@ -290,7 +306,24 @@ rec_name As (
       When rn.name_order = 'Self' Then household_rpt_name
       When rn.name_order = 'Self Spouse' Then household_rpt_name || '; ' || household_spouse_rpt_name
       When rn.name_order = 'Spouse Self' Then household_spouse_rpt_name || '; ' || household_rpt_name
-    End As proposed_sort_name
+    End As proposed_sort_name,
+    -- Concatenated IDs for deduping
+    Case
+      When rn.name_order = 'Anon' Then rn.household_id || rn.household_spouse_id -- Single space sorts before double space, 0-9, A-z, etc.
+      When rn.name_order = 'Org' Then rn.household_id
+      When rn.name_order = 'No Joint' Then rn.id_number
+      When rn.name_order = 'Dec Spouse' Then
+        Case
+          When dec_spouse_ids.yrs Is Not Null and yrs_join Is Null Then trim(dec_spouse_ids.id_number || dec_spouse_ids.id_join)
+          When dec_spouse_ids.yrs Is Null and yrs_join Is Not Null Then trim(dec_spouse_ids.id_join || dec_spouse_ids.id_number)
+          When dec_spouse_ids.gender = 'F' Then trim(dec_spouse_ids.id_number || dec_spouse_ids.id_join)
+          When dec_spouse_ids.gender_join = 'F' Then trim(dec_spouse_ids.id_join || dec_spouse_ids.id_number)
+          Else trim(dec_spouse_ids.id_number || dec_spouse_ids.id_join)
+        End
+      When rn.name_order = 'Self' Then rn.household_id
+      When rn.name_order = 'Self Spouse' Then rn.household_id || rn.household_spouse_id
+      When rn.name_order = 'Spouse Self' Then rn.household_spouse_id || rn.household_id
+    End As ids_for_deduping
   From rec_name_logic rn
   Left Join dec_spouse_ids On dec_spouse_ids.id_number = rn.id_number
   Left Join fy_klc On fy_klc.household_id = rn.household_id
@@ -302,10 +335,12 @@ rec_name As (
 /* Main query */
 Select Distinct
   -- Print in IR flag, for household deduping
-  dense_rank() Over(Partition By proposed_sort_name Order By proposed_giving_level Asc, donorlist.id_number Asc) As name_rank,
+  ids_for_deduping,
+  dense_rank() Over(Partition By ids_for_deduping
+    Order By proposed_giving_level Asc, rec_name.proposed_sort_name Asc, rec_name.proposed_recognition_name Desc, donorlist.id_number Asc) As name_rank,
   Case
-    When rec_name.proposed_recognition_name = 'Anonymous' Then 'Y'
-    When dense_rank() Over(Partition By proposed_sort_name Order By proposed_giving_level Asc, donorlist.id_number Asc) = 1 Then 'Y'
+    When dense_rank() Over(Partition By ids_for_deduping
+      Order By proposed_giving_level Asc, rec_name.proposed_sort_name Asc, rec_name.proposed_recognition_name Desc, donorlist.id_number Asc) = 1 Then 'Y'
   End As print_in_report,
   -- Recognition name string
   rec_name.proposed_sort_name,
@@ -319,6 +354,16 @@ Select Distinct
   nonanon_steward_thru_fy17,
   -- Fields
   campaign_steward_thru_fy17,
+  Case When rec_name.name_order = 'Dec Spouse' Then 'Y' End As manually_householded,
+  rec_name.manually_named,
+  Case
+    When proposed_sort_name = ' ' Then NULL
+    When dense_rank() Over(Partition By proposed_sort_name Order By proposed_giving_level Asc, donorlist.id_number Asc) > 1
+      And dense_rank() Over(Partition By ids_for_deduping
+        Order By proposed_giving_level Asc, rec_name.proposed_sort_name Asc, rec_name.proposed_recognition_name Desc, donorlist.id_number Asc) = 1
+      Then 'Y'
+  End As possible_dupe,
+  no_joint_gifts_flag,
   assign_conc.managers,
   donorlist.id_number,
   report_name,
@@ -327,7 +372,6 @@ Select Distinct
   fmr_spouse_id,
   fmr_spouse_name,
   fmr_marital_status,
-  Case When rec_name.name_order = 'Dec Spouse' Then 'Y' End As manually_householded,
   donorlist.household_id,
   person_or_org,
   record_status_code,
