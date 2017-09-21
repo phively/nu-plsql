@@ -47,7 +47,9 @@ From v_ksm_giving_summary ksm
 Inner Join entity On entity.id_number = ksm.id_number;
 /
 
-/* Campaign giving */
+/*****************
+ Campaign giving
+*****************/
 
 Create Or Replace View v_ksm_giving_campaign_trans As
 -- Campaign transactions
