@@ -1,3 +1,5 @@
+Create Or Replace View v_ksm_visits As
+
 With
 tms_cpurp As (
   Select contact_purpose_code, short_desc
@@ -56,4 +58,3 @@ Inner Join entity On entity.id_number = contact_rpt_credit.id_number
 Where contact_report.contact_date Between cur_cal.prev_fy_start And cur_cal.yesterday
   And contact_report.contact_type = 'V'
   And contact_rpt_credit.id_number In ('0000565395', '0000220843', '0000737745', '0000642888', '0000561243', '0000549376', '0000565742', '0000562459', '0000772028')
-
