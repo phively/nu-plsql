@@ -6,10 +6,6 @@ With
    2017-07-17: added ytd_dts; removing function call from select led to ~32x speed-up! */
 
 -- Kellogg Annual Fund allocations as defined in ksm_pkg
-ksm_af_allocs As (
-  Select allocation_code
-  From table(ksm_pkg.tbl_alloc_annual_fund_ksm)
-),
 ksm_cru_allocs As (
   Select allocation_code, af_flag
   From table(ksm_pkg.tbl_alloc_curr_use_ksm)
@@ -30,33 +26,38 @@ ytd_dts As (
 
 -- KSM householding
 households As (
-  Select id_number, pref_mail_name, spouse_id_number, spouse_pref_mail_name, household_id, household_ksm_year, household_program_group
+  Select *
   From table(ksm_pkg.tbl_entity_households_ksm)
 ),
 
--- Formatted giving table
+-- Formatted giving tables
+ksm_cru_trans As (
+  Select Distinct tx_number, cal.curr_fy, cal.yesterday,
+    ksm_pkg.get_gift_source_donor_ksm(tx_number) As id_src_dnr, -- giving source donor as defined by ksm_pkg
+    ytd_dts.ytd_ind -- year to date flag
+  From nu_gft_trp_gifttrans gft
+  Cross Join cal
+  Inner Join ksm_cru_allocs cru On cru.allocation_code = gft.allocation_code
+  Inner Join ytd_dts On ytd_dts.dt = trunc(date_of_record)
+  Where
+    -- Drop pledges
+    tx_gypm_ind <> 'P'
+    -- Only pull KSM current use gifts in recent fiscal years
+    And fiscal_year Between cal.prev_fy And cal.curr_fy
+),
 ksm_cru_gifts As (
-  Select ksm_cru_allocs.allocation_code, ksm_cru_allocs.af_flag,
+  Select cru.allocation_code, cru.af_flag,
     gft.alloc_short_name, gft.alloc_purpose_desc, gft.tx_number, gft.tx_sequence, gft.tx_gypm_ind,
-    gft.fiscal_year, trunc(gft.date_of_record) As date_of_record, ytd_dts.ytd_ind, -- year to date flag
+    gft.fiscal_year, trunc(gft.date_of_record) As date_of_record, trans.ytd_ind,
     gft.legal_amount, gft.credit_amount, gft.nwu_af_amount,
     gft.id_number As legal_dnr_id,
-    ksm_pkg.get_gift_source_donor_ksm(tx_number) As id_src_dnr,
+    trans.id_src_dnr,
     households.household_id As id_hh_src_dnr,
-    cal.curr_fy, cal.yesterday
-  From cal, nu_gft_trp_gifttrans gft
-    Inner Join ksm_cru_allocs
-      On ksm_cru_allocs.allocation_code = gft.allocation_code
-    Inner Join households On households.id_number = ksm_pkg.get_gift_source_donor_ksm(tx_number)
-    Inner Join ytd_dts On ytd_dts.dt = trunc(gft.date_of_record)
-  Where 
-    -- Drop pledges
-    tx_gypm_ind != 'P'
-    And (
-      -- Only pull KSM current use gifts in recent fiscal years
-      (gft.allocation_code = ksm_cru_allocs.allocation_code
-        And fiscal_year Between cal.prev_fy And cal.curr_fy)
-    )
+    trans.curr_fy, trans.yesterday
+  From nu_gft_trp_gifttrans gft
+  Inner Join ksm_cru_allocs cru On cru.allocation_code = gft.allocation_code
+  Inner Join ksm_cru_trans trans On trans.tx_number = gft.tx_number
+  Inner Join households On households.id_number = trans.id_src_dnr
 )
 
 -- Gift receipts and biographic information
@@ -68,8 +69,8 @@ Select
   -- Household source donor entity fields
   af.id_hh_src_dnr, hh.pref_mail_name, e_src_dnr.pref_name_sort, e_src_dnr.report_name, e_src_dnr.person_or_org, e_src_dnr.record_status_code,
   e_src_dnr.institutional_suffix,
-  ksm_pkg.get_entity_address(e_src_dnr.id_number, 'state_code') As master_state,
-  ksm_pkg.get_entity_address(e_src_dnr.id_number, 'country') As master_country,
+  hh.household_state As master_state,
+  hh.household_country As master_country,
   e_src_dnr.gender_code, hh.spouse_id_number, hh.spouse_pref_mail_name,
   -- KSM alumni flag
   Case When hh.household_program_group Is Not Null Then 'Y' Else 'N' End As ksm_alum_flag,
