@@ -68,13 +68,24 @@ With
 hh As (
   Select *
   From table(ksm_pkg.tbl_entity_households_ksm)
+),
+cgft As (
+  Select *
+  From v_ksm_giving_campaign_trans_hh
+),
+legal As (
+  Select id_number, sum(legal_amount) As campaign_legal_giving
+  From cgft
+  Group By id_number
 )
 -- View implementing householded campaign giving based on new gifts & commitments
 Select Distinct hh.id_number, entity.report_name, hh.degrees_concat, cgft.household_id, hh.household_rpt_name, hh.household_spouse_id, hh.household_spouse,
+  -- Legal giving is for the individual
+  legal.campaign_legal_giving,
+  -- All other giving is for the household
   sum(cgft.hh_credit) As campaign_giving,
   sum(Case When cgft.anonymous In (Select Distinct anonymous_code From tms_anonymous) Then hh_credit Else 0 End) As campaign_anonymous,
   sum(Case When cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_credit Else 0 End) As campaign_nonanonymous,
-  sum(cgft.legal_amount) As campaign_legal_giving,
   sum(Case When cal.curr_fy = fiscal_year     Then hh_credit Else 0 End) As campaign_cfy,
   sum(Case When cal.curr_fy = fiscal_year + 1 Then hh_credit Else 0 End) As campaign_pfy1,
   sum(Case When cal.curr_fy = fiscal_year + 2 Then hh_credit Else 0 End) As campaign_pfy2,
@@ -101,7 +112,9 @@ Select Distinct hh.id_number, entity.report_name, hh.degrees_concat, cgft.househ
   sum(Case When fiscal_year <= 2017 And cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End) As nonanon_steward_thru_fy17 
 From hh
 Cross Join v_current_calendar cal
-Inner Join v_ksm_giving_campaign_trans_hh cgft On cgft.household_id = hh.household_id
+Inner Join cgft On cgft.household_id = hh.household_id
+Left Join legal On legal.id_number = hh.id_number
 Inner Join entity On entity.id_number = hh.id_number
-Group By hh.id_number, entity.report_name, hh.degrees_concat, cgft.household_id, hh.household_rpt_name, hh.household_spouse_id, hh.household_spouse
+Group By hh.id_number, entity.report_name, hh.degrees_concat, cgft.household_id, hh.household_rpt_name, hh.household_spouse_id, hh.household_spouse,
+  legal.campaign_legal_giving
 /
