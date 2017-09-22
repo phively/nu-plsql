@@ -116,7 +116,8 @@ Type plg_disc Is Record (
   pledge_amount pledge.pledge_amount%type,	pledge_associated_credit_amt pledge.pledge_associated_credit_amt%type,
   prim_pledge_amount primary_pledge.prim_pledge_amount%type, prim_pledge_amount_paid primary_pledge.prim_pledge_amount_paid%type,
   prim_pledge_original_amount primary_pledge.prim_pledge_original_amount%type,
-  discounted_amt primary_pledge.prim_pledge_amount%type, credit primary_pledge.prim_pledge_amount%type,
+  discounted_amt primary_pledge.prim_pledge_amount%type, legal primary_pledge.prim_pledge_amount%type,
+  credit primary_pledge.prim_pledge_amount%type,
   recognition_credit pledge.pledge_amount%type
 );
 
@@ -128,7 +129,7 @@ Type trans_entity Is Record (
   allocation_code allocation.allocation_code%type, alloc_short_name allocation.short_name%type,
   af_flag varchar2(1), proposal_id primary_pledge.proposal_id%type,
   pledge_status primary_pledge.prim_pledge_status%type,
-  date_of_record gift.gift_date_of_record%type, fiscal_year number,
+  date_of_record gift.gift_date_of_record%type, fiscal_year number, legal_amount gift.gift_associated_amount%type,
   credit_amount gift.gift_associated_amount%type, recognition_credit gift.gift_associated_amount%type
 );
 
@@ -140,7 +141,7 @@ Type trans_household Is Record (
   allocation_code allocation.allocation_code%type, alloc_short_name allocation.short_name%type,
   af_flag varchar2(1), proposal_id primary_pledge.proposal_id%type,
   pledge_status primary_pledge.prim_pledge_status%type,
-  date_of_record gift.gift_date_of_record%type, fiscal_year number,
+  date_of_record gift.gift_date_of_record%type, fiscal_year number, legal_amount gift.gift_associated_amount%type,
   credit_amount gift.gift_associated_amount%type, recognition_credit gift.gift_associated_amount%type,
   hh_credit gift.gift_associated_amount%type, hh_recognition_credit gift.gift_associated_amount%type
 );
@@ -162,25 +163,6 @@ Type trans_campaign Is Record (
   std_area nu_rpt_t_cmmt_dtl_daily.std_area%type, zipcountry nu_rpt_t_cmmt_dtl_daily.zipcountry%type
 );
 
-/* Householded campaign transactions */
-Type trans_campaign_household Is Record (
-  household_id entity.id_number%type,
-  id_number nu_rpt_t_cmmt_dtl_daily.id_number%type, record_type_code nu_rpt_t_cmmt_dtl_daily.record_type_code%type,
-  person_or_org nu_rpt_t_cmmt_dtl_daily.person_or_org%type, birth_dt nu_rpt_t_cmmt_dtl_daily.birth_dt%type,
-  rcpt_or_plg_number nu_rpt_t_cmmt_dtl_daily.rcpt_or_plg_number%type, xsequence nu_rpt_t_cmmt_dtl_daily.xsequence%type,
-  anonymous varchar2(1),
-  amount nu_rpt_t_cmmt_dtl_daily.amount%type, credited_amount nu_rpt_t_cmmt_dtl_daily.credited_amount%type,
-  year_of_giving nu_rpt_t_cmmt_dtl_daily.year_of_giving%type, date_of_record nu_rpt_t_cmmt_dtl_daily.date_of_record%type,
-  alloc_code nu_rpt_t_cmmt_dtl_daily.alloc_code%type, alloc_school nu_rpt_t_cmmt_dtl_daily.alloc_school%type,
-  alloc_purpose nu_rpt_t_cmmt_dtl_daily.alloc_purpose%type, annual_sw nu_rpt_t_cmmt_dtl_daily.annual_sw%type,
-  restrict_code nu_rpt_t_cmmt_dtl_daily.restrict_code%type, transaction_type nu_rpt_t_cmmt_dtl_daily.transaction_type%type,
-  pledge_status nu_rpt_t_cmmt_dtl_daily.pledge_status%type, gift_pledge_or_match nu_rpt_t_cmmt_dtl_daily.gift_pledge_or_match%type,
-  matched_donor_id nu_rpt_t_cmmt_dtl_daily.matched_donor_id%type, matched_receipt_number nu_rpt_t_cmmt_dtl_daily.matched_receipt_number%type,
-  this_date nu_rpt_t_cmmt_dtl_daily.this_date%type, first_processed_date nu_rpt_t_cmmt_dtl_daily.first_processed_date%type,
-  std_area nu_rpt_t_cmmt_dtl_daily.std_area%type, zipcountry nu_rpt_t_cmmt_dtl_daily.zipcountry%type,
-  hh_credit gift.gift_associated_amount%type
-);
-
 /*************************************************************************
 Public table declarations
 *************************************************************************/
@@ -197,7 +179,6 @@ Type t_plg_disc Is Table Of plg_disc;
 Type t_trans_entity Is Table Of trans_entity;
 Type t_trans_household Is Table Of trans_household;
 Type t_trans_campaign Is Table Of trans_campaign;
-Type t_trans_campaign_hh Is Table Of trans_campaign_household;
 
 /*************************************************************************
 Public constant declarations
@@ -730,6 +711,24 @@ Cursor c_plg_discount Is
     pplg.prim_pledge_status, pplg.proposal_id,
     pledge.pledge_amount, pledge.pledge_associated_credit_amt, pplg.prim_pledge_amount, pplg.prim_pledge_amount_paid,
     pplg.prim_pledge_original_amount, pplg.discounted_amt,
+    -- Discounted pledge legal amounts
+    Case
+      -- Not inactive, not a BE or LE
+      When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A')
+        And pplg.prim_pledge_type Not In ('BE', 'LE') Then pledge.pledge_amount
+      -- Not inactive, is BE or LE; make sure to allocate proportionally to program code allocation
+      When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A')
+        And pplg.prim_pledge_type In ('BE', 'LE') Then pplg.discounted_amt * pledge.pledge_amount /
+          (Case When pplg.prim_pledge_amount = 0 Then 1 Else pplg.prim_pledge_amount End)
+      -- If inactive, take amount paid
+      Else Case
+        When pplg.prim_pledge_amount > 0
+          Then pplg.prim_pledge_amount_paid * pledge.pledge_amount / pplg.prim_pledge_amount
+        When pledge.pledge_amount > 0
+          Then pplg.prim_pledge_amount_paid
+        Else 0
+      End
+    End As legal,
     -- Discounted pledge credit amounts
     Case
       -- Not inactive, not a BE or LE
@@ -801,9 +800,10 @@ Cursor c_ksm_trans_credit Is
     -- Outright gifts and payments
       Select gft.id_number, gift.gift_associated_anonymous As anon,
         tx_number, tx_sequence, tms_trans.transaction_type, tx_gypm_ind,
-        gft.allocation_code, gft.alloc_short_name, af_flag, primary_gift.proposal_id,
+        gft.allocation_code, gft.alloc_short_name, af_flag,
+        Case When primary_gift.proposal_id <> 0 Then primary_gift.proposal_id End As proposal_id,
         NULL As pledge_status, date_of_record, to_number(fiscal_year) As fiscal_year,
-        credit_amount, credit_amount As recognition_credit
+        legal_amount, credit_amount, credit_amount As recognition_credit
       From nu_gft_trp_gifttrans gft
       -- Anonymous association and linked proposal
       Inner Join gift On gift.gift_receipt_number = gft.tx_number And gift.gift_sequence = gft.tx_sequence
@@ -820,7 +820,8 @@ Cursor c_ksm_trans_credit Is
         match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', 'M',
         match_gift_allocation_name, ksm_allocs.short_name, af_flag, NULL,
         NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record),
-        match_gift_amount, match_gift_amount
+        -- Full legal amount to matching company
+        match_gift_amount, match_gift_amount, match_gift_amount
       From matching_gift
       -- Only KSM allocations
       Inner Join ksm_allocs On ksm_allocs.allocation_code = matching_gift.match_gift_allocation_name
@@ -836,6 +837,8 @@ Cursor c_ksm_trans_credit Is
         match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', 'M',
         match_gift_allocation_name, ksm_allocs.short_name, af_flag, NULL,
         NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record),
+        -- 0 legal amount to matched donors
+        Case When gft.id_number = match_gift_company_id Then match_gift_amount Else 0 End As legal_amount,
         match_gift_amount, match_gift_amount
       From matching_gift
       -- Inner join to add all attributed donor IDs on the original gift
@@ -853,9 +856,10 @@ Cursor c_ksm_trans_credit Is
     -- Pledges, including BE and LE program credit
       Select pledge_donor_id, pledge_anonymous,
         pledge_pledge_number, pledge.pledge_sequence, tms_trans.transaction_type, 'P',
-        pledge.pledge_allocation_name, ksm_allocs.short_name, ksm_allocs.af_flag, proposal_id,
+        pledge.pledge_allocation_name, ksm_allocs.short_name, ksm_allocs.af_flag,
+        Case When proposal_id <> 0 Then proposal_id End As proposal_id,
         prim_pledge_status, pledge_date_of_record, ksm_pkg.get_fiscal_year(pledge_date_of_record),
-        plgd.credit, plgd.recognition_credit
+        plgd.legal, plgd.credit, plgd.recognition_credit
       From pledge
       -- Trans type descriptions
       Inner Join tms_trans On tms_trans.transaction_type_code = pledge.pledge_pledge_type
@@ -964,7 +968,8 @@ Cursor c_trans_hh_campaign_2008 Is
     'Internal Transfer' As transaction_type, daily.gift_pledge_or_match,
     daily.alloc_code, allocation.short_name, 'N' As af_flag, NULL As proposal_id,
     daily.pledge_status, daily.date_of_record, to_number(daily.year_of_giving) As fiscal_year,
-    344303 As credit_amount, 344303 As recognition_amount, 344303 As hh_credit, 344303 As hh_recognition_credit
+    344303 As legal_amount, 344303 As credit_amount, 344303 As recognition_amount,
+    344303 As hh_credit, 344303 As hh_recognition_credit
   From nu_rpt_t_cmmt_dtl_daily daily
   Inner Join allocation On allocation.allocation_code = daily.alloc_code
   Where daily.rcpt_or_plg_number = '0002275766'

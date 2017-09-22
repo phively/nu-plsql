@@ -74,6 +74,7 @@ Select Distinct hh.id_number, entity.report_name, hh.degrees_concat, cgft.househ
   sum(cgft.hh_credit) As campaign_giving,
   sum(Case When cgft.anonymous In (Select Distinct anonymous_code From tms_anonymous) Then hh_credit Else 0 End) As campaign_anonymous,
   sum(Case When cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_credit Else 0 End) As campaign_nonanonymous,
+  sum(cgft.legal_amount) As campaign_legal_giving,
   sum(Case When cal.curr_fy = fiscal_year     Then hh_credit Else 0 End) As campaign_cfy,
   sum(Case When cal.curr_fy = fiscal_year + 1 Then hh_credit Else 0 End) As campaign_pfy1,
   sum(Case When cal.curr_fy = fiscal_year + 2 Then hh_credit Else 0 End) As campaign_pfy2,
