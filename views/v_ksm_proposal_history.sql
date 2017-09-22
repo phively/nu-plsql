@@ -1,3 +1,5 @@
+Create Or Replace View v_ksm_proposal_history As
+
 -- Gifts with linked proposals
 With
 linked As (
