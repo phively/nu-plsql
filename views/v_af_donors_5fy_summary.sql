@@ -4,6 +4,12 @@ With
 /* Requires the gift data aggregated in v_af_gifts_srcdnr_5fy. Aggregated by household giving source donor and related
    fields, with each of the recent fiscal years its own column. */ 
 
+-- Current calendar
+cal As (
+  Select *
+  From table(ksm_pkg.tbl_current_calendar)
+),
+
 -- Degrees concat
 deg As (
   Select deg.id_number, deg.degrees_concat, deg.first_ksm_year, deg.program, deg.program_group
@@ -40,7 +46,7 @@ gab As (
 klc_cfy As (
   Select Distinct household_id, 'Y' As klc0
   From gift_clubs
-  Cross Join rpt_pbh634.v_current_calendar cal
+  Cross Join cal
   Inner Join hh On hh.id_number = gift_clubs.gift_club_id_number
   Left Join nu_mem_v_tmsclublevel tms_lvl On tms_lvl.level_code = gift_clubs.school_code
   Where gift_club_code = 'LKM'
@@ -49,7 +55,7 @@ klc_cfy As (
 klc_pfy1 As (
   Select Distinct household_id, 'Y' As klc1
   From gift_clubs
-  Cross Join rpt_pbh634.v_current_calendar cal
+  Cross Join cal
   Inner Join hh On hh.id_number = gift_clubs.gift_club_id_number
   Left Join nu_mem_v_tmsclublevel tms_lvl On tms_lvl.level_code = gift_clubs.school_code
   Where gift_club_code = 'LKM'
@@ -58,7 +64,7 @@ klc_pfy1 As (
 klc_pfy2 As (
   Select Distinct household_id, 'Y' As klc2
   From gift_clubs
-  Cross Join rpt_pbh634.v_current_calendar cal
+  Cross Join cal
   Inner Join hh On hh.id_number = gift_clubs.gift_club_id_number
   Left Join nu_mem_v_tmsclublevel tms_lvl On tms_lvl.level_code = gift_clubs.school_code
   Where gift_club_code = 'LKM'
@@ -67,7 +73,7 @@ klc_pfy2 As (
 klc_pfy3 As (
   Select Distinct household_id, 'Y' As klc3
   From gift_clubs
-  Cross Join rpt_pbh634.v_current_calendar cal
+  Cross Join cal
   Inner Join hh On hh.id_number = gift_clubs.gift_club_id_number
   Left Join nu_mem_v_tmsclublevel tms_lvl On tms_lvl.level_code = gift_clubs.school_code
   Where gift_club_code = 'LKM'
@@ -89,6 +95,12 @@ first_af As (
     And af_flag = 'Y'
     And recognition_credit > 0
   Group By household_id
+),
+
+-- All AF gifts by source donor
+af_gifts As (
+  Select *
+  From v_af_gifts_srcdnr_5fy
 ),
 
 -- Aggregated by entity and fiscal year
@@ -151,7 +163,7 @@ totals As (
     sum(Case When fiscal_year = (curr_fy - 3) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As cru_prev_fy3_match,
     sum(Case When fiscal_year = (curr_fy - 4) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As cru_prev_fy4_match,
     sum(Case When fiscal_year = (curr_fy - 5) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As cru_prev_fy5_match
-  From v_af_gifts_srcdnr_5fy af_gifts
+  From af_gifts
   Group By id_hh_src_dnr
 )
 
@@ -189,7 +201,7 @@ Select Distinct
   cru_curr_fy, cru_prev_fy1, cru_prev_fy2, cru_prev_fy3, cru_prev_fy4, cru_prev_fy5,
   cru_curr_fy_ytd, cru_prev_fy1_ytd, cru_prev_fy2_ytd, cru_prev_fy3_ytd, cru_prev_fy4_ytd, cru_prev_fy5_ytd,
   cru_curr_fy_match, cru_prev_fy1_match, cru_prev_fy2_match, cru_prev_fy3_match, cru_prev_fy4_match, cru_prev_fy5_match
-From v_af_gifts_srcdnr_5fy af_gifts
+From af_gifts
 Inner Join totals On totals.id_hh_src_dnr = af_gifts.id_hh_src_dnr
 Left Join prs On prs.id_number = af_gifts.id_hh_src_dnr
 Left Join first_af On first_af.household_id = af_gifts.id_hh_src_dnr

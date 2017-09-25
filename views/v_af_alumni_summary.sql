@@ -27,14 +27,13 @@ ksm_af_allocs As (
 
 -- First gift year
 first_af As (
-  Select hh.household_id,
-    min(gft.fiscal_year) As first_af_gift_year
-  From nu_gft_trp_gifttrans gft
-  Inner Join ksm_af_allocs
-    On ksm_af_allocs.allocation_code = gft.allocation_code
-  Inner Join hh On hh.id_number = ksm_pkg.get_gift_source_donor_ksm(tx_number)
-  Where tx_gypm_ind != 'P'
-  Group By hh.household_id
+  Select Distinct household_id, min(fiscal_year) As first_af_gift_year
+  From table(ksm_pkg.tbl_gift_credit_hh_ksm) gft
+  Inner Join ksm_af_allocs On ksm_af_allocs.allocation_code = gft.allocation_code
+  Where tx_gypm_ind <> 'P'
+    And af_flag = 'Y'
+    And recognition_credit > 0
+  Group By household_id
 )
 
 Select Distinct
