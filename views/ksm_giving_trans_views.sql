@@ -1,15 +1,22 @@
+/*****************
+ Kellogg giving
+*****************/
+
+/* Kellogg lifetime giving transactions */
 Create Or Replace View v_ksm_giving_trans As
 -- View implementing ksm_pkg Kellogg gift credit
 Select *
 From table(ksm_pkg.tbl_gift_credit_ksm);
 /
 
+/* Householded Kellogg lifetime giving transactions */
 Create Or Replace View v_ksm_giving_trans_hh As
 -- View implementing ksm_pkg Kellogg gift credit, with household ID (slower than tbl_gift_credit_ksm)
 Select *
 From table(ksm_pkg.tbl_gift_credit_hh_ksm);
 /
 
+/* Householded entity giving summaries */
 Create Or Replace View v_ksm_giving_summary As
 -- View implementing Kellogg gift credit, householded, with several common types
 Select Distinct hh.id_number, hh.household_id, hh.household_rpt_name, hh.household_spouse_id, hh.household_spouse,
@@ -38,6 +45,7 @@ Inner Join v_ksm_giving_trans_hh gfts On gfts.household_id = hh.household_id
 Group By hh.id_number, hh.household_id, hh.household_rpt_name, hh.household_spouse_id, hh.household_spouse;
 /
 
+/* KSM lifetime giving; kept for historical purposes for past queries that reference v_ksm_giving_lifetime */
 Create Or Replace View v_ksm_giving_lifetime As
 -- Replacement lifetime giving view, based on giving summary to household lifetime giving amounts. Kept for historical purposes.
 Select ksm.id_number, entity.report_name,
@@ -51,18 +59,21 @@ Inner Join entity On entity.id_number = ksm.id_number;
  Campaign giving
 *****************/
 
+/* Kellogg Transforming Together Campaign giving transactions */
 Create Or Replace View v_ksm_giving_campaign_trans As
 -- Campaign transactions
 Select *
 From table(ksm_pkg.tbl_gift_credit_campaign)
 /
 
+/* Householded Kellogg campaign giving transactions */
 Create Or Replace View v_ksm_giving_campaign_trans_hh As
 -- Householded campaign transactions
 Select *
 From table(ksm_pkg.tbl_gift_credit_hh_campaign)
 /
 
+/* Kellogg Campaign giving summaries */
 Create or Replace View v_ksm_giving_campaign As
 With
 hh As (
