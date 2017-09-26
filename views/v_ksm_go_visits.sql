@@ -4,6 +4,11 @@ With
 tms_cpurp As (
   Select contact_purpose_code, short_desc
   From tms_contact_rpt_purpose
+),
+
+cal As (
+  Select *
+  From v_current_calendar
 )
 
 Select
@@ -49,13 +54,15 @@ Select
         Else 0 
       End
     Else 0
-  End As rating_bin
-From rpt_pbh634.v_current_calendar cur_cal, contact_report
+  End As rating_bin,
+  cal.curr_fy
+From contact_report
+Cross Join cal
 Inner Join contact_rpt_credit On contact_rpt_credit.report_id = contact_report.report_id
 Inner Join tms_cpurp On tms_cpurp.contact_purpose_code = contact_report.contact_purpose_code
 Inner Join nu_prs_trp_prospect prs On prs.id_number = contact_report.id_number
 Inner Join entity On entity.id_number = contact_rpt_credit.id_number
-Where contact_report.contact_date Between cur_cal.prev_fy_start And cur_cal.yesterday
+Where contact_report.contact_date Between cal.prev_fy_start And cal.yesterday
   And contact_report.contact_type = 'V'
   And contact_rpt_credit.id_number In ('0000565395', '0000220843', '0000737745', '0000642888', '0000561243', '0000549376', '0000565742', '0000562459', '0000772028')
 
