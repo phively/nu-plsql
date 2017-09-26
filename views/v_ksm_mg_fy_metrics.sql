@@ -32,11 +32,3 @@ cal As (
   Cross Join cal
   Where proposal_in_progress = 'Y'
 )
-  -- Fake data to make sure all bins are represented
-  Union All Select NULL, NULL, cal.curr_fy, 0, NULL, 'Spacer' From DUAL Cross Join cal
-  Union All Select NULL, NULL, cal.curr_fy, 0.1, NULL, 'Spacer' From DUAL Cross Join cal
-  Union All Select NULL, NULL, cal.curr_fy, 0.5, NULL, 'Spacer' From DUAL Cross Join cal
-  Union All Select NULL, NULL, cal.curr_fy, 1, NULL, 'Spacer' From DUAL Cross Join cal
-  Union All Select NULL, NULL, cal.curr_fy, 2, NULL, 'Spacer' From DUAL Cross Join cal
-  Union All Select NULL, NULL, cal.curr_fy, 5, NULL, 'Spacer' From DUAL Cross Join cal
-  Union All Select NULL, NULL, cal.curr_fy, 10, NULL, 'Spacer' From DUAL Cross Join cal

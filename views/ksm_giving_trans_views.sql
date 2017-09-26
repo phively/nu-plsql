@@ -129,3 +129,36 @@ Inner Join entity On entity.id_number = hh.id_number
 Group By hh.id_number, entity.report_name, hh.degrees_concat, cgft.household_id, hh.household_rpt_name, hh.household_spouse_id, hh.household_spouse,
   legal.campaign_legal_giving
 /
+
+/* Kellogg Campaign transactions with additional detail columns and a YTD indicator */
+Create Or Replace View v_ksm_giving_campaign_ytd As
+With
+-- View implementing YTD KSM Campaign giving
+-- Year-to-date calculator
+cal As (
+  Select 2007 As prev_fy, 2020 As curr_fy, yesterday -- FY 2007 and 2020 as first and last campaign gift dates
+  From v_current_calendar
+),
+ytd_dts As (
+  Select to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1 As dt,
+    ksm_pkg.fytd_indicator(to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1) As ytd_ind
+  From cal
+  Connect By
+    rownum <= (to_date('09/01/' || cal.curr_fy, 'mm/dd/yyyy') - to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy'))
+),
+-- Kellogg degrees
+deg As (
+  Select id_number, degrees_concat
+  From v_entity_ksm_degrees
+)
+-- Main query
+Select gft.*, cal.curr_fy,
+  ytd_dts.ytd_ind, entity.report_name, entity.institutional_suffix, deg.degrees_concat, prs.prospect_manager, allocation.short_name As allocation_name
+From v_ksm_giving_campaign_trans gft
+Cross Join v_current_calendar cal
+Inner Join ytd_dts On ytd_dts.dt = trunc(gft.date_of_record)
+Inner Join entity On entity.id_number = gft.id_number
+Inner Join allocation On allocation.allocation_code = gft.alloc_code
+Left Join deg On deg.id_number = entity.id_number
+Left Join nu_prs_trp_prospect prs On prs.id_number = entity.id_number
+/
