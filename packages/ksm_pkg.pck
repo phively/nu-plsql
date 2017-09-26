@@ -377,7 +377,7 @@ Cursor c_current_calendar (fy_start_month In integer) Is
 
 /* Definition of current Kellogg committee members
    2017-03-01 */
-Cursor c_committee (my_committee_cd In varchar2) Is
+Cursor c_committee_members (my_committee_cd In varchar2) Is
   Select comm.id_number, hdr.short_desc, comm.start_dt, comm.stop_dt, tms_status.short_desc As status,
     tms_role.short_desc As role, comm.xcomment, comm.date_modified, comm.operator_name
   From committee comm
@@ -389,7 +389,7 @@ Cursor c_committee (my_committee_cd In varchar2) Is
 
 /* Definition of Kellogg degrees concatenated
    2017-02-15 */
-Cursor c_degrees_concat_ksm (id In varchar2 Default NULL) Is
+Cursor c_entity_degrees_concat_ksm (id In varchar2 Default NULL) Is
   With
   -- Stewardship concatenated years; uses Distinct to de-dupe multiple degrees in one year
   stwrd_yrs As (
@@ -537,7 +537,7 @@ Cursor c_source_donor_ksm (receipt In varchar2) Is
 
 /* Definition of Kellogg householding
    2017-02-21 */
-Cursor c_households_ksm (id In varchar2 Default NULL) Is
+Cursor c_entity_households_ksm (id In varchar2 Default NULL) Is
 With
   -- Entities and spouses, with Kellogg degrees concat fields
   degs As (
@@ -645,7 +645,7 @@ With
             = (Case When id Is Not Null Then id Else 'T' End);
 
 /* Definition of a Kellogg alum employed by a company */
-Cursor c_employees_ksm (company In varchar2) Is
+Cursor c_entity_employees_ksm (company In varchar2) Is
   With
   -- Employment table subquery
   employ As (
@@ -694,7 +694,7 @@ Cursor c_employees_ksm (company In varchar2) Is
     Or lower(prs.employer_name1) Like lower('%' || company || '%');
 
 /* Definition of a KLC member */
-Cursor c_klc_members Is
+Cursor c_klc_history Is
   Select substr(gift_club_end_date, 0, 4) As fiscal_year,
     tms_lvl.short_desc As level_desc,
     hh.id_number,
@@ -766,7 +766,7 @@ Cursor c_plg_discount Is
     Or pledge_alloc_school = 'KM';
 
 /* Definition of KSM giving transactions for summable credit */
-Cursor c_ksm_trans_credit Is
+Cursor c_gift_credit_ksm Is
   With
   /* Primary pledge discounted amounts */
   plg_discount As (
@@ -881,8 +881,8 @@ Cursor c_ksm_trans_credit Is
   From ksm_trans;
   
 /* Definition of householded KSM giving transactions for summable credit
-   Depends on c_ksm_trans_credit, through tbl_gift_credit_ksm table function */
-Cursor c_ksm_trans_hh_credit Is
+   Depends on c_gift_credit_ksm, through tbl_gift_credit_ksm table function */
+Cursor c_gift_credit_hh_ksm Is
   With
   hhid As (
     Select hh.household_id, ksm_trans.*
@@ -914,7 +914,7 @@ Cursor c_ksm_trans_hh_credit Is
   
 /* Definition of Transforming Together Campaign (2008) new gifts & commitments
    2017-08-25 */
-Cursor c_trans_campaign_2008 Is
+Cursor c_gift_credit_campaign_2008 Is
   -- Anonymous indicators
   With anons As (
     (
@@ -957,7 +957,7 @@ Cursor c_trans_campaign_2008 Is
   );
   
 /* Definition of householded KSM campaign transactions for summable credit */
-Cursor c_trans_hh_campaign_2008 Is
+Cursor c_gift_credit_hh_campaign_2008 Is
   (
   Select hh_cred.*
   From table(tbl_gift_credit_hh_ksm) hh_cred
@@ -1099,14 +1099,14 @@ Function get_entity_degrees_concat_fast(id In varchar2)
 Function get_entity_degrees_concat_ksm(id In varchar2, verbose In varchar2)
   Return varchar2 Is
   -- Declarations
-  Type degrees Is Table Of c_degrees_concat_ksm%rowtype;
+  Type degrees Is Table Of c_entity_degrees_concat_ksm%rowtype;
   deg_conc degrees; -- hold concatenated degree results
   
   Begin
     -- Retrieve selected row
-    Open c_degrees_concat_ksm(id);
-      Fetch c_degrees_concat_ksm Bulk Collect Into deg_conc;
-    Close c_degrees_concat_ksm;
+    Open c_entity_degrees_concat_ksm(id);
+      Fetch c_entity_degrees_concat_ksm Bulk Collect Into deg_conc;
+    Close c_entity_degrees_concat_ksm;
     
     -- Return appropriate concatenated string
     If deg_conc.count = 0 Or deg_conc.count Is Null Then Return(NULL);
@@ -1394,9 +1394,9 @@ Function tbl_entity_degrees_concat_ksm
   degrees t_degreed_alumni;
     
   Begin
-    Open c_degrees_concat_ksm;
-      Fetch c_degrees_concat_ksm Bulk Collect Into degrees;
-    Close c_degrees_concat_ksm;
+    Open c_entity_degrees_concat_ksm;
+      Fetch c_entity_degrees_concat_ksm Bulk Collect Into degrees;
+    Close c_entity_degrees_concat_ksm;
     For i in 1..(degrees.count) Loop
       Pipe row(degrees(i));
     End Loop;
@@ -1411,16 +1411,16 @@ Function tbl_entity_households_ksm
   households t_households;
   
   Begin
-    Open c_households_ksm;
-      Fetch c_households_ksm Bulk Collect Into households;
-    Close c_households_ksm;
+    Open c_entity_households_ksm;
+      Fetch c_entity_households_ksm Bulk Collect Into households;
+    Close c_entity_households_ksm;
     For i in 1..(households.count) Loop
       Pipe row(households(i));
     End Loop;
     Return;
   End;
 
-/* Pipelined function returning Kellogg alumni (per c_degrees_concat_ksm) who
+/* Pipelined function returning Kellogg alumni (per c_entity_degrees_concat_ksm) who
    work for the specified company
    2017-07-25 */
 Function tbl_entity_employees_ksm (company In varchar2)
@@ -1429,16 +1429,16 @@ Function tbl_entity_employees_ksm (company In varchar2)
   employees t_employees;
   
   Begin
-    Open c_employees_ksm (company => company);
-      Fetch c_employees_ksm Bulk Collect Into employees;
-    Close c_employees_ksm;
+    Open c_entity_employees_ksm (company => company);
+      Fetch c_entity_employees_ksm Bulk Collect Into employees;
+    Close c_entity_employees_ksm;
     For i in 1..(employees.count) Loop
       Pipe row(employees(i));
     End Loop;
     Return;
   End;
 
-/* Pipelined function returning KLC members (per c_klc_members)
+/* Pipelined function returning KLC members (per c_klc_history)
    2017-07-26 */
 Function tbl_klc_history
   Return t_klc_members Pipelined As
@@ -1446,9 +1446,9 @@ Function tbl_klc_history
   klc t_klc_members;
   
   Begin
-    Open c_klc_members;
-      Fetch c_klc_members Bulk Collect Into klc;
-    Close c_klc_members;
+    Open c_klc_history;
+      Fetch c_klc_history Bulk Collect Into klc;
+    Close c_klc_history;
     For i in 1..(klc.count) Loop
       Pipe row(klc(i));
     End Loop;
@@ -1473,7 +1473,7 @@ Function tbl_klc_history
       Return;
     End;
 
-  /* Individual entity giving, based on c_ksm_trans_credit
+  /* Individual entity giving, based on c_gift_credit_ksm
      2017-08-04 */
   Function tbl_gift_credit_ksm
     Return t_trans_entity Pipelined As
@@ -1481,16 +1481,16 @@ Function tbl_klc_history
     trans t_trans_entity;
     
     Begin
-      Open c_ksm_trans_credit;
-        Fetch c_ksm_trans_credit Bulk Collect Into trans;
-      Close c_ksm_trans_credit;
+      Open c_gift_credit_ksm;
+        Fetch c_gift_credit_ksm Bulk Collect Into trans;
+      Close c_gift_credit_ksm;
       For i in 1..(trans.count) Loop
         Pipe row(trans(i));
       End Loop;
       Return;
     End;
 
-  /* Householdable entity giving, based on c_ksm_trans_hh_credit
+  /* Householdable entity giving, based on c_gift_credit_hh_ksm
      2017-08-04 */
   Function tbl_gift_credit_hh_ksm
     Return t_trans_household Pipelined As
@@ -1498,9 +1498,9 @@ Function tbl_klc_history
     trans t_trans_household;
     
     Begin
-      Open c_ksm_trans_hh_credit;
-        Fetch c_ksm_trans_hh_credit Bulk Collect Into trans;
-      Close c_ksm_trans_hh_credit;
+      Open c_gift_credit_hh_ksm;
+        Fetch c_gift_credit_hh_ksm Bulk Collect Into trans;
+      Close c_gift_credit_hh_ksm;
       For i in 1..(trans.count) Loop
         Pipe row(trans(i));
       End Loop;
@@ -1515,9 +1515,9 @@ Function tbl_klc_history
     trans t_trans_campaign;
     
     Begin
-      Open c_trans_campaign_2008;
-        Fetch c_trans_campaign_2008 Bulk Collect Into trans;
-      Close c_trans_campaign_2008;
+      Open c_gift_credit_campaign_2008;
+        Fetch c_gift_credit_campaign_2008 Bulk Collect Into trans;
+      Close c_gift_credit_campaign_2008;
       For i in 1..(trans.count) Loop
         Pipe row(trans(i));
       End Loop;
@@ -1534,9 +1534,9 @@ Function tbl_klc_history
     trans t_trans_household;
     
     Begin
-      Open c_trans_hh_campaign_2008;
-        Fetch c_trans_hh_campaign_2008 Bulk Collect Into trans;
-      Close c_trans_hh_campaign_2008;
+      Open c_gift_credit_hh_campaign_2008;
+        Fetch c_gift_credit_hh_campaign_2008 Bulk Collect Into trans;
+      Close c_gift_credit_hh_campaign_2008;
       For i in 1..(trans.count) Loop
         Pipe row(trans(i));
       End Loop;
@@ -1554,9 +1554,9 @@ Function tbl_klc_history
     
     -- Return table results
     Begin
-      Open c_committee (my_committee_cd => my_committee_cd);
-        Fetch c_committee Bulk Collect Into committees;
-      Close c_committee;
+      Open c_committee_members (my_committee_cd => my_committee_cd);
+        Fetch c_committee_members Bulk Collect Into committees;
+      Close c_committee_members;
       Return committees;
     End;
 
