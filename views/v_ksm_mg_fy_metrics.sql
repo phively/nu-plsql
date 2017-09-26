@@ -9,7 +9,7 @@ cal As (
 /* Proposal status and year-to-date new gifts and commitments for KSM MG metrics */
 (
   -- Gift data
-  Select amount, to_number(year_of_giving) As fiscal_year, cal.curr_fy,
+  Select amount, to_number(year_of_giving) As fiscal_year, cal.curr_fy, ytd_ind,
     Case
       When amount >= 10000000 Then 10
       When amount >=  5000000 Then 5
@@ -20,13 +20,13 @@ cal As (
       Else 0
     End As bin,
     'Booked' As cat, 'Campaign Giving' As src
-  From v_ksm_giving_campaign_trans
+  From v_ksm_giving_campaign_ytd
   Cross Join cal
-  Where year_of_giving Between cal.curr_fy - 1 And cal.curr_fy
+  Where year_of_giving Between cal.curr_fy - 2 And cal.curr_fy
     And amount > 0
 ) Union All (
   -- Proposal data
-  Select amt, cal.curr_fy As fiscal_year, cal.curr_fy,
+  Select amt, cal.curr_fy As fiscal_year, cal.curr_fy, 'Y',
     bin, proposal_status As cat, 'Proposals' As src
   From rpt_pbh634.v_ksm_proposal_history
   Cross Join cal
