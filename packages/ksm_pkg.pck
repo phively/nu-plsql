@@ -94,6 +94,12 @@ Type klc_member Is Record (
   household_program_group varchar2(20)
 );
 
+/* KSM staff */
+Type ksm_staff Is Record (
+  id_number entity.id_number%type, report_name entity.report_name%type, former_staff varchar2(1),
+  job_title employment.job_title%type, employer employment.employer_unit%type
+);
+
 /* Employee record type for company queries */
 Type employee Is Record (
   id_number entity.id_number%type, report_name entity.report_name%type,
@@ -173,6 +179,7 @@ Type t_degreed_alumni Is Table Of degreed_alumni;
 Type t_households Is Table Of household;
 Type t_src_donors Is Table Of src_donor;
 Type t_committee_members Is Table Of committee_member;
+Type t_ksm_staff Is Table Of ksm_staff;
 Type t_klc_members Is Table Of klc_member;
 Type t_employees Is Table Of employee;
 Type t_plg_disc Is Table Of plg_disc;
@@ -260,6 +267,10 @@ Function tbl_entity_households_ksm
 Function tbl_klc_history
   Return t_klc_members Pipelined;
 
+/* Return pipelined table of frontline KSM staff */
+Function tbl_frontline_ksm_staff
+  Return t_ksm_staff Pipelined;
+
 /* Return pipelined table of company employees with Kellogg degrees
    N.B. uses matches pattern, user beware! */
 Function tbl_entity_employees_ksm (company In varchar2)
@@ -294,7 +305,7 @@ end ksm_pkg;
 Create Or Replace Package Body ksm_pkg Is
 
 /*************************************************************************
-Private cursors -- data definitions
+Private cursor tables -- data definitions; update indicated sections as needed
 *************************************************************************/
 
 /* Definition of current and historical Kellogg Annual Fund allocations
@@ -305,11 +316,61 @@ Cursor c_alloc_annual_fund_ksm Is
   Where (annual_sw = 'Y' And alloc_school = 'KM')
     -- 2017-07-11 include AF Excellence Grant scholarships
     Or allocation_code In (
-      '3203003665401GFT', '3203004227201GFT', -- Expendable Excellence Grant (Flanagan, Chai)
+      /************ UPDATE BELOW HERE ************/
+      '3203003665401GFT', -- Expendable Excellence Grant (Flanagan)
+      '3203004227201GFT', -- Expendable Excellence Grant (Chai)
       '3203000861201GFT', -- Real Estate Conference
       '3203004707901GFT', -- GIM Trip Scholarship (Samuels)
       '3203002954201GFT' -- KSM Student Club Support
+      /************ UPDATE ABOVE HERE ************/
     );
+
+/* Definition of frontline gift officers
+   2017-09-26 */
+Cursor c_frontline_ksm_staff Is
+  With
+  -- Staff list; update as necessary with new IDs
+  staff As (
+    -- First row is a dummy giving the field names
+    Select 'notarealid' As id_number, NULL As former_staff From DUAL
+    /************ UPDATE BELOW HERE ************/
+    Union All Select '0000737745', 'Y' From DUAL -- Jones (former)
+    Union All Select '0000220843', NULL From DUAL -- Erb
+    Union All Select '0000549376', NULL From DUAL -- Paszczykowski
+    Union All Select '0000561243', NULL From DUAL -- Nordmark
+    Union All Select '0000562459', NULL From DUAL -- Spritz
+    Union All Select '0000565395', NULL From DUAL -- Cong-Huyen
+    Union All Select '0000565742', NULL From DUAL -- Schoeneweiss
+    Union All Select '0000642888', NULL From DUAL -- Keene
+    Union All Select '0000772028', NULL From DUAL -- Royal
+    Union All Select '0000765494', NULL From DUAL -- Miller
+    Union All Select '0000235591', NULL From DUAL -- Amato
+    Union All Select '0000740856', NULL From DUAL -- In
+    Union All Select '0000482601', NULL From DUAL -- Feary
+    Union All Select '0000779347', NULL From DUAL -- Lingris
+    Union All Select '0000776709', NULL From DUAL -- Nasatir
+    Union All Select '0000732336', NULL From DUAL -- O'Brien
+    Union All Select '0000760399', NULL From DUAL -- Guynn
+    Union All Select '0000772350', NULL From DUAL -- Emmick
+    /************ UPDATE ABOVE HERE ************/
+  ),
+  -- Job title information
+  employ As (
+    Select employment.id_number, job_title, employer_unit As employer
+    From employment
+    Inner Join staff On staff.id_number = employment.id_number
+    Where job_status_code = 'C'
+    And primary_emp_ind = 'Y'
+  )
+  -- Main query
+  Select staff.id_number, report_name, former_staff, employ.job_title, employ.employer
+  From staff
+  Inner Join entity On entity.id_number = staff.id_number
+  Left Join employ on employ.id_number = staff.id_number;
+
+/*************************************************************************
+Private cursors -- data definitions
+*************************************************************************/
 
 /* Definition of Kellogg Current Use allocations
    2017-07-11 */
@@ -1451,6 +1512,23 @@ Function tbl_klc_history
     Close c_klc_history;
     For i in 1..(klc.count) Loop
       Pipe row(klc(i));
+    End Loop;
+    Return;
+  End;
+
+/* Pipelined function returning frontline KSM staff (per c_frontline_ksm_staff)
+   2017-09-26 */
+Function tbl_frontline_ksm_staff
+  Return t_ksm_staff Pipelined As
+  -- Declarations
+  staff t_ksm_staff;
+    
+  Begin
+    Open c_frontline_ksm_staff;
+      Fetch c_frontline_ksm_staff Bulk Collect Into staff;
+    Close c_frontline_ksm_staff;
+    For i in 1..(staff.count) Loop
+      Pipe row(staff(i));
     End Loop;
     Return;
   End;
