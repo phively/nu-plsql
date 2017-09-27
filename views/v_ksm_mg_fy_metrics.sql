@@ -22,7 +22,7 @@ cal As (
     'Booked' As cat, 'Campaign Giving' As src
   From v_ksm_giving_campaign_ytd
   Cross Join cal
-  Where year_of_giving Between cal.curr_fy - 2 And cal.curr_fy
+  Where year_of_giving Between 2007 And 2020 -- FY 2007 and 2020 as first and last campaign gift dates
     And amount > 0
 ) Union All (
   -- Proposal data
