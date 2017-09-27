@@ -26,9 +26,11 @@ cal As (
     And amount > 0
 ) Union All (
   -- Proposal data
+  -- Includes proposals expected to close in current and previous fiscal year as current fiscal year
   Select amt, cal.curr_fy As fiscal_year, cal.curr_fy, 'Y',
     bin, proposal_status As cat, 'Proposals' As src
   From rpt_pbh634.v_ksm_proposal_history
   Cross Join cal
   Where proposal_in_progress = 'Y'
+    And close_fy Between cal.curr_fy - 1 And cal.curr_fy -- Do not include historical proposal data which is not helpful
 )
