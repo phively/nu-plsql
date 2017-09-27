@@ -23,7 +23,10 @@ cal As (
 purp As (
   Select pp.proposal_id,
     Listagg(tms_pp.short_desc, '; ') Within Group (Order By pp.xsequence Asc) As prop_purpose,
-    Listagg(tms_pi.short_desc, '; ') Within Group (Order By pp.xsequence Asc) prospect_interest
+    Listagg(tms_pi.short_desc, '; ') Within Group (Order By pp.xsequence Asc) prospect_interest,
+    sum(pp.ask_amt) As program_ask,
+    sum(pp.original_ask_amt) As program_orig_ask,
+    sum(pp.granted_amt) As program_anticipated
   From proposal_purpose pp
   Left Join tms_prop_purpose tms_pp On tms_pp.prop_purpose_code = pp.prop_purpose_code
   Left Join tms_prospect_interest tms_pi On tms_pi.prospect_interest_code = pp.prospect_interest_code
@@ -67,6 +70,8 @@ Select
   original_ask_amt,
   ask_amt,
   anticipated_amt,
+  purp.program_ask,
+  purp.program_anticipated,
   granted_amt,
   -- Use anticipated amount if available, else ask amount
   Case When anticipated_amt > 0 Then anticipated_amt Else ask_amt End As amt,
