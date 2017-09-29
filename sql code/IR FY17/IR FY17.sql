@@ -126,8 +126,29 @@ loyal As (
 /* Campaign giving amounts */
 cgft As (
   Select gft.*,
+  -- Custom giving level indicator
+  Case When custlvl.id_number Is Not Null Then 'Y' End As manual_giving_level,
   -- Giving level string
   Case
+    -- Custom level override
+    When custlvl.id_number Is Not Null Then
+      Case
+        When upper(custlvl.custom_level) Like '%ORG%' Then 'Z. Org'
+        When upper(custlvl.custom_level) Like '%10M%' Then 'A. 10M+'
+        When upper(custlvl.custom_level) Like '%2.5M%' Then 'C. 2.5M+' -- Before 5M so we don't match the 5M in 2.5M
+        When upper(custlvl.custom_level) Like '%5M%' Then 'B. 5M+'
+        When upper(custlvl.custom_level) Like '%1M%' Then 'D. 1M+'
+        When upper(custlvl.custom_level) Like '%500K%' Then 'E. 500K+'
+        When upper(custlvl.custom_level) Like '%250K%' Then 'F. 250K+'
+        When upper(custlvl.custom_level) Like '%100K%' Then 'G. 100K+'
+        When upper(custlvl.custom_level) Like '%50K%' Then 'H. 50K+'
+        When upper(custlvl.custom_level) Like '%25K%' Then 'I. 25K+'
+        When upper(custlvl.custom_level) Like '%10K%' Then 'J. 10K+'
+        When upper(custlvl.custom_level) Like '%2.5K%' Then 'L. 2.5K+' -- Before 5K so we don't match the 5K in 2.5K
+        When upper(custlvl.custom_level) Like '%5K%' Then 'K. 5K+'
+        Else 'CHECK BY HAND'
+      End
+    -- All others
     When entity.person_or_org = 'O' Then 'Z. Org'
     When campaign_steward_thru_fy17 >= 10000000 Then 'A. 10M+'
     When campaign_steward_thru_fy17 >=  5000000 Then 'B. 5M+'
@@ -159,6 +180,7 @@ cgft As (
   End As nonanon_giving_level
   From v_ksm_giving_campaign gft
   Inner Join entity On entity.id_number = gft.id_number
+  Left Join tbl_ir_fy17_custom_level custlvl On custlvl.id_number = gft.id_number
 ),
 
 /* Cash giving amounts */
@@ -354,6 +376,7 @@ Select Distinct
   nonanon_steward_thru_fy17,
   -- Fields
   campaign_steward_thru_fy17,
+  manual_giving_level,
   Case When rec_name.name_order = 'Dec Spouse' Then 'Y' End As manually_householded,
   rec_name.manually_named,
   Case

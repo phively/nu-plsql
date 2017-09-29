@@ -6,7 +6,6 @@ Create Table tbl_IR_FY17_dec_spouse (
 );
 /
 Insert All
-  Into tbl_IR_FY17_dec_spouse Values('0000124299', '0000575542')
   Into tbl_IR_FY17_dec_spouse Values('0000072318', '0000072317')
   Into tbl_IR_FY17_dec_spouse Values('0000206429', '0000192640')
   Into tbl_IR_FY17_dec_spouse Values('0000370388', '0000155433')
@@ -131,5 +130,7 @@ Insert All
 Select * From DUAL;
 Commit Work;
 /
-Select *
-From tbl_IR_FY17_dec_spouse;
+Select ds.id_number, entity.report_name, ds.id_join, spouse.report_name As spouse_name
+From tbl_IR_FY17_dec_spouse ds
+Inner Join entity On ds.id_number = entity.id_number
+Inner Join entity spouse On ds.id_number = spouse.id_number;
