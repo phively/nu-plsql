@@ -14,5 +14,6 @@ Insert All
 Select * From DUAL;
 Commit Work;
 / 
-Select *
-From tbl_ir_fy17_custom_name;
+Select cust_name.id_number, entity.report_name, entity.spouse_name, custom_name, override_suffixes
+From tbl_IR_FY17_custom_name cust_name
+Inner Join entity On entity.id_number = cust_name.id_number;
