@@ -84,6 +84,12 @@ Type src_donor Is Record (
   associated_code nu_gft_trp_gifttrans.associated_code%type, credit_amount nu_gft_trp_gifttrans.credit_amount%type
 );
 
+/* University strategy */
+Type university_strategy Is Record (
+  prospect_id prospect.prospect_id%type, university_strategy task.task_description%type,
+  strategy_sched_date task.sched_date%type
+);
+
 /* KLC member */
 Type klc_member Is Record (
   fiscal_year integer, level_desc varchar2(40), id_number entity.id_number%type, household_id entity.id_number%type,
@@ -178,6 +184,7 @@ Type t_allocation Is Table Of allocation_info;
 Type t_degreed_alumni Is Table Of degreed_alumni;
 Type t_households Is Table Of household;
 Type t_src_donors Is Table Of src_donor;
+Type t_university_strategy Is Table of university_strategy;
 Type t_committee_members Is Table Of committee_member;
 Type t_ksm_staff Is Table Of ksm_staff;
 Type t_klc_members Is Table Of klc_member;
@@ -292,6 +299,10 @@ Function tbl_gift_credit_campaign
 Function tbl_gift_credit_hh_campaign
 --    Return t_trans_campaign_hh Pipelined;
   Return t_trans_household Pipelined;
+
+/* Return pipelined tasks */
+Function tbl_university_strategy
+  Return t_university_strategy Pipelined;
 
 /* Return pipelined table of committee members */
 Function tbl_committee_gab
@@ -753,6 +764,19 @@ Cursor c_entity_employees_ksm (company In varchar2) Is
     -- Matches pattern; user beware (Apple vs. Snapple)
     lower(employ.employer_name) Like lower('%' || company || '%')
     Or lower(prs.employer_name1) Like lower('%' || company || '%');
+
+/* Definition of university strategy */
+Cursor c_university_strategy Is
+    Select prospect_id,
+      -- Pull first upcoming University Overall Strategy
+      min(task_description) keep(dense_rank First Order By sched_date Asc, task_id Asc) As university_strategy,
+      min(sched_date) keep(dense_rank First Order By sched_date Asc, task_id Asc) As strategy_sched_date
+    From task
+    Cross Join v_current_calendar cal
+    Where task_code = 'ST' -- University Overall Strategy
+      And trunc(sched_date) >= cal.today -- Scheduled in the future
+      And task_status_code Not In (4, 5) -- Not Completed (4) or Cancelled (5) status
+    Group By prospect_id;
 
 /* Definition of a KLC member */
 Cursor c_klc_history Is
@@ -1529,6 +1553,23 @@ Function tbl_frontline_ksm_staff
     Close c_frontline_ksm_staff;
     For i in 1..(staff.count) Loop
       Pipe row(staff(i));
+    End Loop;
+    Return;
+  End;
+
+/* Pipelined function returning current university strategies (per c_university_strategy)
+   2017-09-29 */
+Function tbl_university_strategy
+  Return t_university_strategy Pipelined As
+  -- Declarations
+  task t_university_strategy;
+    
+  Begin
+    Open c_university_strategy;
+      Fetch c_university_strategy Bulk Collect Into task;
+    Close c_university_strategy;
+    For i in 1..(task.count) Loop
+      Pipe row(task(i));
     End Loop;
     Return;
   End;
