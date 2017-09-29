@@ -20,7 +20,7 @@ Select
   contact_report.report_id, contact_report.id_number, contact_report.contacted_name, contact_report.prospect_id, contact_report.contact_date,
   rpt_pbh634.ksm_pkg.get_fiscal_year(contact_report.contact_date) As fiscal_year,
   -- Prospect fields
-  prs.officer_rating, prs.evaluation_rating,
+  prs.officer_rating, prs.evaluation_rating, strat.university_strategy,
   -- Custom variables
   Case When contact_report.contact_purpose_code = '1' Then 'Qualification' Else 'Visit' End As visit_type,
   Case
@@ -63,6 +63,7 @@ Inner Join contact_rpt_credit On contact_rpt_credit.report_id = contact_report.r
 Inner Join tms_cpurp On tms_cpurp.contact_purpose_code = contact_report.contact_purpose_code
 Inner Join nu_prs_trp_prospect prs On prs.id_number = contact_report.id_number
 Inner Join table(ksm_pkg.tbl_frontline_ksm_staff) staff On staff.id_number = contact_rpt_credit.id_number
+Left Join table(ksm_pkg.tbl_university_strategy) strat On strat.prospect_id = contact_report.prospect_id
 Where contact_report.contact_date Between cal.prev_fy_start And cal.yesterday
   And contact_report.contact_type = 'V'
 

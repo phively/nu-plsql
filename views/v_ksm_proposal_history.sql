@@ -43,6 +43,12 @@ assn As (
   Inner Join entity On entity.id_number = assignment.assignment_id_number
   Where assignment.assignment_type = 'PA' -- Proposal Manager (PM is taken by Prospect Manager)
   Group By assignment.proposal_id
+),
+
+-- Code to pull university strategy from the task table; BI method plus a cancelled/completed exclusion
+strat As (
+  Select *
+  From table(ksm_pkg.tbl_university_strategy)
 )
 
 -- Main query
@@ -62,6 +68,7 @@ Select
   Case When proposal.proposal_status_code In ('A', 'B', 'C', '5') Then 'Y' End As proposal_in_progress, -- Anticipated, Submitted, Submitted, Verbal
   purp.prop_purpose,
   purp.prospect_interest,
+  strat.university_strategy,
   trunc(start_date) As start_date,
   ksm_pkg.get_fiscal_year(start_date) As start_fy,
   trunc(initial_contribution_date) As ask_date,
@@ -104,5 +111,6 @@ Inner Join purp On purp.proposal_id = proposal.proposal_id
 Left Join assn On assn.proposal_id = proposal.proposal_id
 -- Prospect info
 Left Join (Select prospect_id, prospect_name From prospect) prs On prs.prospect_id = proposal.prospect_id
+Left Join strat On strat.prospect_id = proposal.prospect_id
 -- Linked gift info
 Left Join linked On linked.proposal_id = proposal.proposal_id
