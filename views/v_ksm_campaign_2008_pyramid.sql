@@ -2,6 +2,12 @@ Create Or Replace View v_ksm_campaign_2008_pyramid As
 
 With
 
+-- Current calendar
+cal As (
+  Select *
+  From rpt_pbh634.v_current_calendar
+),
+
 -- Campaign goals
 goals As (
   Select NULL As giving_level, NULL As dollars, NULL as donors From DUAL Where Null Is Not Null -- Column labels
@@ -31,9 +37,10 @@ giving As (
   Group By household_id
 ),
 gave As (
-  Select giving_level, sum(amount) As dollars, count(household_id) As donors
+  Select giving_level, sum(amount) As dollars, count(household_id) As donors, cal.curr_fy
   From giving
-  Group By giving_level
+  Cross Join cal
+  Group By giving_level, curr_fy
 ),
 
 -- Open proposals from existing major giving view
@@ -43,9 +50,10 @@ all_props As (
   Where src = 'Proposals'
 ),
 proposals As (
-  Select giving_level, sum(amount) As dollars, sum(nbr) As gifts, cat As src
+  Select giving_level, sum(amount) As dollars, sum(nbr) As gifts, cat As src, cal.curr_fy
   From all_props
-  Group By giving_level, cat
+  Cross Join cal
+  Group By giving_level, cat, curr_fy
 )
 
 -- Planned proposals from Top 500 coding
@@ -53,20 +61,21 @@ proposals As (
 -- Main query
 (
   -- Booked gifts
-  Select giving_level, dollars, donors, NULL as gifts, 'Campaign Booked' As src
+  Select giving_level, dollars, donors, NULL as gifts, 'Campaign Booked' As src, curr_fy
   From gave
 ) Union All (
   -- Campaign goals
-  Select giving_level, dollars, donors, NULL, 'Goal' As src
+  Select giving_level, dollars, donors, NULL, 'Goal' As src, cal.curr_fy
   From goals
+  Cross Join cal
 ) Union All (
   -- Remainder
-  Select gave.giving_level, goals.dollars - gave.dollars, goals.donors - gave.donors, goals.donors - gave.donors, 'Remainder' As src
+  Select gave.giving_level, goals.dollars - gave.dollars, goals.donors - gave.donors, goals.donors - gave.donors, 'Remainder' As src, curr_fy
   From gave
   Inner Join goals On goals.giving_level = gave.giving_level
 ) Union All (
   -- Proposals
-  Select giving_level, dollars, NULL as donors, gifts, src
+  Select giving_level, dollars, NULL as donors, gifts, src, curr_fy
   From proposals
 )
 -- Add in planned proposals when done
