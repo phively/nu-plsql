@@ -1,12 +1,24 @@
+/* FY17 Kellogg Investor's Report
+    Based on Campaign giving through the entire counting period, FY07 through FY17
+    See Paul's "Investor's Report" folder on the G drive for criteria and notes
+    See GitHub for the complete version history: https://github.com/phively/nu-plsql/tree/master/sql%20code/IR%20FY17
+    Shouldn't take more than 4 minutes to run to completion
+*/
+  
+
 With
 
-/* Degree strings */
+/* Degree strings
+  Kellogg stewardship degree years as defined by ksm_pkg. For the FY17 IR these are in the format:
+  'YY, 'YY
+  With years listed in chronological order and de-duped (listagg) */
 degs As (
   Select id_number, stewardship_years As yrs
   From table(ksm_pkg.tbl_entity_degrees_concat_ksm) deg
 ),
 
-/* Household data */
+/* Household data
+  Household IDs and definitions as defined by ksm_pkg. Names are based on primary name and personal suffix. */
 hhs As (
   Select *
   From table(ksm_pkg.tbl_entity_households_ksm)
@@ -42,22 +54,24 @@ hh As (
   Where hhs.record_status_code <> 'X'
 ),
 
-/* Anonymous */
+/* Anonymous
+  Anonymous special handling indicator; entity should be anonymous for ALL gifts. Overrides the transaction-level anon flag. */
 anon As (
   Select Distinct hh.household_id, tms.short_desc As anon
   From handling
   Inner Join hh On hh.id_number = handling.id_number
   Inner Join tms_handling_type tms On tms.handling_type = handling.hnd_type_code
-  Where hnd_type_code = 'AN'
-    And hnd_status_code = 'A'
+  Where hnd_type_code = 'AN' -- Anonymous
+    And hnd_status_code = 'A' -- Active only
 ),
 
-/* Deceased spouses */
+/* Deceased spouses
+  Check whether there are former or widowed spouses in the former_spouse table */
 dec_spouse As (
   Select Distinct id_number, spouse_id_number
   From former_spouse
   Where marital_status_code In (
-    Select marital_status_code From tms_marital_status Where lower(short_desc) Like '%death%'
+    Select marital_status_code From tms_marital_status Where lower(short_desc) Like '%death%' -- Marriage ended by death, married at time of death, etc.
   )
 ),
 dec_spouse_conc As (
@@ -67,7 +81,8 @@ dec_spouse_conc As (
   Group By id_number
 ),
 
-/* Deceased spouse TABLE -- update rpt_pbh634.tbl_ir_fy17_dec_spouse */
+/* Deceased spouse TABLE -- update rpt_pbh634.tbl_ir_fy17_dec_spouse
+  This is the interface used to manually household deceased spouses; could be done on other entities as well */
 dec_spouse_ids As (
   Select ds.id_number, hh.gender, hh.primary_name As pn, hh.yrs, hh.household_rpt_name As sn,
     ds.id_join, hhd.gender As gender_join, hhd.primary_name As pnj, hhd.yrs As yrs_join, hhd.household_rpt_name As snj
@@ -76,15 +91,16 @@ dec_spouse_ids As (
   Inner Join hh hhd On hhd.id_number = ds.id_join
 ),
 
-/* Prospect assignments */
+/* Prospect assignments
+  All active prospect manager and program manager assignments, to be used for manual review by staff */
 assign As (
   Select Distinct hh.household_id, assignment.prospect_id, office_code, assignment_id_number, entity.report_name
   From assignment
   Inner Join entity On entity.id_number = assignment.assignment_id_number
   Inner Join prospect_entity On prospect_entity.prospect_id = assignment.prospect_id
   Inner Join hh On hh.id_number = prospect_entity.id_number
-  Where active_ind = 'Y'
-    And assignment_type In ('PP', 'PM')
+  Where active_ind = 'Y' -- Active assignments only
+    And assignment_type In ('PP', 'PM') -- Program Manager (PP), Prospect Manager (PM)
 ),
 assign_conc As (
   Select household_id,
@@ -93,11 +109,13 @@ assign_conc As (
   Group By household_id
 ),
 
-/* KLC entities */
+/* KLC entities
+  Our definition for Kellogg Leadership Circle. The young_klc needs to pull multiple years because gifts within 5 years of graduating
+  are classified differently. */
 young_klc As (
   Select klc.*
   From table(ksm_pkg.tbl_klc_history) klc
-  Where fiscal_year Between 2012 And 2017
+  Where fiscal_year Between 2012 And 2017 -- KLC member in current or 5 previous FYs
 ),
 fy_klc As (
   Select Distinct household_id, '<KLC17>' As klc
@@ -105,7 +123,9 @@ fy_klc As (
   Where fiscal_year = 2017
 ),
 
-/* Loyal households */
+/* Loyal households
+  Stewardship giving as defined by ksm_giving_trans (and thus indirectly by ksm_pkg).
+  For the FY17 IR, loyal implies either spouse is credited toward any KSM gift > $0, including matches, for each of FY17, FY16, FY15 */
 loyal_giving As (
   Select Distinct hhs.household_id,
     -- WARNING: includes new gifts and commitments as well as cash
@@ -119,11 +139,13 @@ loyal_giving As (
 ),
 loyal As (
   Select loyal_giving.*,
-    Case When stewardship_cfy > 0 And stewardship_pfy1 > 0 And stewardship_pfy2 > 0 Then '<LOYAL>' End As loyal
+    Case When stewardship_cfy > 0 And stewardship_pfy1 > 0 And stewardship_pfy2 > 0 Then '<LOYAL>' End As loyal -- Only loyal if gave every year
   From loyal_giving
 ),
 
-/* Campaign giving amounts */
+/* Campaign giving amounts
+  ksm_pkg rewrite of Kellogg campaign giving, based on Bill's campaign reporting table.
+  For the FY17 IR, this deliberately counts bequests/life expectancy at face value, but only the PAID amounts of cancelled pledges. */
 cgft As (
   Select gft.*,
   -- Custom giving level indicator
@@ -180,10 +202,12 @@ cgft As (
   End As nonanon_giving_level
   From v_ksm_giving_campaign gft
   Inner Join entity On entity.id_number = gft.id_number
+  -- Interface for custom giving levels override; add to the tbl_ir_fy17_custom_level table and they'll show up here
   Left Join tbl_ir_fy17_custom_level custlvl On custlvl.id_number = gft.id_number
 ),
 
-/* Cash giving amounts */
+/* Cash giving amounts
+  Determine how much young alumni gave in a sliding 5FY window; for the FY17 IR it has to be at least $1,000 in a single year to be included. */
 cash As (
   Select Distinct hhs.id_number, hhs.household_id, hhs.household_rpt_name, hhs.household_spouse_id, hhs.household_spouse,
     -- Cash giving for KLC young alumni determination
@@ -198,7 +222,8 @@ cash As (
   Group By hhs.id_number, hhs.household_id, hhs.household_rpt_name, hhs.household_spouse_id, hhs.household_spouse
 ),
 
-/* Combine all criteria */
+/* Combine all criteria
+  Main temp table pulling together all criteria for IR17 */
 donorlist As (
   (
   -- $2500+ cumulative campaign giving
