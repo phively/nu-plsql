@@ -1,4 +1,4 @@
--- Create Or Replace View v_ksm_campaign_2008_pyramid As
+Create Or Replace View v_ksm_campaign_2008_pyramid As
 
 With
 
@@ -34,18 +34,39 @@ gave As (
   Select giving_level, sum(amount) As dollars, count(household_id) As donors
   From giving
   Group By giving_level
+),
+
+-- Open proposals from existing major giving view
+all_props As (
+  Select bin As giving_level, amount, 1 As nbr, cat
+  From v_ksm_mg_fy_metrics
+  Where src = 'Proposals'
+),
+proposals As (
+  Select giving_level, sum(amount) As dollars, sum(nbr) As gifts, cat As src
+  From all_props
+  Group By giving_level, cat
 )
+
+-- Planned proposals from Top 500 coding
 
 -- Main query
 (
-  Select giving_level, dollars, donors, 'Campaign Booked' As src
+  -- Booked gifts
+  Select giving_level, dollars, donors, NULL as gifts, 'Campaign Booked' As src
   From gave
 ) Union All (
-  Select giving_level, dollars, donors, 'Goal' As src
+  -- Campaign goals
+  Select giving_level, dollars, donors, NULL, 'Goal' As src
   From goals
 ) Union All (
   -- Remainder
-  Select gave.giving_level, gave.dollars - goals.dollars, gave.donors - goals.donors, 'Remainder' As src
+  Select gave.giving_level, goals.dollars - gave.dollars, goals.donors - gave.donors, goals.donors - gave.donors, 'Remainder' As src
   From gave
   Inner Join goals On goals.giving_level = gave.giving_level
+) Union All (
+  -- Proposals
+  Select giving_level, dollars, NULL as donors, gifts, src
+  From proposals
 )
+-- Add in planned proposals when done
