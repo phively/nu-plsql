@@ -273,10 +273,10 @@ rec_name_logic As (
       When anon.anon Is Not Null Or lower(primary_name) Like '%anonymous%donor%' Then 'Anon'
       -- Organizations next
       When donorlist.person_or_org = 'O' Then 'Org'
+      -- If on deceased spouse list, override
+      When dec_spouse_ids.id_number Is Not Null Then 'Manually HH'
       -- If no joint gift indicator, self only
       When no_joint_gifts_flag Is Not Null Then 'No Joint'
-      -- If on deceased spouse list, override
-      When dec_spouse_ids.id_number Is Not Null Then 'Dec Spouse'
       -- If no spouse, use own name
       When donorlist.primary_name_spouse Is Null Then 'Self'
       -- If spouse, check if either/both have degrees
@@ -313,13 +313,8 @@ rec_name As (
       When rn.name_order = 'Anon' Then 'Anonymous'
       -- Orgs get their full name
       When rn.name_order = 'Org' Then household_rpt_name
-      -- If no joint gift indicator, use personal name
-      When rn.name_order = 'No Joint' Then Case
-        When rn.id_number = rn.household_id Then trim(primary_name)
-        Else trim(primary_name_spouse)
-      End
       -- Deceased spouses -- have to manually join
-      When rn.name_order = 'Dec Spouse' Then
+      When rn.name_order = 'Manually HH' Then
         Case
           When dec_spouse_ids.yrs Is Not Null and yrs_join Is Null Then trim(pn || ' and ' || pnj)
           When dec_spouse_ids.yrs Is Null and yrs_join Is Not Null Then trim(pnj || ' and ' || pn)
@@ -327,6 +322,11 @@ rec_name As (
           When dec_spouse_ids.gender_join = 'F' Then trim(pnj || ' and ' || pn)
           Else trim(pn || ' and ' || pnj)
         End
+      -- If no joint gift indicator, use personal name
+      When rn.name_order = 'No Joint' Then Case
+        When rn.id_number = rn.household_id Then trim(primary_name)
+        Else trim(primary_name_spouse)
+      End
       -- Everyone else
       When rn.name_order = 'Self' Then trim(primary_name)
       When rn.name_order = 'Self Spouse' Then trim(primary_name || ' and ' || primary_name_spouse)
@@ -341,8 +341,7 @@ rec_name As (
     Case
       When rn.name_order = 'Anon' Then ' ' -- Single space sorts before double space, 0-9, A-z, etc.
       When rn.name_order = 'Org' Then household_rpt_name
-      When rn.name_order = 'No Joint' Then report_name
-      When rn.name_order = 'Dec Spouse' Then
+      When rn.name_order = 'Manually HH' Then
         Case
           When dec_spouse_ids.yrs Is Not Null and yrs_join Is Null Then trim(sn || '; ' || snj)
           When dec_spouse_ids.yrs Is Null and yrs_join Is Not Null Then trim(snj || '; ' || sn)
@@ -350,6 +349,7 @@ rec_name As (
           When dec_spouse_ids.gender_join = 'F' Then trim(snj || '; ' || sn)
           Else trim(sn || '; ' || snj)
         End
+      When rn.name_order = 'No Joint' Then report_name
       When rn.name_order = 'Self' Then household_rpt_name
       When rn.name_order = 'Self Spouse' Then household_rpt_name || '; ' || household_spouse_rpt_name
       When rn.name_order = 'Spouse Self' Then household_spouse_rpt_name || '; ' || household_rpt_name
@@ -358,8 +358,7 @@ rec_name As (
     Case
       When rn.name_order = 'Anon' Then rn.household_id || rn.household_spouse_id -- Single space sorts before double space, 0-9, A-z, etc.
       When rn.name_order = 'Org' Then rn.household_id
-      When rn.name_order = 'No Joint' Then rn.id_number
-      When rn.name_order = 'Dec Spouse' Then
+      When rn.name_order = 'Manually HH' Then
         Case
           When dec_spouse_ids.yrs Is Not Null and yrs_join Is Null Then trim(dec_spouse_ids.id_number || dec_spouse_ids.id_join)
           When dec_spouse_ids.yrs Is Null and yrs_join Is Not Null Then trim(dec_spouse_ids.id_join || dec_spouse_ids.id_number)
@@ -367,6 +366,7 @@ rec_name As (
           When dec_spouse_ids.gender_join = 'F' Then trim(dec_spouse_ids.id_join || dec_spouse_ids.id_number)
           Else trim(dec_spouse_ids.id_number || dec_spouse_ids.id_join)
         End
+      When rn.name_order = 'No Joint' Then rn.id_number
       When rn.name_order = 'Self' Then rn.household_id
       When rn.name_order = 'Self Spouse' Then rn.household_id || rn.household_spouse_id
       When rn.name_order = 'Spouse Self' Then rn.household_spouse_id || rn.household_id
@@ -402,7 +402,7 @@ Select Distinct
   -- Fields
   campaign_steward_thru_fy17,
   manual_giving_level,
-  Case When rec_name.name_order = 'Dec Spouse' Then 'Y' End As manually_householded,
+  Case When rec_name.name_order = 'Manually HH' Then 'Y' End As manually_householded,
   rec_name.manually_named,
   Case
     When proposed_sort_name = ' ' Then NULL
