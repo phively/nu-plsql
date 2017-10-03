@@ -126,6 +126,40 @@ Insert All
   Into tbl_IR_FY17_dec_spouse Values('0000103232', '0000541580')
   Into tbl_IR_FY17_dec_spouse Values('0000017732', '0000017733')
   Into tbl_IR_FY17_dec_spouse Values('0000017733', '0000017732')
+  Into tbl_IR_FY17_dec_spouse Values('0000197708', '0000077223')
+  Into tbl_IR_FY17_dec_spouse Values('0000182956', '0000145883')
+  Into tbl_IR_FY17_dec_spouse Values('0000641379', '0000323211')
+  Into tbl_IR_FY17_dec_spouse Values('0000327730', '0000715337')
+  Into tbl_IR_FY17_dec_spouse Values('0000159837', '0000153587')
+  Into tbl_IR_FY17_dec_spouse Values('0000524159', '0000326793')
+  Into tbl_IR_FY17_dec_spouse Values('0000190061', '0000020521')
+  Into tbl_IR_FY17_dec_spouse Values('0000192870', '0000063419')
+  Into tbl_IR_FY17_dec_spouse Values('0000626734', '0000483915')
+  Into tbl_IR_FY17_dec_spouse Values('0000189207', '0000063938')
+  Into tbl_IR_FY17_dec_spouse Values('0000575516', '0000403284')
+  Into tbl_IR_FY17_dec_spouse Values('0000074190', '0000074189')
+  Into tbl_IR_FY17_dec_spouse Values('0000534238', '0000398803')
+  Into tbl_IR_FY17_dec_spouse Values('0000173253', '0000088145')
+  Into tbl_IR_FY17_dec_spouse Values('0000559154', '0000340987')
+  Into tbl_IR_FY17_dec_spouse Values('0000590124', '0000390447')
+  Into tbl_IR_FY17_dec_spouse Values('0000590070', '0000100582')
+  Into tbl_IR_FY17_dec_spouse Values('0000644207', '0000047555')
+  Into tbl_IR_FY17_dec_spouse Values('0000301878', '0000576809')
+  Into tbl_IR_FY17_dec_spouse Values('0000661672', '0000109874')
+  Into tbl_IR_FY17_dec_spouse Values('0000311640', '0000539343')
+  Into tbl_IR_FY17_dec_spouse Values('0000539343', '0000311640')
+  Into tbl_IR_FY17_dec_spouse Values('0000288015', '0000541283')
+  Into tbl_IR_FY17_dec_spouse Values('0000541283', '0000288015')
+  Into tbl_IR_FY17_dec_spouse Values('0000303939', '0000541224')
+  Into tbl_IR_FY17_dec_spouse Values('0000541224', '0000303939')
+  Into tbl_IR_FY17_dec_spouse Values('0000350532', '0000545302')
+  Into tbl_IR_FY17_dec_spouse Values('0000545302', '0000350532')
+  Into tbl_IR_FY17_dec_spouse Values('0000063010', '0000499550')
+  Into tbl_IR_FY17_dec_spouse Values('0000499550', '0000063010')
+  Into tbl_IR_FY17_dec_spouse Values('0000369534', '0000545243')
+  Into tbl_IR_FY17_dec_spouse Values('0000545243', '0000369534')
+  Into tbl_IR_FY17_dec_spouse Values('0000408157', '0000510510')
+  Into tbl_IR_FY17_dec_spouse Values('0000510510', '0000408157')
 -- Commit table
 Select * From DUAL;
 Commit Work;
@@ -133,4 +167,4 @@ Commit Work;
 Select ds.id_number, entity.report_name, ds.id_join, spouse.report_name As spouse_name
 From tbl_IR_FY17_dec_spouse ds
 Inner Join entity On ds.id_number = entity.id_number
-Inner Join entity spouse On ds.id_number = spouse.id_number;
+Inner Join entity spouse On ds.id_join = spouse.id_number;
