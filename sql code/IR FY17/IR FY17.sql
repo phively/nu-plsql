@@ -84,8 +84,27 @@ dec_spouse_conc As (
 /* Deceased spouse TABLE -- update rpt_pbh634.tbl_ir_fy17_dec_spouse
   This is the interface used to manually household deceased spouses; could be done on other entities as well */
 dec_spouse_ids As (
-  Select ds.id_number, hh.gender, hh.primary_name As pn, hh.yrs, hh.household_rpt_name As sn,
-    ds.id_join, hhd.gender As gender_join, hhd.primary_name As pnj, hhd.yrs As yrs_join, hhd.household_rpt_name As snj
+  Select
+    -- Personal info
+    ds.id_number,
+    Case When hhd.household_spouse_rpt_name Is Null Then hh.gender
+      When ds.id_number = hh.household_id Then hh.gender Else hhd.gender_spouse End As gender,
+    Case When hhd.household_spouse_rpt_name Is Null Then hh.primary_name
+      When ds.id_number = hh.household_id Then hh.primary_name Else hhd.primary_name_spouse End As pn,
+    Case When hhd.household_spouse_rpt_name Is Null Then hh.yrs
+      When ds.id_number = hh.household_id Then hh.yrs Else hhd.yrs_spouse End As yrs,
+    Case When hhd.household_spouse_rpt_name Is Null Then hh.household_rpt_name
+      When ds.id_number = hh.household_id Then hh.household_rpt_name Else hhd.household_spouse_rpt_name End As sn,
+    -- Spouse info
+    ds.id_join,
+    Case When hhd.household_spouse_rpt_name Is Null Then hhd.gender
+      When ds.id_join = hh.household_id Then hhd.gender Else hhd.gender_spouse End As gender_join,
+    Case When hhd.household_spouse_rpt_name Is Null Then hhd.primary_name
+      When ds.id_join = hh.household_id Then hhd.primary_name Else hhd.primary_name_spouse End As pnj,
+    Case When hhd.household_spouse_rpt_name Is Null Then hhd.yrs 
+      When ds.id_join = hh.household_id Then hhd.yrs Else hhd.yrs_spouse End As yrs_join,
+    Case When hhd.household_spouse_rpt_name Is Null Then hhd.household_rpt_name
+      When ds.id_join = hh.household_id Then hhd.household_rpt_name Else hhd.household_spouse_rpt_name End As snj
   From rpt_pbh634.tbl_ir_fy17_dec_spouse ds
   Inner Join hh On hh.id_number = ds.id_number
   Inner Join hh hhd On hhd.id_number = ds.id_join
