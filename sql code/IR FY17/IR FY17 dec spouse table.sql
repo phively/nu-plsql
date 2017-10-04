@@ -160,6 +160,8 @@ Insert All
   Into tbl_IR_FY17_dec_spouse Values('0000545243', '0000369534')
   Into tbl_IR_FY17_dec_spouse Values('0000408157', '0000510510')
   Into tbl_IR_FY17_dec_spouse Values('0000510510', '0000408157')
+  Into tbl_IR_FY17_dec_spouse Values('0000784260', '0000382467')
+  Into tbl_IR_FY17_dec_spouse Values('0000382467', '0000784260')
 -- Commit table
 Select * From DUAL;
 Commit Work;
