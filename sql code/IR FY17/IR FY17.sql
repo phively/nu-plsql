@@ -245,7 +245,7 @@ cash As (
   Main temp table pulling together all criteria for IR17 */
 donorlist As (
   (
-  -- $2500+ cumulative campaign giving
+  -- $2500+ cumulative campaign giving for people
   Select cgft.*, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix,
     hh.household_masters_year, hh.primary_name, hh.gender, hh.primary_name_spouse, hh.gender_spouse,
     hh.person_or_org, hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status,
@@ -253,6 +253,17 @@ donorlist As (
   From cgft
   Inner Join hh On hh.id_number = cgft.id_number
   Where cgft.campaign_steward_thru_fy17 >= 2500
+    And hh.person_or_org = 'P' -- People
+  ) Union All (
+  -- $100K+ cumulative campaign giving for orgs
+  Select cgft.*, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix,
+    hh.household_masters_year, hh.primary_name, hh.gender, hh.primary_name_spouse, hh.gender_spouse,
+    hh.person_or_org, hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status,
+    hh.no_joint_gifts_flag
+  From cgft
+  Inner Join hh On hh.id_number = cgft.id_number
+  Where cgft.campaign_steward_thru_fy17 >= 100000
+    And hh.person_or_org = 'O' -- Orgs
   ) Union All (
   -- Young alumni giving $1000+ from FY12 on
   Select cgft.*, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix,
