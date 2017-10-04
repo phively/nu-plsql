@@ -289,7 +289,7 @@ rec_name_logic As (
     -- Name ordering based on rules we had discussed: alum first, if both or neither are alums then female first
     Case
       -- Anonymous donors take precedence
-      When anon.anon Is Not Null Or lower(primary_name) Like '%anonymous%donor%' Then 'Anon'
+      When anon.anon Is Not Null Or lower(primary_name) Like '%anonymous%donor%' Or lower(cust_name.custom_name) Like '%anonymous%' Then 'Anon'
       -- Organizations next
       When donorlist.person_or_org = 'O' Then 'Org'
       -- If on deceased spouse list, override
@@ -319,6 +319,7 @@ rec_name_logic As (
   From donorlist
   Left Join dec_spouse_ids On dec_spouse_ids.id_number = donorlist.id_number
   Left Join anon On anon.household_id = donorlist.household_id
+  Left Join tbl_IR_FY17_custom_name cust_name On cust_name.id_number = donorlist.id_number
 ),
 rec_name As (
   Select rn.id_number, rn.name_order, anon.anon,
