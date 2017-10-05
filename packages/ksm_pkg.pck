@@ -471,6 +471,8 @@ Cursor c_entity_degrees_concat_ksm (id In varchar2 Default NULL) Is
       And school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
       And (Case When id Is Not Null Then id_number Else 'T' End)
           = (Case When id Is Not Null Then id Else 'T' End)
+      And degree_year <> ' ' -- Exclude rows with blank year
+      And non_grad_code <> 'N' -- Exclude non-grads
     Order By id_number, degree_year Asc
   ),
   stwrd_deg As (
@@ -482,16 +484,19 @@ Cursor c_entity_degrees_concat_ksm (id In varchar2 Default NULL) Is
     Group By id_number
   ),
   -- Concatenated degrees subquery
+  -- ***** IMPORTANT: If updating, update clean_concat.clean_degrees_concat below as well *****
   concat As (
     Select id_number,
       -- Verbose degrees
       Listagg(
-        trim(degree_year || ' ' || tms_degree_level.short_desc || ' ' || tms_degrees.short_desc || ' ' ||
+        trim(degree_year || ' ' || (Case When non_grad_code = 'N' Then 'Nongrad ' End) ||
+        tms_degree_level.short_desc || ' ' || tms_degrees.short_desc || ' ' ||
         school_code || ' ' || tms_dept_code.short_desc || ' ' || tms_class_section.short_desc), '; '
       ) Within Group (Order By degree_year) As degrees_verbose,
       -- Terse degrees
       Listagg(
-        trim(degree_year || ' ' || degrees.degree_code || ' ' || school_code || ' ' || 
+        trim(degree_year || ' ' || (Case When non_grad_code = 'N' Then 'NONGRD ' End) ||
+          degrees.degree_code || ' ' || school_code || ' ' || 
           -- Special handler for KSM and EMBA departments
             Case
               When degrees.dept_code = '01MDB' Then 'MDMBA'
@@ -508,19 +513,19 @@ Cursor c_entity_degrees_concat_ksm (id In varchar2 Default NULL) Is
             -- Class section code
             || ' ' || class_section), '; '
       ) Within Group (Order By degree_year) As degrees_concat,
-      -- First Kellogg year
-      min(trim(degree_year)) As first_ksm_year,
-      -- First MBA or other Master's year
+      -- First Kellogg year; exclude non-grad years
+      min(trim(Case When non_grad_code = 'N' Then NULL Else degree_year End)) As first_ksm_year,
+      -- First MBA or other Master's year; exclude non-grad years
       min(Case
         When degrees.degree_level_code = 'M' -- Master's level
           Or degrees.degree_code In('MBA', 'MMGT', 'MS', 'MSDI', 'MSHA', 'MSMS') -- In case of data errors
-          Then trim(degree_year)
+          Then trim(Case When non_grad_code = 'N' Then NULL Else degree_year End)
         Else NULL
       End) As first_masters_year,
-      -- Last non-certificate year, e.g. for young alumni status
+      -- Last non-certificate year, e.g. for young alumni status, excluding non-grad years
       max(Case
         When degrees.degree_level_code In('B', 'D', 'M')
-        Then trim(degree_year)
+        Then trim(Case When non_grad_code = 'N' Then NULL Else degree_year End)
         Else NULL
       End) As last_noncert_year
       -- Table joins, etc.
@@ -538,51 +543,137 @@ Cursor c_entity_degrees_concat_ksm (id In varchar2 Default NULL) Is
         And (Case When id Is Not Null Then id_number Else 'T' End)
             = (Case When id Is Not Null Then id Else 'T' End)
       Group By id_number
-    ),      
+    ),
+    -- Completed degrees only
+    -- ***** IMPORTANT: If updating, update concat.degrees_concat above as well *****
+    clean_concat As (
+      Select id_number,
+      -- Verbose degrees
+      Listagg(
+        trim(degree_year || ' ' || (Case When non_grad_code = 'N' Then 'Nongrad ' End) ||
+        tms_degree_level.short_desc || ' ' || tms_degrees.short_desc || ' ' ||
+        school_code || ' ' || tms_dept_code.short_desc || ' ' || tms_class_section.short_desc), '; '
+      ) Within Group (Order By degree_year) As clean_degrees_verbose,
+      -- Terse degrees
+      Listagg(
+        trim(degree_year || ' ' || (Case When non_grad_code = 'N' Then 'NONGRD ' End) ||
+          degrees.degree_code || ' ' || school_code || ' ' || 
+          -- Special handler for KSM and EMBA departments
+            Case
+              When degrees.dept_code = '01MDB' Then 'MDMBA'
+              When degrees.dept_code Like '01%' Then substr(degrees.dept_code, 3)
+              When degrees.dept_code = '13JDM' Then 'JDMBA'
+              When degrees.dept_code = '13LLM' Then 'LLM'
+              When degrees.dept_code Like '41%' Then substr(degrees.dept_code, 3)
+              When degrees.dept_code = '95BCH' Then 'BCH'
+              When degrees.dept_code = '96BEV' Then 'BEV'
+              When degrees.dept_code In ('AMP', 'AMPI', 'EDP', 'KSMEE') Then degrees.dept_code
+              When degrees.dept_code = '0000000' Then ''
+              Else tms_dept_code.short_desc
+            End
+            -- Class section code
+            || ' ' || class_section), '; '
+      ) Within Group (Order By degree_year) As clean_degrees_concat
+      -- Table joins, etc.
+      From degrees
+        Left Join tms_class_section -- For class section short_desc
+          On degrees.class_section = tms_class_section.section_code
+        Left Join tms_dept_code -- For department short_desc
+          On degrees.dept_code = tms_dept_code.dept_code
+        Left Join tms_degree_level -- For degree level short_desc
+          On degrees.degree_level_code = tms_degree_level.degree_level_code
+        Left Join tms_degrees -- For degreee short_desc (to replace degree_code)
+          On degrees.degree_code = tms_degrees.degree_code
+      Where institution_code = '31173' -- Northwestern institution code
+        And non_grad_code <> 'N' -- Drop non-grad years
+        And school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
+        And (Case When id Is Not Null Then id_number Else 'T' End)
+            = (Case When id Is Not Null Then id Else 'T' End)
+      Group By id_number
+    ),
     -- Extract program
     prg As (
-      Select id_number,
+      Select concat.id_number,
         Case
-          When degrees_concat Like '%KGS2Y%' Then 'FT-6Q'
-          When degrees_concat Like '%KGS1Y%' Then 'FT-4Q'
-          When degrees_concat Like '%JDMBA%' Then 'FT-JDMBA'
-          When degrees_concat Like '%MMM%' Then 'FT-MMM'
-          When degrees_concat Like '%MDMBA%' Then 'FT-MDMBA'
-          When degrees_concat Like '%KSM KEN%' Then 'FT-KENNEDY'
-          When degrees_concat Like '%KSM TMP%' Then 'TMP'
-          When degrees_concat Like '%KSM PTS%' Then 'TMP-SAT'
-          When degrees_concat Like '%KSM PSA%' Then 'TMP-SATXCEL'
-          When degrees_concat Like '%KSM PTA%' Then 'TMP-XCEL'
-          When degrees_concat Like '% EMP%' Then 'EMP'
-          When degrees_concat Like '%KSM NAP%' Then 'EMP-IL'
-          When degrees_concat Like '%KSM WHU%' Then 'EMP-GER'
-          When degrees_concat Like '%KSM SCH%' Then 'EMP-CAN'
-          When degrees_concat Like '%KSM LAP%' Then 'EMP-FL'
-          When degrees_concat Like '%KSM HK%' Then 'EMP-HK'
-          When degrees_concat Like '%KSM JNA%' Then 'EMP-JAP'
-          When degrees_concat Like '%KSM RU%' Then 'EMP-ISR'
-          When degrees_concat Like '%KSM AEP%' Then 'EMP-AEP'
-          When degrees_concat Like '%KGS%' Then 'FT'
-          When degrees_concat Like '%BEV%' Then 'FT-EB'
-          When degrees_concat Like '%BCH%' Then 'FT-CB'
-          When degrees_concat Like '%PHD%' Then 'PHD'
-          When degrees_concat Like '%KSMEE%' Then 'EXECED'
-          When degrees_concat Like '%MBA %' Then 'FT'
-          When degrees_concat Like '%CERT%' Then 'EXECED'
-          When degrees_concat Like '%Institute for Mgmt%' Then 'EXECED'
-          When degrees_concat Like '%MS %' Then 'FT-MS'
-          When degrees_concat Like '%LLM%' Then 'CERT-LLM'
-          When degrees_concat Like '%MMGT%' Then 'FT-MMGT'
-          When degrees_verbose Like '%Certificate%' Then 'CERT'
-          Else 'UNK' -- Unable to determine program
+          -- People who have a completed degree
+          -- ***** IMPORTANT: Keep in same order as below *****
+          When clean_degrees_concat Like '%KGS2Y%' Then 'FT-6Q'
+          When clean_degrees_concat Like '%KGS1Y%' Then 'FT-4Q'
+          When clean_degrees_concat Like '%JDMBA%' Then 'FT-JDMBA'
+          When clean_degrees_concat Like '%MMM%' Then 'FT-MMM'
+          When clean_degrees_concat Like '%MDMBA%' Then 'FT-MDMBA'
+          When clean_degrees_concat Like '%KSM KEN%' Then 'FT-KENNEDY'
+          When clean_degrees_concat Like '%KSM TMP%' Then 'TMP'
+          When clean_degrees_concat Like '%KSM PTS%' Then 'TMP-SAT'
+          When clean_degrees_concat Like '%KSM PSA%' Then 'TMP-SATXCEL'
+          When clean_degrees_concat Like '%KSM PTA%' Then 'TMP-XCEL'
+          When clean_degrees_concat Like '%KSM NAP%' Then 'EMP-IL'
+          When clean_degrees_concat Like '%KSM WHU%' Then 'EMP-GER'
+          When clean_degrees_concat Like '%KSM SCH%' Then 'EMP-CAN'
+          When clean_degrees_concat Like '%KSM LAP%' Then 'EMP-FL'
+          When clean_degrees_concat Like '%KSM HK%' Then 'EMP-HK'
+          When clean_degrees_concat Like '%KSM JNA%' Then 'EMP-JAP'
+          When clean_degrees_concat Like '%KSM RU%' Then 'EMP-ISR'
+          When clean_degrees_concat Like '%KSM PKU%' Then 'EMP-CHI'
+          When clean_degrees_concat Like '%KSM AEP%' Then 'EMP-AEP'
+          When clean_degrees_concat Like '% EMP%' Then 'EMP'
+          When clean_degrees_concat Like '%KGS%' Then 'FT'
+          When clean_degrees_concat Like '%BEV%' Then 'FT-EB'
+          When clean_degrees_concat Like '%BCH%' Then 'FT-CB'
+          When clean_degrees_concat Like '%PHD%' Then 'PHD'
+          When clean_degrees_concat Like '%KSMEE%' Then 'EXECED'
+          When clean_degrees_concat Like '%MBA %' Then 'FT'
+          When clean_degrees_concat Like '%CERT%' Then 'EXECED'
+          When clean_degrees_concat Like '%Institute for Mgmt%' Then 'EXECED'
+          When clean_degrees_concat Like '%MS %' Then 'FT-MS'
+          When clean_degrees_concat Like '%LLM%' Then 'CERT-LLM'
+          When clean_degrees_concat Like '%MMGT%' Then 'FT-MMGT'
+          When clean_degrees_verbose Like '%Certificate%' Then 'CERT'
+          -- People who don't have a completed degree
+          -- ***** IMPORTANT: Keep in same order as above *****
+          When degrees_concat Like '%KGS2Y%' Then 'FT-6Q NONGRD'
+          When degrees_concat Like '%KGS1Y%' Then 'FT-4Q NONGRD'
+          When degrees_concat Like '%JDMBA%' Then 'FT-JDMBA NONGRD'
+          When degrees_concat Like '%MMM%' Then 'FT-MMM NONGRD'
+          When degrees_concat Like '%MDMBA%' Then 'FT-MDMBA NONGRD'
+          When degrees_concat Like '%KSM KEN%' Then 'FT-KENNEDY NONGRD'
+          When degrees_concat Like '%KSM TMP%' Then 'TMP NONGRD'
+          When degrees_concat Like '%KSM PTS%' Then 'TMP-SAT NONGRD'
+          When degrees_concat Like '%KSM PSA%' Then 'TMP-SATXCEL NONGRD'
+          When degrees_concat Like '%KSM PTA%' Then 'TMP-XCEL NONGRD'
+          When degrees_concat Like '% EMP%' Then 'EMP NONGRD'
+          When degrees_concat Like '%KSM NAP%' Then 'EMP-IL NONGRD'
+          When degrees_concat Like '%KSM WHU%' Then 'EMP-GER NONGRD'
+          When degrees_concat Like '%KSM SCH%' Then 'EMP-CAN NONGRD'
+          When degrees_concat Like '%KSM LAP%' Then 'EMP-FL NONGRD'
+          When degrees_concat Like '%KSM HK%' Then 'EMP-HK NONGRD'
+          When degrees_concat Like '%KSM JNA%' Then 'EMP-JAP NONGRD'
+          When degrees_concat Like '%KSM RU%' Then 'EMP-ISR NONGRD'
+          When degrees_concat Like '%KSM AEP%' Then 'EMP-AEP NONGRD'
+          When degrees_concat Like '%KGS%' Then 'FT NONGRD'
+          When degrees_concat Like '%BEV%' Then 'FT-EB NONGRD'
+          When degrees_concat Like '%BCH%' Then 'FT-CB NONGRD'
+          When degrees_concat Like '%PHD%' Then 'PHD NONGRD'
+          When degrees_concat Like '%KSMEE%' Then 'EXECED NONGRD'
+          When degrees_concat Like '%MBA %' Then 'FT NONGRD'
+          When degrees_concat Like '%CERT%' Then 'EXECED NONGRD'
+          When degrees_concat Like '%Institute for Mgmt%' Then 'EXECED NONGRD'
+          When degrees_concat Like '%MS %' Then 'FT-MS NONGRD'
+          When degrees_concat Like '%LLM%' Then 'CERT-LLM NONGRD'
+          When degrees_concat Like '%MMGT%' Then 'FT-MMGT NONGRD'
+          When degrees_verbose Like '%Certificate%' Then 'CERT NONGRD'
+          -- Unable to determine program
+          Else 'UNK'
         End As program
       From concat
+      Left Join clean_concat On concat.id_number = clean_concat.id_number
     )
     -- Final results
     Select concat.id_number, degrees_verbose, degrees_concat, first_ksm_year, first_masters_year, last_noncert_year,
       stwrd_deg.stewardship_years, prg.program,
       -- program_group; use spaces to force non-alphabetic entries to apear first
       Case
+        When program Like '%NONGRD%' Then 'NONGRD'
         When program Like 'FT%' Then  '  FT'
         When program Like 'TMP%' Then '  TMP'
         When program Like 'EMP%' Then ' EMP'
