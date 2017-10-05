@@ -371,7 +371,8 @@ rec_name As (
     -- Proposed sort name within groups
     Case
       When rn.name_order = 'Anon' Then ' ' -- Single space sorts before double space, 0-9, A-z, etc.
-      When rn.name_order = 'Org' Then household_rpt_name
+      When rn.name_order = 'Org' Then -- For orgs: drop "The " from sort name
+        Case When substr(lower(household_rpt_name), 1, 4) = 'the ' Then substr(household_rpt_name, 5) Else household_rpt_name End
       When rn.name_order = 'Manually HH' Then
         Case
           When dec_spouse_ids.yrs Is Not Null and yrs_join Is Null Then trim(sn || '; ' || snj)
@@ -415,10 +416,10 @@ Select Distinct
   -- Print in IR flag, for household deduping
   ids_for_deduping,
   dense_rank() Over(Partition By ids_for_deduping
-    Order By proposed_giving_level Asc, rec_name.proposed_sort_name Asc, rec_name.proposed_recognition_name Desc, donorlist.id_number Asc) As name_rank,
+    Order By proposed_giving_level Asc, lower(proposed_sort_name) Asc, proposed_recognition_name Desc, donorlist.id_number Asc) As name_rank,
   Case
     When dense_rank() Over(Partition By ids_for_deduping
-      Order By proposed_giving_level Asc, rec_name.proposed_sort_name Asc, rec_name.proposed_recognition_name Desc, donorlist.id_number Asc) = 1 Then 'Y'
+      Order By proposed_giving_level Asc, lower(proposed_sort_name) Asc, proposed_recognition_name Desc, donorlist.id_number Asc) = 1 Then 'Y'
   End As print_in_report,
   -- Recognition name string
   rec_name.proposed_sort_name,
@@ -437,9 +438,9 @@ Select Distinct
   rec_name.manually_named,
   Case
     When proposed_sort_name = ' ' Then NULL
-    When dense_rank() Over(Partition By proposed_sort_name Order By proposed_giving_level Asc, donorlist.id_number Asc) > 1
+    When dense_rank() Over(Partition By lower(proposed_sort_name) Order By proposed_giving_level Asc, donorlist.id_number Asc) > 1
       And dense_rank() Over(Partition By ids_for_deduping
-        Order By proposed_giving_level Asc, rec_name.proposed_sort_name Asc, rec_name.proposed_recognition_name Desc, donorlist.id_number Asc) = 1
+        Order By proposed_giving_level Asc, lower(proposed_sort_name) Asc, proposed_recognition_name Desc, donorlist.id_number Asc) = 1
       Then 'Y'
   End As possible_dupe,
   no_joint_gifts_flag,
@@ -490,4 +491,4 @@ Inner Join rec_name On rec_name.id_number = donorlist.id_number
 Left Join assign_conc On assign_conc.household_id = donorlist.household_id
 Left Join loyal On loyal.household_id = donorlist.household_id
 Left Join dec_spouse_conc On dec_spouse_conc.id_number = donorlist.id_number
-Order By proposed_giving_level Asc, rec_name.proposed_sort_name Asc
+Order By proposed_giving_level Asc, lower(proposed_sort_name) Asc, proposed_recognition_name Desc, donorlist.id_number Asc
