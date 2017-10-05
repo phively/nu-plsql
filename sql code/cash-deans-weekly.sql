@@ -23,6 +23,9 @@ cash As (
     cal.curr_fy, cal.prev_fy, cal.prev_day,
     Case
       When af_flag = 'Y' Then 'Annual Fund'
+      When gft.fiscal_year = 2018 And -- FY18: include the following initiatives
+        gft.allocation_code In ('3303000891601GFT', '3203000860501GFT', '3203000860201GFT', '', '3203003691101GFB', '3203004030001GFT', '3203003608901GFT', '3203004187301GFT')
+        Then 'Annual Fund'
       When af_flag = 'N' Then 'Current Use Expendable'
       When af_flag Is Null Then 'Other Cash'
       Else 'ZZZ Error'
