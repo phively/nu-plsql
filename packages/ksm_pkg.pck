@@ -41,7 +41,8 @@ Type calendar Is Record (
 
 /* Degreed alumi, for entity_degrees_concat */
 Type degreed_alumni Is Record (
-  id_number entity.id_number%type, degrees_verbose varchar2(1024), degrees_concat varchar2(512),
+  id_number entity.id_number%type, report_name entity.report_name%type, record_status_code entity.record_status_code%type,
+  degrees_verbose varchar2(1024), degrees_concat varchar2(512),
   first_ksm_year degrees.degree_year%type, first_masters_year degrees.degree_year%type,
   last_noncert_year degrees.degree_year%type, stewardship_years varchar2(80),
   program tms_dept_code.short_desc%type, program_group varchar2(20)
@@ -669,7 +670,8 @@ Cursor c_entity_degrees_concat_ksm (id In varchar2 Default NULL) Is
       Left Join clean_concat On concat.id_number = clean_concat.id_number
     )
     -- Final results
-    Select concat.id_number, degrees_verbose, degrees_concat, first_ksm_year, first_masters_year, last_noncert_year,
+    Select concat.id_number, entity.report_name, entity.record_status_code,
+      degrees_verbose, degrees_concat, first_ksm_year, first_masters_year, last_noncert_year,
       stwrd_deg.stewardship_years, prg.program,
       -- program_group; use spaces to force non-alphabetic entries to apear first
       Case
@@ -682,6 +684,7 @@ Cursor c_entity_degrees_concat_ksm (id In varchar2 Default NULL) Is
         Else program
       End As program_group
     From concat
+      Inner Join entity On entity.id_number = concat.id_number
       Inner Join prg On concat.id_number = prg.id_number
       Left Join stwrd_deg On stwrd_deg.id_number = concat.id_number;
 
