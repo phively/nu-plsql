@@ -294,7 +294,7 @@ donorlist As (
 
 /* Name ordering helper */
 rec_name_logic As (
-  Select donorlist.id_number, donorlist.report_name, donorlist.household_id, donorlist.household_spouse_id,
+  Select donorlist.id_number, donorlist.report_name, donorlist.person_or_org, donorlist.household_id, donorlist.household_spouse_id,
     primary_name, primary_name_spouse, household_rpt_name, household_spouse_rpt_name,
     id_join,
     -- Name ordering based on rules we had discussed: alum first, if both or neither are alums then female first
@@ -303,6 +303,7 @@ rec_name_logic As (
       When anon.anon Is Not Null Or lower(primary_name) Like '%anonymous%donor%' Or lower(cust_name.custom_name) Like '%anonymous%' Then 'Anon'
       -- Organizations next
       When donorlist.person_or_org = 'O' Then 'Org'
+      When donorlist.person_or_org = 'P' And upper(custlvl.custom_level) Like '%ORG%' Then 'Org'
       -- If on deceased spouse list, override
       When dec_spouse_ids.id_number Is Not Null Then 'Manually HH'
       -- If no joint gift indicator, self only
@@ -331,6 +332,7 @@ rec_name_logic As (
   Left Join dec_spouse_ids On dec_spouse_ids.id_number = donorlist.id_number
   Left Join anon On anon.household_id = donorlist.household_id
   Left Join tbl_IR_FY17_custom_name cust_name On cust_name.id_number = donorlist.id_number
+  Left Join Tbl_IR_FY17_custom_level custlvl On custlvl.id_number = donorlist.id_number
 ),
 rec_name As (
   Select rn.id_number, rn.name_order, anon.anon,
@@ -371,6 +373,9 @@ rec_name As (
     -- Proposed sort name within groups
     Case
       When rn.name_order = 'Anon' Then ' ' -- Single space sorts before double space, 0-9, A-z, etc.
+      When rn.name_order = 'Org' And person_or_org = 'P' Then -- For people categorized as orgs: use the custom name, dropping any The for alpha
+        Case When substr(lower(cust_name.custom_name), 1, 4) = 'the ' Then substr(cust_name.custom_name, 5)
+          Else cust_name.custom_name End
       When rn.name_order = 'Org' Then -- For orgs: drop "The " from sort name
         Case When substr(lower(household_rpt_name), 1, 4) = 'the ' Then substr(household_rpt_name, 5) Else household_rpt_name End
       When rn.name_order = 'Manually HH' Then
