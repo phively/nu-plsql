@@ -138,7 +138,7 @@ Type plg_disc Is Record (
 Type trans_entity Is Record (
   id_number entity.id_number%type, anonymous gift.gift_associated_anonymous%type,
   tx_number gift.gift_receipt_number%type, tx_sequence gift.gift_sequence%type,
-  transaction_type varchar2(40), tx_gypm_ind varchar2(1),
+  transaction_type varchar2(40), tx_gypm_ind varchar2(1), payment_type tms_payment_type.short_desc%type,
   allocation_code allocation.allocation_code%type, alloc_short_name allocation.short_name%type,
   af_flag varchar2(1), proposal_id primary_pledge.proposal_id%type,
   pledge_status primary_pledge.prim_pledge_status%type,
@@ -150,7 +150,7 @@ Type trans_entity Is Record (
 Type trans_household Is Record (
   household_id entity.id_number%type, id_number entity.id_number%type, anonymous gift.gift_associated_anonymous%type,
   tx_number gift.gift_receipt_number%type, tx_sequence gift.gift_sequence%type,
-  transaction_type varchar2(40), tx_gypm_ind varchar2(1),
+  transaction_type varchar2(40), tx_gypm_ind varchar2(1), payment_type tms_payment_type.short_desc%type,
   allocation_code allocation.allocation_code%type, alloc_short_name allocation.short_name%type,
   af_flag varchar2(1), proposal_id primary_pledge.proposal_id%type,
   pledge_status primary_pledge.prim_pledge_status%type,
@@ -973,12 +973,17 @@ Cursor c_gift_credit_ksm Is
       From tms_pledge_type
     )
   ),
+  /* Payment types */
+  tms_pmt_type As (
+    Select payment_type_code, short_desc As payment_type
+    From tms_payment_type
+  ),
   /* Kellogg transactions list */
   ksm_trans As (
     (
     -- Outright gifts and payments
       Select gft.id_number, gift.gift_associated_anonymous As anon,
-        tx_number, tx_sequence, tms_trans.transaction_type, tx_gypm_ind,
+        tx_number, tx_sequence, tms_trans.transaction_type, tx_gypm_ind, tms_pmt_type.payment_type,
         gft.allocation_code, gft.alloc_short_name, af_flag,
         Case When primary_gift.proposal_id <> 0 Then primary_gift.proposal_id End As proposal_id,
         NULL As pledge_status, date_of_record, to_number(fiscal_year) As fiscal_year,
@@ -989,6 +994,7 @@ Cursor c_gift_credit_ksm Is
       Inner Join primary_gift On primary_gift.prim_gift_receipt_number = gft.tx_number
       -- Trans type descriptions
       Left Join tms_trans On tms_trans.transaction_type_code = gft.transaction_type
+      Left Join tms_pmt_type On tms_pmt_type.payment_type_code = gft.payment_type
       -- KSM Annual Fund indicator
       Left Join ksm_af_allocs On ksm_af_allocs.allocation_code = gft.allocation_code
       Where alloc_school = 'KM'
@@ -996,7 +1002,7 @@ Cursor c_gift_credit_ksm Is
     ) Union All (
     -- Matching gift matching company
       Select match_gift_company_id, gftanon.anon,
-        match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', 'M',
+        match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', 'M', tms_pmt_type.payment_type,
         match_gift_allocation_name, ksm_allocs.short_name, af_flag, NULL,
         NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record),
         -- Full legal amount to matching company
@@ -1010,10 +1016,12 @@ Cursor c_gift_credit_ksm Is
         From gift
       ) gftanon On gftanon.gift_receipt_number = matching_gift.match_gift_matched_receipt
         And gftanon.gift_sequence = matching_gift.match_gift_matched_sequence
+      -- Trans payment descriptions
+      Left Join tms_pmt_type On tms_pmt_type.payment_type_code = matching_gift.match_payment_type
     ) Union All (
     -- Matching gift matched donors
       Select gft.id_number, gftanon.anon,
-        match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', 'M',
+        match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', 'M', tms_pmt_type.payment_type,
         match_gift_allocation_name, ksm_allocs.short_name, af_flag, NULL,
         NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record),
         -- 0 legal amount to matched donors
@@ -1031,10 +1039,12 @@ Cursor c_gift_credit_ksm Is
         From gift
       ) gftanon On gftanon.gift_receipt_number = matching_gift.match_gift_matched_receipt
           And gftanon.gift_sequence = matching_gift.match_gift_matched_sequence
+      -- Trans payment descriptions
+      Left Join tms_pmt_type On tms_pmt_type.payment_type_code = matching_gift.match_payment_type
     ) Union All (
     -- Pledges, including BE and LE program credit
       Select pledge_donor_id, pledge_anonymous,
-        pledge_pledge_number, pledge.pledge_sequence, tms_trans.transaction_type, 'P',
+        pledge_pledge_number, pledge.pledge_sequence, tms_trans.transaction_type, 'P', NULL,
         pledge.pledge_allocation_name, ksm_allocs.short_name, ksm_allocs.af_flag,
         Case When proposal_id <> 0 Then proposal_id End As proposal_id,
         prim_pledge_status, pledge_date_of_record, ksm_pkg.get_fiscal_year(pledge_date_of_record),
@@ -1144,7 +1154,7 @@ Cursor c_gift_credit_hh_campaign_2008 Is
   ) Union All (
   -- Internal transfer; 344303 is 50%
   Select daily.id_number, daily.id_number, ' ' As anonymous, daily.rcpt_or_plg_number, daily.xsequence,
-    'Internal Transfer' As transaction_type, daily.gift_pledge_or_match,
+    'Internal Transfer' As transaction_type, daily.gift_pledge_or_match, 'Internal Transfer',
     daily.alloc_code, allocation.short_name, 'N' As af_flag, NULL As proposal_id,
     daily.pledge_status, daily.date_of_record, to_number(daily.year_of_giving) As fiscal_year,
     344303 As legal_amount, 344303 As credit_amount, 344303 As recognition_amount,
