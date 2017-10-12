@@ -1,4 +1,4 @@
--- Create Or Replace View v_ksm_prospect_pool As
+Create Or Replace View v_ksm_prospect_pool As
 
 With
 /* View pulling the KSM prospect pool */
@@ -33,6 +33,14 @@ ksm_prs_ids As (
   )
 ),
 
+-- No Solicit special handling
+spec_hnd As (
+  Select id_number, hnd_type_code As DNS
+  From handling
+  Where hnd_type_code = 'DNS'
+    And hnd_status_code = 'A'
+),
+
 -- Disqualified and permanent stewardship prospects
 dq As (
   Select prospect.prospect_id, id_number, tms_stage.short_desc As dq
@@ -60,7 +68,7 @@ assign_conc As (
 )
 
 -- Main query
-Select hh.*, prs.prospect_id, dq.dq, prs.evaluation_rating, prs.officer_rating, prs.prospect_manager_id, prs.prospect_manager,
+Select hh.*, prs.prospect_id, dq.dq, spec_hnd.DNS, prs.evaluation_rating, prs.officer_rating, prs.prospect_manager_id, prs.prospect_manager,
   assign_conc.manager_ids, assign_conc.managers,
   -- Primary household member
   Case When household_id = hh.id_number Then 'Y' End As hh_primary,
@@ -124,4 +132,5 @@ From rpt_pbh634.v_entity_ksm_households hh
 Left Join nu_prs_trp_prospect prs On prs.id_number = hh.id_number
 Left Join assign_conc On assign_conc.prospect_id = prs.prospect_id
 Left Join dq On dq.id_number = hh.id_number
+Left Join spec_hnd On spec_hnd.id_number = hh.id_number
 Where hh.id_number In (Select id_number From ksm_prs_ids)
