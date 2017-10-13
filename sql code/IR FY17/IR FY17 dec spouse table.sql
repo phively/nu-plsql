@@ -162,11 +162,15 @@ Insert All
   Into tbl_IR_FY17_dec_spouse Values('0000510510', '0000408157')
   Into tbl_IR_FY17_dec_spouse Values('0000784260', '0000382467')
   Into tbl_IR_FY17_dec_spouse Values('0000382467', '0000784260')
+  Into tbl_IR_FY17_dec_spouse Values('0000088294', '0000158911')
+  Into tbl_IR_FY17_dec_spouse Values('0000158911', '0000088294')
 -- Commit table
 Select * From DUAL;
 Commit Work;
 /
-Select ds.id_number, entity.report_name, ds.id_join, spouse.report_name As spouse_name
+Select ds.id_number, entity.report_name, entity.record_status_code, ds.id_join,
+  spouse.report_name As spouse_name, spouse.record_status_code As spouse_record_status,
+  entity.jnt_gifts_ind
 From tbl_IR_FY17_dec_spouse ds
 Inner Join entity On ds.id_number = entity.id_number
 Inner Join entity spouse On ds.id_join = spouse.id_number;

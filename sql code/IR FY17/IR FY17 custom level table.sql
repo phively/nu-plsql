@@ -13,6 +13,7 @@ Insert All
 Select * From DUAL;
 Commit Work;
 /
-Select cust_lvl.id_number, entity.report_name, entity.spouse_name, cust_lvl.custom_level
+Select cust_lvl.id_number, entity.report_name, spouse.report_name As spouse_name, cust_lvl.custom_level
 From tbl_IR_FY17_custom_level cust_lvl
-Inner Join entity On entity.id_number = cust_lvl.id_number;
+Inner Join entity On entity.id_number = cust_lvl.id_number
+Left Join entity spouse On entity.spouse_id_number = spouse.id_number;
