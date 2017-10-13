@@ -987,7 +987,23 @@ Cursor c_gift_credit_ksm Is
         gft.allocation_code, gft.alloc_short_name, af_flag, primary_gift.prim_gift_comment As gift_comment,
         Case When primary_gift.proposal_id <> 0 Then primary_gift.proposal_id End As proposal_id,
         NULL As pledge_status, date_of_record, to_number(fiscal_year) As fiscal_year,
-        legal_amount, credit_amount, credit_amount As recognition_credit
+        legal_amount, credit_amount,
+        -- Recognition credit; for $0 internal transfers, extract dollar amount stated in comment
+        Case
+          When tms_pmt_type.payment_type = 'Internal Transfer' And credit_amount = 0
+            -- Regular expression: extract string starting with $ up to the last digit, period, or comma,
+            -- replace K with 000 and M with 000000, then strip the $ and commas and treat as numeric
+            Then to_number(
+              regexp_replace(
+                regexp_replace(
+                  regexp_replace(
+                    regexp_substr(upper(primary_gift.prim_gift_comment), '\$[0-9,KM\.]*'),
+                  'K', '000'),
+                'M', '000000'),
+              '[^0-9\.]', '')
+            )
+          Else credit_amount
+        End As recognition_credit
       From nu_gft_trp_gifttrans gft
       -- Anonymous association and linked proposal
       Inner Join gift On gift.gift_receipt_number = gft.tx_number And gift.gift_sequence = gft.tx_sequence

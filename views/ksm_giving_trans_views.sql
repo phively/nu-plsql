@@ -21,7 +21,7 @@ Create Or Replace View v_ksm_giving_summary As
 -- View implementing Kellogg gift credit, householded, with several common types
 Select Distinct hh.id_number, hh.household_id, hh.household_rpt_name, hh.household_spouse_id, hh.household_spouse,
   sum(Case When tx_gypm_ind != 'Y' Then hh_credit Else 0 End) As ngc_lifetime,
-  sum(Case When tx_gypm_ind != 'Y' Then hh_recognition_credit Else 0 End) As ngc_lifetime_beq_fv, -- Count bequests at face value
+  sum(Case When tx_gypm_ind != 'Y' Then hh_recognition_credit Else 0 End) As ngc_lifetime_full_rec, -- Count bequests at face value and internal transfers at > $0
   sum(Case When tx_gypm_ind != 'Y' And cal.curr_fy = fiscal_year     Then hh_credit Else 0 End) As ngc_cfy,
   sum(Case When tx_gypm_ind != 'Y' And cal.curr_fy = fiscal_year + 1 Then hh_credit Else 0 End) As ngc_pfy1,
   sum(Case When tx_gypm_ind != 'Y' And cal.curr_fy = fiscal_year + 2 Then hh_credit Else 0 End) As ngc_pfy2,
@@ -58,7 +58,7 @@ Create Or Replace View v_ksm_giving_lifetime As
 -- Replacement lifetime giving view, based on giving summary to household lifetime giving amounts. Kept for historical purposes.
 Select ksm.id_number, entity.report_name,
   ksm.ngc_lifetime As credit_amount,
-  ksm.ngc_lifetime_beq_fv As credit_amount_full_BE
+  ksm.ngc_lifetime_full_rec As credit_amount_full_rec
 From v_ksm_giving_summary ksm
 Inner Join entity On entity.id_number = ksm.id_number;
 /
