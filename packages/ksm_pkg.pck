@@ -58,7 +58,7 @@ Type committee_member Is Record (
 
 /* Household, for entity_households */
 Type household Is Record (
-  id_number entity.id_number%type, pref_mail_name entity.pref_mail_name%type,
+  id_number entity.id_number%type, report_name entity.report_name%type, pref_mail_name entity.pref_mail_name%type,
   record_status_code entity.record_status_code%type, degrees_concat varchar2(512),
   first_ksm_year degrees.degree_year%type, program_group varchar2(20), last_noncert_year degrees.degree_year%type,
   spouse_id_number entity.spouse_id_number%type, spouse_pref_mail_name entity.pref_mail_name%type,
@@ -725,7 +725,8 @@ With
       Left Join entity spouse On entity.spouse_id_number = spouse.id_number
   ),
   household As (
-    Select id_number, record_status_code, pref_mail_name, degrees_concat, first_ksm_year, last_noncert_year, program_group,
+    Select id_number, report_name, record_status_code, pref_mail_name,
+      degrees_concat, first_ksm_year, last_noncert_year, program_group,
       spouse_id_number, spouse_pref_mail_name,
       spouse_degrees_concat, spouse_first_ksm_year, spouse_program_group, spouse_last_noncert_year,
       -- Choose which spouse is primary based on program_group
@@ -787,7 +788,7 @@ With
       And spouse.marital_status_code In ('I', 'Q', 'Z', 'W', 'N', 'F', ' ')
   )
   -- Main query
-  Select household.id_number, household.pref_mail_name, household.record_status_code,
+  Select household.id_number, household.report_name, household.pref_mail_name, household.record_status_code,
     household.degrees_concat, household.first_ksm_year, household.program_group, household.last_noncert_year,
     household.spouse_id_number, household.spouse_pref_mail_name,
     household.spouse_degrees_concat, household.spouse_first_ksm_year, household.spouse_program_group,
