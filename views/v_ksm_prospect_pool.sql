@@ -68,7 +68,12 @@ assign_conc As (
 )
 
 -- Main query
-Select hh.*, prs.prospect_id, dq.dq, spec_hnd.DNS, prs.evaluation_rating, prs.officer_rating, prs.prospect_manager_id, prs.prospect_manager,
+Select hh.*,
+  entity.institutional_suffix, prs.business_title, trim(prs.employer_name1 || ' ' || employer_name2) As employer_name,
+  prs.pref_city, prs.pref_state, prs.preferred_country, prs.business_city, prs.business_state, prs.business_country,
+  prs.prospect_id, dq.dq, spec_hnd.DNS, prs.evaluation_rating, prs.officer_rating,
+  prs.prospect_manager_id, prs.prospect_manager, prs.team, prs.prospect_stage,
+  prs.contact_date, contact_auth.report_name As contact_author,
   assign_conc.manager_ids, assign_conc.managers,
   -- Primary household member
   Case When household_id = hh.id_number Then 'Y' End As hh_primary,
@@ -130,7 +135,9 @@ Select hh.*, prs.prospect_id, dq.dq, spec_hnd.DNS, prs.evaluation_rating, prs.of
     Else 'Z. None'
   End As pool_group
 From rpt_pbh634.v_entity_ksm_households hh
+Inner Join entity On entity.id_number = hh.id_number
 Left Join nu_prs_trp_prospect prs On prs.id_number = hh.id_number
+Left Join entity contact_auth On contact_auth.id_number = prs.contact_author
 Left Join assign_conc On assign_conc.prospect_id = prs.prospect_id
 Left Join dq On dq.id_number = hh.id_number
 Left Join spec_hnd On spec_hnd.id_number = hh.id_number
