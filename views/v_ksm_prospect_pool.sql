@@ -119,9 +119,10 @@ Select hh.*, prs.prospect_id, dq.dq, spec_hnd.DNS, prs.evaluation_rating, prs.of
     -- Assigned; exclude managed by Kellogg Donor Relations
     When manager_ids Is Not Null And prospect_manager_id Not In ('0000292130')
       Then 'C. Assigned'
-    -- Leads; unmanaged with a rating, but not officer rating of $10K-$25K, and not unresponsive (?)
+    -- Leads; unmanaged with a rating, but not officer rating of $10K-$25K, and not unresponsive
     When manager_ids Is Null And dq.dq Is Null And officer_rating Not In ('G  $10K - $24K')
       And (officer_rating <> ' ' Or evaluation_rating <> ' ')
+      And team <> 'Unresponsive'
       Then 'D. Leads'
     -- Previously disqualified
     When dq.dq Is Not Null Then 'Q. Previously Disqualified'
