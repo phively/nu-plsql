@@ -61,7 +61,9 @@ Type household Is Record (
   id_number entity.id_number%type, report_name entity.report_name%type, pref_mail_name entity.pref_mail_name%type,
   record_status_code entity.record_status_code%type, degrees_concat varchar2(512),
   first_ksm_year degrees.degree_year%type, program_group varchar2(20), last_noncert_year degrees.degree_year%type,
+  institutional_suffix entity.institutional_suffix%type,
   spouse_id_number entity.spouse_id_number%type, spouse_pref_mail_name entity.pref_mail_name%type,
+  spouse_suffix entity.institutional_suffix%type,
   spouse_degrees_concat varchar2(512), spouse_first_ksm_year degrees.degree_year%type, spouse_program_group varchar2(20),
   spouse_last_noncert_year degrees.degree_year%type,
   fmr_spouse_id entity.id_number%type, fmr_spouse_name entity.report_name%type,
@@ -726,9 +728,9 @@ With
       Left Join entity spouse On entity.spouse_id_number = spouse.id_number
   ),
   household As (
-    Select id_number, report_name, record_status_code, pref_mail_name,
+    Select id_number, report_name, record_status_code, pref_mail_name, institutional_suffix,
       degrees_concat, first_ksm_year, last_noncert_year, program_group,
-      spouse_id_number, spouse_pref_mail_name,
+      spouse_id_number, spouse_pref_mail_name, spouse_suffix,
       spouse_degrees_concat, spouse_first_ksm_year, spouse_program_group, spouse_last_noncert_year,
       -- Choose which spouse is primary based on program_group
       Case
@@ -791,7 +793,8 @@ With
   -- Main query
   Select household.id_number, household.report_name, household.pref_mail_name, household.record_status_code,
     household.degrees_concat, household.first_ksm_year, household.program_group, household.last_noncert_year,
-    household.spouse_id_number, household.spouse_pref_mail_name,
+    household.institutional_suffix,
+    household.spouse_id_number, household.spouse_pref_mail_name, household.spouse_suffix,
     household.spouse_degrees_concat, household.spouse_first_ksm_year, household.spouse_program_group,
     household.spouse_last_noncert_year,
     fmr_spouse.spouse_id_number As fmr_spouse_id, fmr_spouse.spouse_name As fmr_spouse_name,
