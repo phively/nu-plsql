@@ -66,7 +66,7 @@ Type household Is Record (
   spouse_last_noncert_year degrees.degree_year%type,
   fmr_spouse_id entity.id_number%type, fmr_spouse_name entity.report_name%type,
   fmr_marital_status tms_marital_status.short_desc%type,
-  household_id entity.id_number%type, household_record entity.record_type_code%type,
+  household_id entity.id_number%type, household_record entity.record_type_code%type, person_or_org entity.person_or_org%type,
   household_name entity.pref_mail_name%type, household_rpt_name entity.report_name%type,
   household_spouse_id entity.id_number%type, household_spouse entity.pref_mail_name%type,
   household_spouse_rpt_name entity.report_name%type,
@@ -711,7 +711,8 @@ With
     From table(tbl_entity_degrees_concat_ksm) deg
   ),
   couples As (
-    Select entity.id_number, entity.pref_mail_name, entity.report_name, entity.record_type_code, entity.record_status_code,
+    Select entity.id_number, entity.pref_mail_name, entity.report_name,
+      entity.record_type_code, entity.person_or_org, entity.record_status_code,
       entity.institutional_suffix, edc.degrees_concat, edc.first_ksm_year, edc.first_masters_year, edc.last_noncert_year,
       edc.program_group,
       entity.spouse_id_number, spouse.pref_mail_name As spouse_pref_mail_name, spouse.report_name As spouse_report_name,
@@ -795,7 +796,7 @@ With
     household.spouse_last_noncert_year,
     fmr_spouse.spouse_id_number As fmr_spouse_id, fmr_spouse.spouse_name As fmr_spouse_name,
     fmr_spouse.marital_status As fmr_marital_status,
-    household.household_id, couples.record_type_code As household_record,
+    household.household_id, couples.record_type_code As household_record, couples.person_or_org,
     couples.pref_mail_name As household_name, couples.report_name As household_rpt_name,
     couples.spouse_id_number As household_spouse_id, couples.spouse_pref_mail_name As household_spouse,
     couples.spouse_report_name As household_spouse_rpt_name,
