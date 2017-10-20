@@ -77,7 +77,8 @@ Type household Is Record (
   household_ksm_year degrees.degree_year%type, household_masters_year degrees.degree_year%type,
   household_program_group varchar2(20),
   household_city address.city%type, household_state address.state_code%type,
-  household_country tms_country.short_desc%type
+  household_country tms_country.short_desc%type,
+  household_continent varchar2(80)
 );
 
 /* Source donor, for gift_source_donor */
@@ -747,9 +748,9 @@ With
   ),
   pref_addr As (
     Select addr.id_number, addr.city As pref_city, addr.state_code As pref_state,
-      tms_country.short_desc As pref_country
+      cont.country As pref_country, cont.continent As pref_continent
     From address addr
-    Left Join tms_country On addr.country_code = tms_country.country_code
+    Left Join v_addr_continents cont On addr.country_code = cont.country_code
     Where addr.addr_pref_ind = 'Y'
       And addr.addr_status_code = 'A'
   ),
@@ -808,7 +809,7 @@ With
     couples.first_ksm_year As household_ksm_year, couples.first_masters_year As household_masters_year,
     -- Household last non-certificate year, for young alumni designation
     couples.program_group As household_program_group,
-    pref_addr.pref_city, pref_addr.pref_state, pref_addr.pref_country
+    pref_addr.pref_city, pref_addr.pref_state, pref_addr.pref_country, pref_addr.pref_continent
   From household
     Left Join couples On household.household_id = couples.id_number
     Left Join pref_addr On household.household_id = pref_addr.id_number
