@@ -751,6 +751,7 @@ With
     From address addr
     Left Join tms_country On addr.country_code = tms_country.country_code
     Where addr.addr_pref_ind = 'Y'
+      And addr.addr_status_code = 'A'
   ),
   -- Deceased spouse logic
   deceased_spouses As (
