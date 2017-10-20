@@ -50,6 +50,14 @@ dq As (
   Where prospect.stage_code In (7, 11)
 ),
 
+-- UOR
+uor As (
+  Select prospect_id, evaluation_date As uor_date, evaluation.rating_code, tms_rating.short_desc As uor
+  From evaluation
+  Left Join tms_rating On tms_rating.rating_code = evaluation.rating_code
+  Where evaluation_type = 'UR' And active_ind = 'Y' -- University overall rating
+),
+
 -- Prospect assignments
 assign As (
   Select Distinct assignment.prospect_id, office_code, assignment_id_number, entity.report_name
@@ -69,9 +77,10 @@ assign_conc As (
 
 -- Main query
 Select hh.*,
-  entity.institutional_suffix, prs.business_title, trim(prs.employer_name1 || ' ' || employer_name2) As employer_name,
+  prs.business_title, trim(prs.employer_name1 || ' ' || employer_name2) As employer_name,
   prs.pref_city, prs.pref_state, prs.preferred_country, prs.business_city, prs.business_state, prs.business_country,
-  prs.prospect_id, dq.dq, spec_hnd.DNS, prs.evaluation_rating, prs.officer_rating,
+  prs.prospect_id, dq.dq, spec_hnd.DNS,
+  prs.evaluation_rating, prs.evaluation_date, prs.officer_rating, uor.uor, uor.uor_date,
   prs.prospect_manager_id, prs.prospect_manager, prs.team, prs.prospect_stage,
   prs.contact_date, contact_auth.report_name As contact_author,
   assign_conc.manager_ids, assign_conc.managers,
@@ -135,10 +144,10 @@ Select hh.*,
     Else 'Z. None'
   End As pool_group
 From rpt_pbh634.v_entity_ksm_households hh
-Inner Join entity On entity.id_number = hh.id_number
 Left Join nu_prs_trp_prospect prs On prs.id_number = hh.id_number
 Left Join entity contact_auth On contact_auth.id_number = prs.contact_author
 Left Join assign_conc On assign_conc.prospect_id = prs.prospect_id
 Left Join dq On dq.id_number = hh.id_number
 Left Join spec_hnd On spec_hnd.id_number = hh.id_number
+Left Join uor On uor.prospect_id = prs.prospect_id
 Where hh.id_number In (Select id_number From ksm_prs_ids)
