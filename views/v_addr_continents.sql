@@ -285,7 +285,14 @@ Select tms_country.country_code, tms_country.short_desc As country,
     Else 'CHECK'
   End As continent
 From tms_country
+-- Add a row for USA
+Union All
+-- USA is blank country code
+Select ' ', 'United States', 'North America'
+From DUAL
 /
+
+-- Did I miss any countries?
 Select *
 From v_addr_continents
 Where continent = 'CHECK'
