@@ -143,7 +143,7 @@ Type trans_entity Is Record (
   tx_number gift.gift_receipt_number%type, tx_sequence gift.gift_sequence%type,
   transaction_type varchar2(40), tx_gypm_ind varchar2(1), payment_type tms_payment_type.short_desc%type,
   allocation_code allocation.allocation_code%type, alloc_short_name allocation.short_name%type,
-  af_flag varchar2(1), gift_comment primary_gift.prim_gift_comment%type,
+  af_flag varchar2(1), cru_flag varchar2(1), gift_comment primary_gift.prim_gift_comment%type,
   proposal_id primary_pledge.proposal_id%type, pledge_status primary_pledge.prim_pledge_status%type,
   date_of_record gift.gift_date_of_record%type, fiscal_year number, legal_amount gift.gift_associated_amount%type,
   credit_amount gift.gift_associated_amount%type, recognition_credit gift.gift_associated_amount%type
@@ -155,7 +155,7 @@ Type trans_household Is Record (
   tx_number gift.gift_receipt_number%type, tx_sequence gift.gift_sequence%type,
   transaction_type varchar2(40), tx_gypm_ind varchar2(1), payment_type tms_payment_type.short_desc%type,
   allocation_code allocation.allocation_code%type, alloc_short_name allocation.short_name%type,
-  af_flag varchar2(1), gift_comment primary_gift.prim_gift_comment%type,
+  af_flag varchar2(1), cru_flag varchar2(1), gift_comment primary_gift.prim_gift_comment%type,
   proposal_id primary_pledge.proposal_id%type, pledge_status primary_pledge.prim_pledge_status%type,
   date_of_record gift.gift_date_of_record%type, fiscal_year number, legal_amount gift.gift_associated_amount%type,
   credit_amount gift.gift_associated_amount%type, recognition_credit gift.gift_associated_amount%type,
@@ -960,14 +960,16 @@ Cursor c_gift_credit_ksm Is
     From table(plg_discount)
   ),
   /* KSM allocations */
-  ksm_af_allocs As (
+  ksm_cru_allocs As (
     Select allocation_code, af_flag
-    From table(ksm_pkg.tbl_alloc_annual_fund_ksm) af
+    From table(ksm_pkg.tbl_alloc_curr_use_ksm) cru
   ),
   ksm_allocs As (
-    Select allocation.allocation_code, allocation.short_name, ksm_af_allocs.af_flag
+    Select allocation.allocation_code, allocation.short_name,
+      Case When ksm_cru_allocs.af_flag Is Not Null Then 'Y' End As cru_flag,
+      Case When ksm_cru_allocs.af_flag = 'Y' Then 'Y' End As af_flag
     From allocation
-    Left Join ksm_af_allocs On ksm_af_allocs.allocation_code = allocation.allocation_code
+    Left Join ksm_cru_allocs On ksm_cru_allocs.allocation_code = allocation.allocation_code
     Where alloc_school = 'KM'
   ),
   /* Transaction and pledge TMS table definition */
@@ -991,7 +993,7 @@ Cursor c_gift_credit_ksm Is
     -- Outright gifts and payments
       Select gft.id_number, gift.gift_associated_anonymous As anon,
         tx_number, tx_sequence, tms_trans.transaction_type, tx_gypm_ind, tms_pmt_type.payment_type,
-        gft.allocation_code, gft.alloc_short_name, af_flag, primary_gift.prim_gift_comment As gift_comment,
+        gft.allocation_code, gft.alloc_short_name, af_flag, cru_flag, primary_gift.prim_gift_comment As gift_comment,
         Case When primary_gift.proposal_id <> 0 Then primary_gift.proposal_id End As proposal_id,
         NULL As pledge_status, date_of_record, to_number(fiscal_year) As fiscal_year,
         legal_amount, credit_amount,
@@ -1019,14 +1021,14 @@ Cursor c_gift_credit_ksm Is
       Left Join tms_trans On tms_trans.transaction_type_code = gft.transaction_type
       Left Join tms_pmt_type On tms_pmt_type.payment_type_code = gft.payment_type
       -- KSM Annual Fund indicator
-      Left Join ksm_af_allocs On ksm_af_allocs.allocation_code = gft.allocation_code
+      Left Join ksm_allocs On ksm_allocs.allocation_code = gft.allocation_code
       Where alloc_school = 'KM'
         And tx_gypm_ind In ('G', 'Y')
     ) Union All (
     -- Matching gift matching company
       Select match_gift_company_id, gftanon.anon,
         match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', 'M', tms_pmt_type.payment_type,
-        match_gift_allocation_name, ksm_allocs.short_name, af_flag, matching_gift.match_gift_comment,
+        match_gift_allocation_name, ksm_allocs.short_name, af_flag, cru_flag, matching_gift.match_gift_comment,
         NULL, NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record),
         -- Full legal amount to matching company
         match_gift_amount, match_gift_amount, match_gift_amount
@@ -1045,7 +1047,7 @@ Cursor c_gift_credit_ksm Is
     -- Matching gift matched donors
       Select gft.id_number, gftanon.anon,
         match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', 'M', tms_pmt_type.payment_type,
-        match_gift_allocation_name, ksm_allocs.short_name, af_flag, matching_gift.match_gift_comment,
+        match_gift_allocation_name, ksm_allocs.short_name, af_flag, cru_flag, matching_gift.match_gift_comment,
         NULL, NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record),
         -- 0 legal amount to matched donors
         Case When gft.id_number = match_gift_company_id Then match_gift_amount Else 0 End As legal_amount,
@@ -1068,7 +1070,7 @@ Cursor c_gift_credit_ksm Is
     -- Pledges, including BE and LE program credit
       Select pledge_donor_id, pledge_anonymous,
         pledge_pledge_number, pledge.pledge_sequence, tms_trans.transaction_type, 'P', NULL,
-        pledge.pledge_allocation_name, ksm_allocs.short_name, ksm_allocs.af_flag, pledge_comment,
+        pledge.pledge_allocation_name, ksm_allocs.short_name, ksm_allocs.af_flag, cru_flag, pledge_comment,
         Case When proposal_id <> 0 Then proposal_id End As proposal_id,
         prim_pledge_status, pledge_date_of_record, ksm_pkg.get_fiscal_year(pledge_date_of_record),
         plgd.legal, plgd.credit, plgd.recognition_credit
@@ -1178,7 +1180,7 @@ Cursor c_gift_credit_hh_campaign_2008 Is
   -- Internal transfer; 344303 is 50%
   Select daily.id_number, daily.id_number, ' ' As anonymous, daily.rcpt_or_plg_number, daily.xsequence,
     'Internal Transfer' As transaction_type, daily.gift_pledge_or_match, 'Internal Transfer',
-    daily.alloc_code, allocation.short_name, 'N' As af_flag, primary_gift.prim_gift_comment,
+    daily.alloc_code, allocation.short_name, 'N' As af_flag, 'N' As cru_flag, primary_gift.prim_gift_comment,
     NULL As proposal_id, daily.pledge_status, daily.date_of_record, to_number(daily.year_of_giving) As fiscal_year,
     344303 As legal_amount, 344303 As credit_amount, 344303 As recognition_amount,
     344303 As hh_credit, 344303 As hh_recognition_credit
