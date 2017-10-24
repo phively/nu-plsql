@@ -1,3 +1,21 @@
+With
+
+-- Primary employment
+prim_emp As (
+  Select
+    id_number
+    , job_title
+    , trim(employer_name1 || ' ' || employer_name2) As employer_name
+    , self_employ_ind
+    , matching_status_ind
+    , tms_pl.short_desc As position_level
+  From employment
+  Left Join tms_position_level tms_pl On tms_pl.position_level_code = employment.position_level_code
+  Where primary_emp_ind = 'Y'
+  And job_status_code = 'C'
+)
+
+-- Main query
 Select
   prs.id_number
   , prs.business_title
@@ -36,15 +54,15 @@ Select
       Or prs.business_title || prim_emp.job_title Like '%C_T_O%'
       Or lower(prs.business_title || prim_emp.job_title) Like '%chief_tech%'
       Then 'CTO'
-    When lower(prs.business_title || prim_emp.job_title) Like '%pres%'
-      And lower(prs.business_title || prim_emp.job_title) Not Like '%vice%'
+    When lower(prs.business_title || prim_emp.job_title) Like '%president%'
+      And lower(prs.business_title || prim_emp.job_title) Not Like '%vice%' -- Not vice president
       Then 'President'
     When prs.business_title || prim_emp.job_title Like '%EVP%'
-      Or lower(prs.business_title || prim_emp.job_title) Like '%exec%vice%'
-      Or lower(prs.business_title || prim_emp.job_title) Like '%exec%vp%'
+      Or lower(prs.business_title) Like '%exec%vice%' Or lower(prim_emp.job_title) Like '%exec%vice%'
+      Or lower(prs.business_title) Like '%exec%vp%' Or lower(prim_emp.job_title) Like '%exec%vp%'
       Then 'EVP'
-    When lower(prs.business_title || prim_emp.job_title) Like '%exec%dir%'
-      Or lower(prs.business_title || prim_emp.job_title) Like '%manag%dir%'
+    When lower(prs.business_title) Like '%exec%dir%' Or lower(prim_emp.job_title) Like '%exec%dir%'
+      Or lower(prs.business_title) Like '%manag%dir%' Or lower(prim_emp.job_title) Like '%manag%dir%'
       Then 'Mng/Exec Dir'
     When lower(prs.business_title || prim_emp.job_title) Like '%partner%'
       Then 'Partner'
@@ -57,16 +75,4 @@ Select
     End As high_level_job_title
 From nu_prs_trp_prospect prs
 Inner Join v_entity_ksm_degrees v On v.id_number = prs.id_number
-Left Join ( -- Primary employment
-  Select
-    id_number
-    , job_title
-    , trim(employer_name1 || ' ' || employer_name2) As employer_name
-    , self_employ_ind
-    , matching_status_ind
-    , tms_pl.short_desc As position_level
-  From employment
-  Left Join tms_position_level tms_pl On tms_pl.position_level_code = employment.position_level_code
-  Where primary_emp_ind = 'Y'
-  And job_status_code = 'C'
-) prim_emp On prim_emp.id_number = prs.id_number
+Left Join prim_emp On prim_emp.id_number = prs.id_number
