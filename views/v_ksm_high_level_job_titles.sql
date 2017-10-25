@@ -22,7 +22,7 @@ prim_emp As (
   Left Join tms_fld_of_spec tms_spec2 On tms_spec2.fld_of_spec_code = employment.fld_of_spec_code2
   Left Join tms_fld_of_spec tms_spec3 On tms_spec3.fld_of_spec_code = employment.fld_of_spec_code3
   Where primary_emp_ind = 'Y'
-  And job_status_code = 'C'
+    And job_status_code = 'C'
 )
 
 -- Main query
