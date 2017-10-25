@@ -9,8 +9,16 @@ prim_emp As (
     , self_employ_ind
     , matching_status_ind
     , tms_pl.short_desc As position_level
+    , tms_fld.short_desc As fld_of_work
+    , tms_spec1.short_desc As fld_of_spec1
+    , tms_spec2.short_desc As fld_of_spec2
+    , tms_spec3.short_desc As fld_of_spec3
   From employment
   Left Join tms_position_level tms_pl On tms_pl.position_level_code = employment.position_level_code
+  Left Join tms_fld_of_work tms_fld On tms_fld.fld_of_work_code = employment.fld_of_work_code
+  Left Join tms_fld_of_spec tms_spec1 On tms_spec1.fld_of_spec_code = employment.fld_of_spec_code1
+  Left Join tms_fld_of_spec tms_spec2 On tms_spec2.fld_of_spec_code = employment.fld_of_spec_code2
+  Left Join tms_fld_of_spec tms_spec3 On tms_spec3.fld_of_spec_code = employment.fld_of_spec_code3
   Where primary_emp_ind = 'Y'
   And job_status_code = 'C'
 )
@@ -19,11 +27,15 @@ prim_emp As (
 Select
   prs.id_number
   , prs.business_title
---  , trim(prs.employer_name1 || ' ' || prs.employer_name2) As business_name
+  , trim(prs.employer_name1 || ' ' || prs.employer_name2) As business_name
   , prim_emp.job_title
---  , prim_emp.employer_name
---  , prim_emp.matching_status_ind
---  , prim_emp.position_level
+  , prim_emp.employer_name
+  , prim_emp.matching_status_ind
+  , prim_emp.position_level
+  , prim_emp.fld_of_work
+  , prim_emp.fld_of_spec1
+  , prim_emp.fld_of_spec2
+  , prim_emp.fld_of_spec3
   , Case -- High-level job title indicator
     When prs.business_title || prim_emp.job_title Like '%CAO%'
       Or prs.business_title || prim_emp.job_title Like '%C.A.O%'
