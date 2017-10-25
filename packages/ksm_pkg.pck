@@ -602,8 +602,8 @@ Cursor c_entity_degrees_concat_ksm (id In varchar2 Default NULL) Is
         Case
           -- People who have a completed degree
           -- ***** IMPORTANT: Keep in same order as below *****
-          When clean_degrees_concat Like '%KGS2Y%' Then 'FT-6Q'
-          When clean_degrees_concat Like '%KGS1Y%' Then 'FT-4Q'
+          When clean_degrees_concat Like '%KGS2Y%' Then 'FT-2Y'
+          When clean_degrees_concat Like '%KGS1Y%' Then 'FT-1Y'
           When clean_degrees_concat Like '%JDMBA%' Then 'FT-JDMBA'
           When clean_degrees_concat Like '%MMM%' Then 'FT-MMM'
           When clean_degrees_concat Like '%MDMBA%' Then 'FT-MDMBA'
@@ -636,8 +636,8 @@ Cursor c_entity_degrees_concat_ksm (id In varchar2 Default NULL) Is
           When clean_degrees_verbose Like '%Certificate%' Then 'CERT'
           -- People who don't have a completed degree
           -- ***** IMPORTANT: Keep in same order as above *****
-          When degrees_concat Like '%KGS2Y%' Then 'FT-6Q NONGRD'
-          When degrees_concat Like '%KGS1Y%' Then 'FT-4Q NONGRD'
+          When degrees_concat Like '%KGS2Y%' Then 'FT-2Y NONGRD'
+          When degrees_concat Like '%KGS1Y%' Then 'FT-1Y NONGRD'
           When degrees_concat Like '%JDMBA%' Then 'FT-JDMBA NONGRD'
           When degrees_concat Like '%MMM%' Then 'FT-MMM NONGRD'
           When degrees_concat Like '%MDMBA%' Then 'FT-MDMBA NONGRD'
