@@ -63,7 +63,13 @@ Select trans.*,
     When af_pfy1 > 0 Then 'LYBUNT'
     When af_pfy2 + af_pfy3 + af_pfy4 > 0 Then 'PYBUNT'
     When af_cfy + af_pfy1 + af_pfy2 + af_pfy3 + af_pfy4 = 0 Then 'Lapsed/Non'
-  End As af_status
+  End As af_status,
+  -- AF status last year
+  Case
+    When af_pfy1 > 0 Then 'LYBUNT'
+    When af_pfy2 + af_pfy3 + af_pfy4 > 0 Then 'PYBUNT'
+    When af_pfy1 + af_pfy2 + af_pfy3 + af_pfy4 = 0 Then 'Lapsed/Non'
+  End As af_status_fy_start
 From trans;
 /
 
