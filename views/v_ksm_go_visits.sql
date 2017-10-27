@@ -19,6 +19,7 @@ Select
   -- Contact report fields
   contact_report.report_id, contact_report.id_number, contact_report.contacted_name, contact_report.prospect_id, contact_report.contact_date,
   rpt_pbh634.ksm_pkg.get_fiscal_year(contact_report.contact_date) As fiscal_year,
+  contact_report.description, dbms_lob.substr(contact_report.summary, 2000, 1) As summary,
   -- Prospect fields
   prs.officer_rating, prs.evaluation_rating, strat.university_strategy,
   -- Custom variables
