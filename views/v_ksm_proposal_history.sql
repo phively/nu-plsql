@@ -44,6 +44,15 @@ assn As (
   Where assignment.assignment_type = 'PA' -- Proposal Manager (PM is taken by Prospect Manager)
   Group By assignment.proposal_id
 ),
+asst As (
+  Select assignment.proposal_id,
+    Listagg(entity.report_name, '; ') Within Group (Order By assignment.start_date Desc NULLS Last, assignment.date_modified Desc) As proposal_assist
+  From assignment
+  Inner Join purp On purp.proposal_id = assignment.proposal_id
+  Inner Join entity On entity.id_number = assignment.assignment_id_number
+  Where assignment.assignment_type = 'AS' -- Proposal Assist
+  Group By assignment.proposal_id
+),
 
 -- Code to pull university strategy from the task table; BI method plus a cancelled/completed exclusion
 strat As (
@@ -57,6 +66,7 @@ Select
   prs.prospect_name,
   proposal.proposal_id,
   assn.proposal_manager,
+  asst.proposal_assist,
   proposal.proposal_status_code,
   tms_ps.hierarchy_order,
   Case
@@ -85,7 +95,7 @@ Select
   purp.program_anticipated,
   granted_amt,
   -- Use anticipated amount if available, else ask amount
-  Case When anticipated_amt > 0 Then anticipated_amt Else ask_amt End As amt,
+  Case When anticipated_amt > 0 Then anticipated_amt Else ask_amt End As anticipated_or_ask_amt,
   -- Anticipated bin: use anticipated amount if available, otherwise fall back to ask amount
   Case
     When anticipated_amt >= 10000000 Then 10
@@ -109,6 +119,7 @@ Inner Join tms_proposal_status tms_ps On tms_ps.proposal_status_code = proposal.
 -- Only KSM proposals
 Inner Join purp On purp.proposal_id = proposal.proposal_id
 Left Join assn On assn.proposal_id = proposal.proposal_id
+Left Join asst On asst.proposal_id = proposal.proposal_id
 -- Prospect info
 Left Join (Select prospect_id, prospect_name From prospect) prs On prs.prospect_id = proposal.prospect_id
 Left Join strat On strat.prospect_id = proposal.prospect_id
