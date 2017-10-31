@@ -20,18 +20,33 @@ cal As (
 ),
 
 -- Proposal purpose
-purp As (
+ksm_purps As (
   Select pp.proposal_id,
-    Listagg(tms_pp.short_desc, '; ') Within Group (Order By pp.xsequence Asc) As prop_purpose,
-    Listagg(tms_pi.short_desc, '; ') Within Group (Order By pp.xsequence Asc) prospect_interest,
-    sum(pp.ask_amt) As program_ask,
-    sum(pp.original_ask_amt) As program_orig_ask,
-    sum(pp.granted_amt) As program_anticipated
+    pp.xsequence,
+    tms_pp.short_desc As prop_purpose,
+    tms_pi.short_desc As initiative,
+    pp.prospect_interest_code As initiative_cd,
+    pp.ask_amt As program_ask,
+    pp.original_ask_amt As program_orig_ask,
+    pp.granted_amt As program_anticipated
   From proposal_purpose pp
   Left Join tms_prop_purpose tms_pp On tms_pp.prop_purpose_code = pp.prop_purpose_code
   Left Join tms_prospect_interest tms_pi On tms_pi.prospect_interest_code = pp.prospect_interest_code
   Where program_code = 'KM'
-  Group By pp.proposal_id
+),
+ksm_purp As (
+  Select proposal_id,
+    Listagg(prop_purpose, '; ') Within Group (Order By xsequence Asc) As prop_purposes,
+    Listagg(initiative, '; ') Within Group (Order By xsequence Asc) initiatives,
+    sum(program_ask) As ksm_ask,
+    sum(program_orig_ask) As ksm_orig_ask,
+    sum(program_anticipated) As ksm_anticipated,
+    sum(Case When initiative Like '%KSM Annual Fund%' Then program_ask Else 0 End) As ksm_af_ask,
+    sum(Case When initiative Like '%KSM Annual Fund%' Then program_anticipated Else 0 End) As ksm_af_anticipated,
+    sum(Case When initiative_cd = 'KFC' Then program_ask Else 0 End) As ksm_facilities_ask,
+    sum(Case When initiative_cd = 'KFC' Then program_anticipated Else 0 End) As ksm_facilities_anticipated
+  From ksm_purps
+  Group By proposal_id
 ),
 
 -- Proposal assignments
@@ -39,7 +54,7 @@ assn As (
   Select assignment.proposal_id,
     Listagg(entity.report_name, '; ') Within Group (Order By assignment.start_date Desc NULLS Last, assignment.date_modified Desc) As proposal_manager
   From assignment
-  Inner Join purp On purp.proposal_id = assignment.proposal_id
+  Inner Join ksm_purp On ksm_purp.proposal_id = assignment.proposal_id
   Inner Join entity On entity.id_number = assignment.assignment_id_number
   Where assignment.assignment_type = 'PA' -- Proposal Manager (PM is taken by Prospect Manager)
   Group By assignment.proposal_id
@@ -48,7 +63,7 @@ asst As (
   Select assignment.proposal_id,
     Listagg(entity.report_name, '; ') Within Group (Order By assignment.start_date Desc NULLS Last, assignment.date_modified Desc) As proposal_assist
   From assignment
-  Inner Join purp On purp.proposal_id = assignment.proposal_id
+  Inner Join ksm_purp On ksm_purp.proposal_id = assignment.proposal_id
   Inner Join entity On entity.id_number = assignment.assignment_id_number
   Where assignment.assignment_type = 'AS' -- Proposal Assist
   Group By assignment.proposal_id
@@ -74,10 +89,10 @@ Select
     When proposal.proposal_status_code = '5' Then 'Verbal' -- Approved by Donor
     Else tms_ps.short_desc
   End As proposal_status,
-  Case When tms_ps.hierarchy_order < 70 Then 'Y' End As proposal_active,
-  Case When proposal.proposal_status_code In ('A', 'B', 'C', '5') Then 'Y' End As proposal_in_progress, -- Anticipated, Submitted, Submitted, Verbal
-  purp.prop_purpose,
-  purp.prospect_interest,
+  proposal.active_ind As proposal_active,
+  Case When tms_ps.hierarchy_order < 70 Then 'Y' End As proposal_in_progress, -- Anticipated, Submitted, Deferred, Approved
+  ksm_purp.prop_purposes,
+  ksm_purp.initiatives,
   strat.university_strategy,
   trunc(start_date) As start_date,
   ksm_pkg.get_fiscal_year(start_date) As start_fy,
@@ -91,9 +106,13 @@ Select
   original_ask_amt,
   ask_amt,
   anticipated_amt,
-  purp.program_ask,
-  purp.program_anticipated,
   granted_amt,
+  ksm_purp.ksm_ask,
+  ksm_purp.ksm_anticipated,
+  ksm_purp.ksm_af_ask,
+  ksm_purp.ksm_af_anticipated,
+  ksm_purp.ksm_facilities_ask,
+  ksm_purp.ksm_facilities_anticipated,
   -- Use anticipated amount if available, else ask amount
   Case When anticipated_amt > 0 Then anticipated_amt Else ask_amt End As anticipated_or_ask_amt,
   -- Anticipated bin: use anticipated amount if available, otherwise fall back to ask amount
@@ -117,7 +136,7 @@ From proposal
 Cross Join cal
 Inner Join tms_proposal_status tms_ps On tms_ps.proposal_status_code = proposal.proposal_status_code
 -- Only KSM proposals
-Inner Join purp On purp.proposal_id = proposal.proposal_id
+Inner Join ksm_purp On ksm_purp.proposal_id = proposal.proposal_id
 Left Join assn On assn.proposal_id = proposal.proposal_id
 Left Join asst On asst.proposal_id = proposal.proposal_id
 -- Prospect info
