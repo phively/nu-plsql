@@ -368,6 +368,7 @@ Cursor c_frontline_ksm_staff Is
     Union All Select '0000732336', NULL From DUAL -- O'Brien
     Union All Select '0000760399', NULL From DUAL -- Guynn
     Union All Select '0000772350', NULL From DUAL -- Emmick
+    Union All Select '0000784241', NULL From DUAL -- Lagnese
     /************ UPDATE ABOVE HERE ************/
   ),
   -- Job title information
