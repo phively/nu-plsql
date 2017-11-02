@@ -30,6 +30,9 @@ ksm_prs_ids As (
   ) Union All (
   Select id_number
   From ksm_deg
+  ) Union All (
+  Select Distinct id_number
+  From v_ksm_giving_trans
   )
 ),
 
