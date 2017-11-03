@@ -26,172 +26,270 @@ Public type declarations
 
 /* Allocation information */
 Type allocation_info Is Record (
-  allocation_code allocation.allocation_code%type, status_code allocation.status_code%type,
-  short_name allocation.short_name%type, af_flag allocation.annual_sw%type
+  allocation_code allocation.allocation_code%type
+  , status_code allocation.status_code%type
+  , short_name allocation.short_name%type
+  , af_flag allocation.annual_sw%type
 );
 
 Type calendar Is Record (
-  today date, yesterday date,
-  curr_fy number,
-  prev_fy_start date, curr_fy_start date, next_fy_start date,
-  prev_fy_today date, next_fy_today date,
-  prev_week_start date, curr_week_start date, next_week_start date,
-  prev_month_start date, curr_month_start date, next_month_start date
+  today date
+  , yesterday date
+  , curr_fy number
+  , prev_fy_start date
+  , curr_fy_start date
+  , next_fy_start date
+  , prev_fy_today date
+  , next_fy_today date
+  , prev_week_start date
+  , curr_week_start date
+  , next_week_start date
+  , prev_month_start date
+  , curr_month_start date
+  , next_month_start date
 );
 
 /* Degreed alumi, for entity_degrees_concat */
 Type degreed_alumni Is Record (
-  id_number entity.id_number%type, report_name entity.report_name%type, record_status_code entity.record_status_code%type,
-  degrees_verbose varchar2(1024), degrees_concat varchar2(512),
-  first_ksm_year degrees.degree_year%type, first_masters_year degrees.degree_year%type,
-  last_noncert_year degrees.degree_year%type, stewardship_years varchar2(80),
-  program tms_dept_code.short_desc%type, program_group varchar2(20)
+  id_number entity.id_number%type
+  , report_name entity.report_name%type
+  , record_status_code entity.record_status_code%type
+  , degrees_verbose varchar2(1024)
+  , degrees_concat varchar2(512)
+  , first_ksm_year degrees.degree_year%type
+  , first_masters_year degrees.degree_year%type
+  , last_noncert_year degrees.degree_year%type
+  , stewardship_years varchar2(80)
+  , program tms_dept_code.short_desc%type
+  , program_group varchar2(20)
 );
 
 /* Committee member list, for committee results */
 Type committee_member Is Record (
-  id_number committee.id_number%type, short_desc committee_header.short_desc%type,
-  start_dt committee.start_dt%type, stop_dt committee.stop_dt%type, status tms_committee_status.short_desc%type,
-  role tms_committee_role.short_desc%type, xcomment committee.xcomment%type, date_modified committee.date_modified%type,
-  operator_name committee.operator_name%type
+  id_number committee.id_number%type
+  , short_desc committee_header.short_desc%type
+  , start_dt committee.start_dt%type
+  , stop_dt committee.stop_dt%type
+  , status tms_committee_status.short_desc%type
+  , role tms_committee_role.short_desc%type
+  , xcomment committee.xcomment%type
+  , date_modified committee.date_modified%type
+  , operator_name committee.operator_name%type
 );
 
 /* Household, for entity_households */
 Type household Is Record (
-  id_number entity.id_number%type, report_name entity.report_name%type, pref_mail_name entity.pref_mail_name%type,
-  record_status_code entity.record_status_code%type, degrees_concat varchar2(512),
-  first_ksm_year degrees.degree_year%type, program_group varchar2(20), last_noncert_year degrees.degree_year%type,
-  institutional_suffix entity.institutional_suffix%type,
-  spouse_id_number entity.spouse_id_number%type, spouse_pref_mail_name entity.pref_mail_name%type,
-  spouse_suffix entity.institutional_suffix%type,
-  spouse_degrees_concat varchar2(512), spouse_first_ksm_year degrees.degree_year%type, spouse_program_group varchar2(20),
-  spouse_last_noncert_year degrees.degree_year%type,
-  fmr_spouse_id entity.id_number%type, fmr_spouse_name entity.report_name%type,
-  fmr_marital_status tms_marital_status.short_desc%type,
-  household_id entity.id_number%type, household_record entity.record_type_code%type, person_or_org entity.person_or_org%type,
-  household_name entity.pref_mail_name%type, household_rpt_name entity.report_name%type,
-  household_spouse_id entity.id_number%type, household_spouse entity.pref_mail_name%type,
-  household_spouse_rpt_name entity.report_name%type,
-  household_suffix entity.institutional_suffix%type,
-  household_spouse_suffix entity.institutional_suffix%type,
-  household_ksm_year degrees.degree_year%type, household_masters_year degrees.degree_year%type,
-  household_program_group varchar2(20),
-  household_city address.city%type, household_state address.state_code%type,
-  household_country tms_country.short_desc%type,
-  household_continent varchar2(80)
+  id_number entity.id_number%type
+  , report_name entity.report_name%type
+  , pref_mail_name entity.pref_mail_name%type
+  , record_status_code entity.record_status_code%type
+  , degrees_concat varchar2(512)
+  , first_ksm_year degrees.degree_year%type
+  , program_group varchar2(20)
+  , last_noncert_year degrees.degree_year%type
+  , institutional_suffix entity.institutional_suffix%type
+  , spouse_id_number entity.spouse_id_number%type
+  , spouse_pref_mail_name entity.pref_mail_name%type
+  , spouse_suffix entity.institutional_suffix%type
+  , spouse_degrees_concat varchar2(512)
+  , spouse_first_ksm_year degrees.degree_year%type
+  , spouse_program_group varchar2(20)
+  , spouse_last_noncert_year degrees.degree_year%type
+  , fmr_spouse_id entity.id_number%type
+  , fmr_spouse_name entity.report_name%type
+  , fmr_marital_status tms_marital_status.short_desc%type
+  , household_id entity.id_number%type
+  , household_record entity.record_type_code%type
+  , person_or_org entity.person_or_org%type
+  , household_name entity.pref_mail_name%type
+  , household_rpt_name entity.report_name%type
+  , household_spouse_id entity.id_number%type
+  , household_spouse entity.pref_mail_name%type
+  , household_spouse_rpt_name entity.report_name%type
+  , household_suffix entity.institutional_suffix%type
+  , household_spouse_suffix entity.institutional_suffix%type
+  , household_ksm_year degrees.degree_year%type
+  , household_masters_year degrees.degree_year%type
+  , household_program_group varchar2(20)
+  , household_city address.city%type
+  , household_state address.state_code%type
+  , household_country tms_country.short_desc%type
+  , household_continent varchar2(80)
 );
 
 /* Source donor, for gift_source_donor */
 Type src_donor Is Record (
-  tx_number nu_gft_trp_gifttrans.tx_number%type, id_number nu_gft_trp_gifttrans.id_number%type,
-  degrees_concat varchar2(512), person_or_org nu_gft_trp_gifttrans.person_or_org%type,
-  associated_code nu_gft_trp_gifttrans.associated_code%type, credit_amount nu_gft_trp_gifttrans.credit_amount%type
+  tx_number nu_gft_trp_gifttrans.tx_number%type
+  , id_number nu_gft_trp_gifttrans.id_number%type
+  , degrees_concat varchar2(512)
+  , person_or_org nu_gft_trp_gifttrans.person_or_org%type
+  , associated_code nu_gft_trp_gifttrans.associated_code%type
+  , credit_amount nu_gft_trp_gifttrans.credit_amount%type
 );
 
 /* University strategy */
 Type university_strategy Is Record (
-  prospect_id prospect.prospect_id%type, university_strategy task.task_description%type,
-  strategy_sched_date task.sched_date%type
+  prospect_id prospect.prospect_id%type
+  , university_strategy task.task_description%type
+  , strategy_sched_date task.sched_date%type
 );
 
 /* KLC member */
 Type klc_member Is Record (
-  fiscal_year integer, level_desc varchar2(40), id_number entity.id_number%type, household_id entity.id_number%type,
-  household_record entity.record_type_code%type, household_rpt_name entity.report_name%type,
-  household_spouse_id entity.id_number%type, household_spouse entity.pref_mail_name%type,
-  household_suffix entity.institutional_suffix%type,
-  household_ksm_year degrees.degree_year%type, household_masters_year degrees.degree_year%type,
-  household_program_group varchar2(20)
+  fiscal_year integer
+  , level_desc varchar2(40)
+  , id_number entity.id_number%type
+  , household_id entity.id_number%type
+  , household_record entity.record_type_code%type
+  , household_rpt_name entity.report_name%type
+  , household_spouse_id entity.id_number%type
+  , household_spouse entity.pref_mail_name%type
+  , household_suffix entity.institutional_suffix%type
+  , household_ksm_year degrees.degree_year%type
+  , household_masters_year degrees.degree_year%type
+  , household_program_group varchar2(20)
 );
 
 /* KSM staff */
 Type ksm_staff Is Record (
-  id_number entity.id_number%type, report_name entity.report_name%type, former_staff varchar2(1),
-  job_title employment.job_title%type, employer employment.employer_unit%type
+  id_number entity.id_number%type
+  , report_name entity.report_name%type
+  , former_staff varchar2(1)
+  , job_title employment.job_title%type
+  , employer employment.employer_unit%type
 );
 
 /* Employee record type for company queries */
 Type employee Is Record (
-  id_number entity.id_number%type, report_name entity.report_name%type,
-  record_status tms_record_status.short_desc%type, institutional_suffix entity.institutional_suffix%type,
-  degrees_concat varchar2(512), first_ksm_year degrees.degree_year%type, program varchar2(20),
-  business_title nu_prs_trp_prospect.business_title%type,
-  business_company varchar2(1024), job_title varchar2(1024), employer_name varchar2(1024),
-  business_city nu_prs_trp_prospect.business_city%type,
-  business_state nu_prs_trp_prospect.business_state%type,
-  business_country tms_country.short_desc%type,
-  prospect_manager nu_prs_trp_prospect.prospect_manager%type,
-  team nu_prs_trp_prospect.team%type
+  id_number entity.id_number%type
+  , report_name entity.report_name%type
+  , record_status tms_record_status.short_desc%type
+  , institutional_suffix entity.institutional_suffix%type
+  , degrees_concat varchar2(512)
+  , first_ksm_year degrees.degree_year%type
+  , program varchar2(20)
+  , business_title nu_prs_trp_prospect.business_title%type
+  , business_company varchar2(1024)
+  , job_title varchar2(1024)
+  , employer_name varchar2(1024)
+  , business_city nu_prs_trp_prospect.business_city%type
+  , business_state nu_prs_trp_prospect.business_state%type
+  , business_country tms_country.short_desc%type
+  , prospect_manager nu_prs_trp_prospect.prospect_manager%type
+  , team nu_prs_trp_prospect.team%type
 );
 
 /* Discounted pledge amounts */
 Type plg_disc Is Record (
-  pledge_number pledge.pledge_pledge_number%type, pledge_sequence pledge.pledge_sequence%type,
-  prim_pledge_type primary_pledge.prim_pledge_type%type, prim_pledge_status primary_pledge.prim_pledge_status%type,
-  proposal_id primary_pledge.proposal_id%type, pledge_comment primary_pledge.prim_pledge_comment%type,
-  pledge_amount pledge.pledge_amount%type,	pledge_associated_credit_amt pledge.pledge_associated_credit_amt%type,
-  prim_pledge_amount primary_pledge.prim_pledge_amount%type, prim_pledge_amount_paid primary_pledge.prim_pledge_amount_paid%type,
-  prim_pledge_original_amount primary_pledge.prim_pledge_original_amount%type,
-  discounted_amt primary_pledge.prim_pledge_amount%type, legal primary_pledge.prim_pledge_amount%type,
-  credit primary_pledge.prim_pledge_amount%type,
-  recognition_credit pledge.pledge_amount%type
+  pledge_number pledge.pledge_pledge_number%type
+  , pledge_sequence pledge.pledge_sequence%type
+  , prim_pledge_type primary_pledge.prim_pledge_type%type
+  , prim_pledge_status primary_pledge.prim_pledge_status%type
+  , proposal_id primary_pledge.proposal_id%type
+  , pledge_comment primary_pledge.prim_pledge_comment%type
+  , pledge_amount pledge.pledge_amount%type
+  , pledge_associated_credit_amt pledge.pledge_associated_credit_amt%type
+  , prim_pledge_amount primary_pledge.prim_pledge_amount%type
+  , prim_pledge_amount_paid primary_pledge.prim_pledge_amount_paid%type
+  , prim_pledge_original_amount primary_pledge.prim_pledge_original_amount%type
+  , discounted_amt primary_pledge.prim_pledge_amount%type
+  , legal primary_pledge.prim_pledge_amount%type
+  , credit primary_pledge.prim_pledge_amount%type
+  , recognition_credit pledge.pledge_amount%type
 );
 
 /* Entity transaction for credit */
 Type trans_entity Is Record (
-  id_number entity.id_number%type, anonymous gift.gift_associated_anonymous%type,
-  tx_number gift.gift_receipt_number%type, tx_sequence gift.gift_sequence%type,
-  transaction_type varchar2(40), tx_gypm_ind varchar2(1), payment_type tms_payment_type.short_desc%type,
-  allocation_code allocation.allocation_code%type, alloc_short_name allocation.short_name%type,
-  af_flag varchar2(1), cru_flag varchar2(1), gift_comment primary_gift.prim_gift_comment%type,
-  proposal_id primary_pledge.proposal_id%type, pledge_status primary_pledge.prim_pledge_status%type,
-  date_of_record gift.gift_date_of_record%type, fiscal_year number, legal_amount gift.gift_associated_amount%type,
-  credit_amount gift.gift_associated_amount%type, recognition_credit gift.gift_associated_amount%type
+  id_number entity.id_number%type
+  , anonymous gift.gift_associated_anonymous%type
+  , tx_number gift.gift_receipt_number%type
+  , tx_sequence gift.gift_sequence%type
+  , transaction_type varchar2(40)
+  , tx_gypm_ind varchar2(1)
+  , payment_type tms_payment_type.short_desc%type
+  , allocation_code allocation.allocation_code%type
+  , alloc_short_name allocation.short_name%type
+  , af_flag varchar2(1)
+  , cru_flag varchar2(1)
+  , gift_comment primary_gift.prim_gift_comment%type
+  , proposal_id primary_pledge.proposal_id%type
+  , pledge_status primary_pledge.prim_pledge_status%type
+  , date_of_record gift.gift_date_of_record%type
+  , fiscal_year number
+  , legal_amount gift.gift_associated_amount%type
+  , credit_amount gift.gift_associated_amount%type
+  , recognition_credit gift.gift_associated_amount%type
 );
 
 /* Householdable transaction for credit */
 Type trans_household Is Record (
-  household_id entity.id_number%type, id_number entity.id_number%type, anonymous gift.gift_associated_anonymous%type,
-  tx_number gift.gift_receipt_number%type, tx_sequence gift.gift_sequence%type,
-  transaction_type varchar2(40), tx_gypm_ind varchar2(1), payment_type tms_payment_type.short_desc%type,
-  allocation_code allocation.allocation_code%type, alloc_short_name allocation.short_name%type,
-  af_flag varchar2(1), cru_flag varchar2(1), gift_comment primary_gift.prim_gift_comment%type,
-  proposal_id primary_pledge.proposal_id%type, pledge_status primary_pledge.prim_pledge_status%type,
-  date_of_record gift.gift_date_of_record%type, fiscal_year number, legal_amount gift.gift_associated_amount%type,
-  credit_amount gift.gift_associated_amount%type, recognition_credit gift.gift_associated_amount%type,
-  hh_credit gift.gift_associated_amount%type, hh_recognition_credit gift.gift_associated_amount%type
+  household_id entity.id_number%type
+  , id_number entity.id_number%type
+  , anonymous gift.gift_associated_anonymous%type
+  , tx_number gift.gift_receipt_number%type
+  , tx_sequence gift.gift_sequence%type
+  , transaction_type varchar2(40)
+  , tx_gypm_ind varchar2(1)
+  , payment_type tms_payment_type.short_desc%type
+  , allocation_code allocation.allocation_code%type
+  , alloc_short_name allocation.short_name%type
+  , af_flag varchar2(1)
+  , cru_flag varchar2(1)
+  , gift_comment primary_gift.prim_gift_comment%type
+  , proposal_id primary_pledge.proposal_id%type
+  , pledge_status primary_pledge.prim_pledge_status%type
+  , date_of_record gift.gift_date_of_record%type
+  , fiscal_year number
+  , legal_amount gift.gift_associated_amount%type
+  , credit_amount gift.gift_associated_amount%type
+  , recognition_credit gift.gift_associated_amount%type
+  , hh_credit gift.gift_associated_amount%type
+  , hh_recognition_credit gift.gift_associated_amount%type
 );
 
 /* Campaign transactions */
 Type trans_campaign Is Record (
-  id_number nu_rpt_t_cmmt_dtl_daily.id_number%type, record_type_code nu_rpt_t_cmmt_dtl_daily.record_type_code%type,
-  person_or_org nu_rpt_t_cmmt_dtl_daily.person_or_org%type, birth_dt nu_rpt_t_cmmt_dtl_daily.birth_dt%type,
-  rcpt_or_plg_number nu_rpt_t_cmmt_dtl_daily.rcpt_or_plg_number%type, xsequence nu_rpt_t_cmmt_dtl_daily.xsequence%type,
-  anonymous varchar2(1),
-  amount nu_rpt_t_cmmt_dtl_daily.amount%type, credited_amount nu_rpt_t_cmmt_dtl_daily.credited_amount%type,
-  year_of_giving nu_rpt_t_cmmt_dtl_daily.year_of_giving%type, date_of_record nu_rpt_t_cmmt_dtl_daily.date_of_record%type,
-  alloc_code nu_rpt_t_cmmt_dtl_daily.alloc_code%type, alloc_school nu_rpt_t_cmmt_dtl_daily.alloc_school%type,
-  alloc_purpose nu_rpt_t_cmmt_dtl_daily.alloc_purpose%type, annual_sw nu_rpt_t_cmmt_dtl_daily.annual_sw%type,
-  restrict_code nu_rpt_t_cmmt_dtl_daily.restrict_code%type, transaction_type nu_rpt_t_cmmt_dtl_daily.transaction_type%type,
-  pledge_status nu_rpt_t_cmmt_dtl_daily.pledge_status%type, gift_pledge_or_match nu_rpt_t_cmmt_dtl_daily.gift_pledge_or_match%type,
-  matched_donor_id nu_rpt_t_cmmt_dtl_daily.matched_donor_id%type, matched_receipt_number nu_rpt_t_cmmt_dtl_daily.matched_receipt_number%type,
-  this_date nu_rpt_t_cmmt_dtl_daily.this_date%type, first_processed_date nu_rpt_t_cmmt_dtl_daily.first_processed_date%type,
-  std_area nu_rpt_t_cmmt_dtl_daily.std_area%type, zipcountry nu_rpt_t_cmmt_dtl_daily.zipcountry%type
+  id_number nu_rpt_t_cmmt_dtl_daily.id_number%type
+  , record_type_code nu_rpt_t_cmmt_dtl_daily.record_type_code%type
+  , person_or_org nu_rpt_t_cmmt_dtl_daily.person_or_org%type
+  , birth_dt nu_rpt_t_cmmt_dtl_daily.birth_dt%type
+  , rcpt_or_plg_number nu_rpt_t_cmmt_dtl_daily.rcpt_or_plg_number%type
+  , xsequence nu_rpt_t_cmmt_dtl_daily.xsequence%type
+  , anonymous varchar2(1)
+  , amount nu_rpt_t_cmmt_dtl_daily.amount%type
+  , credited_amount nu_rpt_t_cmmt_dtl_daily.credited_amount%type
+  , year_of_giving nu_rpt_t_cmmt_dtl_daily.year_of_giving%type
+  , date_of_record nu_rpt_t_cmmt_dtl_daily.date_of_record%type
+  , alloc_code nu_rpt_t_cmmt_dtl_daily.alloc_code%type
+  , alloc_school nu_rpt_t_cmmt_dtl_daily.alloc_school%type
+  , alloc_purpose nu_rpt_t_cmmt_dtl_daily.alloc_purpose%type
+  , annual_sw nu_rpt_t_cmmt_dtl_daily.annual_sw%type
+  , restrict_code nu_rpt_t_cmmt_dtl_daily.restrict_code%type
+  , transaction_type nu_rpt_t_cmmt_dtl_daily.transaction_type%type
+  , pledge_status nu_rpt_t_cmmt_dtl_daily.pledge_status%type
+  , gift_pledge_or_match nu_rpt_t_cmmt_dtl_daily.gift_pledge_or_match%type
+  , matched_donor_id nu_rpt_t_cmmt_dtl_daily.matched_donor_id%type
+  , matched_receipt_number nu_rpt_t_cmmt_dtl_daily.matched_receipt_number%type
+  , this_date nu_rpt_t_cmmt_dtl_daily.this_date%type
+  , first_processed_date nu_rpt_t_cmmt_dtl_daily.first_processed_date%type
+  , std_area nu_rpt_t_cmmt_dtl_daily.std_area%type
+  , zipcountry nu_rpt_t_cmmt_dtl_daily.zipcountry%type
 );
 
 /*************************************************************************
 Public table declarations
 *************************************************************************/
+
 Type t_varchar2_long Is Table Of varchar2(512);
-Type t_calendar Is Table Of calendar;
 Type t_allocation Is Table Of allocation_info;
+Type t_calendar Is Table Of calendar;
 Type t_degreed_alumni Is Table Of degreed_alumni;
+Type t_committee_members Is Table Of committee_member;
 Type t_households Is Table Of household;
 Type t_src_donors Is Table Of src_donor;
 Type t_university_strategy Is Table of university_strategy;
-Type t_committee_members Is Table Of committee_member;
-Type t_ksm_staff Is Table Of ksm_staff;
 Type t_klc_members Is Table Of klc_member;
+Type t_ksm_staff Is Table Of ksm_staff;
 Type t_employees Is Table Of employee;
 Type t_plg_disc Is Table Of plg_disc;
 Type t_trans_entity Is Table Of trans_entity;
@@ -212,43 +310,45 @@ Public function declarations
 
 /* Mathematical modulo operator */
 Function math_mod(
-  m In number,
-  n In number)
-  Return number; -- m % n
+  m In number
+  , n In number
+) Return number; -- m % n
   
 /* Fiscal year to date indicator */
 Function fytd_indicator(
-  dt In date,
-  day_offset In number Default -1) -- default offset in days; -1 means up to yesterday is year-to-date, 0 up to today, etc.
-  Return character; -- Y or N
+  dt In date
+  , day_offset In number Default -1 -- default offset in days; -1 means up to yesterday is year-to-date, 0 up to today, etc.
+) Return character; -- Y or N
 
 /* Takes a date and returns the fiscal year */
-Function get_fiscal_year(dt In date)
-  Return number; -- Fiscal year part of date
+Function get_fiscal_year(
+  dt In date
+) Return number; -- Fiscal year part of date
 
 /* Quick SQL-only retrieval of KSM degrees concat */
-Function get_entity_degrees_concat_fast(id In varchar2)
-  Return varchar2;
+Function get_entity_degrees_concat_fast(
+  id In varchar2
+) Return varchar2;
 
 /* Return concatenated Kellogg degrees as a string */
 Function get_entity_degrees_concat_ksm(
-  id In varchar2, -- entity id_number
-  verbose In varchar2 Default 'FALSE')  -- if TRUE, then preferentially return short_desc instead of code where unclear
-  Return varchar2; -- e.g. 2014 MBA KSM JDMBA
+  id In varchar2 -- entity id_number
+  , verbose In varchar2 Default 'FALSE' -- if TRUE, then preferentially return short_desc instead of code where unclear
+) Return varchar2; -- e.g. 2014 MBA KSM JDMBA
 
 /* Return specified master address information, defined as preferred if available, else home if available, else business.
    The field parameter should match an address table field or tms table name, e.g. street1, state_code, country, etc. */
 Function get_entity_address(
-  id In varchar2, -- entity id_number
-  field In varchar2, -- address item to pull, including city, state_code, country, etc.
-  debug In boolean Default FALSE) -- if TRUE, debug output is printed via dbms_output.put_line()
-  Return varchar2; -- matched address piece
+  id In varchar2 -- entity id_number
+  , field In varchar2 -- address item to pull, including city, state_code, country, etc.
+  , debug In boolean Default FALSE -- if TRUE, debug output is printed via dbms_output.put_line()
+) Return varchar2; -- matched address piece
 
 /* Take receipt number and return id_number of entity to receive primary Kellogg gift credit */
 Function get_gift_source_donor_ksm(
-  receipt In varchar2,
-  debug In boolean Default FALSE) -- if TRUE, debug output is printed via dbms_output.put_line()
-  Return varchar2; -- entity id_number
+  receipt In varchar2
+  , debug In boolean Default FALSE -- if TRUE, debug output is printed via dbms_output.put_line()
+) Return varchar2; -- entity id_number
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -314,8 +414,12 @@ Function tbl_committee_gab
   
 Function tbl_committee_kac
   Return t_committee_members Pipelined;
-  
-end ksm_pkg;
+
+/*************************************************************************
+End of package
+*************************************************************************/
+
+End ksm_pkg;
 /
 Create Or Replace Package Body ksm_pkg Is
 
