@@ -459,7 +459,7 @@ Cursor c_frontline_ksm_staff Is
     Union All Select '0000549376', NULL From DUAL -- Paszczykowski
     Union All Select '0000561243', NULL From DUAL -- Nordmark
     Union All Select '0000562459', NULL From DUAL -- Spritz
-    Union All Select '0000565395', NULL From DUAL -- Cong-Huyen
+    Union All Select '0000565395', 'Y' From DUAL -- Cong-Huyen (former)
     Union All Select '0000565742', NULL From DUAL -- Schoeneweiss
     Union All Select '0000642888', NULL From DUAL -- Keene
     Union All Select '0000772028', NULL From DUAL -- Royal
