@@ -26,7 +26,7 @@ hhs As (
 hh As (
   Select hhs.*,
     entity.gender_code As gender, entity_s.gender_code As gender_spouse,
-    entity.person_or_org, entity.record_status_code As record_status, entity_s.record_status_code As record_status_spouse,
+    entity.record_status_code As record_status, entity_s.record_status_code As record_status_spouse,
     -- Is either spouse no joint gifts?
     Case When hhs.household_spouse_rpt_name Is Not Null And
       (entity.jnt_gifts_ind = 'N' Or entity_s.jnt_gifts_ind = 'N') Then 'Y' End As no_joint_gifts_flag,
