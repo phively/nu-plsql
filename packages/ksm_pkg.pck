@@ -321,8 +321,14 @@ Function fytd_indicator(
 ) Return character; -- Y or N
 
 /* Takes a date and returns the fiscal year */
+-- Date version
 Function get_fiscal_year(
   dt In date
+) Return number; -- Fiscal year part of date
+-- String version
+Function get_fiscal_year(
+  dt In varchar2
+  , format In varchar2 Default 'yyyy/mm/dd'
 ) Return number; -- Fiscal year part of date
 
 /* Quick SQL-only retrieval of KSM degrees concat */
@@ -1374,6 +1380,7 @@ Function fytd_indicator(dt In date, day_offset In number)
 
 /* Compute fiscal year from date parameter
    2017-03-15 */
+-- Date version
 Function get_fiscal_year(dt In date)
   Return number Is
   -- Declarations
@@ -1383,6 +1390,21 @@ Function get_fiscal_year(dt In date)
     this_year := extract(year from dt);
     -- If month is before fy_start_month, return this_year
     If extract(month from dt) < fy_start_month Then
+      Return this_year;
+    End If;
+    -- Otherwise return out_year + 1
+    Return (this_year + 1);
+  End;
+-- String version
+Function get_fiscal_year(dt In varchar2, format In varchar2)
+  Return number Is
+  -- Declarations
+  this_year number;
+  
+  Begin
+    this_year := extract(year from to_date(dt, format));
+    -- If month is before fy_start_month, return this_year
+    If extract(month from to_date(dt, format)) < fy_start_month Then
       Return this_year;
     End If;
     -- Otherwise return out_year + 1
