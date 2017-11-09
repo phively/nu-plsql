@@ -360,8 +360,29 @@ Function get_gift_source_donor_ksm(
 Public pipelined functions declarations
 *************************************************************************/
 
-/* Return allocations, both active and historical, as a pipelined function, e.g.
-   Select * From table(ksm_pkg.get_alloc_annual_fund_ksm); */
+/*********************** About pipelined functions ***********************
+Q: What is a pipelined function?
+
+A: Pipelined functions are used to return the results of a cursor row by row.
+This is an efficient way to re-use a cursor between multiple programs. Pipelined
+tables can be queried in SQL exactly like a table when embedded in the table()
+function. My experience has been that thanks to the magic of the Oracle compiler,
+joining on a table() function scales hugely better than running a function once
+on each element of a returned column. Note that the exact columns returned need
+to be specified as a public type, which I did in the type and table declarations
+above, or the pipelined function can't be run in pure SQL. Alternately, the
+pipelined function could return a generic table, but the columns would still need
+to be individually named.
+
+Examples: 
+Select ksm_af.*
+From table(rpt_pbh634.ksm_pkg.tbl_alloc_annual_fund_ksm) ksm_af;
+/
+Select cal.*
+From table(rpt_pbh634.ksm_pkg.tbl_current_calendar) cal;
+*************************************************************************/
+
+/* Return allocations, both active and historical, as a pipelined function */
 Function tbl_alloc_annual_fund_ksm
   Return t_allocation Pipelined; -- returns list of matching values
 
