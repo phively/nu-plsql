@@ -456,10 +456,16 @@ Private cursor tables -- data definitions; update indicated sections as needed
 /* Definition of current and historical Kellogg Annual Fund allocations
    2017-02-09 */
 Cursor c_alloc_annual_fund_ksm Is
-  Select Distinct allocation_code, status_code, short_name, 'Y' As af_flag
+  Select Distinct
+    allocation_code
+    , status_code
+    , short_name
+    , 'Y' As af_flag
   From allocation
-  Where (annual_sw = 'Y' And alloc_school = 'KM')
-    -- 2017-07-11 include AF Excellence Grant scholarships
+  Where
+    -- KSM af-flagged allocations
+    (annual_sw = 'Y' And alloc_school = 'KM')
+    -- Include additional fields
     Or allocation_code In (
       /************ UPDATE BELOW HERE ************/
       '3203003665401GFT', -- Expendable Excellence Grant (Flanagan)
@@ -500,17 +506,25 @@ Cursor c_frontline_ksm_staff Is
     Union All Select '0000772350', NULL From DUAL -- Emmick
     Union All Select '0000784241', NULL From DUAL -- Lagnese
     /************ UPDATE ABOVE HERE ************/
-  ),
+  )
   -- Job title information
-  employ As (
-    Select employment.id_number, job_title, employer_unit As employer
+  , employ As (
+    Select
+      employment.id_number
+      , job_title
+      , employer_unit As employer
     From employment
     Inner Join staff On staff.id_number = employment.id_number
     Where job_status_code = 'C'
     And primary_emp_ind = 'Y'
   )
   -- Main query
-  Select staff.id_number, report_name, former_staff, employ.job_title, employ.employer
+  Select
+    staff.id_number
+    , entity.report_name
+    , staff.former_staff
+    , employ.job_title
+    , employ.employer
   From staff
   Inner Join entity On entity.id_number = staff.id_number
   Left Join employ on employ.id_number = staff.id_number;
@@ -523,8 +537,15 @@ Private cursors -- data definitions
    2017-07-11 */
 Cursor c_alloc_curr_use_ksm Is
   With
-  ksm_af As (Select allocation_code, af_flag From table(tbl_alloc_annual_fund_ksm))
-  Select Distinct alloc.allocation_code, alloc.status_code, alloc.short_name, nvl(af_flag, 'N') As af_flag
+  ksm_af As (
+    Select *
+    From table(tbl_alloc_annual_fund_ksm)
+  )
+  Select Distinct
+    alloc.allocation_code
+    , alloc.status_code
+    , alloc.short_name
+    , nvl(af_flag, 'N') As af_flag
   From allocation alloc
   Left Join ksm_af On ksm_af.allocation_code = alloc.allocation_code
   Where (agency = 'CRU' And alloc_school = 'KM')
@@ -541,57 +562,65 @@ Cursor c_current_calendar (fy_start_month In integer) Is
   -- Store today from sysdate and calculate current fiscal year; always year + 1 unless the FY starts in Jan
   curr_date As (
     Select
-    trunc(sysdate) As today,
-    -- Current fiscal year; uses constant above
-    Case
-      When extract(month from sysdate) >= fy_start_month
-        And fy_start_month != 1
-        Then extract(year from sysdate) + 1 
-      Else extract(year from sysdate)
-    End As yr,
-    -- Correction for starting after January
-    Case
-      When fy_start_month != 1 Then 1 Else 0
-    End As yr_dif
+      trunc(sysdate) As today
+      -- Current fiscal year; uses fy_start_month constant
+      , Case
+        When extract(month from sysdate) >= fy_start_month
+          And fy_start_month != 1
+          Then extract(year from sysdate) + 1 
+        Else extract(year from sysdate)
+      End As yr
+      -- Correction for starting after January
+      , Case
+        When fy_start_month != 1 Then 1 Else 0
+      End As yr_dif
     From DUAL
   )
   -- Final table with definitions
   Select
     -- Current day
-    curr_date.today As today,
+    curr_date.today As today
     -- Yesterday
-    curr_date.today - 1 As yesterday,
+    , curr_date.today - 1 As yesterday
     -- Current fiscal year
-    curr_date.yr As curr_fy,
+    , curr_date.yr As curr_fy
     -- Start of fiscal year objects
-    to_date(fy_start_month || '/01/' || (curr_date.yr - yr_dif - 1), 'mm/dd/yyyy')
-      As prev_fy_start,
-    to_date(fy_start_month || '/01/' || (curr_date.yr - yr_dif + 0), 'mm/dd/yyyy')
-      As curr_fy_start,
-    to_date(fy_start_month || '/01/' || (curr_date.yr - yr_dif + 1), 'mm/dd/yyyy')
-      As next_fy_start,
+    , to_date(fy_start_month || '/01/' || (curr_date.yr - yr_dif - 1), 'mm/dd/yyyy')
+      As prev_fy_start
+    , to_date(fy_start_month || '/01/' || (curr_date.yr - yr_dif + 0), 'mm/dd/yyyy')
+      As curr_fy_start
+    , to_date(fy_start_month || '/01/' || (curr_date.yr - yr_dif + 1), 'mm/dd/yyyy')
+      As next_fy_start
     -- Year-to-date objects
-    add_months(trunc(sysdate), -12) As prev_fy_today,
-    add_months(trunc(sysdate), 12) As next_fy_today,
+    , add_months(trunc(sysdate), -12) As prev_fy_today
+    , add_months(trunc(sysdate), 12) As next_fy_today
     -- Start of week objects
-    trunc(sysdate, 'IW') - 7 As prev_week_start,
-    trunc(sysdate, 'IW') As curr_week_start,
-    trunc(sysdate, 'IW') + 7 As next_week_start,
+    , trunc(sysdate, 'IW') - 7 As prev_week_start
+    , trunc(sysdate, 'IW') As curr_week_start
+    , trunc(sysdate, 'IW') + 7 As next_week_start
     -- Start of month objects
-    add_months(trunc(sysdate, 'Month'), -1) As prev_month_start,
-    add_months(trunc(sysdate, 'Month'), 0) As curr_month_start,
-    add_months(trunc(sysdate, 'Month'), 1) As next_month_start
+    , add_months(trunc(sysdate, 'Month'), -1) As prev_month_start
+    , add_months(trunc(sysdate, 'Month'), 0) As curr_month_start
+    , add_months(trunc(sysdate, 'Month'), 1) As next_month_start
   From curr_date;
 
 /* Definition of current Kellogg committee members
    2017-03-01 */
 Cursor c_committee_members (my_committee_cd In varchar2) Is
-  Select comm.id_number, hdr.short_desc, comm.start_dt, comm.stop_dt, tms_status.short_desc As status,
-    tms_role.short_desc As role, comm.xcomment, comm.date_modified, comm.operator_name
+  Select
+    comm.id_number
+    , hdr.short_desc
+    , comm.start_dt
+    , comm.stop_dt
+    , tms_status.short_desc As status
+    , tms_role.short_desc As role
+    , comm.xcomment
+    , comm.date_modified
+    , comm.operator_name
   From committee comm
-    Left Join tms_committee_status tms_status On comm.committee_status_code = tms_status.committee_status_code
-    Left Join tms_committee_role tms_role On comm.committee_role_code = tms_role.committee_role_code
-    Left Join committee_header hdr On comm.committee_code = hdr.committee_code
+  Left Join tms_committee_status tms_status On comm.committee_status_code = tms_status.committee_status_code
+  Left Join tms_committee_role tms_role On comm.committee_role_code = tms_role.committee_role_code
+  Left Join committee_header hdr On comm.committee_code = hdr.committee_code
   Where comm.committee_code = my_committee_cd
     And comm.committee_status_code In ('C', 'A'); -- 'C'urrent or 'A'ctive; 'A' is deprecated
 
@@ -601,234 +630,251 @@ Cursor c_entity_degrees_concat_ksm (id In varchar2 Default NULL) Is
   With
   -- Stewardship concatenated years; uses Distinct to de-dupe multiple degrees in one year
   stwrd_yrs As (
-    Select Distinct id_number, degree_year, trim('''' || substr(trim(degree_year), -2)) As degree_yr
+    Select Distinct
+      id_number
+      , degree_year
+      , trim('''' || substr(trim(degree_year), -2)) As degree_yr
     From degrees
     Where institution_code = '31173' -- Northwestern institution code
       And school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
-      And (Case When id Is Not Null Then id_number Else 'T' End)
-          = (Case When id Is Not Null Then id Else 'T' End)
       And degree_year <> ' ' -- Exclude rows with blank year
       And non_grad_code <> 'N' -- Exclude non-grads
+      -- Only for input ID, if provided
+      And (Case When id Is Not Null Then id_number Else 'T' End) = (Case When id Is Not Null Then id Else 'T' End)
     Order By id_number, degree_year Asc
-  ),
-  stwrd_deg As (
-    Select Distinct id_number,
-      Listagg(degree_yr, ', '
-      ) Within Group (Order By degree_year Asc) As stewardship_years
+  )
+  , stwrd_deg As (
+    Select Distinct
+      id_number
+      , Listagg(degree_yr, ', ') Within Group (Order By degree_year Asc) As stewardship_years
     From stwrd_yrs
     Where degree_year <> ''''
     Group By id_number
-  ),
+  )
   -- Concatenated degrees subquery
   -- ***** IMPORTANT: If updating, update clean_concat.clean_degrees_concat below as well *****
-  concat As (
-    Select id_number,
+  , concat As (
+    Select
+      id_number
       -- Verbose degrees
-      Listagg(
-        trim(degree_year || ' ' || (Case When non_grad_code = 'N' Then 'Nongrad ' End) ||
-        tms_degree_level.short_desc || ' ' || tms_degrees.short_desc || ' ' ||
-        school_code || ' ' || tms_dept_code.short_desc || ' ' || tms_class_section.short_desc), '; '
-      ) Within Group (Order By degree_year) As degrees_verbose,
+      , Listagg(
+          trim(degree_year || ' ' || (Case When non_grad_code = 'N' Then 'Nongrad ' End) ||
+          tms_degree_level.short_desc || ' ' || tms_degrees.short_desc || ' ' ||
+          school_code || ' ' || tms_dept_code.short_desc || ' ' || tms_class_section.short_desc), '; '
+        ) Within Group (Order By degree_year) As degrees_verbose
       -- Terse degrees
-      Listagg(
-        trim(degree_year || ' ' || (Case When non_grad_code = 'N' Then 'NONGRD ' End) ||
-          degrees.degree_code || ' ' || school_code || ' ' || 
-          -- Special handler for KSM and EMBA departments
-            Case
-              When degrees.dept_code = '01MDB' Then 'MDMBA'
-              When degrees.dept_code Like '01%' Then substr(degrees.dept_code, 3)
-              When degrees.dept_code = '13JDM' Then 'JDMBA'
-              When degrees.dept_code = '13LLM' Then 'LLM'
-              When degrees.dept_code Like '41%' Then substr(degrees.dept_code, 3)
-              When degrees.dept_code = '95BCH' Then 'BCH'
-              When degrees.dept_code = '96BEV' Then 'BEV'
-              When degrees.dept_code In ('AMP', 'AMPI', 'EDP', 'KSMEE') Then degrees.dept_code
-              When degrees.dept_code = '0000000' Then ''
-              Else tms_dept_code.short_desc
-            End
-            -- Class section code
-            || ' ' || class_section), '; '
-      ) Within Group (Order By degree_year) As degrees_concat,
+      , Listagg(
+          trim(degree_year || ' ' || (Case When non_grad_code = 'N' Then 'NONGRD ' End) ||
+            degrees.degree_code || ' ' || school_code || ' ' || 
+            -- Special handler for KSM and EMBA departments
+              Case
+                When degrees.dept_code = '01MDB' Then 'MDMBA'
+                When degrees.dept_code Like '01%' Then substr(degrees.dept_code, 3)
+                When degrees.dept_code = '13JDM' Then 'JDMBA'
+                When degrees.dept_code = '13LLM' Then 'LLM'
+                When degrees.dept_code Like '41%' Then substr(degrees.dept_code, 3)
+                When degrees.dept_code = '95BCH' Then 'BCH'
+                When degrees.dept_code = '96BEV' Then 'BEV'
+                When degrees.dept_code In ('AMP', 'AMPI', 'EDP', 'KSMEE') Then degrees.dept_code
+                When degrees.dept_code = '0000000' Then ''
+                Else tms_dept_code.short_desc
+              End
+              -- Class section code
+              || ' ' || class_section), '; '
+        ) Within Group (Order By degree_year) As degrees_concat
       -- First Kellogg year; exclude non-grad years
-      min(trim(Case When non_grad_code = 'N' Then NULL Else degree_year End)) As first_ksm_year,
+      , min(trim(Case When non_grad_code = 'N' Then NULL Else degree_year End)) As first_ksm_year
       -- First MBA or other Master's year; exclude non-grad years
-      min(Case
-        When degrees.degree_level_code = 'M' -- Master's level
-          Or degrees.degree_code In('MBA', 'MMGT', 'MS', 'MSDI', 'MSHA', 'MSMS') -- In case of data errors
-          Then trim(Case When non_grad_code = 'N' Then NULL Else degree_year End)
-        Else NULL
-      End) As first_masters_year,
+      , min(Case
+          When degrees.degree_level_code = 'M' -- Master's level
+            Or degrees.degree_code In('MBA', 'MMGT', 'MS', 'MSDI', 'MSHA', 'MSMS') -- In case of data errors
+            Then trim(Case When non_grad_code = 'N' Then NULL Else degree_year End)
+          Else NULL
+        End) As first_masters_year
       -- Last non-certificate year, e.g. for young alumni status, excluding non-grad years
-      max(Case
-        When degrees.degree_level_code In('B', 'D', 'M')
-        Then trim(Case When non_grad_code = 'N' Then NULL Else degree_year End)
-        Else NULL
-      End) As last_noncert_year
+      , max(Case
+          When degrees.degree_level_code In('B', 'D', 'M')
+          Then trim(Case When non_grad_code = 'N' Then NULL Else degree_year End)
+          Else NULL
+        End) As last_noncert_year
       -- Table joins, etc.
       From degrees
-        Left Join tms_class_section -- For class section short_desc
-          On degrees.class_section = tms_class_section.section_code
-        Left Join tms_dept_code -- For department short_desc
-          On degrees.dept_code = tms_dept_code.dept_code
-        Left Join tms_degree_level -- For degree level short_desc
-          On degrees.degree_level_code = tms_degree_level.degree_level_code
-        Left Join tms_degrees -- For degreee short_desc (to replace degree_code)
-          On degrees.degree_code = tms_degrees.degree_code
+      Left Join tms_class_section -- For class section short_desc
+        On degrees.class_section = tms_class_section.section_code
+      Left Join tms_dept_code -- For department short_desc
+        On degrees.dept_code = tms_dept_code.dept_code
+      Left Join tms_degree_level -- For degree level short_desc
+        On degrees.degree_level_code = tms_degree_level.degree_level_code
+      Left Join tms_degrees -- For degreee short_desc (to replace degree_code)
+        On degrees.degree_code = tms_degrees.degree_code
       Where institution_code = '31173' -- Northwestern institution code
         And school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
-        And (Case When id Is Not Null Then id_number Else 'T' End)
-            = (Case When id Is Not Null Then id Else 'T' End)
+        -- Only for input ID, if provided
+        And (Case When id Is Not Null Then id_number Else 'T' End) = (Case When id Is Not Null Then id Else 'T' End)
       Group By id_number
-    ),
+    )
     -- Completed degrees only
     -- ***** IMPORTANT: If updating, update concat.degrees_concat above as well *****
-    clean_concat As (
-      Select id_number,
-      -- Verbose degrees
-      Listagg(
-        trim(degree_year || ' ' || (Case When non_grad_code = 'N' Then 'Nongrad ' End) ||
-        tms_degree_level.short_desc || ' ' || tms_degrees.short_desc || ' ' ||
-        school_code || ' ' || tms_dept_code.short_desc || ' ' || tms_class_section.short_desc), '; '
-      ) Within Group (Order By degree_year) As clean_degrees_verbose,
-      -- Terse degrees
-      Listagg(
-        trim(degree_year || ' ' || (Case When non_grad_code = 'N' Then 'NONGRD ' End) ||
-          degrees.degree_code || ' ' || school_code || ' ' || 
-          -- Special handler for KSM and EMBA departments
-            Case
-              When degrees.dept_code = '01MDB' Then 'MDMBA'
-              When degrees.dept_code Like '01%' Then substr(degrees.dept_code, 3)
-              When degrees.dept_code = '13JDM' Then 'JDMBA'
-              When degrees.dept_code = '13LLM' Then 'LLM'
-              When degrees.dept_code Like '41%' Then substr(degrees.dept_code, 3)
-              When degrees.dept_code = '95BCH' Then 'BCH'
-              When degrees.dept_code = '96BEV' Then 'BEV'
-              When degrees.dept_code In ('AMP', 'AMPI', 'EDP', 'KSMEE') Then degrees.dept_code
-              When degrees.dept_code = '0000000' Then ''
-              Else tms_dept_code.short_desc
-            End
-            -- Class section code
-            || ' ' || class_section), '; '
-      ) Within Group (Order By degree_year) As clean_degrees_concat
+    , clean_concat As (
+      Select
+        id_number
+        -- Verbose degrees
+        , Listagg(
+            trim(degree_year || ' ' || (Case When non_grad_code = 'N' Then 'Nongrad ' End) ||
+            tms_degree_level.short_desc || ' ' || tms_degrees.short_desc || ' ' ||
+            school_code || ' ' || tms_dept_code.short_desc || ' ' || tms_class_section.short_desc), '; '
+          ) Within Group (Order By degree_year) As clean_degrees_verbose
+        -- Terse degrees
+        , Listagg(
+            trim(degree_year || ' ' || (Case When non_grad_code = 'N' Then 'NONGRD ' End) ||
+              degrees.degree_code || ' ' || school_code || ' ' || 
+              -- Special handler for KSM and EMBA departments
+                Case
+                  When degrees.dept_code = '01MDB' Then 'MDMBA'
+                  When degrees.dept_code Like '01%' Then substr(degrees.dept_code, 3)
+                  When degrees.dept_code = '13JDM' Then 'JDMBA'
+                  When degrees.dept_code = '13LLM' Then 'LLM'
+                  When degrees.dept_code Like '41%' Then substr(degrees.dept_code, 3)
+                  When degrees.dept_code = '95BCH' Then 'BCH'
+                  When degrees.dept_code = '96BEV' Then 'BEV'
+                  When degrees.dept_code In ('AMP', 'AMPI', 'EDP', 'KSMEE') Then degrees.dept_code
+                  When degrees.dept_code = '0000000' Then ''
+                  Else tms_dept_code.short_desc
+                End
+                -- Class section code
+                || ' ' || class_section), '; '
+          ) Within Group (Order By degree_year) As clean_degrees_concat
       -- Table joins, etc.
       From degrees
-        Left Join tms_class_section -- For class section short_desc
-          On degrees.class_section = tms_class_section.section_code
-        Left Join tms_dept_code -- For department short_desc
-          On degrees.dept_code = tms_dept_code.dept_code
-        Left Join tms_degree_level -- For degree level short_desc
-          On degrees.degree_level_code = tms_degree_level.degree_level_code
-        Left Join tms_degrees -- For degreee short_desc (to replace degree_code)
-          On degrees.degree_code = tms_degrees.degree_code
+      Left Join tms_class_section -- For class section short_desc
+        On degrees.class_section = tms_class_section.section_code
+      Left Join tms_dept_code -- For department short_desc
+        On degrees.dept_code = tms_dept_code.dept_code
+      Left Join tms_degree_level -- For degree level short_desc
+        On degrees.degree_level_code = tms_degree_level.degree_level_code
+      Left Join tms_degrees -- For degreee short_desc (to replace degree_code)
+        On degrees.degree_code = tms_degrees.degree_code
       Where institution_code = '31173' -- Northwestern institution code
         And non_grad_code <> 'N' -- Drop non-grad years
         And school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
-        And (Case When id Is Not Null Then id_number Else 'T' End)
-            = (Case When id Is Not Null Then id Else 'T' End)
+        -- Only for input ID, if provided
+        And (Case When id Is Not Null Then id_number Else 'T' End) = (Case When id Is Not Null Then id Else 'T' End)
       Group By id_number
-    ),
+    )
     -- Extract program
-    prg As (
-      Select concat.id_number,
-        Case
-          -- People who have a completed degree
-          -- ***** IMPORTANT: Keep in same order as below *****
-          When clean_degrees_concat Like '%KGS2Y%' Then 'FT-2Y'
-          When clean_degrees_concat Like '%KGS1Y%' Then 'FT-1Y'
-          When clean_degrees_concat Like '%JDMBA%' Then 'FT-JDMBA'
-          When clean_degrees_concat Like '%MMM%' Then 'FT-MMM'
-          When clean_degrees_concat Like '%MDMBA%' Then 'FT-MDMBA'
-          When clean_degrees_concat Like '%KSM KEN%' Then 'FT-KENNEDY'
-          When clean_degrees_concat Like '%KSM TMP%' Then 'TMP'
-          When clean_degrees_concat Like '%KSM PTS%' Then 'TMP-SAT'
-          When clean_degrees_concat Like '%KSM PSA%' Then 'TMP-SATXCEL'
-          When clean_degrees_concat Like '%KSM PTA%' Then 'TMP-XCEL'
-          When clean_degrees_concat Like '%KSM NAP%' Then 'EMP-IL'
-          When clean_degrees_concat Like '%KSM WHU%' Then 'EMP-GER'
-          When clean_degrees_concat Like '%KSM SCH%' Then 'EMP-CAN'
-          When clean_degrees_concat Like '%KSM LAP%' Then 'EMP-FL'
-          When clean_degrees_concat Like '%KSM HK%' Then 'EMP-HK'
-          When clean_degrees_concat Like '%KSM JNA%' Then 'EMP-JAP'
-          When clean_degrees_concat Like '%KSM RU%' Then 'EMP-ISR'
-          When clean_degrees_concat Like '%KSM PKU%' Then 'EMP-CHI'
-          When clean_degrees_concat Like '%KSM AEP%' Then 'EMP-AEP'
-          When clean_degrees_concat Like '% EMP%' Then 'EMP'
-          When clean_degrees_concat Like '%KGS%' Then 'FT'
-          When clean_degrees_concat Like '%BEV%' Then 'FT-EB'
-          When clean_degrees_concat Like '%BCH%' Then 'FT-CB'
-          When clean_degrees_concat Like '%PHD%' Then 'PHD'
-          When clean_degrees_concat Like '%KSMEE%' Then 'EXECED'
-          When clean_degrees_concat Like '%MBA %' Then 'FT'
-          When clean_degrees_concat Like '%CERT%' Then 'EXECED'
-          When clean_degrees_concat Like '%Institute for Mgmt%' Then 'EXECED'
-          When clean_degrees_concat Like '%MS %' Then 'FT-MS'
-          When clean_degrees_concat Like '%LLM%' Then 'CERT-LLM'
-          When clean_degrees_concat Like '%MMGT%' Then 'FT-MMGT'
-          When clean_degrees_verbose Like '%Certificate%' Then 'CERT'
-          -- People who don't have a completed degree
-          -- ***** IMPORTANT: Keep in same order as above *****
-          When degrees_concat Like '%KGS2Y%' Then 'FT-2Y NONGRD'
-          When degrees_concat Like '%KGS1Y%' Then 'FT-1Y NONGRD'
-          When degrees_concat Like '%JDMBA%' Then 'FT-JDMBA NONGRD'
-          When degrees_concat Like '%MMM%' Then 'FT-MMM NONGRD'
-          When degrees_concat Like '%MDMBA%' Then 'FT-MDMBA NONGRD'
-          When degrees_concat Like '%KSM KEN%' Then 'FT-KENNEDY NONGRD'
-          When degrees_concat Like '%KSM TMP%' Then 'TMP NONGRD'
-          When degrees_concat Like '%KSM PTS%' Then 'TMP-SAT NONGRD'
-          When degrees_concat Like '%KSM PSA%' Then 'TMP-SATXCEL NONGRD'
-          When degrees_concat Like '%KSM PTA%' Then 'TMP-XCEL NONGRD'
-          When degrees_concat Like '% EMP%' Then 'EMP NONGRD'
-          When degrees_concat Like '%KSM NAP%' Then 'EMP-IL NONGRD'
-          When degrees_concat Like '%KSM WHU%' Then 'EMP-GER NONGRD'
-          When degrees_concat Like '%KSM SCH%' Then 'EMP-CAN NONGRD'
-          When degrees_concat Like '%KSM LAP%' Then 'EMP-FL NONGRD'
-          When degrees_concat Like '%KSM HK%' Then 'EMP-HK NONGRD'
-          When degrees_concat Like '%KSM JNA%' Then 'EMP-JAP NONGRD'
-          When degrees_concat Like '%KSM RU%' Then 'EMP-ISR NONGRD'
-          When degrees_concat Like '%KSM AEP%' Then 'EMP-AEP NONGRD'
-          When degrees_concat Like '%KGS%' Then 'FT NONGRD'
-          When degrees_concat Like '%BEV%' Then 'FT-EB NONGRD'
-          When degrees_concat Like '%BCH%' Then 'FT-CB NONGRD'
-          When degrees_concat Like '%PHD%' Then 'PHD NONGRD'
-          When degrees_concat Like '%KSMEE%' Then 'EXECED NONGRD'
-          When degrees_concat Like '%MBA %' Then 'FT NONGRD'
-          When degrees_concat Like '%CERT%' Then 'EXECED NONGRD'
-          When degrees_concat Like '%Institute for Mgmt%' Then 'EXECED NONGRD'
-          When degrees_concat Like '%MS %' Then 'FT-MS NONGRD'
-          When degrees_concat Like '%LLM%' Then 'CERT-LLM NONGRD'
-          When degrees_concat Like '%MMGT%' Then 'FT-MMGT NONGRD'
-          When degrees_verbose Like '%Certificate%' Then 'CERT NONGRD'
-          -- Unable to determine program
-          Else 'UNK'
-        End As program
+    , prg As (
+      Select
+        concat.id_number
+        , Case
+            -- People who have a completed degree
+            -- ***** IMPORTANT: Keep in same order as below *****
+            When clean_degrees_concat Like '%KGS2Y%' Then 'FT-2Y'
+            When clean_degrees_concat Like '%KGS1Y%' Then 'FT-1Y'
+            When clean_degrees_concat Like '%JDMBA%' Then 'FT-JDMBA'
+            When clean_degrees_concat Like '%MMM%' Then 'FT-MMM'
+            When clean_degrees_concat Like '%MDMBA%' Then 'FT-MDMBA'
+            When clean_degrees_concat Like '%KSM KEN%' Then 'FT-KENNEDY'
+            When clean_degrees_concat Like '%KSM TMP%' Then 'TMP'
+            When clean_degrees_concat Like '%KSM PTS%' Then 'TMP-SAT'
+            When clean_degrees_concat Like '%KSM PSA%' Then 'TMP-SATXCEL'
+            When clean_degrees_concat Like '%KSM PTA%' Then 'TMP-XCEL'
+            When clean_degrees_concat Like '%KSM NAP%' Then 'EMP-IL'
+            When clean_degrees_concat Like '%KSM WHU%' Then 'EMP-GER'
+            When clean_degrees_concat Like '%KSM SCH%' Then 'EMP-CAN'
+            When clean_degrees_concat Like '%KSM LAP%' Then 'EMP-FL'
+            When clean_degrees_concat Like '%KSM HK%' Then 'EMP-HK'
+            When clean_degrees_concat Like '%KSM JNA%' Then 'EMP-JAP'
+            When clean_degrees_concat Like '%KSM RU%' Then 'EMP-ISR'
+            When clean_degrees_concat Like '%KSM PKU%' Then 'EMP-CHI'
+            When clean_degrees_concat Like '%KSM AEP%' Then 'EMP-AEP'
+            When clean_degrees_concat Like '% EMP%' Then 'EMP'
+            When clean_degrees_concat Like '%KGS%' Then 'FT'
+            When clean_degrees_concat Like '%BEV%' Then 'FT-EB'
+            When clean_degrees_concat Like '%BCH%' Then 'FT-CB'
+            When clean_degrees_concat Like '%PHD%' Then 'PHD'
+            When clean_degrees_concat Like '%KSMEE%' Then 'EXECED'
+            When clean_degrees_concat Like '%MBA %' Then 'FT'
+            When clean_degrees_concat Like '%CERT%' Then 'EXECED'
+            When clean_degrees_concat Like '%Institute for Mgmt%' Then 'EXECED'
+            When clean_degrees_concat Like '%MS %' Then 'FT-MS'
+            When clean_degrees_concat Like '%LLM%' Then 'CERT-LLM'
+            When clean_degrees_concat Like '%MMGT%' Then 'FT-MMGT'
+            When clean_degrees_verbose Like '%Certificate%' Then 'CERT'
+            -- People who don't have a completed degree
+            -- ***** IMPORTANT: Keep in same order as above *****
+            When degrees_concat Like '%KGS2Y%' Then 'FT-2Y NONGRD'
+            When degrees_concat Like '%KGS1Y%' Then 'FT-1Y NONGRD'
+            When degrees_concat Like '%JDMBA%' Then 'FT-JDMBA NONGRD'
+            When degrees_concat Like '%MMM%' Then 'FT-MMM NONGRD'
+            When degrees_concat Like '%MDMBA%' Then 'FT-MDMBA NONGRD'
+            When degrees_concat Like '%KSM KEN%' Then 'FT-KENNEDY NONGRD'
+            When degrees_concat Like '%KSM TMP%' Then 'TMP NONGRD'
+            When degrees_concat Like '%KSM PTS%' Then 'TMP-SAT NONGRD'
+            When degrees_concat Like '%KSM PSA%' Then 'TMP-SATXCEL NONGRD'
+            When degrees_concat Like '%KSM PTA%' Then 'TMP-XCEL NONGRD'
+            When degrees_concat Like '% EMP%' Then 'EMP NONGRD'
+            When degrees_concat Like '%KSM NAP%' Then 'EMP-IL NONGRD'
+            When degrees_concat Like '%KSM WHU%' Then 'EMP-GER NONGRD'
+            When degrees_concat Like '%KSM SCH%' Then 'EMP-CAN NONGRD'
+            When degrees_concat Like '%KSM LAP%' Then 'EMP-FL NONGRD'
+            When degrees_concat Like '%KSM HK%' Then 'EMP-HK NONGRD'
+            When degrees_concat Like '%KSM JNA%' Then 'EMP-JAP NONGRD'
+            When degrees_concat Like '%KSM RU%' Then 'EMP-ISR NONGRD'
+            When degrees_concat Like '%KSM AEP%' Then 'EMP-AEP NONGRD'
+            When degrees_concat Like '%KGS%' Then 'FT NONGRD'
+            When degrees_concat Like '%BEV%' Then 'FT-EB NONGRD'
+            When degrees_concat Like '%BCH%' Then 'FT-CB NONGRD'
+            When degrees_concat Like '%PHD%' Then 'PHD NONGRD'
+            When degrees_concat Like '%KSMEE%' Then 'EXECED NONGRD'
+            When degrees_concat Like '%MBA %' Then 'FT NONGRD'
+            When degrees_concat Like '%CERT%' Then 'EXECED NONGRD'
+            When degrees_concat Like '%Institute for Mgmt%' Then 'EXECED NONGRD'
+            When degrees_concat Like '%MS %' Then 'FT-MS NONGRD'
+            When degrees_concat Like '%LLM%' Then 'CERT-LLM NONGRD'
+            When degrees_concat Like '%MMGT%' Then 'FT-MMGT NONGRD'
+            When degrees_verbose Like '%Certificate%' Then 'CERT NONGRD'
+            Else 'UNK' -- Unable to determine program
+          End As program
       From concat
       Left Join clean_concat On concat.id_number = clean_concat.id_number
     )
     -- Final results
-    Select concat.id_number, entity.report_name, entity.record_status_code,
-      degrees_verbose, degrees_concat, first_ksm_year, first_masters_year, last_noncert_year,
-      stwrd_deg.stewardship_years, prg.program,
-      -- program_group; use spaces to force non-alphabetic entries to apear first
-      Case
-        When program Like '%NONGRD%' Then 'NONGRD'
-        When program Like 'FT%' Then  '  FT'
-        When program Like 'TMP%' Then '  TMP'
-        When program Like 'EMP%' Then ' EMP'
-        When program Like 'PHD%' Then ' PHD'
-        When program Like 'EXEC%' Or program Like 'CERT%' Then 'EXECED'
-        Else program
-      End As program_group
+    Select
+      concat.id_number
+      , entity.report_name
+      , entity.record_status_code
+      , degrees_verbose
+      , degrees_concat
+      , first_ksm_year
+      , first_masters_year
+      , last_noncert_year
+      , stwrd_deg.stewardship_years
+      , prg.program
+      -- program_group; use spaces to force non-alphabetic entries to apear first in sorts
+      , Case
+          When program Like '%NONGRD%' Then 'NONGRD'
+          When program Like 'FT%' Then  '  FT'
+          When program Like 'TMP%' Then '  TMP'
+          When program Like 'EMP%' Then ' EMP'
+          When program Like 'PHD%' Then ' PHD'
+          When program Like 'EXEC%' Or program Like 'CERT%' Then 'EXECED'
+          Else program
+        End As program_group
     From concat
-      Inner Join entity On entity.id_number = concat.id_number
-      Inner Join prg On concat.id_number = prg.id_number
-      Left Join stwrd_deg On stwrd_deg.id_number = concat.id_number;
+    Inner Join entity On entity.id_number = concat.id_number
+    Inner Join prg On concat.id_number = prg.id_number
+    Left Join stwrd_deg On stwrd_deg.id_number = concat.id_number;
 
 /* Definition of Kellogg gift source donor
    2017-02-27 */
 Cursor c_source_donor_ksm (receipt In varchar2) Is
   Select
-    gft.tx_number, gft.id_number, get_entity_degrees_concat_fast(id_number) As ksm_degrees,
-    gft.person_or_org, gft.associated_code, gft.credit_amount
+    gft.tx_number
+    , gft.id_number
+    , get_entity_degrees_concat_fast(id_number) As ksm_degrees
+    , gft.person_or_org
+    , gft.associated_code
+    , gft.credit_amount
   From nu_gft_trp_gifttrans gft
   Where gft.tx_number = receipt
     And associated_code Not In ('H', 'M') -- Exclude In Honor Of and In Memory Of from consideration
@@ -844,72 +890,114 @@ With
   degs As (
     Select deg.*
     From table(tbl_entity_degrees_concat_ksm) deg
-  ),
-  couples As (
-    Select entity.id_number, entity.pref_mail_name, entity.report_name,
-      entity.record_type_code, entity.person_or_org, entity.record_status_code,
-      entity.institutional_suffix, edc.degrees_concat, edc.first_ksm_year, edc.first_masters_year, edc.last_noncert_year,
-      edc.program_group,
-      entity.spouse_id_number, spouse.pref_mail_name As spouse_pref_mail_name, spouse.report_name As spouse_report_name,
-      spouse.institutional_suffix As spouse_suffix,
-      sdc.degrees_concat As spouse_degrees_concat, sdc.first_ksm_year As spouse_first_ksm_year,
-      sdc.first_masters_year As spouse_first_masters_year, sdc.last_noncert_year As spouse_last_noncert_year,
-      sdc.program_group As spouse_program_group
+  )
+  , couples As (
+    Select
+      -- Entity fields
+      entity.id_number
+      , entity.pref_mail_name
+      , entity.report_name
+      , entity.record_type_code
+      , entity.person_or_org
+      , entity.record_status_code
+      , entity.institutional_suffix
+      , edc.degrees_concat
+      , edc.first_ksm_year
+      , edc.first_masters_year
+      , edc.last_noncert_year
+      , edc.program_group
+      -- Spouse fields
+      , entity.spouse_id_number
+      , spouse.pref_mail_name As spouse_pref_mail_name
+      , spouse.report_name As spouse_report_name
+      , spouse.institutional_suffix As spouse_suffix
+      , sdc.degrees_concat As spouse_degrees_concat
+      , sdc.first_ksm_year As spouse_first_ksm_year
+      , sdc.first_masters_year As spouse_first_masters_year
+      , sdc.last_noncert_year As spouse_last_noncert_year
+      , sdc.program_group As spouse_program_group
     From entity
-      Left Join degs edc On entity.id_number = edc.id_number
-      Left Join degs sdc On entity.spouse_id_number = sdc.id_number
-      Left Join entity spouse On entity.spouse_id_number = spouse.id_number
-  ),
-  household As (
-    Select id_number, report_name, record_status_code, pref_mail_name, institutional_suffix,
-      degrees_concat, first_ksm_year, last_noncert_year, program_group,
-      spouse_id_number, spouse_pref_mail_name, spouse_suffix,
-      spouse_degrees_concat, spouse_first_ksm_year, spouse_program_group, spouse_last_noncert_year,
+    Left Join degs edc On entity.id_number = edc.id_number
+    Left Join degs sdc On entity.spouse_id_number = sdc.id_number
+    Left Join entity spouse On entity.spouse_id_number = spouse.id_number
+  )
+  , household As (
+    Select
+      id_number
+      , report_name
+      , record_status_code
+      , pref_mail_name
+      , institutional_suffix
+      , degrees_concat
+      , first_ksm_year
+      , last_noncert_year
+      , program_group
+      , spouse_id_number
+      , spouse_pref_mail_name
+      , spouse_suffix
+      , spouse_degrees_concat
+      , spouse_first_ksm_year
+      , spouse_program_group
+      , spouse_last_noncert_year
       -- Choose which spouse is primary based on program_group
-      Case
-        When length(spouse_id_number) < 10 Or spouse_id_number Is Null Then id_number -- if no spouse, use id_number
-        -- if same program (or both null), use lower id_number
-        When program_group = spouse_program_group Or program_group Is Null And spouse_program_group Is Null Then
-          Case When id_number < spouse_id_number Then id_number Else spouse_id_number End
-        When spouse_program_group Is Null Then id_number -- if no spouse program, use id_number
-        When program_group Is Null Then spouse_id_number -- if no self program, use spouse_id_number
-        When program_group < spouse_program_group Then id_number
-        When spouse_program_group < program_group Then spouse_id_number
-      End As household_id
+      , Case
+          When length(spouse_id_number) < 10 Or spouse_id_number Is Null Then id_number -- if no spouse, use id_number
+          -- if same program (or both null), use lower id_number
+          When program_group = spouse_program_group Or program_group Is Null And spouse_program_group Is Null Then
+            Case When id_number < spouse_id_number Then id_number Else spouse_id_number End
+          When spouse_program_group Is Null Then id_number -- if no spouse program, use id_number
+          When program_group Is Null Then spouse_id_number -- if no self program, use spouse_id_number
+          When program_group < spouse_program_group Then id_number
+          When spouse_program_group < program_group Then spouse_id_number
+        End As household_id
     From couples
-  ),
-  pref_addr As (
-    Select addr.id_number, addr.city As pref_city, addr.state_code As pref_state,
-      cont.country As pref_country, cont.continent As pref_continent
+  )
+  , pref_addr As (
+    Select
+      addr.id_number
+      , addr.city As pref_city
+      , addr.state_code As pref_state
+      , cont.country As pref_country
+      , cont.continent As pref_continent
     From address addr
     Left Join v_addr_continents cont On addr.country_code = cont.country_code
     Where addr.addr_pref_ind = 'Y'
       And addr.addr_status_code = 'A'
-  ),
+  )
   -- Deceased spouse logic
-  deceased_spouses As (
-  Select Distinct id_number, spouse_id_number, marital_status_chg_dt, xsequence,
-    tms.short_desc As marital_status
-  From former_spouse
-  Inner Join tms_marital_status tms On tms.marital_status_code = former_spouse.marital_status_code
-  Where
-    -- Marriage ended by death, married at time of death, widowed, widowed at time of death, former spouse
-    -- If updated, also change below in fmr_spouse query
-    tms.marital_status_code In ('I', 'Q', 'Z', 'W', 'N', 'F', ' ')
-  ),
+  , deceased_spouses As (
+    Select Distinct
+      id_number
+      , spouse_id_number
+      , marital_status_chg_dt
+      , xsequence
+      , tms.short_desc As marital_status
+    From former_spouse
+    Inner Join tms_marital_status tms On tms.marital_status_code = former_spouse.marital_status_code
+    Where
+      -- Marriage ended by death, married at time of death, widowed, widowed at time of death, former spouse
+      -- If updated, also change below in fmr_spouse query
+      tms.marital_status_code In ('I', 'Q', 'Z', 'W', 'N', 'F', ' ')
+  )
   -- Deduping
-  deceased_spouse As (
-    Select ds.id_number,
+  , deceased_spouse As (
+    Select
+      ds.id_number
       -- If multiple keep only most recent (determined by change date, then xsequence) deceased spouse
-      min(spouse_id_number) keep(dense_rank First Order By marital_status_chg_dt Desc, xsequence Desc) As spouse_id_number
+      , min(spouse_id_number) keep(dense_rank First Order By marital_status_chg_dt Desc, xsequence Desc) As spouse_id_number
     From deceased_spouses ds
     Group By ds.id_number
-  ),
-  fmr_spouse As (
-    Select entity.id_number, entity.report_name,
-      tms.short_desc As record_status, tms_ms.short_desc As marital_status,
-      ds.spouse_id_number, spouse.report_name As spouse_name,
-      tmsd.short_desc As spouse_record_status, tms_sms.short_desc As spouse_marital_status
+  )
+  , fmr_spouse As (
+    Select
+      entity.id_number
+      , entity.report_name
+      , tms.short_desc As record_status
+      , tms_ms.short_desc As marital_status
+      , ds.spouse_id_number
+      , spouse.report_name As spouse_name
+      , tmsd.short_desc As spouse_record_status
+      , tms_sms.short_desc As spouse_marital_status
     From entity
     Left Join tms_record_status tms On tms.record_status_code = entity.record_status_code
     Left Join deceased_spouse ds On ds.id_number = entity.id_number
@@ -925,27 +1013,49 @@ With
       And spouse.marital_status_code In ('I', 'Q', 'Z', 'W', 'N', 'F', ' ')
   )
   -- Main query
-  Select household.id_number, household.report_name, household.pref_mail_name, household.record_status_code,
-    household.degrees_concat, household.first_ksm_year, household.program_group, household.last_noncert_year,
-    household.institutional_suffix,
-    household.spouse_id_number, household.spouse_pref_mail_name, household.spouse_suffix,
-    household.spouse_degrees_concat, household.spouse_first_ksm_year, household.spouse_program_group,
-    household.spouse_last_noncert_year,
-    fmr_spouse.spouse_id_number As fmr_spouse_id, fmr_spouse.spouse_name As fmr_spouse_name,
-    fmr_spouse.marital_status As fmr_marital_status,
-    household.household_id, couples.record_type_code As household_record, couples.person_or_org,
-    couples.pref_mail_name As household_name, couples.report_name As household_rpt_name,
-    couples.spouse_id_number As household_spouse_id, couples.spouse_pref_mail_name As household_spouse,
-    couples.spouse_report_name As household_spouse_rpt_name,
-    couples.institutional_suffix As household_suffix, couples.spouse_suffix As household_spouse_suffix,
-    couples.first_ksm_year As household_ksm_year, couples.first_masters_year As household_masters_year,
-    -- Household last non-certificate year, for young alumni designation
-    couples.program_group As household_program_group,
-    pref_addr.pref_city, pref_addr.pref_state, pref_addr.pref_country, pref_addr.pref_continent
+  Select
+    household.id_number
+    , household.report_name
+    , household.pref_mail_name
+    , household.record_status_code
+    , household.degrees_concat
+    , household.first_ksm_year
+    , household.program_group
+    , household.last_noncert_year
+    , household.institutional_suffix
+    , household.spouse_id_number
+    , household.spouse_pref_mail_name
+    , household.spouse_suffix
+    , household.spouse_degrees_concat
+    , household.spouse_first_ksm_year
+    , household.spouse_program_group
+    , household.spouse_last_noncert_year
+    , fmr_spouse.spouse_id_number As fmr_spouse_id
+    , fmr_spouse.spouse_name As fmr_spouse_name
+    , fmr_spouse.marital_status As fmr_marital_status
+    , household.household_id
+    , couples.record_type_code As household_record
+    , couples.person_or_org
+    , couples.pref_mail_name As household_name
+    , couples.report_name As household_rpt_name
+    , couples.spouse_id_number As household_spouse_id
+    , couples.spouse_pref_mail_name As household_spouse
+    , couples.spouse_report_name As household_spouse_rpt_name
+    , couples.institutional_suffix As household_suffix
+    , couples.spouse_suffix As household_spouse_suffix
+    , couples.first_ksm_year As household_ksm_year
+    , couples.first_masters_year As household_masters_year
+    -- Household last non-certificate year, for (approximate) young alumni designation
+    , couples.program_group As household_program_group
+    , pref_addr.pref_city
+    , pref_addr.pref_state
+    , pref_addr.pref_country
+    , pref_addr.pref_continent
   From household
-    Left Join couples On household.household_id = couples.id_number
-    Left Join pref_addr On household.household_id = pref_addr.id_number
-    Left Join fmr_spouse On household.id_number = fmr_spouse.id_number
+  Left Join couples On household.household_id = couples.id_number
+  Left Join pref_addr On household.household_id = pref_addr.id_number
+  Left Join fmr_spouse On household.id_number = fmr_spouse.id_number
+  -- Only for input ID, if provided
   Where (Case When id Is Not Null Then household.id_number Else 'T' End)
             = (Case When id Is Not Null Then id Else 'T' End);
 
@@ -954,45 +1064,62 @@ Cursor c_entity_employees_ksm (company In varchar2) Is
   With
   -- Employment table subquery
   employ As (
-    Select id_number, job_title, 
+    Select
+      id_number
+      , job_title
       -- If there's an employer ID filled in, use the entity name
-      Case
-        When employer_id_number Is Not Null And employer_id_number != ' ' Then (
-          Select pref_mail_name
-          From entity
-          Where id_number = employer_id_number
-        )
-        -- Otherwise use the write-in field
-        Else trim(employer_name1 || ' ' || employer_name2)
-      End As employer_name
+      , Case
+          When employer_id_number Is Not Null And employer_id_number != ' ' Then (
+            Select pref_mail_name
+            From entity
+            Where id_number = employer_id_number
+          )
+          -- Otherwise use the write-in field
+          Else trim(employer_name1 || ' ' || employer_name2)
+        End As employer_name
     From employment
     Where employment.primary_emp_ind = 'Y'
-  ),
+  )
   -- Record status tms table
-  tms_rec_status As (
-    Select record_status_code, short_desc As record_status
+  , tms_rec_status As (
+    Select
+      record_status_code
+      , short_desc As record_status
     From tms_record_status
-  ),
-  tms_ctry As (
-    Select country_code, short_desc As country
+  )
+  , tms_ctry As (
+    Select
+      country_code
+      , short_desc As country
     From tms_country
   )
+  -- Main query
   Select
     -- Entity fields
-    deg.id_number, entity.report_name, tms_rec_status.record_status, entity.institutional_suffix,
-    deg.degrees_concat, deg.first_ksm_year, trim(deg.program_group) As program,
+    deg.id_number
+    , entity.report_name
+    , tms_rec_status.record_status
+    , entity.institutional_suffix
+    , deg.degrees_concat
+    , deg.first_ksm_year
+    , trim(deg.program_group) As program
     -- Employment fields
-    prs.business_title, trim(prs.employer_name1 || ' ' || prs.employer_name2) As business_company,
-    employ.job_title, employ.employer_name,
-    prs.business_city, prs.business_state, tms_ctry.country As business_country,
+    , prs.business_title
+    , trim(prs.employer_name1 || ' ' || prs.employer_name2) As business_company
+    , employ.job_title
+    , employ.employer_name
+    , prs.business_city
+    , prs.business_state
+    , tms_ctry.country As business_country
     -- Prospect fields
-    prs.prospect_manager, prs.team
+    , prs.prospect_manager
+    , prs.team
   From table(rpt_pbh634.ksm_pkg.tbl_entity_degrees_concat_ksm) deg -- KSM alumni definition
   Inner Join entity On deg.id_number = entity.id_number
   Inner Join tms_rec_status On tms_rec_status.record_status_code = entity.record_status_code
-    Left Join employ On deg.id_number = employ.id_number
-    Left Join nu_prs_trp_prospect prs On deg.id_number = prs.id_number
-    Left Join tms_ctry On tms_ctry.country_code = prs.business_country
+  Left Join employ On deg.id_number = employ.id_number
+  Left Join nu_prs_trp_prospect prs On deg.id_number = prs.id_number
+  Left Join tms_ctry On tms_ctry.country_code = prs.business_country
   Where
     -- Matches pattern; user beware (Apple vs. Snapple)
     lower(employ.employer_name) Like lower('%' || company || '%')
@@ -1000,10 +1127,11 @@ Cursor c_entity_employees_ksm (company In varchar2) Is
 
 /* Definition of university strategy */
 Cursor c_university_strategy Is
-    Select prospect_id,
+    Select
+      prospect_id
       -- Pull first upcoming University Overall Strategy
-      min(task_description) keep(dense_rank First Order By sched_date Asc, task_id Asc) As university_strategy,
-      min(sched_date) keep(dense_rank First Order By sched_date Asc, task_id Asc) As strategy_sched_date
+      , min(task_description) keep(dense_rank First Order By sched_date Asc, task_id Asc) As university_strategy
+      , min(sched_date) keep(dense_rank First Order By sched_date Asc, task_id Asc) As strategy_sched_date
     From task
     Cross Join v_current_calendar cal
     Where task_code = 'ST' -- University Overall Strategy
@@ -1013,11 +1141,19 @@ Cursor c_university_strategy Is
 
 /* Definition of a KLC member */
 Cursor c_klc_history Is
-  Select substr(gift_club_end_date, 0, 4) As fiscal_year,
-    tms_lvl.short_desc As level_desc,
-    hh.id_number,
-    hh.household_id, hh.household_record, hh.household_rpt_name, hh.household_spouse_id, hh.household_spouse, hh.household_suffix,
-    hh.household_ksm_year, hh.household_masters_year, hh.household_program_group
+  Select
+    substr(gift_club_end_date, 0, 4) As fiscal_year
+    , tms_lvl.short_desc As level_desc
+    , hh.id_number
+    , hh.household_id
+    , hh.household_record
+    , hh.household_rpt_name
+    , hh.household_spouse_id
+    , hh.household_spouse
+    , hh.household_suffix
+    , hh.household_ksm_year
+    , hh.household_masters_year
+    , hh.household_program_group
   From gift_clubs
   Inner Join table(tbl_entity_households_ksm) hh On hh.id_number = gift_clubs.gift_club_id_number
   Left Join nu_mem_v_tmsclublevel tms_lvl On tms_lvl.level_code = gift_clubs.school_code
@@ -1025,59 +1161,68 @@ Cursor c_klc_history Is
 
 /* Definition of discounted pledge amounts */
 Cursor c_plg_discount Is
-  Select pledge.pledge_pledge_number As pledge_number, pledge.pledge_sequence, pplg.prim_pledge_type,
-    pplg.prim_pledge_status, pplg.proposal_id, pplg.prim_pledge_comment,
-    pledge.pledge_amount, pledge.pledge_associated_credit_amt, pplg.prim_pledge_amount, pplg.prim_pledge_amount_paid,
-    pplg.prim_pledge_original_amount, pplg.discounted_amt,
+  Select
+    pledge.pledge_pledge_number As pledge_number
+    , pledge.pledge_sequence
+    , pplg.prim_pledge_type
+    , pplg.prim_pledge_status
+    , pplg.proposal_id
+    , pplg.prim_pledge_comment
+    , pledge.pledge_amount
+    , pledge.pledge_associated_credit_amt
+    , pplg.prim_pledge_amount
+    , pplg.prim_pledge_amount_paid
+    , pplg.prim_pledge_original_amount
+    , pplg.discounted_amt
     -- Discounted pledge legal amounts
-    Case
-      -- Not inactive, not a BE or LE
-      When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A')
-        And pplg.prim_pledge_type Not In ('BE', 'LE') Then pledge.pledge_amount
-      -- Not inactive, is BE or LE; make sure to allocate proportionally to program code allocation
-      When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A')
-        And pplg.prim_pledge_type In ('BE', 'LE') Then pplg.discounted_amt * pledge.pledge_amount /
-          (Case When pplg.prim_pledge_amount = 0 Then 1 Else pplg.prim_pledge_amount End)
-      -- If inactive, take amount paid
-      Else Case
-        When pplg.prim_pledge_amount > 0
-          Then pplg.prim_pledge_amount_paid * pledge.pledge_amount / pplg.prim_pledge_amount
-        When pledge.pledge_amount > 0
-          Then pplg.prim_pledge_amount_paid
-        Else 0
-      End
-    End As legal,
+    , Case
+        -- Not inactive, not a BE or LE
+        When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A')
+          And pplg.prim_pledge_type Not In ('BE', 'LE') Then pledge.pledge_amount
+        -- Not inactive, is BE or LE; make sure to allocate proportionally to program code allocation
+        When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A')
+          And pplg.prim_pledge_type In ('BE', 'LE') Then pplg.discounted_amt * pledge.pledge_amount /
+            (Case When pplg.prim_pledge_amount = 0 Then 1 Else pplg.prim_pledge_amount End)
+        -- If inactive, take amount paid
+        Else Case
+          When pplg.prim_pledge_amount > 0
+            Then pplg.prim_pledge_amount_paid * pledge.pledge_amount / pplg.prim_pledge_amount
+          When pledge.pledge_amount > 0
+            Then pplg.prim_pledge_amount_paid
+          Else 0
+        End
+      End As legal
     -- Discounted pledge credit amounts
-    Case
-      -- Not inactive, not a BE or LE
-      When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A')
-        And pplg.prim_pledge_type Not In ('BE', 'LE') Then pledge.pledge_associated_credit_amt
-      -- Not inactive, is BE or LE; make sure to allocate proportionally to program code allocation
-      When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A')
-        And pplg.prim_pledge_type In ('BE', 'LE') Then pplg.discounted_amt * pledge.pledge_associated_credit_amt /
-          (Case When pplg.prim_pledge_amount = 0 Then 1 Else pplg.prim_pledge_amount End)
-      -- If inactive, take amount paid
-      Else Case
-        When pledge.pledge_amount = 0 And pplg.prim_pledge_amount > 0
-          Then pplg.prim_pledge_amount_paid * pledge.pledge_associated_credit_amt / pplg.prim_pledge_amount
-        When pplg.prim_pledge_amount > 0
-          Then pplg.prim_pledge_amount_paid * pledge.pledge_amount / pplg.prim_pledge_amount
-        Else pplg.prim_pledge_amount_paid
-      End
-    End As credit,
-  -- Discounted pledge credit with face value on bequests
-  Case
-    -- All active pledges
-      When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A') Then pledge.pledge_associated_credit_amt
-      -- If not active, take amount paid
-      Else Case
-        When pledge.pledge_amount = 0 And pplg.prim_pledge_amount > 0
-          Then pplg.prim_pledge_amount_paid * pledge.pledge_associated_credit_amt / pplg.prim_pledge_amount
-        When pplg.prim_pledge_amount > 0
-          Then pplg.prim_pledge_amount_paid * pledge.pledge_amount / pplg.prim_pledge_amount
-        Else pplg.prim_pledge_amount_paid
-      End
-  End As recognition_credit
+    , Case
+        -- Not inactive, not a BE or LE
+        When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A')
+          And pplg.prim_pledge_type Not In ('BE', 'LE') Then pledge.pledge_associated_credit_amt
+        -- Not inactive, is BE or LE; make sure to allocate proportionally to program code allocation
+        When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A')
+          And pplg.prim_pledge_type In ('BE', 'LE') Then pplg.discounted_amt * pledge.pledge_associated_credit_amt /
+            (Case When pplg.prim_pledge_amount = 0 Then 1 Else pplg.prim_pledge_amount End)
+        -- If inactive, take amount paid
+        Else Case
+          When pledge.pledge_amount = 0 And pplg.prim_pledge_amount > 0
+            Then pplg.prim_pledge_amount_paid * pledge.pledge_associated_credit_amt / pplg.prim_pledge_amount
+          When pplg.prim_pledge_amount > 0
+            Then pplg.prim_pledge_amount_paid * pledge.pledge_amount / pplg.prim_pledge_amount
+          Else pplg.prim_pledge_amount_paid
+        End
+      End As credit
+    -- Discounted pledge credit with face value on bequests
+    , Case
+      -- All active pledges
+        When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A') Then pledge.pledge_associated_credit_amt
+        -- If not active, take amount paid
+        Else Case
+          When pledge.pledge_amount = 0 And pplg.prim_pledge_amount > 0
+            Then pplg.prim_pledge_amount_paid * pledge.pledge_associated_credit_amt / pplg.prim_pledge_amount
+          When pplg.prim_pledge_amount > 0
+            Then pplg.prim_pledge_amount_paid * pledge.pledge_amount / pplg.prim_pledge_amount
+          Else pplg.prim_pledge_amount_paid
+        End
+      End As recognition_credit
   From primary_pledge pplg
   Inner Join pledge On pledge.pledge_pledge_number = pplg.prim_pledge_number
   Where pledge.pledge_program_code = 'KM'
@@ -1090,61 +1235,82 @@ Cursor c_gift_credit_ksm Is
   plg_discount As (
     Select *
     From table(plg_discount)
-  ),
+  )
   /* KSM allocations */
-  ksm_cru_allocs As (
-    Select allocation_code, af_flag
+  , ksm_cru_allocs As (
+    Select *
     From table(ksm_pkg.tbl_alloc_curr_use_ksm) cru
-  ),
-  ksm_allocs As (
-    Select allocation.allocation_code, allocation.short_name,
-      Case When ksm_cru_allocs.af_flag Is Not Null Then 'Y' End As cru_flag,
-      Case When ksm_cru_allocs.af_flag = 'Y' Then 'Y' End As af_flag
+  )
+  , ksm_allocs As (
+    Select
+      allocation.allocation_code
+      , allocation.short_name
+      , Case When ksm_cru_allocs.af_flag Is Not Null Then 'Y' End As cru_flag
+      , Case When ksm_cru_allocs.af_flag = 'Y' Then 'Y' End As af_flag
     From allocation
     Left Join ksm_cru_allocs On ksm_cru_allocs.allocation_code = allocation.allocation_code
     Where alloc_school = 'KM'
-  ),
+  )
   /* Transaction and pledge TMS table definition */
-  tms_trans As (
+  , tms_trans As (
     (
-      Select transaction_type_code, short_desc As transaction_type
+      Select
+        transaction_type_code
+        , short_desc As transaction_type
       From tms_transaction_type
     ) Union All (
-      Select pledge_type_code, short_desc
+      Select
+        pledge_type_code
+        , short_desc
       From tms_pledge_type
     )
-  ),
+  )
   /* Payment types */
-  tms_pmt_type As (
-    Select payment_type_code, short_desc As payment_type
+  , tms_pmt_type As (
+    Select
+      payment_type_code
+      , short_desc As payment_type
     From tms_payment_type
-  ),
+  )
   /* Kellogg transactions list */
-  ksm_trans As (
+  , ksm_trans As (
     (
     -- Outright gifts and payments
-      Select gft.id_number, gift.gift_associated_anonymous As anon,
-        tx_number, tx_sequence, tms_trans.transaction_type, tx_gypm_ind, tms_pmt_type.payment_type,
-        gft.allocation_code, gft.alloc_short_name, af_flag, cru_flag, primary_gift.prim_gift_comment As gift_comment,
-        Case When primary_gift.proposal_id <> 0 Then primary_gift.proposal_id End As proposal_id,
-        NULL As pledge_status, date_of_record, to_number(fiscal_year) As fiscal_year,
-        legal_amount, credit_amount,
+      Select
+        gft.id_number
+        , gift.gift_associated_anonymous As anon
+        , tx_number
+        , tx_sequence
+        , tms_trans.transaction_type
+        , tx_gypm_ind
+        , tms_pmt_type.payment_type
+        , gft.allocation_code
+        , gft.alloc_short_name
+        , af_flag
+        , cru_flag
+        , primary_gift.prim_gift_comment As gift_comment
+        , Case When primary_gift.proposal_id <> 0 Then primary_gift.proposal_id End As proposal_id
+        , NULL As pledge_status
+        , date_of_record
+        , to_number(fiscal_year) As fiscal_year
+        , legal_amount
+        , credit_amount
         -- Recognition credit; for $0 internal transfers, extract dollar amount stated in comment
-        Case
-          When tms_pmt_type.payment_type = 'Internal Transfer' And credit_amount = 0
-            -- Regular expression: extract string starting with $ up to the last digit, period, or comma,
-            -- replace K with 000 and M with 000000, then strip the $ and commas and treat as numeric
-            Then to_number(
-              regexp_replace(
+        , Case
+            When tms_pmt_type.payment_type = 'Internal Transfer' And credit_amount = 0
+              -- Regular expression: extract string starting with $ up to the last digit, period, or comma,
+              -- replace K with 000 and M with 000000, then strip the $ and commas and treat as numeric
+              Then to_number(
                 regexp_replace(
                   regexp_replace(
-                    regexp_substr(upper(primary_gift.prim_gift_comment), '\$[0-9,KM\.]*'),
-                  'K', '000'),
-                'M', '000000'),
-              '[^0-9\.]', '')
-            )
-          Else credit_amount
-        End As recognition_credit
+                    regexp_replace(
+                      regexp_substr(upper(primary_gift.prim_gift_comment), '\$[0-9,KM\.]*'),
+                    'K', '000'),
+                  'M', '000000'),
+                '[^0-9\.]', '')
+              )
+            Else credit_amount
+          End As recognition_credit
       From nu_gft_trp_gifttrans gft
       -- Anonymous association and linked proposal
       Inner Join gift On gift.gift_receipt_number = gft.tx_number And gift.gift_sequence = gft.tx_sequence
@@ -1158,59 +1324,114 @@ Cursor c_gift_credit_ksm Is
         And tx_gypm_ind In ('G', 'Y')
     ) Union All (
     -- Matching gift matching company
-      Select match_gift_company_id, gftanon.anon,
-        match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', 'M', tms_pmt_type.payment_type,
-        match_gift_allocation_name, ksm_allocs.short_name, af_flag, cru_flag, matching_gift.match_gift_comment,
-        NULL, NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record),
+      Select
+        match_gift_company_id
+        , gftanon.anon
+        , match_gift_receipt_number
+        , match_gift_matched_sequence
+        , 'Matching Gift' As transaction_type
+        , 'M' As tx_gypm_ind
+        , tms_pmt_type.payment_type
+        , match_gift_allocation_name
+        , ksm_allocs.short_name
+        , af_flag
+        , cru_flag
+        , matching_gift.match_gift_comment
+        , NULL As proposal_id
+        , NULL As pledge_status
+        , match_gift_date_of_record
+        , ksm_pkg.get_fiscal_year(match_gift_date_of_record)
         -- Full legal amount to matching company
-        match_gift_amount, match_gift_amount, match_gift_amount
+        , match_gift_amount
+        , match_gift_amount
+        , match_gift_amount
       From matching_gift
       -- Only KSM allocations
       Inner Join ksm_allocs On ksm_allocs.allocation_code = matching_gift.match_gift_allocation_name
       -- Anonymous association on the matched gift
       Inner Join (
-        Select gift_receipt_number, gift_sequence, gift_associated_anonymous As anon
-        From gift
-      ) gftanon On gftanon.gift_receipt_number = matching_gift.match_gift_matched_receipt
-        And gftanon.gift_sequence = matching_gift.match_gift_matched_sequence
+          Select
+            gift_receipt_number
+            , gift_sequence
+            , gift_associated_anonymous As anon
+          From gift
+        ) gftanon On gftanon.gift_receipt_number = matching_gift.match_gift_matched_receipt
+            And gftanon.gift_sequence = matching_gift.match_gift_matched_sequence
       -- Trans payment descriptions
       Left Join tms_pmt_type On tms_pmt_type.payment_type_code = matching_gift.match_payment_type
     ) Union All (
     -- Matching gift matched donors
-      Select gft.id_number, gftanon.anon,
-        match_gift_receipt_number, match_gift_matched_sequence, 'Matching Gift', 'M', tms_pmt_type.payment_type,
-        match_gift_allocation_name, ksm_allocs.short_name, af_flag, cru_flag, matching_gift.match_gift_comment,
-        NULL, NULL, match_gift_date_of_record, ksm_pkg.get_fiscal_year(match_gift_date_of_record),
+      Select
+        gft.id_number
+        , gftanon.anon
+        , match_gift_receipt_number
+        , match_gift_matched_sequence
+        , 'Matching Gift' As transaction_type
+        , 'M' As tx_gypm_ind
+        , tms_pmt_type.payment_type
+        , match_gift_allocation_name
+        , ksm_allocs.short_name
+        , af_flag
+        , cru_flag
+        , matching_gift.match_gift_comment
+        , NULL As proposal_id
+        , NULL As pledge_status
+        , match_gift_date_of_record
+        , ksm_pkg.get_fiscal_year(match_gift_date_of_record)
         -- 0 legal amount to matched donors
-        Case When gft.id_number = match_gift_company_id Then match_gift_amount Else 0 End As legal_amount,
-        match_gift_amount, match_gift_amount
+        , Case When gft.id_number = match_gift_company_id Then match_gift_amount Else 0 End As legal_amount
+        , match_gift_amount
+        , match_gift_amount
       From matching_gift
       -- Inner join to add all attributed donor IDs on the original gift
-      Inner Join (Select gift_donor_id As id_number, gift.gift_receipt_number From gift) gft
-        On matching_gift.match_gift_matched_receipt = gft.gift_receipt_number
+      Inner Join (
+          Select
+            gift_donor_id As id_number
+            , gift.gift_receipt_number
+          From gift
+        ) gft On matching_gift.match_gift_matched_receipt = gft.gift_receipt_number
       -- Only KSM allocations
       Inner Join ksm_allocs On ksm_allocs.allocation_code = matching_gift.match_gift_allocation_name
       -- Anonymous association on the matched gift
       Inner Join (
-        Select gift_donor_id, gift_receipt_number, gift_sequence, gift_associated_anonymous As anon
-        From gift
-      ) gftanon On gftanon.gift_receipt_number = matching_gift.match_gift_matched_receipt
-          And gftanon.gift_sequence = matching_gift.match_gift_matched_sequence
+          Select
+            gift_donor_id
+            , gift_receipt_number
+            , gift_sequence
+            , gift_associated_anonymous As anon
+          From gift
+        ) gftanon On gftanon.gift_receipt_number = matching_gift.match_gift_matched_receipt
+            And gftanon.gift_sequence = matching_gift.match_gift_matched_sequence
       -- Trans payment descriptions
       Left Join tms_pmt_type On tms_pmt_type.payment_type_code = matching_gift.match_payment_type
     ) Union All (
     -- Pledges, including BE and LE program credit
-      Select pledge_donor_id, pledge_anonymous,
-        pledge_pledge_number, pledge.pledge_sequence, tms_trans.transaction_type, 'P', NULL,
-        pledge.pledge_allocation_name, ksm_allocs.short_name, ksm_allocs.af_flag, cru_flag, pledge_comment,
-        Case When proposal_id <> 0 Then proposal_id End As proposal_id,
-        prim_pledge_status, pledge_date_of_record, ksm_pkg.get_fiscal_year(pledge_date_of_record),
-        plgd.legal, plgd.credit, plgd.recognition_credit
+      Select
+        pledge_donor_id
+        , pledge_anonymous
+        , pledge_pledge_number
+        , pledge.pledge_sequence
+        , tms_trans.transaction_type
+        , 'P' As tx_gypm_ind
+        , NULL As payment_type
+        , pledge.pledge_allocation_name
+        , ksm_allocs.short_name
+        , ksm_allocs.af_flag
+        , cru_flag
+        , pledge_comment
+        , Case When proposal_id <> 0 Then proposal_id End As proposal_id
+        , prim_pledge_status
+        , pledge_date_of_record
+        , ksm_pkg.get_fiscal_year(pledge_date_of_record)
+        , plgd.legal
+        , plgd.credit
+        , plgd.recognition_credit
       From pledge
       -- Trans type descriptions
       Inner Join tms_trans On tms_trans.transaction_type_code = pledge.pledge_pledge_type
       -- Discounted pledge amounts where applicable
-      Left Join plg_discount plgd On plgd.pledge_number = pledge.pledge_pledge_number And plgd.pledge_sequence = pledge.pledge_sequence
+      Left Join plg_discount plgd On plgd.pledge_number = pledge.pledge_pledge_number
+        And plgd.pledge_sequence = pledge.pledge_sequence
       -- KSM AF flag
       Left Join ksm_allocs On ksm_allocs.allocation_code = pledge.pledge_allocation_name
       -- Include KSM allocations as well as the BE/LE account gifts where the gift is counted toward the KM program
@@ -1231,29 +1452,35 @@ Cursor c_gift_credit_ksm Is
 Cursor c_gift_credit_hh_ksm Is
   With
   hhid As (
-    Select hh.household_id, ksm_trans.*
+    Select
+      hh.household_id
+      , ksm_trans.*
     From table(tbl_entity_households_ksm) hh
     Inner Join table(tbl_gift_credit_ksm) ksm_trans On ksm_trans.id_number = hh.id_number
-  ),
-  giftcount As (
-    Select household_id, tx_number, count(id_number) As id_cnt
+  )
+  , giftcount As (
+    Select
+      household_id
+      , tx_number
+      , count(id_number) As id_cnt
     From hhid
     Group By household_id, tx_number
   )
   /* Main query */
-  Select hhid.*,
+  Select
+    hhid.*
     -- Household primary credit
-    Case
-      When hhid.id_number = hhid.household_id Then hhid.credit_amount
-      When id_cnt = 1 Then hhid.credit_amount
-      Else 0
-    End As hh_credit,
+    , Case
+        When hhid.id_number = hhid.household_id Then hhid.credit_amount
+        When id_cnt = 1 Then hhid.credit_amount
+        Else 0
+      End As hh_credit
     -- Household recognition credit
-    Case
-      When hhid.id_number = hhid.household_id Then hhid.recognition_credit
-      When id_cnt = 1 Then hhid.recognition_credit
-      Else 0
-    End As hh_recognition_credit
+    , Case
+        When hhid.id_number = hhid.household_id Then hhid.recognition_credit
+        When id_cnt = 1 Then hhid.recognition_credit
+        Else 0
+      End As hh_recognition_credit
   From hhid
   Inner Join giftcount gc On gc.household_id = hhid.household_id
     And gc.tx_number = hhid.tx_number;
@@ -1264,16 +1491,28 @@ Cursor c_gift_credit_campaign_2008 Is
   -- Anonymous indicators
   With anons As (
     (
-      Select gift_receipt_number As tx_number, gift_sequence As tx_sequence, gift_associated_anonymous As anon
+      Select
+        gift_receipt_number As tx_number
+        , gift_sequence As tx_sequence
+        , gift_associated_anonymous As anon
       From gift
     ) Union All (
-      Select pledge.pledge_pledge_number, pledge.pledge_sequence, pledge.pledge_anonymous
+      Select
+        pledge.pledge_pledge_number
+        , pledge.pledge_sequence
+        , pledge.pledge_anonymous
       From pledge
     ) Union All (
-      Select match_gift_receipt_number, 1, gftanon.anon
+      Select
+        match_gift_receipt_number
+        , 1
+        , gftanon.anon
       From matching_gift
       Inner Join (
-          Select gift_receipt_number, gift_sequence, gift_associated_anonymous As anon
+          Select
+            gift_receipt_number
+            , gift_sequence
+            , gift_associated_anonymous As anon
           From gift
         ) gftanon On gftanon.gift_receipt_number = matching_gift.match_gift_matched_receipt
           And gftanon.gift_sequence = matching_gift.match_gift_matched_sequence
@@ -1281,24 +1520,67 @@ Cursor c_gift_credit_campaign_2008 Is
   )
   -- Main query
   (
-  Select id_number, record_type_code, person_or_org, birth_dt, rcpt_or_plg_number, xsequence, anons.anon,
-    amount, credited_amount,
-    year_of_giving, date_of_record, alloc_code, alloc_school, alloc_purpose, annual_sw, restrict_code,
-    transaction_type, pledge_status, gift_pledge_or_match, matched_donor_id, matched_receipt_number,
-    this_date, first_processed_date, std_area, zipcountry
+  Select
+    id_number
+    , record_type_code
+    , person_or_org
+    , birth_dt
+    , rcpt_or_plg_number
+    , xsequence
+    , anons.anon
+    , amount
+    , credited_amount
+    , year_of_giving
+    , date_of_record
+    , alloc_code
+    , alloc_school
+    , alloc_purpose
+    , annual_sw
+    , restrict_code
+    , transaction_type
+    , pledge_status
+    , gift_pledge_or_match
+    , matched_donor_id
+    , matched_receipt_number
+    , this_date
+    , first_processed_date
+    , std_area
+    , zipcountry
   From nu_rpt_t_cmmt_dtl_daily daily
-  Left Join anons On anons.tx_number = daily.rcpt_or_plg_number And anons.tx_sequence = daily.xsequence
+  Left Join anons On anons.tx_number = daily.rcpt_or_plg_number
+    And anons.tx_sequence = daily.xsequence
   Where daily.alloc_school = 'KM'
   ) Union All (
   -- Internal transfer; 344303 is 50%
-  Select id_number, record_type_code, person_or_org, birth_dt, rcpt_or_plg_number, xsequence, anons.anon,
-    344303 As amount,
-    344303 As credited_amount,
-    year_of_giving, date_of_record, alloc_code, alloc_school, alloc_purpose, annual_sw, restrict_code,
-    transaction_type, pledge_status, gift_pledge_or_match, matched_donor_id, matched_receipt_number,
-    this_date, first_processed_date, std_area, zipcountry
+  Select
+    id_number
+    , record_type_code
+    , person_or_org
+    , birth_dt
+    , rcpt_or_plg_number
+    , xsequence
+    , anons.anon
+    , 344303 As amount
+    , 344303 As credited_amount
+    , year_of_giving
+    , date_of_record
+    , alloc_code
+    , alloc_school
+    , alloc_purpose
+    , annual_sw
+    , restrict_code
+    , transaction_type
+    , pledge_status
+    , gift_pledge_or_match
+    , matched_donor_id
+    , matched_receipt_number
+    , this_date
+    , first_processed_date
+    , std_area
+    , zipcountry
   From nu_rpt_t_cmmt_dtl_daily daily
-  Left Join anons On anons.tx_number = daily.rcpt_or_plg_number And anons.tx_sequence = daily.xsequence
+  Left Join anons On anons.tx_number = daily.rcpt_or_plg_number
+    And anons.tx_sequence = daily.xsequence
   Where daily.rcpt_or_plg_number = '0002275766'
   );
   
@@ -1310,12 +1592,29 @@ Cursor c_gift_credit_hh_campaign_2008 Is
   Where hh_cred.tx_number In (Select Distinct rcpt_or_plg_number From nu_rpt_t_cmmt_dtl_daily)
   ) Union All (
   -- Internal transfer; 344303 is 50%
-  Select daily.id_number, daily.id_number, ' ' As anonymous, daily.rcpt_or_plg_number, daily.xsequence,
-    'Internal Transfer' As transaction_type, daily.gift_pledge_or_match, 'Internal Transfer',
-    daily.alloc_code, allocation.short_name, 'N' As af_flag, 'N' As cru_flag, primary_gift.prim_gift_comment,
-    NULL As proposal_id, daily.pledge_status, daily.date_of_record, to_number(daily.year_of_giving) As fiscal_year,
-    344303 As legal_amount, 344303 As credit_amount, 344303 As recognition_amount,
-    344303 As hh_credit, 344303 As hh_recognition_credit
+  Select
+    daily.id_number
+    , daily.id_number
+    , ' ' As anonymous
+    , daily.rcpt_or_plg_number
+    , daily.xsequence
+    , 'Internal Transfer' As transaction_type
+    , daily.gift_pledge_or_match
+    , 'Internal Transfer'
+    , daily.alloc_code
+    , allocation.short_name
+    , 'N' As af_flag
+    , 'N' As cru_flag
+    , primary_gift.prim_gift_comment
+    , NULL As proposal_id
+    , daily.pledge_status
+    , daily.date_of_record
+    , to_number(daily.year_of_giving) As fiscal_year
+    , 344303 As legal_amount
+    , 344303 As credit_amount
+    , 344303 As recognition_amount
+    , 344303 As hh_credit
+    , 344303 As hh_recognition_credit
   From nu_rpt_t_cmmt_dtl_daily daily
   Inner Join allocation On allocation.allocation_code = daily.alloc_code
   Inner Join primary_gift On primary_gift.prim_gift_receipt_number = daily.rcpt_or_plg_number
