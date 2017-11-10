@@ -377,7 +377,6 @@ to be individually named.
 Examples: 
 Select ksm_af.*
 From table(rpt_pbh634.ksm_pkg.tbl_alloc_annual_fund_ksm) ksm_af;
-/
 Select cal.*
 From table(rpt_pbh634.ksm_pkg.tbl_current_calendar) cal;
 *************************************************************************/
