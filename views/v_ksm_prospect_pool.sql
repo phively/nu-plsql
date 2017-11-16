@@ -10,7 +10,25 @@ ksm_deg As (
   Where record_status_code Not In ('D', 'X') -- Exclude deceased, purgable
 )
 
--- Disqualified prospects
+-- Kellogg prospect interest
+, ksm_prs As (
+  Select prospect.prospect_id, prs_e.id_number
+  From program_prospect prs
+  Inner Join prospect_entity prs_e On prs_e.prospect_id = prs.prospect_id
+  Inner Join prospect On prs.prospect_id = prospect.prospect_id
+  Inner Join entity on entity.id_number = prs_e.id_number
+  Where prs.program_code = 'KM'
+    -- Active only
+    And prs.active_ind = 'Y'
+    And prospect.active_ind = 'Y'
+    -- Exclude deceased, purgable
+    And entity.record_status_code Not In ('D', 'X')
+    -- Exclude Disqualified, Permanent Stewardship
+    And prs.stage_code Not In (7, 11)
+    And prospect.stage_code Not In (7, 11)
+)
+
+-- Previously disqualified prospects; note that this will include people with multiple prospect records
 , dq As (
   (
   -- Overall disqualified
@@ -26,6 +44,7 @@ ksm_deg As (
   Inner Join prospect_entity On prospect_entity.prospect_id = pp.prospect_id
   Left Join tms_stage On tms_stage.stage_code = pp.stage_code
   Where pp.stage_code = 7
+    And pp.program_code = 'KM'
   )
 )
 
@@ -54,21 +73,9 @@ ksm_deg As (
   -- Top 150
   -- Top 300
   (
-  -- KSM prospect interest
-  Select prs_e.id_number
-  From program_prospect prs
-  Inner Join prospect_entity prs_e On prs_e.prospect_id = prs.prospect_id
-  Inner Join prospect On prs.prospect_id = prospect.prospect_id
-  Inner Join entity on entity.id_number = prs_e.id_number
-  Where prs.program_code = 'KM'
-    -- Active only
-    And prs.active_ind = 'Y'
-    And prospect.active_ind = 'Y'
-    -- Exclude deceased, purgable
-    And entity.record_status_code Not In ('D', 'X')
-    -- Exclude Disqualified, Permanent Stewardship
-    And prs.stage_code Not In (7, 11)
-    And prospect.stage_code Not In (7, 11)
+  -- KSM prospect program, not inactive or DQ
+  Select id_number
+  From ksm_prs
   -- All living alumni
   ) Union (
   Select id_number
