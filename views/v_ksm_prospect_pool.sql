@@ -135,6 +135,7 @@ Select
   , prs.business_country
   , prs.prospect_id
   , dq.dq
+  , perm_stew.ps As permanent_stewardship
   , spec_hnd.DNS
   , prs.evaluation_rating
   , prs.evaluation_date
