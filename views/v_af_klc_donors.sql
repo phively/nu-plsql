@@ -4,11 +4,6 @@ Create Or Replace View v_af_klc_donors As
 Select Distinct
   -- KLC table data
   klc.*
-  -- YTD indicator
-  , Case
-      When extract(year from start_date) < klc.fiscal_year And extract(month from start_date) <= 8 Then 'Y'
-      Else rpt_pbh634.ksm_pkg.fytd_indicator(klc.start_date)
-    End As klc_fytd
   -- Summarized current use giving data
   , af.cru_curr_fy
   , af.cru_prev_fy1

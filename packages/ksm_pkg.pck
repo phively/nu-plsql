@@ -137,8 +137,6 @@ Type university_strategy Is Record (
 /* KLC member */
 Type klc_member Is Record (
   fiscal_year integer
-  , start_date date
-  , end_date date
   , level_desc varchar2(40)
   , id_number entity.id_number%type
   , household_id entity.id_number%type
@@ -150,6 +148,7 @@ Type klc_member Is Record (
   , household_ksm_year degrees.degree_year%type
   , household_masters_year degrees.degree_year%type
   , household_program_group varchar2(20)
+  , klc_fytd character
 );
 
 /* KSM staff */
@@ -1142,11 +1141,9 @@ Cursor c_university_strategy Is
     Group By prospect_id;
 
 /* Definition of a KLC member */
-Cursor c_klc_history Is
+Cursor c_klc_history (fy_start_month In integer) Is
   Select
     substr(gift_club_end_date, 0, 4) As fiscal_year
-    , to_date(gift_club_start_date, 'yyyymmdd') As start_date
-    , to_date(gift_club_end_date, 'yyyymmdd') As end_date
     , tms_lvl.short_desc As level_desc
     , hh.id_number
     , hh.household_id
@@ -1158,6 +1155,12 @@ Cursor c_klc_history Is
     , hh.household_ksm_year
     , hh.household_masters_year
     , hh.household_program_group
+    -- FYTD indicator
+    , Case
+        When to_number(substr(gift_club_start_date, 0, 4)) < to_number(substr(gift_club_end_date, 0, 4))
+          And to_number(substr(gift_club_start_date, 4, 2)) < fy_start_month Then 'Y'
+        Else fytd_indicator(to_date(gift_club_start_date, 'yyyymmdd'))
+      End As klc_fytd
   From gift_clubs
   Inner Join table(tbl_entity_households_ksm) hh On hh.id_number = gift_clubs.gift_club_id_number
   Left Join nu_mem_v_tmsclublevel tms_lvl On tms_lvl.level_code = gift_clubs.school_code
@@ -2112,7 +2115,7 @@ Function tbl_klc_history
   klc t_klc_members;
   
   Begin
-    Open c_klc_history;
+    Open c_klc_history(fy_start_month);
       Fetch c_klc_history Bulk Collect Into klc;
     Close c_klc_history;
     For i in 1..(klc.count) Loop
