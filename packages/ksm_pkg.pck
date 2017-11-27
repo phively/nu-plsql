@@ -137,6 +137,8 @@ Type university_strategy Is Record (
 /* KLC member */
 Type klc_member Is Record (
   fiscal_year integer
+  , start_date date
+  , end_date date
   , level_desc varchar2(40)
   , id_number entity.id_number%type
   , household_id entity.id_number%type
@@ -1143,6 +1145,8 @@ Cursor c_university_strategy Is
 Cursor c_klc_history Is
   Select
     substr(gift_club_end_date, 0, 4) As fiscal_year
+    , to_date(gift_club_start_date, 'yyyymmdd') As start_date
+    , to_date(gift_club_end_date, 'yyyymmdd') As end_date
     , tms_lvl.short_desc As level_desc
     , hh.id_number
     , hh.household_id
