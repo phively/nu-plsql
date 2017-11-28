@@ -442,6 +442,24 @@ Function tbl_committee_gab
 Function tbl_committee_kac
   Return t_committee_members Pipelined;
 
+Function tbl_committee_KFN
+  Return t_committee_members Pipelined;
+  
+ Function tbl_committee_CorpGov
+  Return t_committee_members Pipelined;
+  
+ Function tbl_committee_GlobalWomenSummit
+  Return t_committee_members Pipelined;
+  
+ Function tbl_committee_DivSummit
+  Return t_committee_members Pipelined;
+  
+ Function tbl_committee_RealEstCouncil
+  Return t_committee_members Pipelined;
+  
+ Function tbl_committee_AMP
+  Return t_committee_members Pipelined;
+
 /*************************************************************************
 End of package
 *************************************************************************/
@@ -1643,6 +1661,12 @@ Private constant declarations
 /* Committees */
 committee_gab Constant committee.committee_code%type := 'U'; -- Kellogg Global Advisory Board committee code
 committee_kac Constant committee.committee_code%type := 'KACNA'; -- Kellogg Alumni Council committee code
+committee_KFN Constant committee.committee_code%type := 'KFN'; -- Kellogg Finance Network code
+committee_CorpGov Constant committee.committee_code%type := 'KCGN'; -- KSM Corporate Governance Network code
+committee_GlobalWomenSummit Constant committee.committee_code%type := 'KGWS'; -- KSM Global Women's Summit code
+committee_DivSummit Constant committee.committee_code%type := 'KCDO'; -- KSM chief Diversity Officer Summit code
+committee_RealEstCouncil Constant committee.committee_code%type := 'KREAC'; -- Real Estate Advisory Council code
+committee_AMP Constant committee.committee_code%type := 'KAMP'; -- AMP Advisory Council code
 
 /* Miscellaneous */
 fy_start_month Constant number := 9; -- fiscal start month, 9 = September
@@ -2283,6 +2307,84 @@ Function tbl_university_strategy
     
     Begin
       committees := committee_members (my_committee_cd => committee_kac);
+      For i in 1..committees.count Loop
+        Pipe row(committees(i));
+      End Loop;
+      Return;
+    End;
+
+  /* KFN */
+  Function tbl_committee_KFN
+    Return t_committee_members Pipelined As
+    committees t_committee_members;
+    
+    Begin
+      committees := committee_members (my_committee_cd => committee_KFN);
+      For i in 1..committees.count Loop
+        Pipe row(committees(i));
+      End Loop;
+      Return;
+    End;
+
+  /* CorpGov */
+  Function tbl_committee_CorpGov
+    Return t_committee_members Pipelined As
+    committees t_committee_members;
+    
+    Begin
+      committees := committee_members (my_committee_cd => committee_CorpGov);
+      For i in 1..committees.count Loop
+        Pipe row(committees(i));
+      End Loop;
+      Return;
+    End;
+    
+  /* GlobalWomenSummit */
+  Function tbl_committee_GlobalWomenSummit
+    Return t_committee_members Pipelined As
+    committees t_committee_members;
+    
+    Begin
+      committees := committee_members (my_committee_cd => committee_GlobalWomenSummit);
+      For i in 1..committees.count Loop
+        Pipe row(committees(i));
+      End Loop;
+      Return;
+    End;
+    
+  /* DivSummit */
+  Function tbl_committee_DivSummit
+    Return t_committee_members Pipelined As
+    committees t_committee_members;
+    
+    Begin
+      committees := committee_members (my_committee_cd => committee_DivSummit);
+      For i in 1..committees.count Loop
+        Pipe row(committees(i));
+      End Loop;
+      Return;
+    End;
+    
+  /* RealEstCouncil */
+  Function tbl_committee_RealEstCouncil
+    Return t_committee_members Pipelined As
+    committees t_committee_members;
+    
+    Begin
+      committees := committee_members (my_committee_cd => committee_RealEstCouncil);
+      For i in 1..committees.count Loop
+        Pipe row(committees(i));
+      End Loop;
+      Return;
+    End;
+
+  /* AMP */
+  Function tbl_committee_AMP
+    Return t_committee_members Pipelined As
+    committees t_committee_members;
+    
+    Begin
+      committees := committee_members (my_committee_cd => committee_AMP);
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
