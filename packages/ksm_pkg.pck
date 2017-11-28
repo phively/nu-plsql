@@ -448,7 +448,7 @@ Function tbl_committee_KFN
  Function tbl_committee_CorpGov
   Return t_committee_members Pipelined;
   
- Function tbl_committee_GlobalWomenSummit
+ Function tbl_committee_WomenSummit
   Return t_committee_members Pipelined;
   
  Function tbl_committee_DivSummit
@@ -1661,7 +1661,7 @@ committee_gab Constant committee.committee_code%type := 'U'; -- Kellogg Global A
 committee_kac Constant committee.committee_code%type := 'KACNA'; -- Kellogg Alumni Council committee code
 committee_KFN Constant committee.committee_code%type := 'KFN'; -- Kellogg Finance Network code
 committee_CorpGov Constant committee.committee_code%type := 'KCGN'; -- KSM Corporate Governance Network code
-committee_GlobalWomenSummit Constant committee.committee_code%type := 'KGWS'; -- KSM Global Women's Summit code
+committee_WomenSummit Constant committee.committee_code%type := 'KGWS'; -- KSM Global Women's Summit code
 committee_DivSummit Constant committee.committee_code%type := 'KCDO'; -- KSM chief Diversity Officer Summit code
 committee_RealEstCouncil Constant committee.committee_code%type := 'KREAC'; -- Real Estate Advisory Council code
 committee_AMP Constant committee.committee_code%type := 'KAMP'; -- AMP Advisory Council code
@@ -2338,12 +2338,12 @@ Function tbl_university_strategy
     End;
     
   /* GlobalWomenSummit */
-  Function tbl_committee_GlobalWomenSummit
+  Function tbl_committee_WomenSummit
     Return t_committee_members Pipelined As
     committees t_committee_members;
     
     Begin
-      committees := committee_members (my_committee_cd => committee_GlobalWomenSummit);
+      committees := committee_members (my_committee_cd => committee_WomenSummit);
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
