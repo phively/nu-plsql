@@ -1134,16 +1134,14 @@ Cursor c_university_strategy Is
       , min(task_description) keep(dense_rank First Order By sched_date Asc, task_id Asc) As university_strategy
       , min(sched_date) keep(dense_rank First Order By sched_date Asc, task_id Asc) As strategy_sched_date
     From task
-    Cross Join v_current_calendar cal
     Where task_code = 'ST' -- University Overall Strategy
-      And trunc(sched_date) >= cal.today -- Scheduled in the future
       And task_status_code Not In (4, 5) -- Not Completed (4) or Cancelled (5) status
     Group By prospect_id;
 
 /* Definition of a KLC member */
 Cursor c_klc_history (fy_start_month In integer) Is
   Select
-    substr(gift_club_end_date, 0, 4) As fiscal_year
+    extract(year from to_date(gift_club_end_date, 'yyyymmdd')) As fiscal_year
     , tms_lvl.short_desc As level_desc
     , hh.id_number
     , hh.household_id
@@ -1157,8 +1155,8 @@ Cursor c_klc_history (fy_start_month In integer) Is
     , hh.household_program_group
     -- FYTD indicator
     , Case
-        When to_number(substr(gift_club_start_date, 0, 4)) < to_number(substr(gift_club_end_date, 0, 4))
-          And to_number(substr(gift_club_start_date, 4, 2)) < fy_start_month Then 'Y'
+        When extract(year from to_date(gift_club_start_date, 'yyyymmdd')) < extract(year from to_date(gift_club_end_date, 'yyyymmdd'))
+          And extract(month from to_date(gift_club_start_date, 'yyyymmdd')) < fy_start_month Then 'Y'
         Else fytd_indicator(to_date(gift_club_start_date, 'yyyymmdd'))
       End As klc_fytd
   From gift_clubs
