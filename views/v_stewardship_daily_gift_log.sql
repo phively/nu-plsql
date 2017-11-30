@@ -20,6 +20,12 @@ ksm_deg As ( -- Defined in ksm_pkg
   From table(rpt_pbh634.ksm_pkg.tbl_entity_degrees_concat_ksm) ksm
 ),
 
+/*KSM Current Use */
+ksm_cu AS (
+  Select *
+  From table(rpt_pbh634.ksm_pkg.tbl_alloc_curr_use_ksm)
+),
+
 /* GAB indicator */
 gab As ( -- GAB membership defined by ksm_pkg
   Select gab.id_number, trim(gab.status || ' ' || gab.role) As gab_role
@@ -262,6 +268,7 @@ Select Distinct
   gft.legal_amount,
   gft.alloc_short_name,
   allocation.long_name As alloc_long_name,
+  CASE WHEN cu.status_code IS NOT NULL THEN 'Y' END AS cru_indicator,
   gft.alloc_purpose_desc,
   Case
     When lower(gft.alloc_short_name) Like '%scholarship%' Or lower(gft.alloc_purpose_desc) Like '%scholarship%' Then 'Y'
@@ -270,9 +277,7 @@ Select Distinct
   appeal_header.description As appeal_desc,
   -- Prospect fields
   prs.prospect_manager,
-  
   prs.officer_rating,
-  
   prs.evaluation_rating,
   prs.team,
   -- Dates
@@ -280,6 +285,8 @@ Select Distinct
 -- Tables start here
 -- Gift reporting table
 From nu_gft_trp_gifttrans gft
+LEFT JOIN ksm_cu cu
+ ON gft.allocation_code = cu.allocation_code
 -- Calendar objects
 Cross Join dts
 -- Only include desired receipt numbers
