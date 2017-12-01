@@ -207,6 +207,11 @@ dts As (
     , nvl(klc_years.klc_years, ' ') As klc_years
     , to_char(first_gift.first_ksm_gift_dt, 'mm/dd/yyyy') As first_ksm_gift_dt
     , stw_loyal.loyal_this_year, stw_loyal.loyal_last_year
+    -- Rank attributed donors for each receipt number/allocation combination
+    , rank() Over (
+        Partition By gft.tx_number, gft.alloc_short_name
+        Order By gft.tx_number Asc, gft.alloc_short_name Asc, gft.tx_sequence Asc
+      ) As attr_donor_rank
   From nu_gft_trp_gifttrans gft
   -- Only people attributed on the KSM receipts
   Inner Join trans On trans.tx_number = gft.tx_number And trans.tx_sequence = gft.tx_sequence
@@ -329,6 +334,8 @@ Select Distinct
   , prs.team
   -- Dates
   , dts.curr_fy
+  -- Associated donor 2 information
+  , dnr2.id_number As assoc2_id_number
 -- Tables start here
 -- Gift reporting table
 From nu_gft_trp_gifttrans gft
@@ -348,6 +355,9 @@ Inner Join tms_trans On tms_trans.transaction_type_code = gft.transaction_type
 -- Associated donor fields
 Inner Join assoc_concat assoc On assoc.tx_number = gft.tx_number
   And assoc.alloc_short_name = gft.alloc_short_name
+Left Join assoc_dnrs dnr2 On dnr2.tx_number = gft.tx_number
+  And dnr2.alloc_short_name = gft.alloc_short_name
+  And dnr2.attr_donor_rank = 2
 -- Salutations
 Left Join dean_sal On dean_sal.id_number = gft.id_number
 Left Join dean_sal jdean_sal On jdean_sal.id_number = entity.spouse_id_number
