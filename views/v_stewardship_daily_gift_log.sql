@@ -1,4 +1,4 @@
---Create Or Replace View rpt_pbh634.v_stewardship_daily_gift_log As
+Create Or Replace View rpt_pbh634.v_stewardship_daily_gift_log As
 
 With
 
