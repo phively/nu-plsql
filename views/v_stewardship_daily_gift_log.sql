@@ -336,6 +336,19 @@ Select Distinct
   , dts.curr_fy
   -- Associated donor 2 information
   , dnr2.id_number As assoc2_id_number
+  , entitydnr2.pref_mail_name AS assoc2_pref_mail_name
+  , entitydnr2.pref_jnt_mail_name1 AS assoc2_pref_jnt_mail_name1
+  , entitydnr2.pref_jnt_mail_name2 AS assoc2_pref_jnt_mail_name1
+  , addrdnr2.line_1 AS assoc2_line_1
+  , addrdnr2.line_2 AS assoc2_line_2
+  , addrdnr2.line_3 AS assoc2_line_3
+  , addrdnr2.line_4 AS assoc2_line_4
+  , addrdnr2.line_5 AS assoc2_line_5
+  , addrdnr2.line_6 AS assoc2_line_6
+  , addrdnr2.line_7 AS assoc2_line_7
+  , addrdnr2.line_8 AS assoc2_line_8
+  -- Per Lola, got rid of this because she already has it in column E
+  --, ksm_deg2.degrees_concat AS assoc2_degrees_concat
 -- Tables start here
 -- Gift reporting table
 From nu_gft_trp_gifttrans gft
@@ -380,5 +393,9 @@ Left Join addr On addr.id_number = gft.id_number
 Left Join nu_prs_trp_prospect prs On prs.id_number = gft.id_number
 -- Appeal code definitions
 Left Join appeal_header On appeal_header.appeal_code = gft.appeal_code
+--Associated donor 2 address
+LEFT JOIN addr addrdnr2 ON addrdnr2.id_number = dnr2.id_number
+LEFT Join entity entitydnr2 On entitydnr2.id_number = dnr2.id_number
+Left Join ksm_deg ksm_deg2 On ksm_deg2.id_number = dnr2.id_number
 -- Conditions
 Where gft.legal_amount > 0 -- Only legal donors
