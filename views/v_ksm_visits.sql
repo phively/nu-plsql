@@ -16,6 +16,7 @@ tms_cpurp As (
   From v_current_calendar
 )
 
+/* Main query */
 Select
   contact_rpt_credit.id_number As credited
   , staff.report_name As credited_name
@@ -28,7 +29,8 @@ Select
   , contact_report.prospect_id
   , contact_report.contact_date
   , rpt_pbh634.ksm_pkg.get_fiscal_year(contact_report.contact_date) As fiscal_year
-  , contact_report.description, dbms_lob.substr(contact_report.summary, 2000, 1) As summary
+  , contact_report.description
+  , dbms_lob.substr(contact_report.summary, 2000, 1) As summary
   -- Prospect fields
   , prs.officer_rating
   , prs.evaluation_rating
