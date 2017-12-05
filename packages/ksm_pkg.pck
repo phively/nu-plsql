@@ -357,6 +357,11 @@ Function get_gift_source_donor_ksm(
   , debug In boolean Default FALSE -- if TRUE, debug output is printed via dbms_output.put_line()
 ) Return varchar2; -- entity id_number
 
+/* Take entity ID and return officer or evaluation rating bin from nu_prs_trp_prospect */
+Function get_prospect_rating_numeric(
+  id In varchar2
+) Return number;
+
 /*************************************************************************
 Public pipelined functions declarations
 *************************************************************************/
@@ -1915,6 +1920,61 @@ Function get_entity_address(id In varchar2, field In varchar2, debug In Boolean 
     Where id_number = id And xsequence = xseq;
     
     Return(master_addr);
+  End;
+
+/*  */
+Function get_prospect_rating_numeric(id In varchar2)
+  Return number Is
+  -- Delcarations
+  numeric_rating number;
+  
+  Begin
+    -- Convert officer rating or evaluation rating into numeric values
+    Select
+      Case
+        -- If officer rating exists
+        When officer_rating <> ' ' Then
+          Case
+            When trim(substr(officer_rating, 1, 2)) = 'A1' Then 100
+            When trim(substr(officer_rating, 1, 2)) = 'A2' Then 50
+            When trim(substr(officer_rating, 1, 2)) = 'A3' Then 25
+            When trim(substr(officer_rating, 1, 2)) = 'A4' Then 10
+            When trim(substr(officer_rating, 1, 2)) = 'A5' Then 5
+            When trim(substr(officer_rating, 1, 2)) = 'A6' Then 2
+            When trim(substr(officer_rating, 1, 2)) = 'A7' Then 1
+            When trim(substr(officer_rating, 1, 2)) = 'B' Then 0.5
+            When trim(substr(officer_rating, 1, 2)) = 'C' Then 0.25
+            When trim(substr(officer_rating, 1, 2)) = 'D' Then 0.1
+            When trim(substr(officer_rating, 1, 2)) = 'E' Then 0.05
+            When trim(substr(officer_rating, 1, 2)) = 'F' Then 0.025
+            When trim(substr(officer_rating, 1, 2)) = 'G' Then 0.01
+            Else 0
+          End
+        -- Else use evaluation rating
+        When evaluation_rating <> ' ' Then
+          Case
+            When trim(substr(evaluation_rating, 1, 2)) = 'A1' Then 100
+            When trim(substr(evaluation_rating, 1, 2)) = 'A2' Then 50
+            When trim(substr(evaluation_rating, 1, 2)) = 'A3' Then 25
+            When trim(substr(evaluation_rating, 1, 2)) = 'A4' Then 10
+            When trim(substr(evaluation_rating, 1, 2)) = 'A5' Then 5
+            When trim(substr(evaluation_rating, 1, 2)) = 'A6' Then 2
+            When trim(substr(evaluation_rating, 1, 2)) = 'A7' Then 1
+            When trim(substr(evaluation_rating, 1, 2)) = 'B' Then 0.5
+            When trim(substr(evaluation_rating, 1, 2)) = 'C' Then 0.25
+            When trim(substr(evaluation_rating, 1, 2)) = 'D' Then 0.1
+            When trim(substr(evaluation_rating, 1, 2)) = 'E' Then 0.05
+            When trim(substr(evaluation_rating, 1, 2)) = 'F' Then 0.025
+            When trim(substr(evaluation_rating, 1, 2)) = 'G' Then 0.01
+            Else 0 
+          End
+        Else 0
+      End
+    Into numeric_rating
+    From nu_prs_trp_prospect
+    Where id_number = id;
+  
+    Return numeric_rating;
   End;
 
 /* Takes a receipt number and returns the ID number of the entity who should receive primary Kellogg gift credit.
