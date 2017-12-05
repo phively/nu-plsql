@@ -154,37 +154,10 @@ Select
   , Case When household_id = hh.id_number Then 'Y' End As hh_primary
   -- Rating bin
   , Case
-      -- If officer rating exists
-      When officer_rating <> ' ' Then
-        Case
-          When trim(substr(officer_rating, 1, 2)) = 'A1' Then 10
-          When trim(substr(officer_rating, 1, 2)) = 'A2' Then 10
-          When trim(substr(officer_rating, 1, 2)) = 'A3' Then 10
-          When trim(substr(officer_rating, 1, 2)) = 'A4' Then 10
-          When trim(substr(officer_rating, 1, 2)) = 'A5' Then 5
-          When trim(substr(officer_rating, 1, 2)) = 'A6' Then 2
-          When trim(substr(officer_rating, 1, 2)) = 'A7' Then 1
-          When trim(substr(officer_rating, 1, 2)) = 'B' Then 0.5
-          When trim(substr(officer_rating, 1, 2)) = 'C' Then 0.1
-          When trim(substr(officer_rating, 1, 2)) = 'D' Then 0.1
-          Else 0
-        End
-      -- Else use evaluation rating
-      When evaluation_rating <> ' ' Then
-        Case
-          When trim(substr(evaluation_rating, 1, 2)) = 'A1' Then 10
-          When trim(substr(evaluation_rating, 1, 2)) = 'A2' Then 10
-          When trim(substr(evaluation_rating, 1, 2)) = 'A3' Then 10
-          When trim(substr(evaluation_rating, 1, 2)) = 'A4' Then 10
-          When trim(substr(evaluation_rating, 1, 2)) = 'A5' Then 5
-          When trim(substr(evaluation_rating, 1, 2)) = 'A6' Then 2
-          When trim(substr(evaluation_rating, 1, 2)) = 'A7' Then 1
-          When trim(substr(evaluation_rating, 1, 2)) = 'B' Then 0.5
-          When trim(substr(evaluation_rating, 1, 2)) = 'C' Then 0.1
-          When trim(substr(evaluation_rating, 1, 2)) = 'D' Then 0.1
-          Else 0 
-        End
-      Else 0
+      When rpt_pbh634.ksm_pkg.get_prospect_rating_numeric(prs.id_number) >= 10 Then 10
+      When rpt_pbh634.ksm_pkg.get_prospect_rating_numeric(prs.id_number) = 0.25 Then 0.1
+      When rpt_pbh634.ksm_pkg.get_prospect_rating_numeric(prs.id_number) < 0.1 Then 0
+      Else rpt_pbh634.ksm_pkg.get_prospect_rating_numeric(prs.id_number)
     End As rating_bin
   -- Which group?
   , Case
