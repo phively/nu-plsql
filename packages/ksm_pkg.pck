@@ -1443,7 +1443,10 @@ Cursor c_gift_credit_ksm Is
         , 'P' As tx_gypm_ind
         , NULL As payment_type
         , pledge.pledge_allocation_name
-        , ksm_allocs.short_name
+        , Case
+            When ksm_allocs.short_name Is Not Null Then ksm_allocs.short_name
+            When ksm_allocs.short_name Is Null Then allocation.short_name
+          End As short_name
         , ksm_allocs.af_flag
         , cru_flag
         , pledge_comment
@@ -1457,6 +1460,8 @@ Cursor c_gift_credit_ksm Is
       From pledge
       -- Trans type descriptions
       Inner Join tms_trans On tms_trans.transaction_type_code = pledge.pledge_pledge_type
+      -- Allocation name backup
+      Inner Join allocation On allocation.allocation_code = pledge.pledge_allocation_name
       -- Discounted pledge amounts where applicable
       Left Join plg_discount plgd On plgd.pledge_number = pledge.pledge_pledge_number
         And plgd.pledge_sequence = pledge.pledge_sequence
