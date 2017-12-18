@@ -1927,7 +1927,7 @@ Function get_entity_address(id In varchar2, field In varchar2, debug In Boolean 
     Return(master_addr);
   End;
 
-/*  */
+/* Convert rating to numeric amount */
 Function get_prospect_rating_numeric(id In varchar2)
   Return number Is
   -- Delcarations
@@ -1935,7 +1935,7 @@ Function get_prospect_rating_numeric(id In varchar2)
   
   Begin
     -- Convert officer rating or evaluation rating into numeric values
-    Select
+    Select Distinct
       Case
         -- If officer rating exists
         When officer_rating <> ' ' Then
