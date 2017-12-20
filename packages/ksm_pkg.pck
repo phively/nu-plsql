@@ -180,6 +180,16 @@ Type employee Is Record (
   , team nu_prs_trp_prospect.team%type
 );
 
+Type prospect_categories Is Record (
+  prospect_id prospect.prospect_id%type
+  , primary_ind prospect_entity.primary_ind%type
+  , id_number entity.id_number%type
+  , report_name entity.report_name%type
+  , person_or_org entity.person_or_org%type
+  , prospect_category_code tms_prospect_category.prospect_category_code%type
+  , prospect_category tms_prospect_category.short_desc%type
+);
+
 /* Discounted pledge amounts */
 Type plg_disc Is Record (
   pledge_number pledge.pledge_pledge_number%type
@@ -292,6 +302,7 @@ Type t_university_strategy Is Table of university_strategy;
 Type t_klc_members Is Table Of klc_member;
 Type t_ksm_staff Is Table Of ksm_staff;
 Type t_employees Is Table Of employee;
+Type t_prospect_categories Is Table Of prospect_categories;
 Type t_plg_disc Is Table Of plg_disc;
 Type t_trans_entity Is Table Of trans_entity;
 Type t_trans_household Is Table Of trans_household;
@@ -406,6 +417,15 @@ Function tbl_entity_degrees_concat_ksm
 Function tbl_entity_households_ksm
   Return t_households Pipelined;
   
+/* Return pipelined table of company employees with Kellogg degrees
+   N.B. uses matches pattern, user beware! */
+Function tbl_entity_employees_ksm (company In varchar2)
+  Return t_employees Pipelined;
+
+/* Return pipelined table of Top 150/300 KSM prospects */
+Function tbl_entity_top_150_300
+  Return t_prospect_categories Pipelined;
+  
 /* Return pipelined table of KLC members */
 Function tbl_klc_history
   Return t_klc_members Pipelined;
@@ -413,11 +433,6 @@ Function tbl_klc_history
 /* Return pipelined table of frontline KSM staff */
 Function tbl_frontline_ksm_staff
   Return t_ksm_staff Pipelined;
-
-/* Return pipelined table of company employees with Kellogg degrees
-   N.B. uses matches pattern, user beware! */
-Function tbl_entity_employees_ksm (company In varchar2)
-  Return t_employees Pipelined;
 
 /* Returns pipelined table of Kellogg transactions with household info */
 Function plg_discount
@@ -1149,17 +1164,34 @@ Cursor c_entity_employees_ksm (company In varchar2) Is
     lower(employ.employer_name) Like lower('%' || company || '%')
     Or lower(prs.employer_name1) Like lower('%' || company || '%');
 
+/* Definition of top 150/300 KSM campaign prospects */
+Cursor c_entity_top_150_300 Is
+  Select
+    pc.prospect_id
+    , pe.primary_ind
+    , pe.id_number
+    , entity.report_name
+    , entity.person_or_org
+    , pc.prospect_category_code
+    , tms_pc.short_desc As prospect_category
+  From prospect_entity pe
+  Inner Join prospect_category pc On pc.prospect_id = pe.prospect_id
+  Inner Join entity On pe.id_number = entity.id_number
+  Inner Join tms_prospect_category tms_pc On tms_pc.prospect_category_code = pc.prospect_category_code
+  Where pc.prospect_category_code In ('KT1', 'KT3')
+  Order By prospect_id Asc, pe.primary_ind Desc;
+
 /* Definition of university strategy */
 Cursor c_university_strategy Is
-    Select
-      prospect_id
-      -- Pull first upcoming University Overall Strategy
-      , min(task_description) keep(dense_rank First Order By sched_date Asc, task_id Asc) As university_strategy
-      , min(sched_date) keep(dense_rank First Order By sched_date Asc, task_id Asc) As strategy_sched_date
-    From task
-    Where task_code = 'ST' -- University Overall Strategy
-      And task_status_code Not In (4, 5) -- Not Completed (4) or Cancelled (5) status
-    Group By prospect_id;
+  Select
+    prospect_id
+    -- Pull first upcoming University Overall Strategy
+    , min(task_description) keep(dense_rank First Order By sched_date Asc, task_id Asc) As university_strategy
+    , min(sched_date) keep(dense_rank First Order By sched_date Asc, task_id Asc) As strategy_sched_date
+  From task
+  Where task_code = 'ST' -- University Overall Strategy
+    And task_status_code Not In (4, 5) -- Not Completed (4) or Cancelled (5) status
+  Group By prospect_id;
 
 /* Definition of a KLC member */
 Cursor c_klc_history (fy_start_month In integer) Is
@@ -2190,6 +2222,24 @@ Function tbl_entity_employees_ksm (company In varchar2)
     Close c_entity_employees_ksm;
     For i in 1..(employees.count) Loop
       Pipe row(employees(i));
+    End Loop;
+    Return;
+  End;
+
+/* Pipelined function returning Kellogg top 150/300 Campaign prospects
+   Coded in Prospect Categories; see cursor for definition 
+   2017-12-20 */
+Function tbl_entity_top_150_300
+  Return t_prospect_categories Pipelined As
+  -- Declarations
+  prospects t_prospect_categories;
+  
+  Begin
+    Open c_entity_top_150_300;
+      Fetch c_entity_top_150_300 Bulk Collect Into prospects;
+    Close c_entity_top_150_300;
+    For i in 1..(prospects.count) Loop
+      Pipe row(prospects(i));
     End Loop;
     Return;
   End;
