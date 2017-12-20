@@ -1179,7 +1179,7 @@ Cursor c_entity_top_150_300 Is
   Inner Join entity On pe.id_number = entity.id_number
   Inner Join tms_prospect_category tms_pc On tms_pc.prospect_category_code = pc.prospect_category_code
   Where pc.prospect_category_code In ('KT1', 'KT3')
-  Order By prospect_id Asc, pe.primary_ind Desc;
+  Order By pe.prospect_id Asc, pe.primary_ind Desc;
 
 /* Definition of university strategy */
 Cursor c_university_strategy Is
