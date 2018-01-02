@@ -507,12 +507,12 @@ Cursor c_alloc_annual_fund_ksm Is
     -- Include additional fields
     Or allocation_code In (
       /************ UPDATE BELOW HERE ************/
-      '3203003665401GFT', -- Expendable Excellence Grant (Flanagan)
-      '3203004227201GFT', -- Expendable Excellence Grant (Chai)
-      '3203000861201GFT', -- Real Estate Conference
-      '3203004707901GFT', -- GIM Trip Scholarship (Samuels)
-      '3203002954201GFT', -- KSM Student Club Support
-      '3303001899301GFT' -- KSM Gift-In-Kind
+        '3203003665401GFT' -- Expendable Excellence Grant (Flanagan)
+      , '3203004227201GFT' -- Expendable Excellence Grant (Chai)
+      , '3203000861201GFT' -- Real Estate Conference
+      , '3203004707901GFT' -- GIM Trip Scholarship (Samuels)
+      , '3203002954201GFT' -- KSM Student Club Support
+      , '3303001899301GFT' -- KSM Gift-In-Kind
       /************ UPDATE ABOVE HERE ************/
     );
 
@@ -542,7 +542,7 @@ Cursor c_frontline_ksm_staff Is
     Union All Select '0000776709', NULL From DUAL -- Nasatir
     Union All Select '0000732336', NULL From DUAL -- O'Brien
     Union All Select '0000760399', NULL From DUAL -- Guynn
-    Union All Select '0000772350', NULL From DUAL -- Emmick
+    Union All Select '0000772350', 'Y' From DUAL -- Emmick (former)
     Union All Select '0000784241', NULL From DUAL -- Lagnese
     /************ UPDATE ABOVE HERE ************/
   )
