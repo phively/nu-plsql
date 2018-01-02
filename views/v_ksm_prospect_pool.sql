@@ -132,7 +132,7 @@ ksm_deg As (
 )
 
 -- Main query
-Select
+Select Distinct
   hh.*
   , prs.business_title
   , trim(prs.employer_name1 || ' ' || prs.employer_name2) As employer_name
