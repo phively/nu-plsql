@@ -20,6 +20,8 @@ Select
   , contact_report.id_number
   , contact_report.contacted_name
   , contact_report.prospect_id
+  , prospect.prospect_name
+  , prospect.prospect_name_sort
   , contact_report.contact_date
   , rpt_pbh634.ksm_pkg.get_fiscal_year(contact_report.contact_date) As fiscal_year
   , contact_report.description
@@ -29,6 +31,10 @@ Select
   , prs.evaluation_rating
   , strat.university_strategy
   -- Custom variables
+  , Case
+      When tms_ctype.contact_type In ('A', 'E') Then 'Attempted, E-mail, or Social'
+      Else tms_ctype.short_desc
+    End As contact_type_category
   , Case When contact_report.contact_purpose_code = '1' Then 'Qualification' Else 'Visit' End As visit_type
   , Case
       When rpt_pbh634.ksm_pkg.get_prospect_rating_numeric(prs.id_number) >= 10 Then 10
@@ -44,5 +50,6 @@ Inner Join tms_contact_rpt_purpose tms_cpurp On tms_cpurp.contact_purpose_code =
 Inner Join tms_contact_rpt_type tms_ctype On tms_ctype.contact_type = contact_report.contact_type
 Inner Join nu_prs_trp_prospect prs On prs.id_number = contact_report.id_number
 Inner Join table(ksm_pkg.tbl_frontline_ksm_staff) staff On staff.id_number = contact_rpt_credit.id_number
+Left Join prospect On prospect.prospect_id = prs.prospect_id
 Left Join table(ksm_pkg.tbl_university_strategy) strat On strat.prospect_id = contact_report.prospect_id
 Where contact_report.contact_date Between cal.prev_fy_start And cal.yesterday

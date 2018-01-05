@@ -143,6 +143,8 @@ Select Distinct
   , prs.business_state
   , prs.business_country
   , prs.prospect_id
+  , prospect.prospect_name
+  , prospect.prospect_name_sort
   , dq.dq
   , perm_stew.ps As permanent_stewardship
   , spec_hnd.DNS
@@ -200,6 +202,7 @@ Select Distinct
 From rpt_pbh634.v_entity_ksm_households hh
 Inner Join ksm_prs_ids On ksm_prs_ids.id_number = hh.id_number -- Must be a valid Kellogg entity
 Left Join nu_prs_trp_prospect prs On prs.id_number = hh.id_number
+Left Join prospect On prospect.prospect_id = prs.prospect_id
 Left Join ksm_150_300 On ksm_150_300.id_number = hh.id_number
 Left Join entity contact_auth On contact_auth.id_number = prs.contact_author
 Left Join assign_conc On assign_conc.prospect_id = prs.prospect_id
