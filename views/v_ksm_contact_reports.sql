@@ -1,13 +1,5 @@
 Create Or Replace View v_ksm_contact_reports As
 
-With
-
-/* Current calendar view */
-cal As (
-  Select *
-  From v_current_calendar
-)
-
 /* Main query */
 Select
   contact_rpt_credit.id_number As credited
@@ -43,8 +35,13 @@ Select
       Else rpt_pbh634.ksm_pkg.get_prospect_rating_numeric(prs.id_number)
     End As rating_bin
   , cal.curr_fy
+  , cal.prev_fy_start
+  , cal.curr_fy_start
+  , cal.next_fy_start
+  , cal.yesterday
+  , cal.ninety_days_ago
 From contact_report
-Cross Join cal
+Cross Join v_current_calendar cal
 Inner Join contact_rpt_credit On contact_rpt_credit.report_id = contact_report.report_id
 Inner Join tms_contact_rpt_purpose tms_cpurp On tms_cpurp.contact_purpose_code = contact_report.contact_purpose_code
 Inner Join tms_contact_rpt_type tms_ctype On tms_ctype.contact_type = contact_report.contact_type
