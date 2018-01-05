@@ -156,17 +156,27 @@ Select
   , ksm_amts.ksm_or_univ_ask
   , ksm_amts.ksm_or_univ_orig_ask
   , ksm_amts.ksm_or_univ_anticipated
-  -- Use anticipated amount if available, else ask amount
-  , Case When ksm_amts.ksm_or_univ_anticipated > 0 Then ksm_amts.ksm_or_univ_anticipated Else ksm_amts.ksm_or_univ_ask End As final_anticipated_or_ask_amt
+  -- Anticipated or ask amount depending on stage and data quality
+  , Case
+      -- Verbal uses anticipated amount if available
+      When proposal.proposal_status_code = '5' And ksm_amts.ksm_or_univ_anticipated > 0 Then ksm_amts.ksm_or_univ_anticipated
+      -- Otherwise use ask amount
+      Else ksm_amts.ksm_or_univ_ask
+    End As final_anticipated_or_ask_amt
   -- Anticipated bin: use anticipated amount if available, otherwise fall back to ask amount
   , Case
-      When ksm_or_univ_anticipated >= 10000000 Then 10
-      When ksm_or_univ_anticipated >=  5000000 Then 5
-      When ksm_or_univ_anticipated >=  2000000 Then 2
-      When ksm_or_univ_anticipated >=  1000000 Then 1
-      When ksm_or_univ_anticipated >=   500000 Then 0.5
-      When ksm_or_univ_anticipated >=   100000 Then 0.1
-      When ksm_or_univ_anticipated >         0 Then 0 -- Not an error, should be > not >= so we keep going if anticipated is 0
+      -- Verbal uses anticipated amount if available
+      When proposal.proposal_status_code = '5' And ksm_or_univ_anticipated > 0 Then
+        Case
+          When ksm_or_univ_anticipated >= 10000000 Then 10
+          When ksm_or_univ_anticipated >=  5000000 Then 5
+          When ksm_or_univ_anticipated >=  2000000 Then 2
+          When ksm_or_univ_anticipated >=  1000000 Then 1
+          When ksm_or_univ_anticipated >=   500000 Then 0.5
+          When ksm_or_univ_anticipated >=   100000 Then 0.1
+          Else 0
+        End
+      -- Otherwise use the ask amount
       When ksm_or_univ_ask         >= 10000000 Then 10
       When ksm_or_univ_ask         >=  5000000 Then 5
       When ksm_or_univ_ask         >=  2000000 Then 2
