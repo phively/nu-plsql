@@ -253,6 +253,7 @@ Select Distinct
   -- Entity identifiers
   , gft.id_number
   , entity.pref_mail_name
+  , entity.report_name
   -- Associated donors
   , assoc.assoc_donors
   , Case When trim(assoc.assoc_degrees) <> ';' Then trim(assoc.assoc_degrees) End As assoc_degrees
@@ -338,7 +339,7 @@ Select Distinct
   , dnr2.id_number As assoc2_id_number
   , entitydnr2.pref_mail_name AS assoc2_pref_mail_name
   , entitydnr2.pref_jnt_mail_name1 AS assoc2_pref_jnt_mail_name1
-  , entitydnr2.pref_jnt_mail_name2 AS assoc2_pref_jnt_mail_name1
+  , entitydnr2.pref_jnt_mail_name2 AS assoc2_pref_jnt_mail_name2
   , addrdnr2.line_1 AS assoc2_line_1
   , addrdnr2.line_2 AS assoc2_line_2
   , addrdnr2.line_3 AS assoc2_line_3
