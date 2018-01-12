@@ -145,6 +145,8 @@ Select Distinct
   , prs.prospect_id
   , prospect.prospect_name
   , prospect.prospect_name_sort
+  , strat.university_strategy
+  , strat.strategy_sched_date
   , dq.dq
   , perm_stew.ps As permanent_stewardship
   , spec_hnd.DNS
@@ -210,3 +212,4 @@ Left Join dq On dq.id_number = hh.id_number
 Left Join perm_stew On perm_stew.id_number = hh.id_number
 Left Join spec_hnd On spec_hnd.id_number = hh.id_number
 Left Join uor On uor.prospect_id = prs.prospect_id
+Left Join table(rpt_pbh634.ksm_pkg.tbl_university_strategy) strat On strat.prospect_id = prs.prospect_id
