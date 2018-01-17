@@ -161,6 +161,18 @@ Type ksm_staff Is Record (
   , employer employment.employer_unit%type
 );
 
+/* NU ARD current/past staff */
+Type nu_ard_staff Is Record (
+  id_number employment.id_number%type
+  , report_name entity.report_name%type
+  , job_title employment.job_title%type
+  , employer_unit employment.employer_unit%type
+  , job_status_code employment.job_status_code%type
+  , primary_emp_ind employment.primary_emp_ind%type
+  , start_dt employment.start_dt%type
+  , stop_dt employment.stop_dt%type
+);
+
 /* Employee record type for company queries */
 Type employee Is Record (
   id_number entity.id_number%type
@@ -302,6 +314,7 @@ Type t_src_donors Is Table Of src_donor;
 Type t_university_strategy Is Table of university_strategy;
 Type t_klc_members Is Table Of klc_member;
 Type t_ksm_staff Is Table Of ksm_staff;
+Type t_nu_ard_staff Is Table Of nu_ard_staff;
 Type t_employees Is Table Of employee;
 Type t_prospect_categories Is Table Of prospect_categories;
 Type t_plg_disc Is Table Of plg_disc;
@@ -435,6 +448,10 @@ Function tbl_klc_history
 Function tbl_frontline_ksm_staff
   Return t_ksm_staff Pipelined;
 
+/* Return pipelined table of current and past NU ARD staff, with most recent NU job */
+Function tbl_nu_ard_staff
+  Return t_nu_ard_staff Pipelined;
+
 /* Returns pipelined table of Kellogg transactions with household info */
 Function plg_discount
   Return t_plg_disc Pipelined;
@@ -495,7 +512,7 @@ Private cursor tables -- data definitions; update indicated sections as needed
 
 /* Definition of current and historical Kellogg Annual Fund allocations
    2017-02-09 */
-Cursor c_alloc_annual_fund_ksm Is
+Cursor ct_alloc_annual_fund_ksm Is
   Select Distinct
     allocation_code
     , status_code
@@ -519,7 +536,7 @@ Cursor c_alloc_annual_fund_ksm Is
 
 /* Definition of frontline gift officers
    2017-09-26 */
-Cursor c_frontline_ksm_staff Is
+Cursor ct_frontline_ksm_staff Is
   With
   -- Staff list; update as necessary with new IDs
   staff As (
@@ -1195,6 +1212,67 @@ Cursor c_university_strategy Is
   Where task_code = 'ST' -- University Overall Strategy
     And task_status_code Not In (4, 5) -- Not Completed (4) or Cancelled (5) status
   Group By prospect_id;
+
+/* Definition of historical NU ARD employees */
+Cursor c_nu_ard_staff Is
+  With
+  -- NU ARD employment
+  nuemploy As (
+    Select
+      employment.id_number
+      , entity.report_name
+      , xsequence
+      , row_number() Over(Partition By employment.id_number Order By primary_emp_ind Desc, job_status_code Asc, xsequence Desc) As nbr
+      , job_status_code
+      , primary_emp_ind
+      , job_title
+      , employer_id_number
+      , employer_unit
+      , trunc(employment.start_dt) As start_dt
+      , trunc(employment.stop_dt) As stop_dt
+      , trunc(employment.date_added) As date_added
+      , trunc(employment.date_modified) As date_modified
+    From employment
+    Inner Join entity On entity.id_number = employment.id_number
+    Where employer_id_number = '0000439808' -- Northwestern University
+      And employ_relat_code Not In ('ZZ', 'MA') -- Exclude historical and matching gift employers
+  )
+  -- Last NU job
+  , last_nuemploy As (
+    Select
+      id_number
+      , report_name
+      , job_title
+      , employer_unit
+      , job_status_code
+      , primary_emp_ind
+      , start_dt
+      , stop_dt
+      , date_added
+      , date_modified
+    From nuemploy
+    Where nbr = 1
+  )
+  -- Main query
+  Select Distinct
+    nuemploy.id_number
+    , nuemploy.report_name
+    , last_nuemploy.job_title
+    , last_nuemploy.employer_unit
+    , last_nuemploy.job_status_code
+    , last_nuemploy.primary_emp_ind
+    , last_nuemploy.start_dt
+    , last_nuemploy.stop_dt
+  From nuemploy
+  Inner Join last_nuemploy On last_nuemploy.id_number = nuemploy.id_number
+  Where 
+    nuemploy.id_number In ('0000768730', '0000299349') -- HG, SB
+    -- Ever worked for University-wide ARD
+    Or lower(nuemploy.employer_unit) Like '%alumni%'
+    Or lower(nuemploy.employer_unit) Like '%development%'
+    Or lower(nuemploy.employer_unit) Like '%advancement%'
+    Or lower(nuemploy.employer_unit) Like '%campaign strategy%'
+    Or lower(nuemploy.employer_unit) Like '%external relations%';
 
 /* Definition of a KLC member */
 Cursor c_klc_history (fy_start_month In integer) Is
@@ -2132,9 +2210,9 @@ Function tbl_alloc_annual_fund_ksm
     allocs t_allocation;
 
   Begin
-    Open c_alloc_annual_fund_ksm; -- Annual Fund allocations cursor
-      Fetch c_alloc_annual_fund_ksm Bulk Collect Into allocs;
-    Close c_alloc_annual_fund_ksm;
+    Open ct_alloc_annual_fund_ksm; -- Annual Fund allocations cursor
+      Fetch ct_alloc_annual_fund_ksm Bulk Collect Into allocs;
+    Close ct_alloc_annual_fund_ksm;
     -- Pipe out the allocations
     For i in 1..(allocs.count) Loop
       Pipe row(allocs(i));
@@ -2272,9 +2350,26 @@ Function tbl_frontline_ksm_staff
   staff t_ksm_staff;
     
   Begin
-    Open c_frontline_ksm_staff;
-      Fetch c_frontline_ksm_staff Bulk Collect Into staff;
-    Close c_frontline_ksm_staff;
+    Open ct_frontline_ksm_staff;
+      Fetch ct_frontline_ksm_staff Bulk Collect Into staff;
+    Close ct_frontline_ksm_staff;
+    For i in 1..(staff.count) Loop
+      Pipe row(staff(i));
+    End Loop;
+    Return;
+  End;
+
+/* Pipelined function returning current/historical NU ARD employees (per c_nu_ard_staff)
+   2018-01-17 */
+Function tbl_nu_ard_staff
+  Return t_nu_ard_staff Pipelined As
+  -- Declarations
+  staff t_nu_ard_staff;
+    
+  Begin
+    Open c_nu_ard_staff;
+      Fetch c_nu_ard_staff Bulk Collect Into staff;
+    Close c_nu_ard_staff;
     For i in 1..(staff.count) Loop
       Pipe row(staff(i));
     End Loop;
