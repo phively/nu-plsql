@@ -15,7 +15,7 @@ Select
   , contact_report.prospect_id
   , prospect.prospect_name
   , prospect.prospect_name_sort
-  , trim(contact_report.contact_date) As contact_date
+  , contact_report.contact_date
   , rpt_pbh634.ksm_pkg.get_fiscal_year(contact_report.contact_date) As fiscal_year
   , contact_report.description
   , dbms_lob.substr(contact_report.summary, 2000, 1) As summary
