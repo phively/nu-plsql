@@ -1,4 +1,4 @@
--- Create Or Replace View vt_prospect_activity_lanes As
+Create Or Replace View vt_prospect_activity_lanes As
 
 With
 
