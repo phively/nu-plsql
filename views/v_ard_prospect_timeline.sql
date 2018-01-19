@@ -14,6 +14,8 @@ assignments As (
     , assignment.assignment_id As id
     , assignment.start_date
     , assignment.stop_date
+    , trunc(assignment.date_added) As date_added
+    , trunc(assignment.date_modified) As date_modified
     , Case When assignment.active_ind = 'Y' Then 'Active' Else 'Inactive' End As status
     , assignment.assignment_id_number As owner_id
     , assignee.report_name As owner_report_name
@@ -36,6 +38,8 @@ assignments As (
     , task.task_id
     , task.sched_date
     , task.completed_date
+    , trunc(task.date_added) As date_added
+    , trunc(task.date_modified) As date_modified
     , tms_ts.short_desc As status
     , task.owner_id_number
     , owner.report_name As owner_report_name

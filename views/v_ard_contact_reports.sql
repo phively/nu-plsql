@@ -13,6 +13,7 @@ Select
   , contact_report.id_number
   , contact_report.contacted_name
   , contact_report.prospect_id
+  , prospect_entity.primary_ind
   , prospect.prospect_name
   , prospect.prospect_name_sort
   , contact_report.contact_date
@@ -55,4 +56,5 @@ Inner Join nu_prs_trp_prospect prs On prs.id_number = contact_report.id_number
 Inner Join table(ksm_pkg.tbl_nu_ard_staff) ard_staff On ard_staff.id_number = contact_rpt_credit.id_number
 Left Join table(ksm_pkg.tbl_frontline_ksm_staff) ksm_staff On ksm_staff.id_number = ard_staff.id_number
 Left Join prospect On prospect.prospect_id = prs.prospect_id
+Left Join prospect_entity On prospect_entity.id_number = prs.id_number
 Left Join table(ksm_pkg.tbl_university_strategy) strat On strat.prospect_id = contact_report.prospect_id

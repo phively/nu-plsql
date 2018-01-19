@@ -66,6 +66,7 @@ linked As (
 , assn As (
   Select
     assignment.proposal_id
+    , Listagg(assignment.assignment_id_number, '; ') Within Group (Order By assignment.start_date Desc NULLS Last, assignment.date_modified Desc) As proposal_manager_id
     , Listagg(entity.report_name, '; ') Within Group (Order By assignment.start_date Desc NULLS Last, assignment.date_modified Desc) As proposal_manager
   From assignment
   Inner Join ksm_purp On ksm_purp.proposal_id = assignment.proposal_id
@@ -119,6 +120,7 @@ Select
   proposal.prospect_id
   , prs.prospect_name
   , proposal.proposal_id
+  , assn.proposal_manager_id
   , assn.proposal_manager
   , asst.proposal_assist
   , proposal.proposal_status_code
