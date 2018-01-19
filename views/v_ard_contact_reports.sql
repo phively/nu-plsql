@@ -12,6 +12,7 @@ Select
   , contact_report.report_id
   , contact_report.id_number
   , contact_report.contacted_name
+  , contacted_entity.report_name
   , contact_report.prospect_id
   , prospect_entity.primary_ind
   , prospect.prospect_name
@@ -47,6 +48,7 @@ Inner Join contact_rpt_credit On contact_rpt_credit.report_id = contact_report.r
 Inner Join tms_contact_rpt_purpose tms_cpurp On tms_cpurp.contact_purpose_code = contact_report.contact_purpose_code
 Inner Join tms_contact_rpt_type tms_ctype On tms_ctype.contact_type = contact_report.contact_type
 Inner Join nu_prs_trp_prospect prs On prs.id_number = contact_report.id_number
+Inner Join entity contacted_entity On contacted_entity.id_number = contact_report.id_number
 -- Only NU ARD staff
 Inner Join table(ksm_pkg.tbl_nu_ard_staff) ard_staff On ard_staff.id_number = contact_rpt_credit.id_number
 Left Join table(ksm_pkg.tbl_frontline_ksm_staff) ksm_staff On ksm_staff.id_number = ard_staff.id_number

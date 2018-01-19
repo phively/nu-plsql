@@ -39,7 +39,7 @@ cal As (
         When start_date Is Not Null Then start_date
         Else date_added
       End As start_date
-    -- Use date_modified as start_date if unavailable, but only for inactive/completed status
+    -- Use date_modified as stop_date if unavailable, but only for inactive/completed status
     , Case
         When stop_date Is Not Null Then stop_date
         When lower(status) Like '%inactive%' Or lower(status) Like '%completed%' Then date_modified
@@ -49,11 +49,12 @@ cal As (
     , owner_id
     , owner_report_name
     , description
+    -- Symbol to use in Tableau; first letter
+    , substr(type, 1, 1) As symbol
     , cal.*
   From v_ard_prospect_timeline
   Cross Join cal
   Where start_date Between cal.bofy_prev And cal.eofy_next
-    Or stop_date Between cal.bofy_prev And cal.eofy_next
 )
 
 -- ARD contact report data
@@ -61,7 +62,7 @@ cal As (
   Select
     prospect_id
     , id_number
-    , contacted_name
+    , report_name
     , primary_ind
     , rating_bin
     , contact_type_category
@@ -74,6 +75,7 @@ cal As (
     , credited
     , credited_name
     , description
+    , substr(contact_type_category, 1, 1) As symbol
     , cal.*
   From v_ard_contact_reports
   Cross Join cal
@@ -134,6 +136,7 @@ cal As (
     , proposal_manager_id
     , proposal_manager
     , initiatives
+    , '+' As symbol
     , cal.*
   From ksm_proposals
   Cross Join cal
@@ -156,6 +159,7 @@ cal As (
     , proposal_manager_id
     , proposal_manager
     , initiatives
+    , '!' As symbol
     , cal.*
   From ksm_proposals
   Cross Join cal
@@ -178,6 +182,7 @@ cal As (
     , proposal_manager_id
     , proposal_manager
     , initiatives
+    , 'x' As symbol
     , cal.*
   From ksm_proposals
   Cross Join cal
