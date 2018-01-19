@@ -387,6 +387,11 @@ Function get_prospect_rating_numeric(
   id In varchar2
 ) Return number;
 
+/* Binned version of the results from get_prospect_rating_numeric */
+Function get_prospect_rating_bin(
+  id In varchar2
+) Return number;
+
 /*************************************************************************
 Public pipelined functions declarations
 *************************************************************************/
@@ -2094,6 +2099,30 @@ Function get_prospect_rating_numeric(id In varchar2)
     Where id_number = id;
   
     Return numeric_rating;
+  End;
+
+/* Binned numeric prospect ratings */
+Function get_prospect_rating_bin(id In varchar2)
+  Return number Is
+  -- Delcarations
+  numeric_rating number;
+  numeric_bin number;
+  
+  Begin
+    -- Convert officer rating or evaluation rating into numeric values
+    numeric_rating := get_prospect_rating_numeric(id);
+    -- Bin numeric_rating amount
+    Select
+      Case
+        When numeric_rating >= 10 Then 10
+        When numeric_rating = 0.25 Then 0.1
+        When numeric_rating < 0.1 Then 0
+        Else numeric_rating
+      End
+    Into numeric_bin
+    From DUAL;
+  
+    Return numeric_bin;
   End;
 
 /* Takes a receipt number and returns the ID number of the entity who should receive primary Kellogg gift credit.

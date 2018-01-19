@@ -170,12 +170,7 @@ Select Distinct
       When household_id = hh.id_number Then 'Y'
     End As hh_primary
   -- Rating bin
-  , Case
-      When rpt_pbh634.ksm_pkg.get_prospect_rating_numeric(prs.id_number) >= 10 Then 10
-      When rpt_pbh634.ksm_pkg.get_prospect_rating_numeric(prs.id_number) = 0.25 Then 0.1
-      When rpt_pbh634.ksm_pkg.get_prospect_rating_numeric(prs.id_number) < 0.1 Then 0
-      Else rpt_pbh634.ksm_pkg.get_prospect_rating_numeric(prs.id_number)
-    End As rating_bin
+  , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(prs.id_number) As rating_bin
   -- Which group?
   , Case
       -- Top 150

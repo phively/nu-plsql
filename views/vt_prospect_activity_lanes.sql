@@ -24,6 +24,7 @@ cal As (
     , id_number
     , report_name
     , primary_ind
+    , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(id_number) As rating_bin
     , type
     , NULL As additional_desc
     , 'Prospect' As category
@@ -62,6 +63,7 @@ cal As (
     , id_number
     , contacted_name
     , primary_ind
+    , rating_bin
     , contact_type_category
     , visit_type As additional_desc
     , 'Contact' As category
@@ -85,6 +87,7 @@ cal As (
     , prospect_entity.id_number
     , entity.report_name
     , prospect_entity.primary_ind
+    , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(prospect_entity.id_number) As rating_bin
     , proposal_status
     , ksm_or_univ_orig_ask
     , total_original_ask_amt
@@ -117,6 +120,7 @@ cal As (
     , id_number
     , report_name
     , primary_ind
+    , rating_bin
     , 'Proposal Start' As type
     , Case
         When ksm_or_univ_orig_ask > 0 Then to_char(ksm_or_univ_orig_ask, '$999,999,999,999')
@@ -141,6 +145,7 @@ cal As (
     , id_number
     , report_name
     , primary_ind
+    , rating_bin
     , 'Proposal Ask' As type
     , to_char(ksm_or_univ_ask, '$999,999,999,999') As ask
     , category
@@ -162,6 +167,7 @@ cal As (
     , id_number
     , report_name
     , primary_ind
+    , rating_bin
     , 'Proposal Close' As type
     , to_char(ksm_linked_amounts, '$999,999,999,999') As closed
     , category
