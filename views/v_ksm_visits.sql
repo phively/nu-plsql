@@ -48,8 +48,8 @@ From contact_report
 Cross Join cal
 Inner Join contact_rpt_credit On contact_rpt_credit.report_id = contact_report.report_id
 Inner Join tms_cpurp On tms_cpurp.contact_purpose_code = contact_report.contact_purpose_code
-Inner Join nu_prs_trp_prospect prs On prs.id_number = contact_report.id_number
 Inner Join table(ksm_pkg.tbl_frontline_ksm_staff) staff On staff.id_number = contact_rpt_credit.id_number
+Left Join nu_prs_trp_prospect prs On prs.id_number = contact_report.id_number
 Left Join table(ksm_pkg.tbl_university_strategy) strat On strat.prospect_id = contact_report.prospect_id
 Where contact_report.contact_date Between cal.prev_fy_start And cal.yesterday
   And contact_report.contact_type = 'V'
