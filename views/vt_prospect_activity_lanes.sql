@@ -9,7 +9,11 @@ With
 cal As (
   Select
     prev_fy_start As bofy_prev
+    , curr_fy_start As bofy_curr
+    , next_fy_start As bofy_next
     , add_months(next_fy_start, 12) - 1 As eofy_next
+    , yesterday
+    , ninety_days_ago
   From v_current_calendar
 )
 
@@ -44,6 +48,7 @@ cal As (
     , owner_id
     , owner_report_name
     , description
+    , cal.*
   From v_ard_prospect_timeline
   Cross Join cal
   Where start_date Between cal.bofy_prev And cal.eofy_next
@@ -67,6 +72,7 @@ cal As (
     , credited
     , credited_name
     , description
+    , cal.*
   From v_ard_contact_reports
   Cross Join cal
   Where contact_date Between cal.bofy_prev And cal.eofy_next
@@ -96,6 +102,7 @@ cal As (
     , proposal_manager_id
     , proposal_manager
     , initiatives
+    , cal.*
   From v_ksm_proposal_history prp
   Cross Join cal
   Inner Join prospect_entity On prospect_entity.prospect_id = prp.prospect_id
@@ -123,7 +130,10 @@ cal As (
     , proposal_manager_id
     , proposal_manager
     , initiatives
+    , cal.*
   From ksm_proposals
+  Cross Join cal
+  Where start_date Between cal.bofy_prev And cal.eofy_next
 )
 , proposal_asks As (
   Select
@@ -141,7 +151,10 @@ cal As (
     , proposal_manager_id
     , proposal_manager
     , initiatives
+    , cal.*
   From ksm_proposals
+  Cross Join cal
+  Where ask_date Between cal.bofy_prev And cal.eofy_next
 )
 , proposal_closes As (
   Select
@@ -159,7 +172,10 @@ cal As (
     , proposal_manager_id
     , proposal_manager
     , initiatives
+    , cal.*
   From ksm_proposals
+  Cross Join cal
+  Where close_date Between cal.bofy_prev And cal.eofy_next
 )
 
 -- Main query
