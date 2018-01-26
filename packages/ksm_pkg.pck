@@ -536,6 +536,7 @@ Cursor ct_alloc_annual_fund_ksm Is
       , '3203004707901GFT' -- GIM Trip Scholarship (Samuels)
       , '3203002954201GFT' -- KSM Student Club Support
       , '3303001899301GFT' -- KSM Gift-In-Kind
+      , '3203000859901GFT' -- Center for Nonprofit Management
       /************ UPDATE ABOVE HERE ************/
     );
 
