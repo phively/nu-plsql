@@ -40,6 +40,9 @@ Type calendar Is Record (
   , prev_fy_start date
   , curr_fy_start date
   , next_fy_start date
+  , prev_py_start date
+  , curr_py_start date
+  , next_py_start date
   , prev_fy_today date
   , next_fy_today date
   , prev_week_start date
@@ -622,7 +625,7 @@ Cursor c_alloc_curr_use_ksm Is
     prev_fy, prev_fy2, prev_fy3, etc. for 1, 2, 3 years ago, e.g. prev_fy_today
     next_fy, next_fy2, next_fy3, etc. for 1, 2, 3 years in the future, e.g. next_fy_today
    2017-02-03 */
-Cursor c_current_calendar (fy_start_month In integer) Is
+Cursor c_current_calendar (fy_start_month In integer, py_start_month In integer) Is
   With
   -- Store today from sysdate and calculate current fiscal year; always year + 1 unless the FY starts in Jan
   curr_date As (
@@ -658,6 +661,13 @@ Cursor c_current_calendar (fy_start_month In integer) Is
       As curr_fy_start
     , to_date(fy_start_month || '/01/' || (curr_date.yr - yr_dif + 1), 'mm/dd/yyyy')
       As next_fy_start
+    -- Start of performance year objects
+    , to_date(py_start_month || '/01/' || (curr_date.yr - yr_dif - 1), 'mm/dd/yyyy')
+      As prev_py_start
+    , to_date(py_start_month || '/01/' || (curr_date.yr - yr_dif + 0), 'mm/dd/yyyy')
+      As curr_py_start
+    , to_date(py_start_month || '/01/' || (curr_date.yr - yr_dif + 1), 'mm/dd/yyyy')
+      As next_py_start
     -- Year-to-date objects
     , add_months(trunc(sysdate), -12) As prev_fy_today
     , add_months(trunc(sysdate), 12) As next_fy_today
@@ -1805,6 +1815,7 @@ committee_AMP Constant committee.committee_code%type := 'KAMP'; -- AMP Advisory 
 
 /* Miscellaneous */
 fy_start_month Constant number := 9; -- fiscal start month, 9 = September
+py_start_month Constant number := 5; -- performance start month, 5 = May
 
 /*************************************************************************
 Private variable declarations
@@ -2284,7 +2295,7 @@ Function tbl_current_calendar
   cal t_calendar;
     
   Begin
-    Open c_current_calendar(fy_start_month);
+    Open c_current_calendar(fy_start_month, py_start_month);
       Fetch c_current_calendar Bulk Collect Into cal;
     Close c_current_calendar;
     For i in 1..(cal.count) Loop
