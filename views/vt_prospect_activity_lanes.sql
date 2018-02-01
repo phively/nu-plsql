@@ -17,14 +17,25 @@ cal As (
   From v_current_calendar
 )
 
+-- Householding
+, hh As (
+  Select
+    id_number
+    , household_id
+    , household_rpt_name
+  From table(ksm_pkg.tbl_entity_households_ksm)
+)
+
 -- Prospect data
 , prospects As (
   Select
     prospect_id
-    , id_number
+    , hh.household_id
+    , hh.household_rpt_name
+    , tl.id_number
     , report_name
     , primary_ind
-    , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(id_number) As rating_bin
+    , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(tl.id_number) As rating_bin
     , type
     , NULL As additional_desc
     , 'Prospect' As category
@@ -52,8 +63,9 @@ cal As (
     -- Symbol to use in Tableau; first letter
     , substr(type, 1, 1) As symbol
     , cal.*
-  From v_ard_prospect_timeline
+  From v_ard_prospect_timeline tl
   Cross Join cal
+  Inner Join hh On hh.id_number =  tl.id_number
   Where start_date Between cal.bofy_prev And cal.eofy_next
 )
 
@@ -61,7 +73,9 @@ cal As (
 , contacts As (
   Select
     prospect_id
-    , id_number
+    , hh.household_id
+    , hh.household_rpt_name
+    , cr.id_number
     , report_name
     , primary_ind
     , rating_bin
@@ -77,8 +91,9 @@ cal As (
     , description
     , substr(contact_type_category, 1, 1) As symbol
     , cal.*
-  From v_ard_contact_reports
+  From v_ard_contact_reports cr
   Cross Join cal
+  Inner Join hh On hh.id_number =  cr.id_number
   Where contact_date Between cal.bofy_prev And cal.eofy_next
 )
 
@@ -86,6 +101,8 @@ cal As (
 , ksm_proposals As (
   Select
     prp.prospect_id
+    , hh.household_id
+    , hh.household_rpt_name
     , prospect_entity.id_number
     , entity.report_name
     , prospect_entity.primary_ind
@@ -111,6 +128,7 @@ cal As (
   From v_ksm_proposal_history prp
   Cross Join cal
   Inner Join prospect_entity On prospect_entity.prospect_id = prp.prospect_id
+  Inner Join hh On hh.id_number = prospect_entity.id_number
   Inner Join entity On entity.id_number = prospect_entity.id_number
   Where start_date Between cal.bofy_prev And cal.eofy_next
     Or ask_date Between cal.bofy_prev And cal.eofy_next
@@ -119,7 +137,9 @@ cal As (
 , proposal_starts As (
   Select
     prospect_id
-    , id_number
+    , hh.household_id
+    , hh.household_rpt_name
+    , prp.id_number
     , report_name
     , primary_ind
     , rating_bin
@@ -138,13 +158,16 @@ cal As (
     , initiatives
     , '+' As symbol
     , cal.*
-  From ksm_proposals
+  From ksm_proposals prp
   Cross Join cal
+  Inner Join hh On hh.id_number =  prp.id_number
   Where start_date Between cal.bofy_prev And cal.eofy_next
 )
 , proposal_asks As (
   Select
     prospect_id
+    , household_id
+    , household_rpt_name
     , id_number
     , report_name
     , primary_ind
@@ -168,6 +191,8 @@ cal As (
 , proposal_closes As (
   Select
     prospect_id
+    , household_id
+    , household_rpt_name
     , id_number
     , report_name
     , primary_ind
