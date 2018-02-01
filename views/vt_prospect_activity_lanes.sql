@@ -36,9 +36,15 @@ cal As (
     , report_name
     , primary_ind
     , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(tl.id_number) As rating_bin
+    -- Data point description
     , type
+    -- Additional description detail
     , NULL As additional_desc
+    -- Category summary
     , 'Prospect' As category
+    -- Tableau color field
+    , type As color
+    -- Unique identifier
     , id
     -- Dates for debugging
 /*  , start_date
@@ -56,12 +62,16 @@ cal As (
         When lower(status) Like '%inactive%' Or lower(status) Like '%completed%' Then date_modified
         Else Null
       End As stop_date
+    -- Status detail
     , status
+    -- Credited entity
     , owner_id
     , owner_report_name
+    -- Summary text detail
     , description
     -- Symbol to use in Tableau; first letter
     , substr(type, 1, 1) As symbol
+    -- Uniform calendar dates for axis alignment
     , cal.*
   From v_ard_prospect_timeline tl
   Cross Join cal
@@ -79,17 +89,30 @@ cal As (
     , report_name
     , primary_ind
     , rating_bin
+    -- Data point description
     , contact_type_category
+    -- Additional description detail
     , visit_type As additional_desc
-    , 'Contact' As category
+    -- Category summary
+    , 'Contact'
+    -- Tableau color field
+    , contact_type_category As color
+    -- Unique identifier
     , report_id
+    -- Uniform start date for axis alignment
     , contact_date
-    , NULL As stop_date
+    -- Uniform stop date for axis alignment
+    , NULL
+    -- Status detail
     , contact_purpose
+    -- Credited entity
     , credited
     , credited_name
+    -- Summary text detail
     , description
+    -- Tableau symbol
     , substr(contact_type_category, 1, 1) As symbol
+    -- Uniform calendar dates for axis alignment
     , cal.*
   From v_ard_contact_reports cr
   Cross Join cal
@@ -107,6 +130,7 @@ cal As (
     , entity.report_name
     , prospect_entity.primary_ind
     , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(prospect_entity.id_number) As rating_bin
+    -- Data point description
     , proposal_status
     , ksm_or_univ_orig_ask
     , total_original_ask_amt
@@ -116,6 +140,9 @@ cal As (
     , total_anticipated_amt
     , ksm_linked_amounts
     , 'Proposal' As category
+    -- Tableau color field
+    , 'Proposal' As color
+    -- Unique identifier
     , proposal_id
     , start_date
     , ask_date
@@ -124,6 +151,7 @@ cal As (
     , proposal_manager_id
     , proposal_manager
     , initiatives
+    -- Uniform calendar dates for axis alignment
     , cal.*
   From v_ksm_proposal_history prp
   Cross Join cal
@@ -143,20 +171,33 @@ cal As (
     , report_name
     , primary_ind
     , rating_bin
+    -- Data point description
     , 'Proposal Start' As type
+    -- Additional description detail
     , Case
         When ksm_or_univ_orig_ask > 0 Then to_char(ksm_or_univ_orig_ask, '$999,999,999,999')
         Else to_char(ksm_or_univ_ask, '$999,999,999,999')
       End As original_ask
+    -- Category summary
     , category
+    -- Tableau color field
+    , color
+    -- Unique identifier
     , proposal_id
+    -- Uniform start date for axis alignment
     , start_date
+    -- Uniform stop date for axis alignment
     , NULL
+    -- Status detail
     , proposal_status
+    -- Credited entity
     , proposal_manager_id
     , proposal_manager
+    -- Summary text detail
     , initiatives
+    -- Tableau symbol
     , '+' As symbol
+    -- Uniform calendar dates for axis alignment
     , cal.*
   From ksm_proposals prp
   Cross Join cal
@@ -172,17 +213,30 @@ cal As (
     , report_name
     , primary_ind
     , rating_bin
+    -- Data point description
     , 'Proposal Ask' As type
+    -- Additional description detail
     , to_char(ksm_or_univ_ask, '$999,999,999,999') As ask
+    -- Category summary
     , category
+    -- Tableau color field
+    , color
+    -- Unique identifier
     , proposal_id
+    -- Uniform start date for axis alignment
     , ask_date
+    -- Uniform stop date for axis alignment
     , NULL
+    -- Status detail
     , proposal_status
+    -- Credited entity
     , proposal_manager_id
     , proposal_manager
+    -- Summary text detail
     , initiatives
-    , '!' As symbol
+    -- Tableau symbol
+    , 'a' As symbol
+    -- Uniform calendar dates for axis alignment
     , cal.*
   From ksm_proposals
   Cross Join cal
@@ -197,17 +251,30 @@ cal As (
     , report_name
     , primary_ind
     , rating_bin
+    -- Data point description
     , 'Proposal Close' As type
+    -- Additional description detail
     , to_char(ksm_linked_amounts, '$999,999,999,999') As closed
+    -- Category summary
     , category
+    -- Tableau color field
+    , color
+    -- Unique identifier
     , proposal_id
+    -- Uniform start date for axis alignment
     , close_date
+    -- Uniform stop date for axis alignment
     , NULL
+    -- Status detail
     , proposal_status
+    -- Credited entity
     , proposal_manager_id
     , proposal_manager
+    -- Summary text detail
     , initiatives
+    -- Tableau symbol
     , 'x' As symbol
+    -- Uniform calendar dates for axis alignment
     , cal.*
   From ksm_proposals
   Cross Join cal
