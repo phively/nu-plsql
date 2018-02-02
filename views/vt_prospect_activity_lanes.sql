@@ -300,6 +300,7 @@ cal As (
     , to_number(gft.tx_number) As tx_number
     , gft.date_of_record
     , tms_ps.short_desc As pledge_status
+    , gft.transaction_type
     , gft.gift_comment
     , gft.proposal_id As description
   From v_ksm_giving_trans_hh gft
@@ -334,7 +335,7 @@ cal As (
     -- Uniform stop date for axis alignment
     , NULL
     -- Status detail
-    , pledge_status
+    , transaction_type As status
     -- Credited entity
     , NULL
     , NULL
@@ -372,7 +373,7 @@ cal As (
     -- Uniform stop date for axis alignment
     , NULL
     -- Status detail
-    , pledge_status
+    , transaction_type As status
     -- Credited entity
     , NULL
     , NULL
@@ -410,7 +411,7 @@ cal As (
     -- Uniform stop date for axis alignment
     , NULL
     -- Status detail
-    , pledge_status
+    , transaction_type || ' (' || pledge_status || ')' As status
     -- Credited entity
     , NULL
     , NULL

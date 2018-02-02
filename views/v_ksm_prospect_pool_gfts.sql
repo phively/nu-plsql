@@ -118,6 +118,11 @@ Select
   , gft.af_pfy2
   , gft.af_pfy3
   , gft.af_pfy4
+  , gft.ngc_cfy
+  , gft.ngc_pfy1
+  , gft.ngc_pfy2
+  , gft.ngc_pfy3
+  , gft.ngc_pfy4
   -- Proposal history fields
   , ksm_proposal.open_proposals
   , ksm_proposal.total_asks
