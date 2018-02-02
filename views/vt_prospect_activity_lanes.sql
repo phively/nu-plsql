@@ -281,6 +281,150 @@ cal As (
   Where close_date Between cal.bofy_prev And cal.eofy_next
 )
 
+-- Historical KSM gifts, including pledges/payments
+, ksm_giving As (
+  Select
+    pe.prospect_id
+    , gft.household_id
+    , hh.household_rpt_name
+    , gft.id_number
+    , entity.report_name
+    , pe.primary_ind
+    , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(pe.prospect_id) As rating_bin
+    , gft.transaction_type As type
+    , to_char(gft.recognition_credit, '$999,999,999,999') As recognition_credit
+    , gft.tx_gypm_ind
+    , 'Gift' As category
+    , 'Gift' As color
+    -- Unique identifier
+    , to_number(gft.tx_number) As tx_number
+    , gft.date_of_record
+    , tms_ps.short_desc As pledge_status
+    , gft.gift_comment
+    , gft.proposal_id As description
+  From v_ksm_giving_trans_hh gft
+  Cross Join cal
+  Inner Join hh On hh.id_number =  gft.id_number
+  Inner Join prospect_entity pe On pe.id_number = gft.id_number
+  Inner Join entity On entity.id_number = gft.id_number
+  Left Join tms_pledge_status tms_ps On tms_ps.pledge_status_code = gft.pledge_status
+  Where gft.date_of_record Between cal.bofy_prev And cal.eofy_next
+)
+, ksm_gift As (
+  Select
+    prospect_id
+    , household_id
+    , household_rpt_name
+    , id_number
+    , report_name
+    , primary_ind
+    , rating_bin
+    -- Data point description
+    , 'Gift/Payment' As type
+    -- Additional description detail
+    , recognition_credit
+    -- Category summary
+    , category
+    -- Tableau color field
+    , color
+    -- Unique identifier
+    , tx_number
+    -- Uniform start date for axis alignment
+    , date_of_record
+    -- Uniform stop date for axis alignment
+    , NULL
+    -- Status detail
+    , pledge_status
+    -- Credited entity
+    , NULL
+    , NULL
+    -- Summary text detail
+    , gift_comment
+    -- Tableau symbol
+    , '$' As symbol
+    -- Uniform calendar dates for axis alignment
+    , cal.*
+  From ksm_giving
+  Cross Join cal
+  Where ksm_giving.tx_gypm_ind In ('G', 'Y')
+)
+, ksm_match As (
+  Select
+    prospect_id
+    , household_id
+    , household_rpt_name
+    , id_number
+    , report_name
+    , primary_ind
+    , rating_bin
+    -- Data point description
+    , 'Match' As type
+    -- Additional description detail
+    , recognition_credit
+    -- Category summary
+    , category
+    -- Tableau color field
+    , color
+    -- Unique identifier
+    , tx_number
+    -- Uniform start date for axis alignment
+    , date_of_record
+    -- Uniform stop date for axis alignment
+    , NULL
+    -- Status detail
+    , pledge_status
+    -- Credited entity
+    , NULL
+    , NULL
+    -- Summary text detail
+    , gift_comment
+    -- Tableau symbol
+    , 'm' As symbol
+    -- Uniform calendar dates for axis alignment
+    , cal.*
+  From ksm_giving
+  Cross Join cal
+  Where ksm_giving.tx_gypm_ind = 'M'
+)
+, ksm_plg As (
+  Select
+    prospect_id
+    , household_id
+    , household_rpt_name
+    , id_number
+    , report_name
+    , primary_ind
+    , rating_bin
+    -- Data point description
+    , 'Pledge' As type
+    -- Additional description detail
+    , recognition_credit
+    -- Category summary
+    , category
+    -- Tableau color field
+    , color
+    -- Unique identifier
+    , tx_number
+    -- Uniform start date for axis alignment
+    , date_of_record
+    -- Uniform stop date for axis alignment
+    , NULL
+    -- Status detail
+    , pledge_status
+    -- Credited entity
+    , NULL
+    , NULL
+    -- Summary text detail
+    , gift_comment
+    -- Tableau symbol
+    , 'P' As symbol
+    -- Uniform calendar dates for axis alignment
+    , cal.*
+  From ksm_giving
+  Cross Join cal
+  Where ksm_giving.tx_gypm_ind = 'P'
+)
+
 -- Main query
 Select * From prospects
 Union
@@ -291,3 +435,9 @@ Union
 Select * From proposal_asks
 Union
 Select * From proposal_closes
+Union
+Select * From ksm_gift
+Union
+Select * From ksm_match
+Union
+Select * From ksm_plg
