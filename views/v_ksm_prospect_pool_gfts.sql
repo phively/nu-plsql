@@ -157,7 +157,11 @@ Select
   , recent_contact.last_contact_date
   , recent_contact.last_contact_purpose
   , recent_contact.last_contact_desc
+  -- Current calendar
+  , cal.yesterday
+  , cal.curr_fy
 From v_ksm_prospect_pool prs
+Cross Join v_current_calendar cal
 Left Join v_ksm_giving_summary gft On gft.id_number = prs.id_number
 Left Join v_ksm_giving_campaign cmp On cmp.id_number = prs.id_number
 Left Join ksm_proposal On ksm_proposal.prospect_id = prs.prospect_id
