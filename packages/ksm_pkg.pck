@@ -159,6 +159,7 @@ Type klc_member Is Record (
 Type ksm_staff Is Record (
   id_number entity.id_number%type
   , report_name entity.report_name%type
+  , last_name entity.last_name%type
   , former_staff varchar2(1)
   , job_title employment.job_title%type
   , employer employment.employer_unit%type
@@ -590,6 +591,7 @@ Cursor ct_frontline_ksm_staff Is
   Select
     staff.id_number
     , entity.report_name
+    , entity.last_name
     , staff.former_staff
     , employ.job_title
     , employ.employer
