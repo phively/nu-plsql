@@ -11,6 +11,19 @@ linked As (
   From v_ksm_giving_trans
   Where proposal_id Is Not Null
     And legal_amount > 0
+    And tx_gypm_ind <> 'Y' -- Payment linked but pledge not is a data issue
+  Group By proposal_id
+)
+, linkednu As (
+  Select
+    proposal_id
+    , sum(prim_pledge_amount) As nu_linked_amounts
+  From (
+    Select proposal_id, prim_pledge_amount From primary_pledge
+    Union All
+    Select proposal_id, prim_gift_amount From primary_gift Where pledge_payment_ind = 'N'
+  )
+  Where proposal_id Is Not Null
   Group By proposal_id
 )
 
@@ -145,6 +158,7 @@ Select
   , trunc(date_modified) As date_modified
   , linked.ksm_linked_receipts
   , linked.ksm_linked_amounts
+  , linkednu.nu_linked_amounts
   , original_ask_amt As total_original_ask_amt
   , ask_amt As total_ask_amt
   , anticipated_amt As total_anticipated_amt
@@ -202,3 +216,4 @@ Left Join (Select prospect_id, prospect_name From prospect) prs On prs.prospect_
 Left Join strat On strat.prospect_id = proposal.prospect_id
 -- Linked gift info
 Left Join linked On linked.proposal_id = proposal.proposal_id
+Left Join linkednu On linkednu.proposal_id = proposal.proposal_id
