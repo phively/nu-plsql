@@ -301,8 +301,9 @@ cal As (
     , gft.date_of_record
     , tms_ps.short_desc As pledge_status
     , gft.transaction_type
-    , gft.gift_comment
-    , gft.proposal_id As description
+    , trim(gft.alloc_short_name || ' (' || gft.allocation_code || ')
+      ' || gft.gift_comment) As description
+    , gft.proposal_id
   From v_ksm_giving_trans_hh gft
   Cross Join cal
   Inner Join hh On hh.id_number =  gft.id_number
@@ -321,7 +322,7 @@ cal As (
     , primary_ind
     , rating_bin
     -- Data point description
-    , 'Gift/Payment' As type
+    , 'Gift' As type
     -- Additional description detail
     , recognition_credit
     -- Category summary
@@ -340,14 +341,52 @@ cal As (
     , NULL
     , NULL
     -- Summary text detail
-    , gift_comment
+    , description
     -- Tableau symbol
     , '$' As symbol
     -- Uniform calendar dates for axis alignment
     , cal.*
   From ksm_giving
   Cross Join cal
-  Where ksm_giving.tx_gypm_ind In ('G', 'Y')
+  Where ksm_giving.tx_gypm_ind = 'G'
+)
+, ksm_payment As (
+  Select
+    prospect_id
+    , household_id
+    , household_rpt_name
+    , id_number
+    , report_name
+    , primary_ind
+    , rating_bin
+    -- Data point description
+    , 'Payment' As type
+    -- Additional description detail
+    , recognition_credit
+    -- Category summary
+    , category
+    -- Tableau color field
+    , color
+    -- Unique identifier
+    , tx_number
+    -- Uniform start date for axis alignment
+    , date_of_record
+    -- Uniform stop date for axis alignment
+    , NULL
+    -- Status detail
+    , transaction_type As status
+    -- Credited entity
+    , NULL
+    , NULL
+    -- Summary text detail
+    , description
+    -- Tableau symbol
+    , 'Y' As symbol
+    -- Uniform calendar dates for axis alignment
+    , cal.*
+  From ksm_giving
+  Cross Join cal
+  Where ksm_giving.tx_gypm_ind = 'Y'
 )
 , ksm_match As (
   Select
@@ -378,9 +417,9 @@ cal As (
     , NULL
     , NULL
     -- Summary text detail
-    , gift_comment
+    , description
     -- Tableau symbol
-    , 'm' As symbol
+    , 'M' As symbol
     -- Uniform calendar dates for axis alignment
     , cal.*
   From ksm_giving
@@ -416,7 +455,7 @@ cal As (
     , NULL
     , NULL
     -- Summary text detail
-    , gift_comment
+    , description
     -- Tableau symbol
     , 'P' As symbol
     -- Uniform calendar dates for axis alignment
@@ -438,6 +477,8 @@ Union
 Select * From proposal_closes
 Union
 Select * From ksm_gift
+Union
+Select * From ksm_payment
 Union
 Select * From ksm_match
 Union
