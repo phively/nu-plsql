@@ -43,7 +43,7 @@ cal As (
     -- Category summary
     , 'Prospect' As category
     -- Tableau color field
-    , type As color
+    , 'Prospect' As color
     -- Unique identifier
     , id
     -- Dates for debugging

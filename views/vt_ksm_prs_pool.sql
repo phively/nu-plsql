@@ -1,4 +1,4 @@
-Create Or Replace View v_ksm_prospect_pool_gfts As
+Create Or Replace View vt_ksm_prs_pool As
 
 With
 
