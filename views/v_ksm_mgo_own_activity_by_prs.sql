@@ -24,6 +24,11 @@ ksm_staff As (
     , sum(Case When v.contact_date Between yesterday - 365 And yesterday
         And v.visit_type = 'Qualification' Then 1 Else 0 End)
         As quals_last_365_days
+    , sum(Case When v.contact_date Between curr_py_start And next_py_start - 1 Then 1 Else 0 End)
+        As visits_this_py
+    , sum(Case When v.contact_date Between curr_py_start And next_py_start - 1
+        And v.visit_type = 'Qualification' Then 1 Else 0 End)
+        As quals_this_py
   From ksm_staff
   Inner Join v_ksm_visits v On v.credited = ksm_staff.id_number
   Cross Join v_current_calendar
@@ -104,6 +109,8 @@ Select
   , op.assigned
   , vs.visits_last_365_days
   , vs.quals_last_365_days
+  , vs.visits_this_py
+  , vs.quals_this_py
   , sol.total_open_proposals
   , sol.total_open_asks
   , sol.total_open_ksm_asks
