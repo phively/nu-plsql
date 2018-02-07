@@ -1,4 +1,4 @@
--- Create Or Replace View v_ksm_mgo_own_activity_by_prs As
+Create Or Replace View v_ksm_mgo_own_activity_by_prs As
 
 With
 
@@ -18,7 +18,6 @@ ksm_staff As (
   Select
     last_name
     , v.credited
-    , v.id_number
     , v.prospect_id
     , sum(Case When v.contact_date Between yesterday - 365 And yesterday Then 1 Else 0 End)
         As visits_last_365_days
@@ -31,7 +30,6 @@ ksm_staff As (
   Group By
     last_name
     , v.credited
-    , v.id_number
     , v.prospect_id
 )
 
@@ -74,17 +72,36 @@ ksm_staff As (
     , p.prospect_id
 )
 
--- Full list
+-- Own prospect pool
+, own_pool As (
+  Select Distinct
+    last_name
+    , assignment_id_number
+    , assignment.prospect_id
+    , 'Y' As assigned
+  From assignment
+  Inner Join ksm_staff On ksm_staff.id_number = assignment.assignment_id_number
+  Inner Join prospect_entity On prospect_entity.prospect_id = assignment.prospect_id
+  Inner Join prospect On prospect.prospect_id = assignment.prospect_id
+  Where assignment.active_ind = 'Y' -- Active assignments only
+    And assignment_type In ('PP', 'PM', 'AF') -- Program Manager (PP), Prospect Manager (PM), Annual Fund Officer (AF)
+    And prospect.active_ind = 'Y' -- Active prospects only
+)
+
+-- Full list deduped
 , prs As (
   Select prospect_id, last_name From ksm_visits
   Union
   Select prospect_id, last_name From ksm_sols
+  Union
+  Select prospect_id, last_name From own_pool
 )
 
 -- Main query
 Select
   prs.prospect_id
   , prs.last_name
+  , op.assigned
   , vs.visits_last_365_days
   , vs.quals_last_365_days
   , sol.total_open_proposals
@@ -97,5 +114,6 @@ Select
   , sol.total_cpy_verbal
   , sol.total_cpy_funded
 From prs
-Inner Join ksm_visits vs On prs.prospect_id = vs.prospect_id And prs.last_name = vs.last_name
-Inner Join ksm_sols sol On prs.prospect_id = sol.prospect_id And prs.last_name = sol.last_name
+Left Join ksm_visits vs On prs.prospect_id = vs.prospect_id And prs.last_name = vs.last_name
+Left Join ksm_sols sol On prs.prospect_id = sol.prospect_id And prs.last_name = sol.last_name
+Left Join own_pool op On prs.prospect_id = op.prospect_id And prs.last_name = op.last_name
