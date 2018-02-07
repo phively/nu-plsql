@@ -48,16 +48,17 @@ ksm_staff As (
         As total_open_proposals
     , sum(Case When p.proposal_in_progress = 'Y' Then total_ask_amt Else 0 End)
         As total_open_asks
-    , sum(Case When p.proposal_in_progress = 'Y' Then ksm_or_univ_ask Else 0 End)
+    , sum(Case When p.proposal_in_progress = 'Y' And ksm_proposal_ind = 'Y' Then ksm_or_univ_ask Else 0 End)
         As total_open_ksm_asks
-    -- Current fiscal year amounts
-    , sum(Case When close_fy = cal.curr_fy And p.proposal_in_progress = 'Y' And p.proposal_status_code <> '5' -- Approved by Donor
+    -- Current KSM fiscal year amounts
+    , sum(Case When close_fy = cal.curr_fy And p.proposal_in_progress = 'Y' And ksm_proposal_ind = 'Y'
+        And p.proposal_status_code <> '5' -- Approved by Donor
         Then ksm_or_univ_ask Else 0 End)
         As total_cfy_ksm_ant_ask
-    , sum(Case When close_fy = cal.curr_fy And p.proposal_status_code = '5' -- Approved by Donor
+    , sum(Case When close_fy = cal.curr_fy And ksm_proposal_ind = 'Y' And p.proposal_status_code = '5' -- Approved by Donor
         Then final_anticipated_or_ask_amt Else 0 End)
         As total_cfy_ksm_verbal
-    , sum(Case When close_fy = cal.curr_fy And p.ksm_linked_amounts > 0 Then p.ksm_linked_amounts Else 0 End)
+    , sum(Case When close_fy = cal.curr_fy And ksm_proposal_ind = 'Y' And p.ksm_linked_amounts > 0 Then p.ksm_linked_amounts Else 0 End)
         As total_cfy_ksm_funded
     -- Current performance year amounts
     , sum(Case When close_date Between cal.curr_py_start And cal.next_py_start - 1 And p.proposal_in_progress = 'Y' And proposal_status_code <> '5'
@@ -69,7 +70,7 @@ ksm_staff As (
     , sum(Case When close_date Between cal.curr_py_start And cal.next_py_start - 1 And p.nu_linked_amounts > 0 Then p.nu_linked_amounts Else 0 End)
         As total_cpy_funded
   From ksm_staff
-  Inner Join v_ksm_proposal_history p On p.proposal_manager_id = ksm_staff.id_number
+  Inner Join v_proposal_history p On p.proposal_manager_id = ksm_staff.id_number
   Cross Join v_current_calendar cal
   Group By
     last_name

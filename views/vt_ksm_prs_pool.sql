@@ -47,6 +47,7 @@ ksm_proposal As (
       As recent_ksm_anticipated
   From v_ksm_proposal_history
   Where proposal_in_progress = 'Y'
+    And ksm_proposal_ind = 'Y'
   Group By prospect_id
 )
 

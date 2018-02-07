@@ -1,4 +1,4 @@
-Create Or Replace View v_ksm_proposal_history As
+Create Or Replace View v_proposal_history As
 
 With
 
@@ -69,7 +69,6 @@ linked As (
     pp.proposal_id
     , Listagg(tms_program.short_desc, '; ') Within Group (Order By pp.xsequence Asc) As other_programs
   From proposal_purpose pp
-  Inner Join ksm_purps On ksm_purps.proposal_id = pp.proposal_id
   Inner Join tms_program On tms_program.program_code = pp.program_code
   Where pp.program_code <> 'KM'
   Group By pp.proposal_id
@@ -82,7 +81,6 @@ linked As (
     , Listagg(assignment.assignment_id_number, '; ') Within Group (Order By assignment.start_date Desc NULLS Last, assignment.date_modified Desc) As proposal_manager_id
     , Listagg(entity.report_name, '; ') Within Group (Order By assignment.start_date Desc NULLS Last, assignment.date_modified Desc) As proposal_manager
   From assignment
-  Inner Join ksm_purp On ksm_purp.proposal_id = assignment.proposal_id
   Inner Join entity On entity.id_number = assignment.assignment_id_number
   Where assignment.assignment_type = 'PA' -- Proposal Manager (PM is taken by Prospect Manager)
   Group By assignment.proposal_id
@@ -92,7 +90,6 @@ linked As (
     assignment.proposal_id
     , Listagg(entity.report_name, '; ') Within Group (Order By assignment.start_date Desc NULLS Last, assignment.date_modified Desc) As proposal_assist
   From assignment
-  Inner Join ksm_purp On ksm_purp.proposal_id = assignment.proposal_id
   Inner Join entity On entity.id_number = assignment.assignment_id_number
   Where assignment.assignment_type = 'AS' -- Proposal Assist
   Group By assignment.proposal_id
@@ -124,7 +121,7 @@ linked As (
         Else proposal.anticipated_amt
       End As ksm_or_univ_anticipated
   From proposal
-  Inner Join ksm_purp On ksm_purp.proposal_id = proposal.proposal_id
+  Left Join ksm_purp On ksm_purp.proposal_id = proposal.proposal_id
   Left Join other_purp On other_purp.proposal_id = proposal.proposal_id
 )
 
@@ -133,6 +130,8 @@ Select
   proposal.prospect_id
   , prs.prospect_name
   , proposal.proposal_id
+  , Case When ksm_purp.proposal_id Is Not Null And ksm_amts.proposal_id Is Not Null Then 'Y' End
+      As ksm_proposal_ind
   , assn.proposal_manager_id
   , assn.proposal_manager
   , asst.proposal_assist
@@ -204,9 +203,9 @@ Select
 From proposal
 Cross Join cal
 Inner Join tms_proposal_status tms_ps On tms_ps.proposal_status_code = proposal.proposal_status_code
--- Only KSM proposals
-Inner Join ksm_purp On ksm_purp.proposal_id = proposal.proposal_id
-Inner Join ksm_amts On ksm_amts.proposal_id = proposal.proposal_id
+-- KSM proposals
+Left Join ksm_purp On ksm_purp.proposal_id = proposal.proposal_id
+Left Join ksm_amts On ksm_amts.proposal_id = proposal.proposal_id
 -- Proposal info
 Left Join other_purp On other_purp.proposal_id = proposal.proposal_id
 Left Join assn On assn.proposal_id = proposal.proposal_id
@@ -216,4 +215,15 @@ Left Join (Select prospect_id, prospect_name From prospect) prs On prs.prospect_
 Left Join strat On strat.prospect_id = proposal.prospect_id
 -- Linked gift info
 Left Join linked On linked.proposal_id = proposal.proposal_id
-Left Join linkednu On linkednu.proposal_id = proposal.proposal_id
+Left Join linkednu On linkednu.proposal_id = proposal.proposal_id;
+
+/**************************************
+KSM version
+Filter on ksm_proposal_ind = 'Y'
+**************************************/
+
+Create Or Replace View v_ksm_proposal_history As
+
+Select *
+From v_proposal_history
+Where ksm_proposal_ind = 'Y'
