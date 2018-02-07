@@ -1,11 +1,11 @@
 Create Or Replace View vt_ksm_prs_pool_gos As
 
-/* Assigned ksm_prospect_pool joined with KSM current frontline staff activity
+/* Assigned v_ksm_prospect_pool joined with KSM current frontline staff activity
 per prospect */
 
 Select
   pool.*
-  , mgo.last_name
+  , mgo.gift_officer
   , mgo.assigned
   , mgo.visits_last_365_days
   , mgo.quals_last_365_days

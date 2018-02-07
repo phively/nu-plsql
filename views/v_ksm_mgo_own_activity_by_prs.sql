@@ -105,7 +105,7 @@ ksm_staff As (
 -- Main query
 Select
   prs.prospect_id
-  , prs.last_name
+  , prs.last_name As gift_officer
   , op.assigned
   , vs.visits_last_365_days
   , vs.quals_last_365_days

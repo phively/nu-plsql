@@ -12,7 +12,10 @@ ksm_deg As (
 
 -- Kellogg prospect interest
 , ksm_prs As (
-  Select prospect.prospect_id, prs_e.id_number
+  Select
+    prospect.prospect_id
+    , prs_e.id_number
+    , prs_e.primary_ind
   From program_prospect prs
   Inner Join prospect_entity prs_e On prs_e.prospect_id = prs.prospect_id
   Inner Join prospect On prs.prospect_id = prospect.prospect_id
@@ -32,14 +35,20 @@ ksm_deg As (
 , dq As (
   (
   -- Overall disqualified
-  Select prospect.prospect_id, id_number, tms_stage.short_desc As dq
+  Select
+    prospect.prospect_id
+    , id_number
+    , tms_stage.short_desc As dq
   From prospect
   Inner Join prospect_entity On prospect_entity.prospect_id = prospect.prospect_id
   Left Join tms_stage On tms_stage.stage_code = prospect.stage_code
   Where prospect.stage_code = 7
   ) Union (
   -- Program disqualified
-  Select pp.prospect_id, id_number, tms_stage.short_desc As dq
+  Select
+    pp.prospect_id
+    , id_number
+    , tms_stage.short_desc As dq
   From program_prospect pp
   Inner Join prospect_entity On prospect_entity.prospect_id = pp.prospect_id
   Left Join tms_stage On tms_stage.stage_code = pp.stage_code
@@ -52,14 +61,20 @@ ksm_deg As (
 , perm_stew As (
   (
   -- Overall disqualified
-  Select prospect.prospect_id, id_number, tms_stage.short_desc As ps
+  Select
+    prospect.prospect_id
+    , id_number
+    , tms_stage.short_desc As ps
   From prospect
   Inner Join prospect_entity On prospect_entity.prospect_id = prospect.prospect_id
   Left Join tms_stage On tms_stage.stage_code = prospect.stage_code
   Where prospect.stage_code = 11
   ) Union (
   -- Program disqualified
-  Select pp.prospect_id, id_number, tms_stage.short_desc As ps
+  Select
+    pp.prospect_id
+    , id_number
+    , tms_stage.short_desc As ps
   From program_prospect pp
   Inner Join prospect_entity On prospect_entity.prospect_id = pp.prospect_id
   Left Join tms_stage On tms_stage.stage_code = pp.stage_code
@@ -100,7 +115,9 @@ ksm_deg As (
 
 -- No Solicit special handling
 , spec_hnd As (
-  Select id_number, hnd_type_code As DNS
+  Select
+    id_number
+    , hnd_type_code As DNS
   From handling
   Where hnd_type_code = 'DNS'
     And hnd_status_code = 'A'
@@ -108,7 +125,11 @@ ksm_deg As (
 
 -- UOR
 , uor As (
-  Select prospect_id, evaluation_date As uor_date, evaluation.rating_code, tms_rating.short_desc As uor
+  Select
+    prospect_id
+    , evaluation_date As uor_date
+    , evaluation.rating_code
+    , tms_rating.short_desc As uor
   From evaluation
   Left Join tms_rating On tms_rating.rating_code = evaluation.rating_code
   Where evaluation_type = 'UR' And active_ind = 'Y' -- University overall rating
@@ -116,7 +137,11 @@ ksm_deg As (
 
 -- Prospect assignments
 , assign As (
-  Select Distinct assignment.prospect_id, office_code, assignment_id_number, entity.report_name
+  Select Distinct
+    assignment.prospect_id
+    , office_code
+    , assignment_id_number
+    , entity.report_name
   From assignment
   Inner Join entity On entity.id_number = assignment.assignment_id_number
   Inner Join prospect_entity On prospect_entity.prospect_id = assignment.prospect_id
@@ -124,9 +149,10 @@ ksm_deg As (
     And assignment_type In ('PP', 'PM', 'AF') -- Program Manager (PP), Prospect Manager (PM), Annual Fund Officer (AF)
 )
 , assign_conc As (
-  Select prospect_id,
-    Listagg(report_name, ';  ') Within Group (Order By report_name) As managers,
-    Listagg(assignment_id_number, ';  ') Within Group (Order By report_name) As manager_ids
+  Select
+    prospect_id
+    , Listagg(report_name, ';  ') Within Group (Order By report_name) As managers
+    , Listagg(assignment_id_number, ';  ') Within Group (Order By report_name) As manager_ids
   From assign
   Group By prospect_id
 )
@@ -143,6 +169,7 @@ Select Distinct
   , prs.business_state
   , prs.business_country
   , prs.prospect_id
+  , ksm_prs.primary_ind
   , prospect.prospect_name
   , prospect.prospect_name_sort
   , strat.university_strategy
@@ -199,6 +226,7 @@ Select Distinct
 From rpt_pbh634.v_entity_ksm_households hh
 Inner Join ksm_prs_ids On ksm_prs_ids.id_number = hh.id_number -- Must be a valid Kellogg entity
 Left Join nu_prs_trp_prospect prs On prs.id_number = hh.id_number
+Left Join ksm_prs On ksm_prs.prospect_id = prs.prospect_id
 Left Join prospect On prospect.prospect_id = prs.prospect_id
 Left Join ksm_150_300 On ksm_150_300.id_number = hh.id_number
 Left Join entity contact_auth On contact_auth.id_number = prs.contact_author
