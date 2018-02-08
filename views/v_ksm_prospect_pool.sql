@@ -10,25 +10,43 @@ ksm_deg As (
   Where record_status_code Not In ('D', 'X') -- Exclude deceased, purgable
 )
 
+-- Kellogg Top 150/300
+, ksm_150_300 As (
+  Select *
+  From table(rpt_pbh634.ksm_pkg.tbl_entity_top_150_300)
+)
+
+-- Prospect entity table filtered for active prospects
+, prs_e As (
+  Select
+    pe.prospect_id
+    , pe.id_number
+    , pe.primary_ind
+  From prospect_entity pe
+  Inner Join prospect p On p.prospect_id = pe.prospect_id
+  Where p.active_ind = 'Y' -- Active only
+    And p.stage_code Not In (7, 11) -- Exclude Disqualified, Permanent Stewardship
+)
+
 -- Kellogg prospect interest
 , ksm_prs As (
   Select
-    prospect.prospect_id
+    prs_e.prospect_id
     , prs_e.id_number
     , prs_e.primary_ind
   From program_prospect prs
-  Inner Join prospect_entity prs_e On prs_e.prospect_id = prs.prospect_id
-  Inner Join prospect On prs.prospect_id = prospect.prospect_id
+  Inner Join prs_e On prs_e.prospect_id = prs.prospect_id
   Inner Join entity on entity.id_number = prs_e.id_number
-  Where prs.program_code = 'KM'
-    -- Active only
-    And prs.active_ind = 'Y'
-    And prospect.active_ind = 'Y'
-    -- Exclude deceased, purgable
-    And entity.record_status_code Not In ('D', 'X')
-    -- Exclude Disqualified, Permanent Stewardship
-    And prs.stage_code Not In (7, 11)
-    And prospect.stage_code Not In (7, 11)
+  Where
+    (
+      -- Top 150/300
+      prs.prospect_id In (Select prospect_id From ksm_150_300)
+    ) Or (
+      prs.program_code = 'KM' -- Kellogg only
+      And prs.active_ind = 'Y' -- Active only
+      And entity.record_status_code Not In ('D', 'X') -- Exclude deceased, purgable
+      And prs.stage_code Not In (7, 11) -- Exclude Disqualified, Permanent Stewardship
+    )
 )
 
 -- Previously disqualified prospects; note that this will include people with multiple prospect records
@@ -81,12 +99,6 @@ ksm_deg As (
   Where pp.stage_code = 11
     And pp.program_code = 'KM'
   )
-)
-
--- Kellogg Top 150/300
-, ksm_150_300 As (
-  Select *
-  From table(rpt_pbh634.ksm_pkg.tbl_entity_top_150_300)
 )
 
 -- All prospects with an active Kellogg program code
@@ -169,7 +181,7 @@ Select Distinct
   , prs.business_state
   , prs.business_country
   , prs.prospect_id
-  , ksm_prs.primary_ind
+  , prs_e.primary_ind
   , prospect.prospect_name
   , prospect.prospect_name_sort
   , strat.university_strategy
@@ -226,7 +238,7 @@ Select Distinct
 From rpt_pbh634.v_entity_ksm_households hh
 Inner Join ksm_prs_ids On ksm_prs_ids.id_number = hh.id_number -- Must be a valid Kellogg entity
 Left Join nu_prs_trp_prospect prs On prs.id_number = hh.id_number
-Left Join ksm_prs On ksm_prs.prospect_id = prs.prospect_id
+Left Join prs_e On prs_e.prospect_id = prs.prospect_id And prs_e.id_number = hh.id_number
 Left Join prospect On prospect.prospect_id = prs.prospect_id
 Left Join ksm_150_300 On ksm_150_300.id_number = hh.id_number
 Left Join entity contact_auth On contact_auth.id_number = prs.contact_author
