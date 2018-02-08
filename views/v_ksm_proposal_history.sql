@@ -78,8 +78,16 @@ linked As (
 , assn As (
   Select
     assignment.proposal_id
-    , Listagg(assignment.assignment_id_number, '; ') Within Group (Order By assignment.start_date Desc NULLS Last, assignment.date_modified Desc) As proposal_manager_id
-    , Listagg(entity.report_name, '; ') Within Group (Order By assignment.start_date Desc NULLS Last, assignment.date_modified Desc) As proposal_manager
+    , max(assignment.assignment_id_number)
+        keep(dense_rank First Order By assignment.stop_date Desc, assignment.start_date Desc, assignment.date_added Desc, assignment.date_modified Desc)
+        As proposal_manager_id
+    , max(entity.report_name)
+        keep(dense_rank First Order By assignment.stop_date Desc, assignment.start_date Desc, assignment.date_added Desc, assignment.date_modified Desc)
+        As proposal_manager
+    , Listagg(assignment.assignment_id_number, '; ') Within Group (Order By assignment.start_date Desc NULLS Last, assignment.date_modified Desc)
+        As historical_managers_id
+    , Listagg(entity.report_name, '; ') Within Group (Order By assignment.start_date Desc NULLS Last, assignment.date_modified Desc)
+        As historical_managers
   From assignment
   Inner Join entity On entity.id_number = assignment.assignment_id_number
   Where assignment.assignment_type = 'PA' -- Proposal Manager (PM is taken by Prospect Manager)
@@ -88,7 +96,8 @@ linked As (
 , asst As (
   Select
     assignment.proposal_id
-    , Listagg(entity.report_name, '; ') Within Group (Order By assignment.start_date Desc NULLS Last, assignment.date_modified Desc) As proposal_assist
+    , Listagg(entity.report_name, '; ') Within Group (Order By assignment.start_date Desc NULLS Last, assignment.date_modified Desc)
+        As proposal_assist
   From assignment
   Inner Join entity On entity.id_number = assignment.assignment_id_number
   Where assignment.assignment_type = 'AS' -- Proposal Assist
@@ -135,6 +144,7 @@ Select
   , assn.proposal_manager_id
   , assn.proposal_manager
   , asst.proposal_assist
+  , assn.historical_managers
   , proposal.proposal_status_code
   , tms_ps.hierarchy_order
   , Case
@@ -224,6 +234,48 @@ Filter on ksm_proposal_ind = 'Y'
 
 Create Or Replace View v_ksm_proposal_history As
 
-Select *
+Select
+  prospect_id
+  , prospect_name
+  , proposal_id
+  , ksm_proposal_ind
+  , proposal_manager_id
+  , proposal_manager
+  , proposal_assist
+  , proposal_status_code
+  , historical_managers
+  , hierarchy_order
+  , proposal_status
+  , proposal_active
+  , proposal_in_progress
+  , prop_purposes
+  , initiatives
+  , other_programs
+  , university_strategy
+  , start_date
+  , start_fy
+  , ask_date
+  , ask_fy
+  , close_date
+  , close_fy
+  , date_modified
+  , ksm_linked_receipts
+  , ksm_linked_amounts
+  , nu_linked_amounts
+  , total_original_ask_amt
+  , total_ask_amt
+  , total_anticipated_amt
+  , total_granted_amt
+  , ksm_ask
+  , ksm_anticipated
+  , ksm_af_ask
+  , ksm_af_anticipated
+  , ksm_facilities_ask
+  , ksm_facilities_anticipated
+  , ksm_or_univ_ask
+  , ksm_or_univ_orig_ask
+  , ksm_or_univ_anticipated
+  , final_anticipated_or_ask_amt
+  , ksm_bin
 From v_proposal_history
 Where ksm_proposal_ind = 'Y'
