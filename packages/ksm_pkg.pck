@@ -487,7 +487,10 @@ Function tbl_university_strategy
 /* Return pipelined table of committee members */
 Function tbl_committee_gab
   Return t_committee_members Pipelined;
-  
+
+Function tbl_committee_phs
+  Return t_committee_members Pipelined;
+    
 Function tbl_committee_kac
   Return t_committee_members Pipelined;
 
@@ -1808,6 +1811,7 @@ Private constant declarations
 /* Committees */
 committee_gab Constant committee.committee_code%type := 'U'; -- Kellogg Global Advisory Board committee code
 committee_kac Constant committee.committee_code%type := 'KACNA'; -- Kellogg Alumni Council committee code
+committee_phs Constant committee.committee_code%type := 'KPH'; -- KSM Pete Henderson Society
 committee_KFN Constant committee.committee_code%type := 'KFN'; -- Kellogg Finance Network code
 committee_CorpGov Constant committee.committee_code%type := 'KCGN'; -- KSM Corporate Governance Network code
 committee_WomenSummit Constant committee.committee_code%type := 'KGWS'; -- KSM Global Women's Summit code
@@ -2569,6 +2573,19 @@ Function tbl_university_strategy
     
     Begin
       committees := committee_members (my_committee_cd => committee_kac);
+      For i in 1..committees.count Loop
+        Pipe row(committees(i));
+      End Loop;
+      Return;
+    End;
+
+  /* PHS */
+  Function tbl_committee_phs
+    Return t_committee_members Pipelined As
+    committees t_committee_members;
+    
+    Begin
+      committees := committee_members (my_committee_cd => committee_phs);
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
