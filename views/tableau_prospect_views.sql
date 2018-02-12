@@ -1,3 +1,50 @@
+/****************************************
+KSM Campaign gifts booked and open proposals in one view
+****************************************/
+
+Create Or Replace View vt_ksm_mg_fy_metrics As
+
+With
+cal As (
+  Select *
+  From rpt_pbh634.v_current_calendar
+)
+
+/* Proposal status and year-to-date new gifts and commitments for KSM MG metrics */
+(
+  -- Gift data
+  Select amount, to_number(year_of_giving) As fiscal_year, cal.curr_fy, ytd_ind,
+    Case
+      When amount >= 10000000 Then 10
+      When amount >=  5000000 Then 5
+      When amount >=  2000000 Then 2
+      When amount >=  1000000 Then 1
+      When amount >=   500000 Then 0.5
+      When amount >=   100000 Then 0.1
+      Else 0
+    End As bin,
+    'Booked' As cat, 'Campaign Giving' As src
+  From v_ksm_giving_campaign_ytd
+  Cross Join cal
+  Where year_of_giving Between 2007 And 2020 -- FY 2007 and 2020 as first and last campaign gift dates
+    And amount > 0
+) Union All (
+  -- Proposal data
+  -- Includes proposals expected to close in current and previous fiscal year as current fiscal year
+  Select final_anticipated_or_ask_amt, cal.curr_fy As fiscal_year, cal.curr_fy, 'Y',
+    ksm_bin, proposal_status As cat, 'Proposals' As src
+  From rpt_pbh634.v_ksm_proposal_history
+  Cross Join cal
+  Where proposal_in_progress = 'Y'
+    And close_fy Between cal.curr_fy - 1 And cal.curr_fy -- Do not include historical proposal data which is not helpful
+)
+;
+
+/****************************************
+Kellogg prospect pool definition plus giving,
+proposal, etc. fields
+****************************************/
+
 Create Or Replace View vt_ksm_prs_pool As
 
 With
@@ -213,6 +260,71 @@ From vt_ksm_prs_pool pool
 Inner Join v_ksm_mgo_own_activity_by_prs mgo On mgo.prospect_id = pool.prospect_id;
 
 /****************************************
+ARD prospect assignments and university strategy updates
+****************************************/
+
+Create Or Replace View vt_ard_prospect_timeline As
+
+With
+/* Prospect assignments and strategies over time */
+
+-- PM assignments
+assignments As (
+  Select
+    assignment.prospect_id
+    , prospect_entity.id_number
+    , entity.report_name
+    , prospect_entity.primary_ind
+    , 'Assignment' As type
+    , assignment.assignment_id As id
+    , assignment.start_date
+    , assignment.stop_date
+    , trunc(assignment.date_added) As date_added
+    , trunc(assignment.date_modified) As date_modified
+    , Case When assignment.active_ind = 'Y' Then 'Active' Else 'Inactive' End As status
+    , assignment.assignment_id_number As owner_id
+    , assignee.report_name As owner_report_name
+    , assignment.xcomment As description
+  From assignment
+  Inner Join entity assignee On assignee.id_number = assignment.assignment_id_number
+  Inner Join prospect_entity On prospect_entity.prospect_id = assignment.prospect_id
+  Inner Join entity On entity.id_number = prospect_entity.id_number
+  Where assignment_type In ('PP', 'PM', 'AF') -- Program Manager (PP), Prospect Manager (PM), Annual Fund Officer (AF)
+)
+
+-- University strategies
+, strategies As (
+  Select
+    task.prospect_id
+    , prospect_entity.id_number
+    , entity.report_name
+    , prospect_entity.primary_ind
+    , 'Strategy' As type
+    , task.task_id
+    , task.sched_date
+    , task.completed_date
+    , trunc(task.date_added) As date_added
+    , trunc(task.date_modified) As date_modified
+    , tms_ts.short_desc As status
+    , task.owner_id_number
+    , owner.report_name As owner_report_name
+    , task_description
+  From task
+  Inner Join tms_task_status tms_ts On tms_ts.task_status_code = task.task_status_code
+  Inner Join prospect_entity On prospect_entity.prospect_id = task.prospect_id
+  Inner Join entity On entity.id_number = prospect_entity.id_number
+  Inner Join entity owner On owner.id_number = task.owner_id_number
+  Where task_code = 'ST' -- University Overall Strategy
+    And task.task_status_code <> 5 -- Not Cancelled (5) status
+)
+
+-- Main query
+Select assignments.* From assignments
+Union
+Select strategies.* From strategies
+;
+
+/****************************************
 Prospect activity "swim lanes"
 ****************************************/
 
@@ -291,7 +403,7 @@ cal As (
     , substr(type, 1, 1) As symbol
     -- Uniform calendar dates for axis alignment
     , cal.*
-  From v_ard_prospect_timeline tl
+  From vt_ard_prospect_timeline tl
   Cross Join cal
   Inner Join hh On hh.id_number =  tl.id_number
   Where start_date Between cal.bofy_prev And cal.eofy_next
