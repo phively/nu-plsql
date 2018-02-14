@@ -142,6 +142,7 @@ linked As (
 Select
   proposal.prospect_id
   , prs.prospect_name
+  , prs.prospect_name_sort
   , proposal.proposal_id
   , Case When ksm_purp.proposal_id Is Not Null And ksm_amts.proposal_id Is Not Null Then 'Y' End
       As ksm_proposal_ind
@@ -225,7 +226,8 @@ Left Join other_purp On other_purp.proposal_id = proposal.proposal_id
 Left Join assn On assn.proposal_id = proposal.proposal_id
 Left Join asst On asst.proposal_id = proposal.proposal_id
 -- Prospect info
-Left Join (Select prospect_id, prospect_name From prospect) prs On prs.prospect_id = proposal.prospect_id
+Left Join (Select prospect_id, prospect_name, prospect_name_sort From prospect) prs
+  On prs.prospect_id = proposal.prospect_id
 Left Join strat On strat.prospect_id = proposal.prospect_id
 -- Linked gift info
 Left Join linked On linked.proposal_id = proposal.proposal_id
@@ -241,6 +243,7 @@ Create Or Replace View v_ksm_proposal_history As
 Select
   prospect_id
   , prospect_name
+  , prospect_name_sort
   , proposal_id
   , ksm_proposal_ind
   , proposal_manager_id
