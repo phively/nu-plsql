@@ -51,8 +51,10 @@ dts As (
     , stewardship_pfy1
     , stewardship_pfy2
     , stewardship_pfy3
-    , Case When stewardship_cfy > 0 And stewardship_pfy1 > 0 And stewardship_pfy2 > 0 Then 'Y' End As loyal_this_year
-    , Case When stewardship_pfy1 > 0 And stewardship_pfy2 > 0 And stewardship_pfy3 > 0 Then 'Y' End As loyal_last_year
+    , Case When stewardship_cfy > 0 And stewardship_pfy1 > 0 And stewardship_pfy2 > 0 Then 'Y' End
+      As loyal_this_year
+    , Case When stewardship_pfy1 > 0 And stewardship_pfy2 > 0 And stewardship_pfy3 > 0 Then 'Y' End
+      As loyal_last_year
   From rpt_pbh634.v_ksm_giving_summary giving 
 )
 
@@ -67,7 +69,8 @@ dts As (
 , klc_years As (
   Select
     id_number
-    , listagg(fiscal_year, ', ') Within Group (Order By fiscal_year Desc) As klc_years
+    , listagg(fiscal_year, ', ') Within Group (Order By fiscal_year Desc)
+      As klc_years
   From klc
   Group By id_number
 )
@@ -130,7 +133,7 @@ dts As (
 , first_gift As (
   Select
     id_number
-    , min(date_of_record) as first_ksm_gift_dt
+    , min(date_of_record) As first_ksm_gift_dt
   From rpt_pbh634.v_ksm_giving_trans 
   Where transaction_type <> 'Telefund Pledge' -- Should not consider telefund pledges
   Group By id_number

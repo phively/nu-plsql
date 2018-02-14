@@ -1,3 +1,7 @@
+/**************************************
+NU historical proposals, including inactive
+**************************************/
+
 Create Or Replace View v_proposal_history As
 
 With

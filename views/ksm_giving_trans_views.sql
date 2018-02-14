@@ -1,6 +1,6 @@
-/*****************
+/*************************************************
  Kellogg giving
-*****************/
+*************************************************/
 
 /* Kellogg lifetime giving transactions */
 Create Or Replace View v_ksm_giving_trans As
@@ -11,8 +11,8 @@ Select
   , cal.yesterday
   , cal.curr_fy
 From table(ksm_pkg.tbl_gift_credit_ksm) g
-Cross Join table(ksm_pkg.tbl_current_calendar) cal;
-/
+Cross Join table(ksm_pkg.tbl_current_calendar) cal
+;
 
 /* Householded Kellogg lifetime giving transactions */
 Create Or Replace View v_ksm_giving_trans_hh As
@@ -23,8 +23,8 @@ Select
   , cal.yesterday
   , cal.curr_fy
 From table(ksm_pkg.tbl_gift_credit_hh_ksm) g
-Cross Join table(ksm_pkg.tbl_current_calendar) cal;
-/
+Cross Join table(ksm_pkg.tbl_current_calendar) cal
+;
 
 /* Householded entity giving summaries */
 Create Or Replace View v_ksm_giving_summary As
@@ -86,8 +86,8 @@ Select
       When af_pfy2 + af_pfy3 + af_pfy4 > 0 Then 'PYBUNT'
       When af_pfy1 + af_pfy2 + af_pfy3 + af_pfy4 = 0 Then 'Lapsed/Non'
     End As af_status_fy_start
-From trans;
-/
+From trans
+;
 
 /* KSM lifetime giving; kept for historical purposes for past queries that reference v_ksm_giving_lifetime */
 Create Or Replace View v_ksm_giving_lifetime As
@@ -98,26 +98,26 @@ Select
   , ksm.ngc_lifetime As credit_amount
   , ksm.ngc_lifetime_full_rec As credit_amount_full_rec
 From v_ksm_giving_summary ksm
-Inner Join entity On entity.id_number = ksm.id_number;
-/
+Inner Join entity On entity.id_number = ksm.id_number
+;
 
-/*****************
+/*************************************************
  Campaign giving
-*****************/
+*************************************************/
 
 /* Kellogg Transforming Together Campaign giving transactions */
 Create Or Replace View v_ksm_giving_campaign_trans As
 -- Campaign transactions
 Select *
 From table(ksm_pkg.tbl_gift_credit_campaign)
-/
+;
 
 /* Householded Kellogg campaign giving transactions */
 Create Or Replace View v_ksm_giving_campaign_trans_hh As
 -- Householded campaign transactions
 Select *
 From table(ksm_pkg.tbl_gift_credit_hh_campaign)
-/
+;
 
 /* Kellogg Campaign giving summaries */
 Create or Replace View v_ksm_giving_campaign As
@@ -191,7 +191,7 @@ Group By
   , hh.household_spouse_id
   , hh.household_spouse
   , legal.campaign_legal_giving
-/
+;
 
 /* Kellogg Campaign transactions with additional detail columns and a YTD indicator */
 Create Or Replace View v_ksm_giving_campaign_ytd As
@@ -231,4 +231,4 @@ Inner Join entity On entity.id_number = gft.id_number
 Inner Join allocation On allocation.allocation_code = gft.alloc_code
 Left Join deg On deg.id_number = entity.id_number
 Left Join nu_prs_trp_prospect prs On prs.id_number = entity.id_number
-/
+;
