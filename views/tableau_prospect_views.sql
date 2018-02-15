@@ -402,6 +402,14 @@ cal As (
   From table(ksm_pkg.tbl_entity_households_ksm)
 )
 
+-- Prospect entity deduped
+, pe As (
+  Select pre.*
+  From prospect_entity pre
+  Inner Join prospect p On p.prospect_id = pre.prospect_id
+  Where p.active_ind = 'Y'
+)
+
 -- Prospect data
 , prospects As (
   Select
@@ -446,6 +454,7 @@ cal As (
   Cross Join cal
   Inner Join hh On hh.id_number =  tl.id_number
   Where start_date Between cal.bofy_prev And cal.eofy_next
+    And primary_ind = 'Y'
 )
 
 -- ARD contact report data
@@ -495,10 +504,10 @@ cal As (
     prp.prospect_id
     , hh.household_id
     , hh.household_rpt_name
-    , prospect_entity.id_number
+    , pe.id_number
     , entity.report_name
-    , prospect_entity.primary_ind
-    , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(prospect_entity.id_number) As rating_bin
+    , pe.primary_ind
+    , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(pe.id_number) As rating_bin
     -- Data point description
     , proposal_status
     , ksm_or_univ_orig_ask
@@ -524,12 +533,15 @@ cal As (
     , cal.*
   From v_ksm_proposal_history prp
   Cross Join cal
-  Inner Join prospect_entity On prospect_entity.prospect_id = prp.prospect_id
-  Inner Join hh On hh.id_number = prospect_entity.id_number
-  Inner Join entity On entity.id_number = prospect_entity.id_number
-  Where start_date Between cal.bofy_prev And cal.eofy_next
-    Or ask_date Between cal.bofy_prev And cal.eofy_next
-    Or close_date Between cal.bofy_prev And cal.eofy_next
+  Inner Join pe On pe.prospect_id = prp.prospect_id
+  Inner Join hh On hh.id_number = pe.id_number
+  Inner Join entity On entity.id_number = pe.id_number
+  Where pe.primary_ind = 'Y'
+    And (
+      start_date Between cal.bofy_prev And cal.eofy_next
+      Or ask_date Between cal.bofy_prev And cal.eofy_next
+      Or close_date Between cal.bofy_prev And cal.eofy_next
+    )
 )
 , proposal_starts As (
   Select
@@ -676,10 +688,11 @@ cal As (
   From v_ksm_giving_trans_hh gft
   Cross Join cal
   Inner Join hh On hh.id_number =  gft.id_number
-  Inner Join prospect_entity pe On pe.id_number = gft.id_number
+  Inner Join pe On pe.id_number = gft.id_number
   Inner Join entity On entity.id_number = gft.id_number
   Left Join tms_pledge_status tms_ps On tms_ps.pledge_status_code = gft.pledge_status
   Where gft.date_of_record Between cal.bofy_prev And cal.eofy_next
+    And gft.legal_amount > 0
 )
 , ksm_gift As (
   Select

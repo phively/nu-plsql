@@ -4,6 +4,16 @@ All ARD contact reports
 
 Create Or Replace View v_ard_contact_reports As
 
+With
+
+/* Prospect Entity; active records only */
+pe As (
+  Select pre.*
+  From prospect_entity pre
+  Inner Join prospect p On p.prospect_id = pre.prospect_id
+  Where p.active_ind = 'Y'
+)
+
 /* Main query */
 Select
   contact_rpt_credit.id_number As credited
@@ -18,7 +28,7 @@ Select
   , contact_report.contacted_name
   , contacted_entity.report_name
   , contact_report.prospect_id
-  , prospect_entity.primary_ind
+  , pe.primary_ind
   , prospect.prospect_name
   , prospect.prospect_name_sort
   , contact_report.contact_date
@@ -57,7 +67,7 @@ Inner Join entity contacted_entity On contacted_entity.id_number = contact_repor
 Inner Join table(ksm_pkg.tbl_nu_ard_staff) ard_staff On ard_staff.id_number = contact_rpt_credit.id_number
 Left Join table(ksm_pkg.tbl_frontline_ksm_staff) ksm_staff On ksm_staff.id_number = ard_staff.id_number
 Left Join prospect On prospect.prospect_id = prs.prospect_id
-Left Join prospect_entity On prospect_entity.id_number = prs.id_number
+Left Join pe On pe.id_number = prs.id_number
 Left Join table(ksm_pkg.tbl_university_strategy) strat On strat.prospect_id = contact_report.prospect_id
 ;
 
