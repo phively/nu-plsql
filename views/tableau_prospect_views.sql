@@ -291,13 +291,31 @@ assignments As (
     , assignment.assignment_id As id
     , assignment.start_date
     , assignment.stop_date
-    , trunc(assignment.date_added) As date_added
-    , trunc(assignment.date_modified) As date_modified
-    , Case When assignment.active_ind = 'Y' Then 'Active' Else 'Inactive' End As status
+    -- Calculated start date: use date_added if start_date unavailable
+    , Case
+        When assignment.start_date Is Not Null Then trunc(assignment.start_date)
+        Else trunc(assignment.date_added)
+      End As start_dt_calc
+    -- Calculated stop date: use date_modified if stop_date unavailable
+    , Case
+        When assignment.stop_date Is Not Null Then trunc(assignment.stop_date)
+        When assignment.active_ind <> 'Y' Then trunc(assignment.date_modified)
+        Else NULL
+      End As stop_dt_calc
+    , Case
+        When assignment.active_ind = 'Y' Then 'Active'
+        Else 'Inactive'
+      End As status
+    , Case
+        When assignment.active_ind = 'Y' And assignment.stop_date Is Null Then 'Active'
+        When assignment.active_ind = 'Y' And assignment.stop_date > cal.yesterday Then 'Active'
+        Else 'Inactive'
+      End As status_summary
     , assignment.assignment_id_number As owner_id
     , assignee.report_name As owner_report_name
     , assignment.xcomment As description
   From assignment
+  Cross Join v_current_calendar cal
   Inner Join entity assignee On assignee.id_number = assignment.assignment_id_number
   Inner Join prospect_entity On prospect_entity.prospect_id = assignment.prospect_id
   Inner Join entity On entity.id_number = prospect_entity.id_number
@@ -315,13 +333,29 @@ assignments As (
     , task.task_id
     , task.sched_date
     , task.completed_date
-    , trunc(task.date_added) As date_added
-    , trunc(task.date_modified) As date_modified
+    -- Calculated start date: use date_added if sched_date unavailable
+    , Case
+        When task.sched_date Is Not Null Then trunc(task.sched_date)
+        Else trunc(task.date_added)
+      End As start_dt_calc
+    -- Calculated stop date: use date_modified if completed_date unavailable
+    , Case
+        When task.completed_date Is Not Null Then trunc(task.completed_date)
+        When task.task_status_code = 4 Then trunc(task.date_modified) -- 4 = completed
+        Else NULL
+      End As stop_dt_calc
     , tms_ts.short_desc As status
+    , Case
+        When task.task_status_code = 4 Then 'Inactive'
+        When task.completed_date < cal.today Then 'Inactive'
+        When task.task_status_code In (1, 2, 3) Then 'Active'
+        Else NULL
+      End As status_summary
     , task.owner_id_number
     , owner.report_name As owner_report_name
     , task_description
   From task
+  Cross Join v_current_calendar cal
   Inner Join tms_task_status tms_ts On tms_ts.task_status_code = task.task_status_code
   Inner Join prospect_entity On prospect_entity.prospect_id = task.prospect_id
   Inner Join entity On entity.id_number = prospect_entity.id_number
@@ -394,16 +428,9 @@ cal As (
     , date_added
     , date_modified */
     -- Use date_added as start_date if unavailable
-    , Case
-        When start_date Is Not Null Then start_date
-        Else date_added
-      End As start_date
+    , start_dt_calc As start_date
     -- Use date_modified as stop_date if unavailable, but only for inactive/completed status
-    , Case
-        When stop_date Is Not Null Then stop_date
-        When lower(status) Like '%inactive%' Or lower(status) Like '%completed%' Then date_modified
-        Else Null
-      End As stop_date
+    , stop_dt_calc As stop_date
     -- Status detail
     , status
     -- Credited entity
