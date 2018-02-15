@@ -1,0 +1,4 @@
+# Syntax highlighting manual override
+*.pck linguist-language=SQL
+*.sql linguist-language=SQL
+*.tst linguist-language=SQL
