@@ -1584,7 +1584,7 @@ Cursor c_gift_credit_ksm Is
     -- Pledges, including BE and LE program credit
       Select
         pledge_donor_id
-        , entity.id_number
+        , entity.report_name
         , pledge_anonymous
         , pledge_pledge_number
         , pledge.pledge_sequence
@@ -1777,9 +1777,9 @@ Cursor c_gift_credit_hh_campaign_2008 Is
   ) Union All (
   -- Internal transfer; 344303 is 50%
   Select
-    daily.id_number
-    , entity.report_name
+    daily.id_number As household_id
     , daily.id_number
+    , entity.report_name
     , ' ' As anonymous
     , daily.rcpt_or_plg_number
     , daily.xsequence
