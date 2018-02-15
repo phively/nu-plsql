@@ -229,6 +229,7 @@ Type plg_disc Is Record (
 /* Entity transaction for credit */
 Type trans_entity Is Record (
   id_number entity.id_number%type
+  , report_name entity.report_name%type
   , anonymous gift.gift_associated_anonymous%type
   , tx_number gift.gift_receipt_number%type
   , tx_sequence gift.gift_sequence%type
@@ -254,6 +255,7 @@ Type trans_entity Is Record (
 Type trans_household Is Record (
   household_id entity.id_number%type
   , id_number entity.id_number%type
+  , report_name entity.report_name%type
   , anonymous gift.gift_associated_anonymous%type
   , tx_number gift.gift_receipt_number%type
   , tx_sequence gift.gift_sequence%type
@@ -1443,6 +1445,7 @@ Cursor c_gift_credit_ksm Is
     -- Outright gifts and payments
       Select
         gft.id_number
+        , entity.report_name
         , gift.gift_associated_anonymous As anon
         , tx_number
         , tx_sequence
@@ -1478,6 +1481,7 @@ Cursor c_gift_credit_ksm Is
             Else credit_amount
           End As recognition_credit
       From nu_gft_trp_gifttrans gft
+      Inner Join entity On entity.id_number = gft.id_number
       -- Anonymous association and linked proposal
       Inner Join gift On gift.gift_receipt_number = gft.tx_number And gift.gift_sequence = gft.tx_sequence
       Inner Join primary_gift On primary_gift.prim_gift_receipt_number = gft.tx_number
@@ -1492,6 +1496,7 @@ Cursor c_gift_credit_ksm Is
     -- Matching gift matching company
       Select
         match_gift_company_id
+        , entity.report_name
         , gftanon.anon
         , match_gift_receipt_number
         , match_gift_matched_sequence
@@ -1513,6 +1518,7 @@ Cursor c_gift_credit_ksm Is
         , match_gift_amount
         , match_gift_amount
       From matching_gift
+      Inner Join entity On entity.id_number = matching_gift.match_gift_company_id
       -- Only KSM allocations
       Inner Join ksm_allocs On ksm_allocs.allocation_code = matching_gift.match_gift_allocation_name
       -- Anonymous association on the matched gift
@@ -1530,6 +1536,7 @@ Cursor c_gift_credit_ksm Is
     -- Matching gift matched donors
       Select
         gft.id_number
+        , entity.report_name
         , gftanon.anon
         , match_gift_receipt_number
         , match_gift_matched_sequence
@@ -1558,6 +1565,7 @@ Cursor c_gift_credit_ksm Is
             , gift.gift_receipt_number
           From gift
         ) gft On matching_gift.match_gift_matched_receipt = gft.gift_receipt_number
+      Inner Join entity On entity.id_number = gft.id_number
       -- Only KSM allocations
       Inner Join ksm_allocs On ksm_allocs.allocation_code = matching_gift.match_gift_allocation_name
       -- Anonymous association on the matched gift
@@ -1576,6 +1584,7 @@ Cursor c_gift_credit_ksm Is
     -- Pledges, including BE and LE program credit
       Select
         pledge_donor_id
+        , entity.id_number
         , pledge_anonymous
         , pledge_pledge_number
         , pledge.pledge_sequence
@@ -1599,6 +1608,7 @@ Cursor c_gift_credit_ksm Is
         , plgd.credit
         , plgd.recognition_credit
       From pledge
+      Inner Join entity On entity.id_number = pledge.pledge_donor_id
       -- Trans type descriptions
       Inner Join tms_trans On tms_trans.transaction_type_code = pledge.pledge_pledge_type
       -- Allocation name backup
@@ -1768,6 +1778,7 @@ Cursor c_gift_credit_hh_campaign_2008 Is
   -- Internal transfer; 344303 is 50%
   Select
     daily.id_number
+    , entity.report_name
     , daily.id_number
     , ' ' As anonymous
     , daily.rcpt_or_plg_number
@@ -1791,6 +1802,7 @@ Cursor c_gift_credit_hh_campaign_2008 Is
     , 344303 As hh_credit
     , 344303 As hh_recognition_credit
   From nu_rpt_t_cmmt_dtl_daily daily
+  Inner Join entity On entity.id_number = daily.id_number
   Inner Join allocation On allocation.allocation_code = daily.alloc_code
   Inner Join primary_gift On primary_gift.prim_gift_receipt_number = daily.rcpt_or_plg_number
   Where daily.rcpt_or_plg_number = '0002275766'
