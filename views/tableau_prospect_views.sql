@@ -65,8 +65,14 @@ With
    Also includes strategy and current proposals
    Fairly slow to refresh due to multiple views */
 
+/* Geocoded data */
+geocode As (
+  Select *
+  From rpt_wcaproon.geocoded_addresses
+)
+
 /* Proposal data */
-ksm_proposal As (
+, ksm_proposal As (
   Select
     prospect_id
     , count(proposal_id) As open_proposals
@@ -167,6 +173,9 @@ ksm_proposal As (
 /* Main query */
 Select
   prs.*
+  -- Latitude/longitude
+  , geocode.latitude
+  , geocode.longitude
   -- Campaign giving fields
   , cmp.campaign_giving
   , cmp.campaign_steward_giving As campaign_giving_recognition
@@ -222,6 +231,8 @@ Select
   , cal.curr_fy
 From v_ksm_prospect_pool prs
 Cross Join v_current_calendar cal
+Left Join geocode On geocode.id_number = prs.id_number
+  And geocode.xsequence = prs.xsequence
 Left Join v_ksm_giving_summary gft On gft.id_number = prs.id_number
 Left Join v_ksm_giving_campaign cmp On cmp.id_number = prs.id_number
 Left Join ksm_proposal On ksm_proposal.prospect_id = prs.prospect_id

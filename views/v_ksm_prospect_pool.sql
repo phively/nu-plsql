@@ -235,7 +235,7 @@ Select Distinct
       -- Fallback
       Else 'Z. None'
     End As pool_group
-From rpt_pbh634.v_entity_ksm_households hh
+From table(rpt_pbh634.ksm_pkg.tbl_entity_households_ksm) hh
 Inner Join ksm_prs_ids On ksm_prs_ids.id_number = hh.id_number -- Must be a valid Kellogg entity
 Left Join nu_prs_trp_prospect prs On prs.id_number = hh.id_number
 Left Join prs_e On prs_e.prospect_id = prs.prospect_id And prs_e.id_number = hh.id_number
