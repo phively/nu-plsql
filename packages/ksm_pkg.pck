@@ -115,6 +115,7 @@ Type household Is Record (
   , household_ksm_year degrees.degree_year%type
   , household_masters_year degrees.degree_year%type
   , household_program_group varchar2(20)
+  , xsequence address.xsequence%type
   , household_city address.city%type
   , household_state address.state_code%type
   , household_country tms_country.short_desc%type
@@ -1039,6 +1040,7 @@ With
   , pref_addr As (
     Select
       addr.id_number
+      , addr.xsequence
       , addr.city As pref_city
       , addr.state_code As pref_state
       , cont.country As pref_country
@@ -1131,6 +1133,7 @@ With
     , couples.first_masters_year As household_masters_year
     -- Household last non-certificate year, for (approximate) young alumni designation
     , couples.program_group As household_program_group
+    , pref_addr.xsequence
     , pref_addr.pref_city
     , pref_addr.pref_state
     , pref_addr.pref_country
