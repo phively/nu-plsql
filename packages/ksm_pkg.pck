@@ -139,6 +139,15 @@ Type university_strategy Is Record (
   , strategy_sched_date task.sched_date%type
 );
 
+/* Modeled score */
+Type modeled_score Is Record (
+  id_number segment.id_number%type
+  , segment_year segment.segment_year%type
+  , segment_month segment.segment_month%type
+  , description segment_header.description%type
+  , score segment.xcomment%type
+);
+
 /* KLC member */
 Type klc_member Is Record (
   fiscal_year integer
@@ -320,7 +329,8 @@ Type t_degreed_alumni Is Table Of degreed_alumni;
 Type t_committee_members Is Table Of committee_member;
 Type t_households Is Table Of household;
 Type t_src_donors Is Table Of src_donor;
-Type t_university_strategy Is Table of university_strategy;
+Type t_university_strategy Is Table Of university_strategy;
+Type t_modeled_score Is Table Of modeled_score;
 Type t_klc_members Is Table Of klc_member;
 Type t_ksm_staff Is Table Of ksm_staff;
 Type t_nu_ard_staff Is Table Of nu_ard_staff;
@@ -486,6 +496,12 @@ Function tbl_gift_credit_hh_campaign
 /* Return pipelined tasks */
 Function tbl_university_strategy
   Return t_university_strategy Pipelined;
+
+/* Return pipelined model scores */
+Function tbl_model_af_10k (
+  model_year In integer
+  , model_month In integer
+) Return t_modeled_score Pipelined;
 
 /* Return pipelined table of committee members */
 Function tbl_committee_gab
@@ -1240,6 +1256,21 @@ Cursor c_university_strategy Is
   Where task_code = 'ST' -- University Overall Strategy
     And task_status_code Not In (4, 5) -- Not Completed (4) or Cancelled (5) status
   Group By prospect_id;
+
+/* Definition of Annual Fund 10K model scores as of the passed year and month */
+Cursor c_model_af_10k (model_year In integer, model_month In integer) Is
+  Select
+    s.id_number
+    , s.segment_year
+    , s.segment_month
+    , sh.description
+    , s.xcomment As score
+  From segment s
+  Inner Join segment_header sh On sh.segment_code = s.segment_code
+  Where s.segment_code Like 'KMAA_'
+    And s.segment_year = model_year
+    And s.segment_month = model_month
+;
 
 /* Definition of historical NU ARD employees */
 Cursor c_nu_ard_staff Is
@@ -2459,6 +2490,22 @@ Function tbl_university_strategy
     Close c_university_strategy;
     For i in 1..(task.count) Loop
       Pipe row(task(i));
+    End Loop;
+    Return;
+  End;
+  
+/* Pipelined function for Kellogg modeled scores */
+Function tbl_model_af_10k (model_year In integer, model_month In integer)
+  Return t_modeled_score Pipelined As
+  -- Declarations
+  score t_modeled_score;
+  
+  Begin
+    Open c_model_af_10k(model_year => model_year, model_month => model_month);
+      Fetch c_model_af_10k Bulk Collect Into score;
+    Close c_model_af_10k;
+    For i in 1..(score.count) Loop
+      Pipe row(score(i));
     End Loop;
     Return;
   End;

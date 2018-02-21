@@ -322,8 +322,8 @@ assignments As (
         When assignment.active_ind = 'Y' And assignment.stop_date > cal.yesterday Then 'Active'
         Else 'Inactive'
       End As status_summary
-    , assignment.assignment_id_number As owner_id
-    , assignee.report_name As owner_report_name
+    , assignment.assignment_id_number As responsible_id
+    , assignee.report_name As responsible_report_name
     , assignment.xcomment As description
   From assignment
   Cross Join v_current_calendar cal
@@ -334,6 +334,17 @@ assignments As (
 )
 
 -- University strategies
+, tr_conc As (
+  Select
+    tr.task_id
+    , Listagg(tr.id_number, '; ') Within Group (Order By tr.date_added Asc)
+      As task_responsible_ids
+    , Listagg(entity.report_name, '; ') Within Group (Order By tr.date_added Asc)
+      As task_responsible_names
+  From task_responsible tr
+  Inner Join entity On entity.id_number = tr.id_number
+  Group By tr.task_id
+)
 , strategies As (
   Select
     task.prospect_id
@@ -362,8 +373,8 @@ assignments As (
         When task.task_status_code In (1, 2, 3) Then 'Active'
         Else NULL
       End As status_summary
-    , task.owner_id_number
-    , owner.report_name As owner_report_name
+    , tr.task_responsible_ids
+    , tr.task_responsible_names
     , task_description
   From task
   Cross Join v_current_calendar cal
@@ -371,6 +382,7 @@ assignments As (
   Inner Join prospect_entity On prospect_entity.prospect_id = task.prospect_id
   Inner Join entity On entity.id_number = prospect_entity.id_number
   Inner Join entity owner On owner.id_number = task.owner_id_number
+  Left Join tr_conc tr On tr.task_id = task.task_id
   Where task_code = 'ST' -- University Overall Strategy
     And task.task_status_code <> 5 -- Not Cancelled (5) status
 )
@@ -453,8 +465,8 @@ cal As (
     -- Status detail
     , status
     -- Credited entity
-    , owner_id
-    , owner_report_name
+    , responsible_id
+    , responsible_report_name
     -- Summary text detail
     , description
     -- Symbol to use in Tableau; first letter
@@ -699,7 +711,7 @@ cal As (
   From v_ksm_giving_trans_hh gft
   Cross Join cal
   Inner Join hh On hh.id_number =  gft.id_number
-  Inner Join pe On pe.id_number = gft.id_number
+  Left Join pe On pe.id_number = gft.id_number
   Inner Join entity On entity.id_number = gft.id_number
   Left Join tms_pledge_status tms_ps On tms_ps.pledge_status_code = gft.pledge_status
   Where gft.date_of_record Between cal.bofy_prev And cal.eofy_next

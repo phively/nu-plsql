@@ -10,6 +10,12 @@ ksm_deg As (
   Where record_status_code Not In ('D', 'X') -- Exclude deceased, purgable
 )
 
+/* Modeled scores */
+, af_10k_model As (
+  Select *
+  From v_ksm_model_af_10k
+)
+
 -- Kellogg Top 150/300
 , ksm_150_300 As (
   Select *
@@ -194,6 +200,8 @@ Select Distinct
   , prs.officer_rating
   , uor.uor
   , uor.uor_date
+  , af_10k_model.description As af_10k_model
+  , af_10k_model.score As af_10k_score
   , prs.prospect_manager_id
   , prs.prospect_manager
   , prs.team
@@ -210,6 +218,8 @@ Select Distinct
     End As hh_primary
   -- Rating bin
   , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(prs.id_number) As rating_bin
+  -- Lifetime giving
+  , prs.giving_total As nu_lifetime_recognition
   -- Which group?
   , Case
       -- Top 150
@@ -237,6 +247,7 @@ Select Distinct
     End As pool_group
 From table(rpt_pbh634.ksm_pkg.tbl_entity_households_ksm) hh
 Inner Join ksm_prs_ids On ksm_prs_ids.id_number = hh.id_number -- Must be a valid Kellogg entity
+Left Join af_10k_model On af_10k_model.id_number = hh.id_number
 Left Join nu_prs_trp_prospect prs On prs.id_number = hh.id_number
 Left Join prs_e On prs_e.prospect_id = prs.prospect_id And prs_e.id_number = hh.id_number
 Left Join prospect On prospect.prospect_id = prs.prospect_id
