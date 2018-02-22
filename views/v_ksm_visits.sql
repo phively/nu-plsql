@@ -2,6 +2,12 @@ Create Or Replace View v_ksm_visits As
 
 With
 
+/*
+Visits from the beginning of the previous fiscal year to yesterday
+Must be made by Kellogg frontline staff
+Only inlcudes living entities, but prospect records may have since been deactivated
+*/
+
 /* TMS values for purpose (e.g. qualification, solicitation, ...) */
 tms_cpurp As (
   Select

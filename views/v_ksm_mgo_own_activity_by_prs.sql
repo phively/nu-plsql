@@ -13,12 +13,28 @@ ksm_staff As (
   Order By report_name Asc
 )
 
+-- Most recent prospect ID per entity, preferring active
+, pe As (
+  Select
+    pre.id_number
+    , max(p.prospect_id) keep(dense_rank First Order By p.active_ind Desc, p.prospect_id Desc)
+      As prospect_id
+    , count(p.prospect_id) As prospect_id_count
+  From prospect_entity pre
+  Inner Join prospect p On p.prospect_id = pre.prospect_id
+  Group By pre.id_number
+)
+
 -- Count of own visits in last 365 days
 , ksm_visits As (
   Select
     last_name
     , v.credited
-    , v.prospect_id
+    -- If visit was before the entity was a prospect, fill in most recent prospect ID
+    , Case
+        When v.prospect_id Is Not Null Then v.prospect_id
+        Else pe.prospect_id
+      End As prospect_id
     , sum(Case When v.contact_date Between yesterday - 365 And yesterday Then 1 Else 0 End)
         As visits_last_365_days
     , sum(Case When v.contact_date Between yesterday - 365 And yesterday
@@ -30,8 +46,10 @@ ksm_staff As (
         And v.visit_type = 'Qualification' Then 1 Else 0 End)
         As quals_this_py
   From ksm_staff
-  Inner Join v_ksm_visits v On v.credited = ksm_staff.id_number
   Cross Join v_current_calendar
+  Inner Join v_ksm_visits v On v.credited = ksm_staff.id_number
+  Left Join pe On pe.id_number = v.id_number
+  Where v.id_number = '0000419074'
   Group By
     last_name
     , v.credited
