@@ -49,11 +49,13 @@ ksm_staff As (
   Cross Join v_current_calendar
   Inner Join v_ksm_visits v On v.credited = ksm_staff.id_number
   Left Join pe On pe.id_number = v.id_number
-  Where v.id_number = '0000419074'
   Group By
     last_name
     , v.credited
-    , v.prospect_id
+    , Case
+        When v.prospect_id Is Not Null Then v.prospect_id
+        Else pe.prospect_id
+      End
 )
 
 -- Total value of own solicitations
