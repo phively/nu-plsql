@@ -1156,7 +1156,7 @@ With
     , pref_addr.pref_continent
   From household
   Left Join couples On household.household_id = couples.id_number
-  Left Join pref_addr On household.household_id = pref_addr.id_number
+  Left Join pref_addr On household.id_number = pref_addr.id_number
   Left Join fmr_spouse On household.id_number = fmr_spouse.id_number
   -- Only for input ID, if provided
   Where (Case When id Is Not Null Then household.id_number Else 'T' End)
