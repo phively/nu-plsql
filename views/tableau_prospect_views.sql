@@ -237,7 +237,8 @@ Left Join v_ksm_giving_summary gft On gft.id_number = prs.id_number
 Left Join v_ksm_giving_campaign cmp On cmp.id_number = prs.id_number
 Left Join ksm_proposal On ksm_proposal.prospect_id = prs.prospect_id
 Left Join recent_contact On recent_contact.id_number = prs.id_number
-Left Join recent_visit On recent_visit.id_number = prs.id_number;
+Left Join recent_visit On recent_visit.id_number = prs.id_number
+;
 
 /****************************************
 Only vt_ksm_prs_pool rows where a KSM GO has been active
@@ -280,7 +281,8 @@ Select
   , Case When pool.primary_ind = 'Y' Then mgo.total_cpy_funded End
       As total_cpy_funded
 From vt_ksm_prs_pool pool
-Inner Join v_ksm_mgo_own_activity_by_prs mgo On mgo.prospect_id = pool.prospect_id;
+Inner Join v_ksm_mgo_own_activity_by_prs mgo On mgo.prospect_id = pool.prospect_id
+;
 
 /****************************************
 ARD prospect assignments and university strategy updates
@@ -888,3 +890,4 @@ Union
 Select * From ksm_match
 Union
 Select * From ksm_plg
+;
