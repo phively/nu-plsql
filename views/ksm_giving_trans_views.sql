@@ -41,7 +41,10 @@ trans As (
     , hh.household_spouse_id
     , hh.household_spouse
     , sum(Case When tx_gypm_ind != 'Y' Then hh_credit Else 0 End) As ngc_lifetime
-    , sum(Case When tx_gypm_ind != 'Y' Then hh_recognition_credit Else 0 End) As ngc_lifetime_full_rec -- Count bequests at face value and internal transfers at > $0
+    , sum(Case When tx_gypm_ind != 'Y' Then hh_recognition_credit Else 0 End) -- Count bequests at face value and internal transfers at > $0
+      As ngc_lifetime_full_rec
+    , sum(Case When tx_gypm_ind != 'Y' And anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
+      As ngc_lifetime_nonanon_full_rec
     , sum(Case When tx_gypm_ind != 'Y' And cal.curr_fy = fiscal_year     Then hh_credit Else 0 End) As ngc_cfy
     , sum(Case When tx_gypm_ind != 'Y' And cal.curr_fy = fiscal_year + 1 Then hh_credit Else 0 End) As ngc_pfy1
     , sum(Case When tx_gypm_ind != 'Y' And cal.curr_fy = fiscal_year + 2 Then hh_credit Else 0 End) As ngc_pfy2
@@ -67,6 +70,13 @@ trans As (
     , sum(Case When cal.curr_fy = fiscal_year + 3 Then hh_credit Else 0 End) As stewardship_pfy3
     , sum(Case When cal.curr_fy = fiscal_year + 4 Then hh_credit Else 0 End) As stewardship_pfy4
     , sum(Case When cal.curr_fy = fiscal_year + 5 Then hh_credit Else 0 End) As stewardship_pfy5
+    -- Giving history
+    , min(gfts.fiscal_year) As fy_giving_first_yr
+    , max(gfts.fiscal_year) As fy_giving_last_yr
+    , count(Distinct gfts.fiscal_year) As fy_giving_yr_count
+    , min(Case When tx_gypm_ind != 'P' Then gfts.fiscal_year Else NULL End) As fy_giving_first_cash_yr
+    , max(Case When tx_gypm_ind != 'P' Then gfts.fiscal_year Else NULL End) As fy_giving_last_cash_yr
+    , count(Distinct Case When tx_gypm_ind != 'P' Then gfts.fiscal_year Else NULL End) As fy_giving_yr_cash_count
   From table(ksm_pkg.tbl_entity_households_ksm) hh
   Cross Join v_current_calendar cal
   Inner Join v_ksm_giving_trans_hh gfts On gfts.household_id = hh.household_id
@@ -184,11 +194,16 @@ Select Distinct
   , sum(cgft.hh_recognition_credit - cgft.hh_credit) As campaign_discounted_bequests
   , sum(cgft.hh_recognition_credit) As campaign_steward_giving
   , sum(Case When fiscal_year <= 2017 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy17
-  , sum(Case When fiscal_year <= 2017 And cgft.anonymous In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End) As anon_steward_thru_fy17
-  , sum(Case When fiscal_year <= 2017 And cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End) As nonanon_steward_thru_fy17
-  , sum(Case When fiscal_year <= 2018 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy18
-  , sum(Case When fiscal_year <= 2018 And cgft.anonymous In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End) As anon_steward_thru_fy18
-  , sum(Case When fiscal_year <= 2018 And cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End) As nonanon_steward_thru_fy18
+  , sum(Case When fiscal_year <= 2017 And cgft.anonymous In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
+    As anon_steward_thru_fy17
+  , sum(Case When fiscal_year <= 2017 And cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
+    As nonanon_steward_thru_fy17
+  , sum(Case When fiscal_year <= 2018 Then hh_recognition_credit Else 0 End)
+    As campaign_steward_thru_fy18
+  , sum(Case When fiscal_year <= 2018 And cgft.anonymous In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
+    As anon_steward_thru_fy18
+  , sum(Case When fiscal_year <= 2018 And cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
+    As nonanon_steward_thru_fy18
 From hh
 Cross Join v_current_calendar cal
 Inner Join cgft On cgft.household_id = hh.household_id
