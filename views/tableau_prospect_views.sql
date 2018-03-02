@@ -72,10 +72,18 @@ geocode As (
 )
 
 /* Proposal data */
-, ksm_proposal As (
+, nu_proposal As (
   Select
     prospect_id
     , count(proposal_id) As open_proposals
+  From v_proposal_history
+  Where proposal_in_progress = 'Y'
+  Group By prospect_id
+)
+, ksm_proposal As (
+  Select
+    prospect_id
+    , count(proposal_id) As open_ksm_proposals
     , sum(total_ask_amt) As total_asks
     , sum(total_anticipated_amt) As total_anticipated
     , sum(ksm_or_univ_ask) As total_ksm_asks
@@ -193,7 +201,8 @@ Select
   , gft.ngc_pfy3
   , gft.ngc_pfy4
   -- Proposal history fields
-  , ksm_proposal.open_proposals
+  , nu_proposal.open_proposals
+  , ksm_proposal.open_ksm_proposals
   , ksm_proposal.total_asks
   , ksm_proposal.total_anticipated
   , ksm_proposal.total_ksm_asks
@@ -235,6 +244,7 @@ Left Join geocode On geocode.id_number = prs.id_number
   And geocode.xsequence = prs.xsequence
 Left Join v_ksm_giving_summary gft On gft.id_number = prs.id_number
 Left Join v_ksm_giving_campaign cmp On cmp.id_number = prs.id_number
+Left Join nu_proposal On nu_proposal.prospect_id = prs.prospect_id
 Left Join ksm_proposal On ksm_proposal.prospect_id = prs.prospect_id
 Left Join recent_contact On recent_contact.id_number = prs.id_number
 Left Join recent_visit On recent_visit.id_number = prs.id_number
