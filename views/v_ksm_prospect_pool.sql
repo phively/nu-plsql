@@ -203,7 +203,7 @@ Select Distinct
   , af_10k_model.description As af_10k_model
   , af_10k_model.score As af_10k_score
   , prs.prospect_manager_id
-  , prs.prospect_manager
+  , pm.report_name As prospect_manager
   , prs.team
   , prs.prospect_stage
   , prs.contact_date
@@ -249,6 +249,7 @@ From table(rpt_pbh634.ksm_pkg.tbl_entity_households_ksm) hh
 Inner Join ksm_prs_ids On ksm_prs_ids.id_number = hh.id_number -- Must be a valid Kellogg entity
 Left Join af_10k_model On af_10k_model.id_number = hh.id_number
 Left Join nu_prs_trp_prospect prs On prs.id_number = hh.id_number
+Left Join entity pm On pm.id_number = prs.prospect_manager_id
 Left Join prs_e On prs_e.prospect_id = prs.prospect_id And prs_e.id_number = hh.id_number
 Left Join prospect On prospect.prospect_id = prs.prospect_id
 Left Join ksm_150_300 On ksm_150_300.id_number = hh.id_number

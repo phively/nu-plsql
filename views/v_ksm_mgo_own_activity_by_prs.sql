@@ -29,6 +29,7 @@ ksm_staff As (
 , ksm_visits As (
   Select
     last_name
+    , ksm_staff.id_number As staff_id
     , v.credited
     -- If visit was before the entity was a prospect, fill in most recent prospect ID
     , Case
@@ -51,6 +52,7 @@ ksm_staff As (
   Left Join pe On pe.id_number = v.id_number
   Group By
     last_name
+    , ksm_staff.id_number
     , v.credited
     , Case
         When v.prospect_id Is Not Null Then v.prospect_id
@@ -116,17 +118,18 @@ ksm_staff As (
 
 -- Full list deduped
 , prs As (
-  Select prospect_id, last_name From ksm_visits
+  Select prospect_id, last_name, staff_id From ksm_visits
   Union
-  Select prospect_id, last_name From ksm_sols
+  Select prospect_id, last_name, proposal_manager_id From ksm_sols
   Union
-  Select prospect_id, last_name From own_pool
+  Select prospect_id, last_name, assignment_id_number From own_pool
 )
 
 -- Main query
 Select
   prs.prospect_id
   , prs.last_name As gift_officer
+  , prs.staff_id As gift_officer_id
   , op.assigned
   , vs.visits_last_365_days
   , vs.quals_last_365_days

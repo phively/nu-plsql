@@ -95,11 +95,11 @@ Select
   , tms_task_status.short_desc As task_status
   , task_detail.task_description
   , Case When task_detail.task_status_code In ('1', '2') Then 'Y' Else 'N' End
-    As act_task_ind
+    As active_task_ind
   , Case When cat.prospect_category_code In ('KT3','KT1') Then 'Y' Else 'N' End
     As "150_300_IND"
   , Case When ksm_staff.former_staff Is Null And ksm_staff.id_number Is Not Null Then 'Y' Else 'N' End
-    As Current_MGO_Ind
+    As current_mgo_ind
 From prospect p
 Inner Join prospect_entity pe
   On p.prospect_id = pe.prospect_id

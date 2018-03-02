@@ -256,13 +256,33 @@ Only vt_ksm_prs_pool rows where a KSM GO has been active
 
 Create Or Replace View vt_ksm_prs_pool_gos As
 
+With
+
 /* Assigned v_ksm_prospect_pool joined with KSM current frontline staff activity
 per prospect */
+
+/* GO tasks */
+tasks As (
+  Select
+    prospect_id
+    , task_responsible_id
+    , count(Distinct task_id) As own_open_tasks
+  From v_ksm_tasks v
+  Where task_code <> 'ST' -- Exclude university overall strategy
+    And active_task_ind = 'Y'
+  Group By
+    prospect_id
+    , task_responsible_id
+)
 
 Select
   pool.*
   , mgo.gift_officer
   , mgo.assigned
+  , Case
+      When mgo.gift_officer_id = pool.prospect_manager_id Then 'PM'
+      Else 'PPM'
+    End As pm_or_ppm
   -- Only fill in metrics for the primary prospect
   , Case When pool.primary_ind = 'Y' Then mgo.visits_last_365_days End
       As visits_last_365_days
@@ -290,8 +310,12 @@ Select
       As total_cpy_verbal
   , Case When pool.primary_ind = 'Y' Then mgo.total_cpy_funded End
       As total_cpy_funded
+  , Case When pool.primary_ind = 'Y' Then tasks.own_open_tasks End
+      As own_open_tasks
 From vt_ksm_prs_pool pool
 Inner Join v_ksm_mgo_own_activity_by_prs mgo On mgo.prospect_id = pool.prospect_id
+Left Join tasks On tasks.prospect_id = mgo.prospect_id
+  And tasks.task_responsible_id = mgo.gift_officer_id
 ;
 
 /****************************************
@@ -882,6 +906,53 @@ cal As (
   Where ksm_giving.tx_gypm_ind = 'P'
 )
 
+-- Recent tasks
+, tasks As (
+  Select
+    t.prospect_id
+    , hh.household_id
+    , hh.household_rpt_name
+    , t.id_number
+    , entity.report_name
+    , pe.primary_ind
+    , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(pe.prospect_id) As rating_bin
+    -- Data point description
+    , 'Task' As type
+    -- Additional description detail
+    , t.task_code_desc
+    -- Category summary
+    , 'Task' As category
+    -- Tableau color field
+    , Case
+        When t.task_status_code In (1, 2, 3) Then 'Task (active)'
+        When t.task_status_code = 4 Then 'Task (completed)'
+      End As color
+    -- Unique identifier
+    , t.task_id
+    -- Uniform start date for axis alignment
+    , t.sched_date
+    -- Uniform stop date for axis alignment
+    , t.completed_date
+    -- Status detail
+    , t.task_status
+    -- Credited entity
+    , t.task_responsible_id
+    , t.task_responsible
+    -- Summary text detail
+    , t.task_description
+    -- Tableau symbol
+    , 'T' As symbol
+    -- Uniform calendar dates for axis alignment
+    , cal.*
+  From v_ksm_tasks t
+  Inner Join pe On pe.prospect_id = t.prospect_id
+  Inner Join hh On hh.id_number = pe.id_number
+  Inner Join entity On entity.id_number = pe.id_number
+  Cross Join cal
+  Where t.task_status_code In (1, 2, 3, 4)
+    And t.sched_date Between cal.bofy_prev And cal.eofy_next
+)
+
 -- Main query
 Select * From prospects
 Union
@@ -900,4 +971,6 @@ Union
 Select * From ksm_match
 Union
 Select * From ksm_plg
+Union
+Select * From tasks
 ;
