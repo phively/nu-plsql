@@ -541,6 +541,10 @@ Function tbl_committee_KFN
 /* Return pipelined handling preferences */
 Function tbl_special_handling_concat
     Return t_special_handling Pipelined;
+    
+Function tbl_mailing_list_concat
+    Return t_special_handling Pipelined;
+
 
 /*************************************************************************
 End of package
@@ -1873,6 +1877,24 @@ Cursor c_special_handling_concat Is
   GROUP BY ID_NUMBER
 ;
 
+/* KSM mailing list concat definition */
+Cursor c_mailing_list_concat Is
+SELECT 
+   ID_NUMBER
+   ,LISTAGG(MLC.SHORT_DESC || ' ' || UC.UNIT_CODE ||' ('||C.SHORT_DESC||')','; ')
+     WITHIN GROUP (ORDER BY MLC.SHORT_DESC ASC) AS CONCATENATED_MAILING
+FROM MAILING_LIST ML
+   LEFT JOIN TMS_MAIL_LIST_CODE MLC
+   ON ML.MAIL_LIST_CODE = MLC.mail_list_code_code
+   LEFT JOIN TMS_UNIT_CODE UC
+   ON ML.UNIT_CODE = UC.unit_code
+   LEFT JOIN TMS_MAIL_LIST_CTRL C
+   ON ML.MAIL_LIST_CTRL_CODE = C.mail_list_ctrl_code
+WHERE ML.MAIL_LIST_STATUS_CODE = 'A'
+   AND ML.UNIT_CODE = 'KM'
+GROUP BY ID_NUMBER
+;
+
 /*************************************************************************
 Private type declarations
 *************************************************************************/
@@ -2776,6 +2798,21 @@ Function tbl_special_handling_concat
       Close c_special_handling_concat;
       For i in 1..(hnd.count) Loop
         Pipe row(hnd(i));
+      End Loop;
+      Return;
+    End;
+
+Function tbl_mailing_list_concat
+    Return t_special_handling Pipelined As
+    -- Declarations
+    ml t_special_handling;
+    
+    Begin
+      Open c_mailing_list_concat;
+        Fetch c_mailing_list_concat Bulk Collect Into ml;
+      Close c_mailing_list_concat;
+      For i in 1..(ml.count) Loop
+        Pipe row(ml(i));
       End Loop;
       Return;
     End;
