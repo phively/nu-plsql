@@ -281,7 +281,8 @@ Select
   , mgo.assigned
   , Case
       When mgo.gift_officer_id = pool.prospect_manager_id Then 'PM'
-      Else 'PPM'
+      When pool.manager_ids Like ('%' || mgo.gift_officer_id || '%') Then 'PPM'
+      Else NULL
     End As pm_or_ppm
   -- Only fill in metrics for the primary prospect
   , Case When pool.primary_ind = 'Y' Then mgo.visits_last_365_days End
