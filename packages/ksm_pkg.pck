@@ -318,6 +318,12 @@ Type trans_campaign Is Record (
   , zipcountry nu_rpt_t_cmmt_dtl_daily.zipcountry%type
 );
 
+/* Special handling concat */
+Type special_handling Is Record (
+     id_number handling.id_number%type
+     , concatenated_handling varchar2(1024)
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
@@ -340,6 +346,7 @@ Type t_plg_disc Is Table Of plg_disc;
 Type t_trans_entity Is Table Of trans_entity;
 Type t_trans_household Is Table Of trans_household;
 Type t_trans_campaign Is Table Of trans_campaign;
+Type t_special_handling Is Table Of special_handling;
 
 /*************************************************************************
 Public constant declarations
@@ -530,6 +537,10 @@ Function tbl_committee_KFN
   
  Function tbl_committee_AMP
   Return t_committee_members Pipelined;
+
+/* Return pipelined handling preferences */
+Function tbl_special_handling_concat
+    Return t_special_handling Pipelined;
 
 /*************************************************************************
 End of package
@@ -1842,6 +1853,26 @@ Cursor c_gift_credit_hh_campaign_2008 Is
   Where daily.rcpt_or_plg_number = '0002275766'
   );
 
+/* Special handling concatenated definition */
+Cursor c_special_handling_concat Is
+  SELECT 
+     ID_NUMBER
+     ,LISTAGG(HT.SHORT_DESC || CASE WHEN DS.SHORT_DESC IS NOT NULL THEN ', '||'('||DS.SHORT_DESC||')' ELSE NULL END , '; ')
+        WITHIN GROUP (ORDER BY HT.SHORT_DESC ASC) AS CONCATENATED_HANDLING
+  FROM HANDLING H
+     LEFT JOIN TMS_HANDLING_TYPE HT
+     ON H.HND_TYPE_CODE = HT.handling_type
+     LEFT JOIN TMS_DATA_SOURCE DS
+     ON H.DATA_SOURCE_CODE = DS.data_source_code
+  WHERE H.HND_STATUS_CODE = 'A'
+     AND H.HND_TYPE_CODE NOT IN ('CPG', 'ENT', 'FB' , 'FW',
+           'HF',  'MAR', 'MCE', 'MFU',
+           'MLC', 'NYF', 'NYW', 'PER',
+          'SPC', 'SRC', 'TEC', 'TF',
+          'VC')
+  GROUP BY ID_NUMBER
+;
+
 /*************************************************************************
 Private type declarations
 *************************************************************************/
@@ -2728,6 +2759,23 @@ Function tbl_model_af_10k (model_year In integer, model_month In integer)
       committees := committee_members (my_committee_cd => committee_AMP);
       For i in 1..committees.count Loop
         Pipe row(committees(i));
+      End Loop;
+      Return;
+    End;
+
+/* Concatenated contact preferences */
+
+Function tbl_special_handling_concat
+    Return t_special_handling Pipelined As
+    -- Declarations
+    hnd t_special_handling;
+    
+    Begin
+      Open c_special_handling_concat;
+        Fetch c_special_handling_concat Bulk Collect Into hnd;
+      Close c_special_handling_concat;
+      For i in 1..(hnd.count) Loop
+        Pipe row(hnd(i));
       End Loop;
       Return;
     End;
