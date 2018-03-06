@@ -1,4 +1,4 @@
-Create Or Replace Package ksm_pkg Is
+Create Or Replace Package ksm_pkg_test Is
 
 /*************************************************************************
 Author  : PBH634
@@ -511,10 +511,6 @@ Function tbl_model_af_10k (
   , model_month In integer
 ) Return t_modeled_score Pipelined;
 
-/* Return pipelined special handling preferences */
-Function tbl_special_handling_concat
-    Return t_special_handling Pipelined;
-
 /* Return pipelined table of committee members */
 Function tbl_committee_gab
   Return t_committee_members Pipelined;
@@ -543,13 +539,17 @@ Function tbl_committee_KFN
  Function tbl_committee_AMP
   Return t_committee_members Pipelined;
 
+/* Return pipelined special handling preferences */
+Function tbl_special_handling_concat
+    Return t_special_handling Pipelined;
+
 /*************************************************************************
 End of package
 *************************************************************************/
 
-End ksm_pkg;
+End ksm_pkg_test;
 /
-Create Or Replace Package Body ksm_pkg Is
+Create Or Replace Package Body ksm_pkg_test Is
 
 /*************************************************************************
 Private cursor tables -- data definitions; update indicated sections as needed
@@ -2837,5 +2837,5 @@ Function tbl_special_handling_concat
       Return;
     End;
 
-End ksm_pkg;
+End ksm_pkg_test;
 /
