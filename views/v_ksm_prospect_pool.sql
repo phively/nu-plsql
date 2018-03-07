@@ -31,7 +31,6 @@ ksm_deg As (
   From prospect_entity pe
   Inner Join prospect p On p.prospect_id = pe.prospect_id
   Where p.active_ind = 'Y' -- Active only
-    And p.stage_code Not In (7, 11) -- Exclude Disqualified, Permanent Stewardship
 )
 
 -- Kellogg prospect interest
