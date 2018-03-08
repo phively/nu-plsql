@@ -80,6 +80,23 @@ Select
   , tms_task.short_desc As task_code_desc
   , task_detail.original_sched_date
   , task_detail.sched_date
+  -- Calculated start date: use date_added if sched_date unavailable
+  , Case
+      When task_detail.sched_date Is Not Null Then trunc(task_detail.sched_date)
+      Else trunc(task_detail.date_added)
+    End As start_dt_calc
+  -- Calculated stop date: use date_modified if completed_date unavailable
+  , Case
+      When task_detail.completed_date Is Not Null Then trunc(task_detail.completed_date)
+      When task_detail.task_status_code = 4 Then trunc(task_detail.date_modified) -- 4 = completed
+      Else NULL
+    End As stop_dt_calc
+  , Case
+      When task_detail.task_status_code = 4 Then 'Inactive'
+      When task_detail.completed_date < cal.today Then 'Inactive'
+      When task_detail.task_status_code In (1, 2, 3) Then 'Active'
+      Else NULL
+    End As status_summary
   , task_detail.completed_date
   , task_detail.owner_id_number
   , e.report_name As owner_name
@@ -101,6 +118,7 @@ Select
   , Case When ksm_staff.former_staff Is Null And ksm_staff.id_number Is Not Null Then 'Y' Else 'N' End
     As current_mgo_ind
 From prospect p
+Cross Join v_current_calendar cal
 Inner Join prospect_entity pe
   On p.prospect_id = pe.prospect_id
 Inner Join nu_prs_trp_prospect pp
