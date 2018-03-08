@@ -94,6 +94,8 @@ ksm_staff As (
   From ksm_staff
   Inner Join v_proposal_history p On p.proposal_manager_id = ksm_staff.id_number
   Cross Join v_current_calendar cal
+  Where proposal_in_progress = 'Y'
+    Or close_fy Between cal.curr_fy - 1 And cal.curr_fy
   Group By
     last_name
     , p.proposal_manager_id
