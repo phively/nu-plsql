@@ -68,7 +68,7 @@ With
 /* Geocoded data */
 geocode As (
   Select *
-  From rpt_wcaproon.geocoded_addresses
+  From rpt_pbh634.v_addr_geocoding
 )
 
 /* Proposal data */
