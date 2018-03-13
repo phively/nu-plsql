@@ -2014,11 +2014,14 @@ Cursor c_special_handling_concat Is
     -- No phone combined
     , Case
         When no_contact = 'Y' Or no_phone = 'Y' Then 'Y'
+        When exc_all_comm = 'Y' Then 'Y'
       End As no_phone_ind
     -- No phone solicit combined
     , Case
         When no_contact = 'Y' Or no_phone = 'Y' Then 'Y'
         When no_solicit = 'Y' Or no_phone_solicit = 'Y' Then 'Y'
+        When exc_all_comm = 'Y' Then 'Y'
+        When exc_all_sols = 'Y' Then 'Y'
       End As no_phone_sol_ind
     -- No email combined
     , Case
