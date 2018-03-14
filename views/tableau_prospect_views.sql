@@ -178,6 +178,26 @@ geocode As (
   Group By id_number
 )
 
+/* Tasks from the current and previous FY (v_ksm_tasks) */
+, tasks As (
+  Select
+    prospect_id
+    -- Count of open tasks
+    , count(Distinct task_id)
+      As tasks_open
+    -- Count of open tasks where responsible entity is a KSM GO
+    , count(Distinct Case When current_mgo_ind = 'Y' Then task_id Else NULL End)
+      As tasks_open_ksm
+    -- Count of KSM GO outreach tasks
+    , count(Distinct Case When current_mgo_ind = 'Y' And task_code = 'CO' Then task_id Else NULL End)
+      As tasks_open_ksm_outreach
+  From v_ksm_tasks
+  Where task_code <> 'ST' -- Exclude university overall strategy
+    And active_task_ind = 'Y'
+  Group By
+    prospect_id
+)
+
 /* Main query */
 Select
   prs.*
@@ -235,6 +255,10 @@ Select
   , recent_contact.last_contact_date
   , recent_contact.last_contact_purpose
   , recent_contact.last_contact_desc
+  -- Tasks data
+  , tasks.tasks_open
+  , tasks.tasks_open_ksm
+  , tasks.tasks_open_ksm_outreach
   -- Current calendar
   , cal.yesterday
   , cal.curr_fy
@@ -248,6 +272,7 @@ Left Join nu_proposal On nu_proposal.prospect_id = prs.prospect_id
 Left Join ksm_proposal On ksm_proposal.prospect_id = prs.prospect_id
 Left Join recent_contact On recent_contact.id_number = prs.id_number
 Left Join recent_visit On recent_visit.id_number = prs.id_number
+Left Join tasks On tasks.prospect_id = prs.prospect_id
 ;
 
 /****************************************
@@ -266,7 +291,10 @@ tasks As (
   Select
     prospect_id
     , task_responsible_id
-    , count(Distinct task_id) As own_open_tasks
+    , count(Distinct task_id)
+      As own_open_tasks
+    , count(Distinct Case When task_code = 'CO' Then task_id Else NULL End)
+      As own_open_tasks_outreach
   From v_ksm_tasks v
   Where task_code <> 'ST' -- Exclude university overall strategy
     And active_task_ind = 'Y'
@@ -313,6 +341,8 @@ Select
       As total_cpy_funded
   , Case When pool.primary_ind = 'Y' Then tasks.own_open_tasks End
       As own_open_tasks
+  , Case When pool.primary_ind = 'Y' Then tasks.own_open_tasks_outreach End
+      As own_open_tasks_outreach
 From vt_ksm_prs_pool pool
 Inner Join v_ksm_mgo_own_activity_by_prs mgo On mgo.prospect_id = pool.prospect_id
 Left Join tasks On tasks.prospect_id = mgo.prospect_id
@@ -331,42 +361,25 @@ With
 -- PM assignments
 assignments As (
   Select
-    assignment.prospect_id
-    , prospect_entity.id_number
-    , entity.report_name
-    , prospect_entity.primary_ind
+    prospect_id
+    , id_number
+    , report_name
+    , primary_ind
     , 'Assignment' As type
-    , assignment.assignment_id As id
-    , assignment.start_date
-    , assignment.stop_date
-    -- Calculated start date: use date_added if start_date unavailable
+    , assignment_id As id
+    , start_date
+    , stop_date
+    , start_dt_calc
+    , stop_dt_calc
     , Case
-        When assignment.start_date Is Not Null Then trunc(assignment.start_date)
-        Else trunc(assignment.date_added)
-      End As start_dt_calc
-    -- Calculated stop date: use date_modified if stop_date unavailable
-    , Case
-        When assignment.stop_date Is Not Null Then trunc(assignment.stop_date)
-        When assignment.active_ind <> 'Y' Then trunc(assignment.date_modified)
-        Else NULL
-      End As stop_dt_calc
-    , Case
-        When assignment.active_ind = 'Y' Then 'Active'
+        When assignment_active_ind = 'Y' Then 'Active'
         Else 'Inactive'
       End As status
-    , Case
-        When assignment.active_ind = 'Y' And assignment.stop_date Is Null Then 'Active'
-        When assignment.active_ind = 'Y' And assignment.stop_date > cal.yesterday Then 'Active'
-        Else 'Inactive'
-      End As status_summary
-    , assignment.assignment_id_number As responsible_id
-    , assignee.report_name As responsible_report_name
-    , assignment.xcomment As description
-  From assignment
-  Cross Join v_current_calendar cal
-  Inner Join entity assignee On assignee.id_number = assignment.assignment_id_number
-  Inner Join prospect_entity On prospect_entity.prospect_id = assignment.prospect_id
-  Inner Join entity On entity.id_number = prospect_entity.id_number
+    , assignment_active_calc As status_summary
+    , assignment_id_number As responsible_id
+    , assignment_report_name As responsible_report_name
+    , description
+  From v_assignment_history
   Where assignment_type In ('PP', 'PM', 'AF') -- Program Manager (PP), Prospect Manager (PM), Annual Fund Officer (AF)
 )
 
@@ -438,7 +451,7 @@ Create Or Replace View vt_prospect_activity_lanes As
 
 With
 
-/* Tableau view to show prospect activity by type/"swim lane" */
+/* Tableau view to show prospect activity by type and "swim lane" */
 
 -- Current calendar
 -- Return data from beginning of previous FY (bofy_prev) to end of next FY (eofy_next)
@@ -490,11 +503,6 @@ cal As (
     , 'Prospect' As color
     -- Unique identifier
     , id
-    -- Dates for debugging
-/*  , start_date
-    , stop_date
-    , date_added
-    , date_modified */
     -- Use date_added as start_date if unavailable
     , start_dt_calc As start_date
     -- Use date_modified as stop_date if unavailable, but only for inactive/completed status
