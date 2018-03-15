@@ -10,12 +10,26 @@ With
 linked As (
   Select
     proposal_id
-    , Listagg(tx_number, '; ') Within Group (Order By tx_number Asc) As ksm_linked_receipts
     , sum(legal_amount) As ksm_linked_amounts
   From v_ksm_giving_trans
   Where proposal_id Is Not Null
     And legal_amount > 0
     And tx_gypm_ind <> 'Y' -- Payment linked but pledge not is a data issue
+  Group By proposal_id
+)
+, linked_receipts As (
+  Select
+    proposal_id
+    , Listagg(tx_number, '; ') Within Group (Order By tx_number Asc) As ksm_linked_receipts
+  From (
+    Select Distinct
+      proposal_id
+      , tx_number
+    From v_ksm_giving_trans
+    Where proposal_id Is Not Null
+      And legal_amount > 0
+      And tx_gypm_ind <> 'Y' -- Payment linked but pledge not is a data issue
+  )
   Group By proposal_id
 )
 , linkednu As (
@@ -170,7 +184,7 @@ Select
   , trunc(stop_date) As close_date
   , ksm_pkg.get_fiscal_year(stop_date) As close_fy
   , trunc(date_modified) As date_modified
-  , linked.ksm_linked_receipts
+  , linked_receipts.ksm_linked_receipts
   , linked.ksm_linked_amounts
   , linkednu.nu_linked_amounts
   , original_ask_amt As total_original_ask_amt
@@ -231,6 +245,7 @@ Left Join (Select prospect_id, prospect_name, prospect_name_sort From prospect) 
 Left Join strat On strat.prospect_id = proposal.prospect_id
 -- Linked gift info
 Left Join linked On linked.proposal_id = proposal.proposal_id
+Left Join linked_receipts On linked_receipts.proposal_id = proposal.proposal_id
 Left Join linkednu On linkednu.proposal_id = proposal.proposal_id;
 
 /**************************************
