@@ -1,4 +1,4 @@
-Create Or Replace Package ksm_pkg Is
+Create Or Replace Package rpt_pbh634.ksm_pkg Is
 
 /*************************************************************************
 Author  : PBH634
@@ -563,7 +563,7 @@ End of package
 
 End ksm_pkg;
 /
-Create Or Replace Package Body ksm_pkg Is
+Create Or Replace Package Body rpt_pbh634.ksm_pkg Is
 
 /*************************************************************************
 Private cursor tables -- data definitions; update indicated sections as needed
