@@ -4,6 +4,9 @@ Create Or Replace Package rpt_pbh634.ksm_pkg Is
 Author  : PBH634
 Created : 2/8/2017 5:43:38 PM
 Purpose : Kellogg-specific package with lots of fun functions
+Dependencies:
+  v_addr_continents (view)
+  mv_past_ksm_gos (materialized view)
 
 Suggested naming convetions:
   Pure functions: [function type]_[description] e.g.
@@ -598,31 +601,15 @@ Cursor ct_alloc_annual_fund_ksm Is
    2017-09-26 */
 Cursor ct_frontline_ksm_staff Is
   With
-  -- Staff list; update as necessary with new IDs
   staff As (
-    -- First row is a dummy giving the field names
-    Select 'notarealid' As id_number, NULL As former_staff From DUAL
-    /************ UPDATE BELOW HERE ************/
-    Union All Select '0000737745', 'Y' From DUAL -- Jones (former)
-    Union All Select '0000220843', NULL From DUAL -- Erb
-    Union All Select '0000549376', NULL From DUAL -- Paszczykowski
-    Union All Select '0000561243', NULL From DUAL -- Nordmark
-    Union All Select '0000562459', NULL From DUAL -- Spritz
-    Union All Select '0000565395', 'Y' From DUAL -- Cong-Huyen (former)
-    Union All Select '0000565742', NULL From DUAL -- Schoeneweiss
-    Union All Select '0000642888', NULL From DUAL -- Keene
-    Union All Select '0000772028', NULL From DUAL -- Royal
-    Union All Select '0000765494', NULL From DUAL -- Miller
-    Union All Select '0000235591', NULL From DUAL -- Amato
-    Union All Select '0000740856', NULL From DUAL -- In
-    Union All Select '0000482601', NULL From DUAL -- Feary
-    Union All Select '0000779347', NULL From DUAL -- Lingris
-    Union All Select '0000776709', NULL From DUAL -- Nasatir
-    Union All Select '0000732336', NULL From DUAL -- O'Brien
+    -- First query block pulls from past KSM staff materialized view
+    Select
+      id_number
+      , Case When stop_dt Is Not Null Then 'Y' End As former_staff
+    From mv_past_ksm_gos
+    /************ MANUAL ADDITIONS -- UPDATE BELOW HERE ************/
     Union All Select '0000760399', NULL From DUAL -- Guynn
-    Union All Select '0000772350', 'Y' From DUAL -- Emmick (former)
-    Union All Select '0000784241', NULL From DUAL -- Lagnese
-    /************ UPDATE ABOVE HERE ************/
+    /************ MANUAL ADDITIONS -- UPDATE ABOVE HERE ************/
   )
   -- Job title information
   , employ As (
@@ -645,7 +632,8 @@ Cursor ct_frontline_ksm_staff Is
     , employ.employer
   From staff
   Inner Join entity On entity.id_number = staff.id_number
-  Left Join employ on employ.id_number = staff.id_number;
+  Left Join employ on employ.id_number = staff.id_number
+  ;
 
 /*************************************************************************
 Private cursors -- data definitions
