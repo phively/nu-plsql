@@ -595,7 +595,8 @@ Cursor ct_alloc_annual_fund_ksm Is
       , '3303001899301GFT' -- KSM Gift-In-Kind
       , '3203000859901GFT' -- Center for Nonprofit Management
       /************ UPDATE ABOVE HERE ************/
-    );
+    )
+  ;
 
 /* Definition of frontline gift officers
    2017-09-26 */
@@ -655,7 +656,8 @@ Cursor c_alloc_curr_use_ksm Is
   From allocation alloc
   Left Join ksm_af On ksm_af.allocation_code = alloc.allocation_code
   Where (agency = 'CRU' And alloc_school = 'KM')
-    Or alloc.allocation_code In ksm_af.allocation_code; -- Include AF allocations that happen to not match criteria
+    Or alloc.allocation_code In ksm_af.allocation_code -- Include AF allocations that happen to not match criteria
+  ;
 
 /* Compiles useful dates together for use in other functions.
     Naming convention:
@@ -717,7 +719,8 @@ Cursor c_current_calendar (fy_start_month In integer, py_start_month In integer)
     , add_months(trunc(sysdate, 'Month'), -1) As prev_month_start
     , add_months(trunc(sysdate, 'Month'), 0) As curr_month_start
     , add_months(trunc(sysdate, 'Month'), 1) As next_month_start
-  From curr_date;
+  From curr_date
+  ;
 
 /* Definition of current Kellogg committee members
    2017-03-01 */
@@ -737,7 +740,8 @@ Cursor c_committee_members (my_committee_cd In varchar2) Is
   Left Join tms_committee_role tms_role On comm.committee_role_code = tms_role.committee_role_code
   Left Join committee_header hdr On comm.committee_code = hdr.committee_code
   Where comm.committee_code = my_committee_cd
-    And comm.committee_status_code In ('C', 'A'); -- 'C'urrent or 'A'ctive; 'A' is deprecated
+    And comm.committee_status_code In ('C', 'A') -- 'C'urrent or 'A'ctive; 'A' is deprecated
+  ;
 
 /* Definition of Kellogg degrees concatenated
    2017-02-15 */
@@ -978,7 +982,8 @@ Cursor c_entity_degrees_concat_ksm (id In varchar2 Default NULL) Is
     From concat
     Inner Join entity On entity.id_number = concat.id_number
     Inner Join prg On concat.id_number = prg.id_number
-    Left Join stwrd_deg On stwrd_deg.id_number = concat.id_number;
+    Left Join stwrd_deg On stwrd_deg.id_number = concat.id_number
+    ;
 
 /* Definition of Kellogg gift source donor
    2017-02-27 */
@@ -995,7 +1000,10 @@ Cursor c_source_donor_ksm (receipt In varchar2) Is
     And associated_code Not In ('H', 'M') -- Exclude In Honor Of and In Memory Of from consideration
   -- People with earlier KSM degree years take precedence over those with later ones
   -- People with smaller ID numbers take precedence over those with larger oens
-  Order By get_entity_degrees_concat_fast(id_number) Asc, id_number Asc;
+  Order By
+    get_entity_degrees_concat_fast(id_number) Asc
+    , id_number Asc
+  ;
 
 /* Definition of Kellogg householding
    2017-02-21 */
@@ -1174,7 +1182,8 @@ With
   Left Join fmr_spouse On household.id_number = fmr_spouse.id_number
   -- Only for input ID, if provided
   Where (Case When id Is Not Null Then household.id_number Else 'T' End)
-            = (Case When id Is Not Null Then id Else 'T' End);
+            = (Case When id Is Not Null Then id Else 'T' End)
+  ;
 
 /* Definition of a Kellogg alum employed by a company */
 Cursor c_entity_employees_ksm (company In varchar2) Is
@@ -1240,7 +1249,8 @@ Cursor c_entity_employees_ksm (company In varchar2) Is
   Where
     -- Matches pattern; user beware (Apple vs. Snapple)
     lower(employ.employer_name) Like lower('%' || company || '%')
-    Or lower(prs.employer_name1) Like lower('%' || company || '%');
+    Or lower(prs.employer_name1) Like lower('%' || company || '%')
+  ;
 
 /* Definition of top 150/300 KSM campaign prospects */
 Cursor c_entity_top_150_300 Is
@@ -1257,7 +1267,8 @@ Cursor c_entity_top_150_300 Is
   Inner Join entity On pe.id_number = entity.id_number
   Inner Join tms_prospect_category tms_pc On tms_pc.prospect_category_code = pc.prospect_category_code
   Where pc.prospect_category_code In ('KT1', 'KT3')
-  Order By pe.prospect_id Asc, pe.primary_ind Desc;
+  Order By pe.prospect_id Asc, pe.primary_ind Desc
+  ;
 
 /* Definition of university strategy */
 Cursor c_university_strategy Is
@@ -1269,7 +1280,8 @@ Cursor c_university_strategy Is
   From task
   Where task_code = 'ST' -- University Overall Strategy
     And task_status_code Not In (4, 5) -- Not Completed (4) or Cancelled (5) status
-  Group By prospect_id;
+  Group By prospect_id
+  ;
 
 /* Definition of Annual Fund 10K model scores as of the passed year and month */
 Cursor c_model_af_10k (model_year In integer, model_month In integer) Is
@@ -1284,7 +1296,7 @@ Cursor c_model_af_10k (model_year In integer, model_month In integer) Is
   Where s.segment_code Like 'KMAA_'
     And s.segment_year = model_year
     And s.segment_month = model_month
-;
+  ;
 
 /* Definition of historical NU ARD employees */
 Cursor c_nu_ard_staff Is
@@ -1346,7 +1358,8 @@ Cursor c_nu_ard_staff Is
     Or lower(nuemploy.employer_unit) Like '%advancement%'
     Or lower(nuemploy.employer_unit) Like '%ard%'
     Or lower(nuemploy.employer_unit) Like '%campaign strategy%'
-    Or lower(nuemploy.employer_unit) Like '%external relations%';
+    Or lower(nuemploy.employer_unit) Like '%external relations%'
+  ;
 
 /* Definition of a KLC member */
 Cursor c_klc_history (fy_start_month In integer) Is
@@ -1372,7 +1385,8 @@ Cursor c_klc_history (fy_start_month In integer) Is
   From gift_clubs
   Inner Join table(tbl_entity_households_ksm) hh On hh.id_number = gift_clubs.gift_club_id_number
   Left Join nu_mem_v_tmsclublevel tms_lvl On tms_lvl.level_code = gift_clubs.school_code
-  Where gift_club_code = 'LKM';
+  Where gift_club_code = 'LKM'
+  ;
 
 /* Definition of discounted pledge amounts */
 Cursor c_plg_discount Is
@@ -1441,7 +1455,8 @@ Cursor c_plg_discount Is
   From primary_pledge pplg
   Inner Join pledge On pledge.pledge_pledge_number = pplg.prim_pledge_number
   Where pledge.pledge_program_code = 'KM'
-    Or pledge_alloc_school = 'KM';
+    Or pledge_alloc_school = 'KM'
+  ;
 
 /* Definition of KSM giving transactions for summable credit */
 Cursor c_gift_credit_ksm Is
@@ -1677,7 +1692,8 @@ Cursor c_gift_credit_ksm Is
   )
   /* Main query */
   Select Distinct ksm_trans.*
-  From ksm_trans;
+  From ksm_trans
+  ;
   
 /* Definition of householded KSM giving transactions for summable credit
    Depends on c_gift_credit_ksm, through tbl_gift_credit_ksm table function */
@@ -1715,7 +1731,8 @@ Cursor c_gift_credit_hh_ksm Is
       End As hh_recognition_credit
   From hhid
   Inner Join giftcount gc On gc.household_id = hhid.household_id
-    And gc.tx_number = hhid.tx_number;
+    And gc.tx_number = hhid.tx_number
+  ;
   
 /* Definition of Transforming Together Campaign (2008) new gifts & commitments
    2017-08-25 */
@@ -1814,7 +1831,8 @@ Cursor c_gift_credit_campaign_2008 Is
   Left Join anons On anons.tx_number = daily.rcpt_or_plg_number
     And anons.tx_sequence = daily.xsequence
   Where daily.rcpt_or_plg_number = '0002275766'
-  );
+  )
+  ;
   
 /* Definition of householded KSM campaign transactions for summable credit */
 Cursor c_gift_credit_hh_campaign_2008 Is
@@ -1854,7 +1872,8 @@ Cursor c_gift_credit_hh_campaign_2008 Is
   Inner Join allocation On allocation.allocation_code = daily.alloc_code
   Inner Join primary_gift On primary_gift.prim_gift_receipt_number = daily.rcpt_or_plg_number
   Where daily.rcpt_or_plg_number = '0002275766'
-  );
+  )
+  ;
 
 /* Special handling concatenated definition */
 Cursor c_special_handling_concat Is
