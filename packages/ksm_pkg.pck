@@ -610,6 +610,7 @@ Cursor ct_frontline_ksm_staff Is
     From mv_past_ksm_gos
     /************ MANUAL ADDITIONS -- UPDATE BELOW HERE ************/
     Union All Select '0000760399', NULL From DUAL -- Guynn
+    Union All Select '0000292130', NULL From DUAL-- Chiang
     /************ MANUAL ADDITIONS -- UPDATE ABOVE HERE ************/
   )
   -- Job title information
@@ -770,66 +771,86 @@ Cursor c_entity_degrees_concat_ksm (id In varchar2 Default NULL) Is
     Where degree_year <> ''''
     Group By id_number
   )
-  -- Concatenated degrees subquery
-  -- ***** IMPORTANT: If updating, update clean_concat.clean_degrees_concat below as well *****
+  -- Concatenated degrees subqueries
+  , deg_data As (
+    Select
+      id_number
+      , degree_year
+      , non_grad_code
+      , Case When non_grad_code = 'N' Then 'Nongrad ' End As nongrad
+      , Case When non_grad_code = 'N' Then 'NONGRD ' End As nongrd
+      , degrees.degree_level_code
+      , tms_degree_level.short_desc As degree_level
+      , degrees.degree_code
+      , tms_degrees.short_desc As degree_desc
+      , school_code
+      , degrees.dept_code
+      , tms_dept_code.short_desc As dept_desc
+      , Case
+          When degrees.dept_code = '01MDB' Then 'MDMBA'
+          When degrees.dept_code Like '01%' Then substr(degrees.dept_code, 3)
+          When degrees.dept_code = '13JDM' Then 'JDMBA'
+          When degrees.dept_code = '13LLM' Then 'LLM'
+          When degrees.dept_code Like '41%' Then substr(degrees.dept_code, 3)
+          When degrees.dept_code = '95BCH' Then 'BCH'
+          When degrees.dept_code = '96BEV' Then 'BEV'
+          When degrees.dept_code In ('AMP', 'AMPI', 'EDP', 'KSMEE') Then degrees.dept_code
+          When degrees.dept_code = '0000000' Then ''
+          Else tms_dept_code.short_desc
+        End As dept_short_desc
+      , class_section
+      , tms_class_section.short_desc As class_section_desc
+    -- Table joins, etc.
+    From degrees
+    Left Join tms_class_section -- For class section short_desc
+      On degrees.class_section = tms_class_section.section_code
+    Left Join tms_dept_code -- For department short_desc
+      On degrees.dept_code = tms_dept_code.dept_code
+    Left Join tms_degree_level -- For degree level short_desc
+      On degrees.degree_level_code = tms_degree_level.degree_level_code
+    Left Join tms_degrees -- For degreee short_desc (to replace degree_code)
+      On degrees.degree_code = tms_degrees.degree_code
+    Where institution_code = '31173' -- Northwestern institution code
+      And school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
+      -- Only for input ID, if provided
+      And (Case When id Is Not Null Then id_number Else 'T' End) = (Case When id Is Not Null Then id Else 'T' End)
+  )
+  -- Listagg all degrees, including incomplete
   , concat As (
     Select
       id_number
       -- Verbose degrees
       , Listagg(
-          trim(degree_year || ' ' || (Case When non_grad_code = 'N' Then 'Nongrad ' End) ||
-          tms_degree_level.short_desc || ' ' || tms_degrees.short_desc || ' ' ||
-          school_code || ' ' || tms_dept_code.short_desc || ' ' || tms_class_section.short_desc), '; '
+          trim(degree_year || ' ' || nongrad || degree_level || ' ' || degree_desc || ' ' || school_code ||
+            ' ' || dept_desc || ' ' || class_section_desc)
+          , '; '
         ) Within Group (Order By degree_year) As degrees_verbose
       -- Terse degrees
       , Listagg(
-          trim(degree_year || ' ' || (Case When non_grad_code = 'N' Then 'NONGRD ' End) ||
-            degrees.degree_code || ' ' || school_code || ' ' || 
-            -- Special handler for KSM and EMBA departments
-              Case
-                When degrees.dept_code = '01MDB' Then 'MDMBA'
-                When degrees.dept_code Like '01%' Then substr(degrees.dept_code, 3)
-                When degrees.dept_code = '13JDM' Then 'JDMBA'
-                When degrees.dept_code = '13LLM' Then 'LLM'
-                When degrees.dept_code Like '41%' Then substr(degrees.dept_code, 3)
-                When degrees.dept_code = '95BCH' Then 'BCH'
-                When degrees.dept_code = '96BEV' Then 'BEV'
-                When degrees.dept_code In ('AMP', 'AMPI', 'EDP', 'KSMEE') Then degrees.dept_code
-                When degrees.dept_code = '0000000' Then ''
-                Else tms_dept_code.short_desc
-              End
-              -- Class section code
-              || ' ' || class_section), '; '
+          trim(degree_year || ' ' || nongrd || degree_code || ' ' || school_code || ' ' || dept_short_desc ||
+            -- Class section code
+            ' ' || class_section)
+          , '; '
         ) Within Group (Order By degree_year) As degrees_concat
       -- First Kellogg year; exclude non-grad years
-      , min(trim(Case When non_grad_code = 'N' Then NULL Else degree_year End)) As first_ksm_year
+      , min(trim(Case When non_grad_code = 'N' Then NULL Else degree_year End))
+        As first_ksm_year
       -- First MBA or other Master's year; exclude non-grad years
       , min(Case
-          When degrees.degree_level_code = 'M' -- Master's level
-            Or degrees.degree_code In('MBA', 'MMGT', 'MS', 'MSDI', 'MSHA', 'MSMS') -- In case of data errors
+          When degree_level_code = 'M' -- Master's level
+            Or degree_code In('MBA', 'MMGT', 'MS', 'MSDI', 'MSHA', 'MSMS') -- In case of data errors
             Then trim(Case When non_grad_code = 'N' Then NULL Else degree_year End)
           Else NULL
-        End) As first_masters_year
+        End)
+        As first_masters_year
       -- Last non-certificate year, e.g. for young alumni status, excluding non-grad years
       , max(Case
-          When degrees.degree_level_code In('B', 'D', 'M')
+          When degree_level_code In('B', 'D', 'M')
           Then trim(Case When non_grad_code = 'N' Then NULL Else degree_year End)
           Else NULL
-        End) As last_noncert_year
-      -- Table joins, etc.
-      From degrees
-      Left Join tms_class_section -- For class section short_desc
-        On degrees.class_section = tms_class_section.section_code
-      Left Join tms_dept_code -- For department short_desc
-        On degrees.dept_code = tms_dept_code.dept_code
-      Left Join tms_degree_level -- For degree level short_desc
-        On degrees.degree_level_code = tms_degree_level.degree_level_code
-      Left Join tms_degrees -- For degreee short_desc (to replace degree_code)
-        On degrees.degree_code = tms_degrees.degree_code
-      Where institution_code = '31173' -- Northwestern institution code
-        And school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
-        -- Only for input ID, if provided
-        And (Case When id Is Not Null Then id_number Else 'T' End) = (Case When id Is Not Null Then id Else 'T' End)
+        End)
+        As last_noncert_year
+      From deg_data
       Group By id_number
     )
     -- Completed degrees only
@@ -838,46 +859,20 @@ Cursor c_entity_degrees_concat_ksm (id In varchar2 Default NULL) Is
       Select
         id_number
         -- Verbose degrees
-        , Listagg(
-            trim(degree_year || ' ' || (Case When non_grad_code = 'N' Then 'Nongrad ' End) ||
-            tms_degree_level.short_desc || ' ' || tms_degrees.short_desc || ' ' ||
-            school_code || ' ' || tms_dept_code.short_desc || ' ' || tms_class_section.short_desc), '; '
-          ) Within Group (Order By degree_year) As clean_degrees_verbose
+      , Listagg(
+          trim(degree_year || ' ' || nongrad || degree_level || ' ' || degree_desc || ' ' || school_code ||
+            ' ' || dept_desc || ' ' || class_section_desc)
+          , '; '
+        ) Within Group (Order By degree_year) As clean_degrees_verbose
         -- Terse degrees
         , Listagg(
-            trim(degree_year || ' ' || (Case When non_grad_code = 'N' Then 'NONGRD ' End) ||
-              degrees.degree_code || ' ' || school_code || ' ' || 
-              -- Special handler for KSM and EMBA departments
-                Case
-                  When degrees.dept_code = '01MDB' Then 'MDMBA'
-                  When degrees.dept_code Like '01%' Then substr(degrees.dept_code, 3)
-                  When degrees.dept_code = '13JDM' Then 'JDMBA'
-                  When degrees.dept_code = '13LLM' Then 'LLM'
-                  When degrees.dept_code Like '41%' Then substr(degrees.dept_code, 3)
-                  When degrees.dept_code = '95BCH' Then 'BCH'
-                  When degrees.dept_code = '96BEV' Then 'BEV'
-                  When degrees.dept_code In ('AMP', 'AMPI', 'EDP', 'KSMEE') Then degrees.dept_code
-                  When degrees.dept_code = '0000000' Then ''
-                  Else tms_dept_code.short_desc
-                End
-                -- Class section code
-                || ' ' || class_section), '; '
-          ) Within Group (Order By degree_year) As clean_degrees_concat
-      -- Table joins, etc.
-      From degrees
-      Left Join tms_class_section -- For class section short_desc
-        On degrees.class_section = tms_class_section.section_code
-      Left Join tms_dept_code -- For department short_desc
-        On degrees.dept_code = tms_dept_code.dept_code
-      Left Join tms_degree_level -- For degree level short_desc
-        On degrees.degree_level_code = tms_degree_level.degree_level_code
-      Left Join tms_degrees -- For degreee short_desc (to replace degree_code)
-        On degrees.degree_code = tms_degrees.degree_code
-      Where institution_code = '31173' -- Northwestern institution code
-        And non_grad_code <> 'N' -- Drop non-grad years
-        And school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
-        -- Only for input ID, if provided
-        And (Case When id Is Not Null Then id_number Else 'T' End) = (Case When id Is Not Null Then id Else 'T' End)
+          trim(degree_year || ' ' || nongrd || degree_code || ' ' || school_code || ' ' || dept_short_desc ||
+            -- Class section code
+            ' ' || class_section)
+          , '; '
+        ) Within Group (Order By degree_year) As clean_degrees_concat
+      From deg_data
+      Where non_grad_code <> 'N'
       Group By id_number
     )
     -- Extract program
