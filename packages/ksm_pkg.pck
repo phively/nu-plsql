@@ -43,6 +43,7 @@ Type calendar Is Record (
   , prev_fy_start date
   , curr_fy_start date
   , next_fy_start date
+  , curr_py number
   , prev_py_start date
   , curr_py_start date
   , next_py_start date
@@ -610,7 +611,7 @@ Cursor ct_frontline_ksm_staff Is
     From mv_past_ksm_gos
     /************ MANUAL ADDITIONS -- UPDATE BELOW HERE ************/
     Union All Select '0000760399', NULL From DUAL -- Guynn
-    Union All Select '0000292130', NULL From DUAL-- Chiang
+    Union All Select '0000292130', NULL From DUAL -- Chiang
     /************ MANUAL ADDITIONS -- UPDATE ABOVE HERE ************/
   )
   -- Job title information
@@ -679,6 +680,13 @@ Cursor c_current_calendar (fy_start_month In integer, py_start_month In integer)
           Then extract(year from sysdate) + 1 
         Else extract(year from sysdate)
       End As yr
+      -- Current performance year; uses py_start_month constant
+      , Case
+        When extract(month from sysdate) >= py_start_month
+          And fy_start_month != 1
+          Then extract(year from sysdate) + 1 
+        Else extract(year from sysdate)
+      End As perf_yr
       -- Correction for starting after January
       , Case
         When fy_start_month != 1 Then 1 Else 0
@@ -702,6 +710,8 @@ Cursor c_current_calendar (fy_start_month In integer, py_start_month In integer)
       As curr_fy_start
     , to_date(fy_start_month || '/01/' || (curr_date.yr - yr_dif + 1), 'mm/dd/yyyy')
       As next_fy_start
+    -- Current performance year
+    , curr_date.perf_yr As curr_py
     -- Start of performance year objects
     , to_date(py_start_month || '/01/' || (curr_date.yr - yr_dif - 1), 'mm/dd/yyyy')
       As prev_py_start
