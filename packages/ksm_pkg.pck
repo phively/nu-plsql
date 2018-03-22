@@ -2161,7 +2161,8 @@ Function get_fiscal_year(dt In date)
   Begin
     this_year := extract(year from dt);
     -- If month is before fy_start_month, return this_year
-    If extract(month from dt) < fy_start_month Then
+    If extract(month from dt) < fy_start_month
+      Or fy_start_month = 1 Then
       Return this_year;
     End If;
     -- Otherwise return out_year + 1
@@ -2176,7 +2177,8 @@ Function get_fiscal_year(dt In varchar2, format In varchar2)
   Begin
     this_year := extract(year from to_date(dt, format));
     -- If month is before fy_start_month, return this_year
-    If extract(month from to_date(dt, format)) < fy_start_month Then
+    If extract(month from to_date(dt, format)) < fy_start_month
+      Or fy_start_month = 1 Then
       Return this_year;
     End If;
     -- Otherwise return out_year + 1
