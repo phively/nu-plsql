@@ -57,12 +57,20 @@ trans As (
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 3 Then hh_credit Else 0 End) As cash_pfy3
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 4 Then hh_credit Else 0 End) As cash_pfy4
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 5 Then hh_credit Else 0 End) As cash_pfy5
+    -- Annual Fund cash totals
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year     And af_flag = 'Y' Then hh_credit Else 0 End) As af_cfy
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 1 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy1
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 2 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy2
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 3 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy3
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 4 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy4
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 5 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy5
+    -- Current Use cash totals (for KLC
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year     And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_cfy
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 1 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy1
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 2 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy2
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 3 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy3
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 4 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy4
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 5 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy5
     -- WARNING: includes new gifts and commitments as well as cash
     , sum(Case When cal.curr_fy = fiscal_year     Then hh_credit Else 0 End) As stewardship_cfy
     , sum(Case When cal.curr_fy = fiscal_year + 1 Then hh_credit Else 0 End) As stewardship_pfy1
