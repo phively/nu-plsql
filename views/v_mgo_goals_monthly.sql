@@ -86,14 +86,14 @@ custom_params As (
       As cal_year
     , rpt_pbh634.ksm_pkg.get_fiscal_year(contact_date)
       As c_year -- fiscal year
-    , advance_nu_rpt.performance_year(contact_date)
-      As perf_year -- performance year
     , extract(month From contact_date)
       As cal_month
     , to_number(nu_sys_f_getquarter(contact_date))
       As fiscal_qtr
     , to_number(advance_nu_rpt.performance_quarter(contact_date))
       As perf_quarter
+    , to_number(advance_nu_rpt.performance_year(contact_date))
+      As perf_year -- performance year
   From contact_report
   Where contact_type = 'V' -- Only count visits
 )
@@ -289,6 +289,7 @@ Select g.year
  , extract(month From pd.date_of_record) As cal_month
  , to_number(nu_sys_f_getquarter(pd.date_of_record)) As fiscal_quarter
  , to_number(advance_nu_rpt.performance_quarter(pd.date_of_record)) As perf_quarter
+ , to_number(advance_nu_rpt.performance_year(pd.date_of_record)) As perf_year
  , g.goal_1 As goal
  , Count(Distinct fcd.proposal_id) As cnt
 From goal g
@@ -303,6 +304,7 @@ Group By g.year
   , extract(month From pd.date_of_record)
   , nu_sys_f_getquarter(pd.date_of_record)
   , advance_nu_rpt.performance_quarter(pd.date_of_record)
+  , advance_nu_rpt.performance_year(pd.date_of_record)
   , g.goal_1
 Union
 /**** Main query goal 2, equivalent to lines 512-847 in nu_gft_v_officer_metrics ****/
@@ -312,7 +314,8 @@ Select g.year
   , extract(year From acr.initial_contribution_date) As cal_year
   , extract(month From acr.initial_contribution_date) As cal_month
   , to_number(nu_sys_f_getquarter(acr.initial_contribution_date)) As fiscal_quarter
-  ,  to_number(advance_nu_rpt.performance_quarter(acr.initial_contribution_date)) As perf_quarter
+  , to_number(advance_nu_rpt.performance_quarter(acr.initial_contribution_date)) As perf_quarter
+  , to_number(advance_nu_rpt.performance_year(acr.initial_contribution_date)) As perf_year
   , g.goal_2 As goal
   , Count(Distinct acr.proposal_id) As cnt
 From goal g
@@ -325,6 +328,7 @@ Group By g.year
   , extract(month From acr.initial_contribution_date)
   , nu_sys_f_getquarter(acr.initial_contribution_date)
   , advance_nu_rpt.performance_quarter(acr.initial_contribution_date)
+  , advance_nu_rpt.performance_year(acr.initial_contribution_date)
   , g.goal_2
 Union
 /**** Main query goal 3, equivalent to lines 848-1391 in nu_gft_v_officer_metrics ****/
@@ -335,6 +339,7 @@ Select g.year
   , extract(month From pd.date_of_record) As cal_month
   , to_number(nu_sys_f_getquarter(pd.date_of_record)) As fiscal_quarter
   , to_number(advance_nu_rpt.performance_quarter(pd.date_of_record)) As perf_quarter
+  , to_number(advance_nu_rpt.performance_year(pd.date_of_record)) As perf_year
   , g.goal_3 As goal
   , sum(fr.granted_amt) As cnt
 From goal g
@@ -349,6 +354,7 @@ Group By g.year
   , extract(month From pd.date_of_record)
   , nu_sys_f_getquarter(pd.date_of_record)
   , advance_nu_rpt.performance_quarter(pd.date_of_record)
+  , advance_nu_rpt.performance_year(pd.date_of_record)
   , g.goal_3
 Union
 /**** Main query goal 4, equivalent to lines 1392-1419 in nu_gft_v_officer_metrics ****/
@@ -359,6 +365,7 @@ Select Distinct g.year
   , c.cal_month
   , c.fiscal_qtr As fiscal_quarter
   , c.perf_quarter
+  , c.perf_year
   , g.goal_4 As goal
   , count(Distinct c.report_id) As cnt
 From contact_reports c
@@ -375,6 +382,7 @@ Group By g.year
   , c.cal_month
   , c.fiscal_qtr
   , c.perf_quarter
+  , c.perf_year
   , g.goal_4
 Union
 /**** Main query goal 5, equivalent to lines 1420-1448 in nu_gft_v_officer_metrics ****/
@@ -385,6 +393,7 @@ Select Distinct g.year
   , c.cal_month
   , c.fiscal_qtr As fiscal_quarter
   , c.perf_quarter
+    , c.perf_year
   , g.goal_5 As goal
   , count(Distinct c.report_id) As cnt
 From contact_reports c
@@ -402,6 +411,7 @@ Group By g.year
   , c.cal_month
   , c.fiscal_qtr
   , c.perf_quarter
+  , c.perf_year
   , g.goal_5
 Union
 /**** Main query goal 6, equivalent to lines 1449-1627 in nu_gft_v_officer_metrics ****/
@@ -412,6 +422,7 @@ Select g.year
   , extract(month From acr.initial_contribution_date) As cal_month
   , to_number(nu_sys_f_getquarter(acr.initial_contribution_date)) As fiscal_quarter
   , to_number(advance_nu_rpt.performance_quarter(acr.initial_contribution_date)) As perf_quarter
+  , to_number(advance_nu_rpt.performance_year(acr.initial_contribution_date)) As perf_year
   , g.goal_6 As goal
   , count(Distinct acr.proposal_id) As cnt
 From goal g
@@ -424,5 +435,6 @@ Group By g.year
   , extract(month From acr.initial_contribution_date)
   , nu_sys_f_getquarter(acr.initial_contribution_date)
   , to_number(advance_nu_rpt.performance_quarter(acr.initial_contribution_date))
+  , advance_nu_rpt.performance_year(acr.initial_contribution_date)
   , g.goal_6
 ;
