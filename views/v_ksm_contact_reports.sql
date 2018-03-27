@@ -20,8 +20,7 @@ pe As (
     hhs.id_number
     , hhs.report_name
     , hhs.household_id
-  From contact_report
-  Inner Join table(rpt_pbh634.ksm_pkg.tbl_entity_households_ksm) hhs On hhs.id_number = contact_report.id_number
+  From table(rpt_pbh634.ksm_pkg.tbl_entity_households_ksm) hhs
 )
 
 /* Main query */
