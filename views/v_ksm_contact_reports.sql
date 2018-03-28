@@ -17,10 +17,35 @@ pe As (
 /* KSM households -- only those with contact reports */
 , hh As (
   Select Distinct
-    hhs.id_number
+    contact_report.id_number
     , hhs.report_name
     , hhs.household_id
-  From table(rpt_pbh634.ksm_pkg.tbl_entity_households_ksm) hhs
+  From contact_report
+  Inner Join table(rpt_pbh634.ksm_pkg.tbl_entity_households_ksm) hhs On hhs.id_number = contact_report.id_number
+)
+
+/* ARD staff */
+, ard_staff_ids As (
+  -- Best guess of ARD staff
+  Select
+    id_number
+    , report_name
+  From table(ksm_pkg.tbl_nu_ard_staff)
+  Union
+  -- KSM frontline staff start/stop dates
+  Select
+    id_number
+    , report_name
+  From table(ksm_pkg.tbl_frontline_ksm_staff)
+)
+, ard_staff As (
+  Select
+    asi.id_number
+    , asi.report_name
+    , staff.job_title
+    , staff.employer_unit
+  From ard_staff_ids asi
+  Left Join table(ksm_pkg.tbl_nu_ard_staff) staff On staff.id_number = asi.id_number
 )
 
 /* Main query */
@@ -74,7 +99,7 @@ Inner Join tms_contact_rpt_type tms_ctype On tms_ctype.contact_type = contact_re
 Inner Join nu_prs_trp_prospect prs On prs.id_number = contact_report.id_number
 Inner Join hh contacted_entity On contacted_entity.id_number = contact_report.id_number
 -- Only NU ARD staff
-Inner Join table(ksm_pkg.tbl_nu_ard_staff) ard_staff On ard_staff.id_number = contact_rpt_credit.id_number
+Inner Join ard_staff On ard_staff.id_number = contact_rpt_credit.id_number
 Left Join table(ksm_pkg.tbl_frontline_ksm_staff) ksm_staff On ksm_staff.id_number = ard_staff.id_number
 Left Join prospect On prospect.prospect_id = prs.prospect_id
 Left Join pe On pe.id_number = prs.id_number

@@ -1364,6 +1364,9 @@ Cursor c_nu_ard_staff Is
     Or lower(nuemploy.employer_unit) Like '%ard%'
     Or lower(nuemploy.employer_unit) Like '%campaign strategy%'
     Or lower(nuemploy.employer_unit) Like '%external relations%'
+    Or lower(nuemploy.employer_unit) Like '%gifts%'
+    -- Job title sounds like frontline staff
+    Or lower(last_nuemploy.job_title) Like '%gifts%'
   ;
 
 /* Definition of a KLC member */
