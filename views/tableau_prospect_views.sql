@@ -188,12 +188,31 @@ geocode As (
     -- Count of open tasks where responsible entity is a KSM GO
     , count(Distinct Case When current_mgo_ind = 'Y' Then task_id Else NULL End)
       As tasks_open_ksm
-    -- Count of KSM GO outreach tasks
-    , count(Distinct Case When current_mgo_ind = 'Y' And task_code = 'CO' Then task_id Else NULL End)
-      As tasks_open_ksm_outreach
   From v_ksm_tasks
   Where task_code <> 'ST' -- Exclude university overall strategy
     And active_task_ind = 'Y'
+  Group By
+    prospect_id
+)
+, next_outreach_task As (
+  Select
+    prospect_id
+    -- Count of KSM GO outreach tasks
+    , count(Distinct task_id)
+      As tasks_open_ksm_outreach
+    -- Next KSM GO outreach task
+    , min(task_id) keep(dense_rank First Order By sched_date Asc, task_id Asc, task_responsible Asc)
+      As task_outreach_next_id
+    , min(sched_date) keep(dense_rank First Order By sched_date Asc, task_id Asc, task_responsible Asc)
+      As task_outreach_sched_date
+    , min(task_responsible) keep(dense_rank First Order By sched_date Asc, task_id Asc, task_responsible Asc)
+      As task_outreach_responsible
+    , min(task_description) keep(dense_rank First Order By sched_date Asc, task_id Asc, task_responsible Asc)
+      As task_outreach_desc
+  From v_ksm_tasks
+  Where task_code = 'CO'
+    And active_task_ind = 'Y'
+    And current_mgo_ind = 'Y'
   Group By
     prospect_id
 )
@@ -258,7 +277,11 @@ Select
   -- Tasks data
   , tasks.tasks_open
   , tasks.tasks_open_ksm
-  , tasks.tasks_open_ksm_outreach
+  , next_outreach_task.tasks_open_ksm_outreach
+  , next_outreach_task.task_outreach_next_id
+  , next_outreach_task.task_outreach_sched_date
+  , next_outreach_task.task_outreach_responsible
+  , next_outreach_task.task_outreach_desc
   -- Current calendar
   , cal.yesterday
   , cal.curr_fy
@@ -273,6 +296,7 @@ Left Join ksm_proposal On ksm_proposal.prospect_id = prs.prospect_id
 Left Join recent_contact On recent_contact.id_number = prs.id_number
 Left Join recent_visit On recent_visit.id_number = prs.id_number
 Left Join tasks On tasks.prospect_id = prs.prospect_id
+Left Join next_outreach_task On next_outreach_task.prospect_id = prs.prospect_id
 ;
 
 /****************************************
