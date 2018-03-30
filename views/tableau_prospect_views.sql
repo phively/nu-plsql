@@ -148,6 +148,7 @@ geocode As (
         As last_contact_desc
   From v_ard_contact_reports
   Where contact_type <> 'Visit'
+    And ard_staff = 'Y'
   Group By id_number
 )
 , recent_visit As (
@@ -175,6 +176,7 @@ geocode As (
         As last_visit_desc
   From v_ard_contact_reports
   Where contact_type = 'Visit'
+    And ard_staff = 'Y'
   Group By id_number
 )
 
@@ -588,6 +590,7 @@ cal As (
   Cross Join cal
   Inner Join hh On hh.id_number =  cr.id_number
   Where contact_date Between cal.bofy_prev And cal.eofy_next
+    And cr.ard_staff = 'Y'
 )
 
 -- Historical KSM proposal data
