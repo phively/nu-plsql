@@ -1,7 +1,10 @@
-Create Or Replace View v_mgo_goals_monthly As
+/***********************************************************************************************
+Tweak v_mgo_goals_monthly to show activity even in months/years without a goal entered
+***********************************************************************************************/
+
+Create Or Replace View v_mgo_activity_monthly As
 
 With
-/******** Monthly refactored version of ADVANCE_NU.NU_GFT_V_OFFICER_METRICS ********/
 
 /**** If any of the parameters ever change, update them here ****/
 custom_params As (
@@ -209,6 +212,9 @@ custom_params As (
     , assignment_id_number
     , min(initial_contribution_date) keep(dense_rank First Order By info_rank Asc)
       As initial_contribution_date
+    -- Replace null initial_contribution_date with proposal_stop_date
+    , min(nvl(initial_contribution_date, proposal_stop_date)) keep(dense_rank First Order By info_rank Asc)
+      As ask_or_stop_dt
   From asked_count
   Group By proposal_id
     , assignment_id_number
@@ -261,6 +267,7 @@ custom_params As (
     Select proposal_id
       , assignment_id_number
       , initial_contribution_date
+      , proposal_stop_date
       , 1 As info_rank
     From proposal_assists_count
     Where assignment_active_ind = 'Y'
@@ -268,6 +275,7 @@ custom_params As (
     Select proposal_id
       , assignment_id_number
       , initial_contribution_date
+      , proposal_stop_date
       , 2 As info_rank
     From proposal_assists_count
     Where assignment_active_ind = 'N'
@@ -279,165 +287,212 @@ custom_params As (
     , assignment_id_number
     , min(initial_contribution_date) keep(dense_rank First Order By info_rank Asc)
       As initial_contribution_date
+    -- Replace null initial_contribution_date with proposal_stop_date
+    , min(nvl(initial_contribution_date, proposal_stop_date)) keep(dense_rank First Order By info_rank Asc)
+      As ask_or_stop_dt
   From assist_count
   Group By proposal_id
     , assignment_id_number
 )
 
 ----- Main query goal 1, equivalent to lines 4-511 in nu_gft_v_officer_metrics -----
-Select g.year
- , g.id_number
- , 'MGC' As goal_type
- , extract(year From pd.date_of_record) As cal_year
- , extract(month From pd.date_of_record) As cal_month
- , to_number(nu_sys_f_getquarter(pd.date_of_record)) As fiscal_quarter
- , to_number(advance_nu_rpt.performance_quarter(pd.date_of_record)) As perf_quarter
- , to_number(advance_nu_rpt.performance_year(pd.date_of_record)) As perf_year
- , g.goal_1 As goal
- , Count(Distinct fcd.proposal_id) As cnt
-From goal g
-Inner Join funded_count_distinct fcd
-  On fcd.assignment_id_number = g.id_number
+/*Select to_number(nu_sys_f_getfiscalyear(pd.date_of_record)) As year
+  , fcd.assignment_id_number As id_number
+  , 'MGC' As goal_type
+  , extract(year From pd.date_of_record) As cal_year
+  , extract(month From pd.date_of_record) As cal_month
+  , to_number(nu_sys_f_getquarter(pd.date_of_record)) As fiscal_quarter
+  , to_number(advance_nu_rpt.performance_quarter(pd.date_of_record)) As perf_quarter
+  , to_number(advance_nu_rpt.performance_year(pd.date_of_record)) As perf_year
+  , g.goal_1 As fy_goal
+  , pyg.goal_1 As py_goal
+  , Count(Distinct fcd.proposal_id) As cnt
+From funded_count_distinct fcd
 Inner Join proposal_dates pd
   On pd.proposal_id = fcd.proposal_id
-Where g.year = nu_sys_f_getfiscalyear(pd.date_of_record)
-Group By g.year
-  , g.id_number
+-- Fiscal year goals
+Left Join goal g
+  On fcd.assignment_id_number = g.id_number
+    And g.year = nu_sys_f_getfiscalyear(pd.date_of_record)
+-- Performance year goals
+Left Join goal pyg
+  On fcd.assignment_id_number = pyg.id_number
+    And pyg.year = advance_nu_rpt.performance_year(pd.date_of_record)
+Group By nu_sys_f_getfiscalyear(pd.date_of_record)
+  , fcd.assignment_id_number
   , extract(year From pd.date_of_record)
   , extract(month From pd.date_of_record)
   , nu_sys_f_getquarter(pd.date_of_record)
   , advance_nu_rpt.performance_quarter(pd.date_of_record)
   , advance_nu_rpt.performance_year(pd.date_of_record)
   , g.goal_1
+  , pyg.goal_1
 Union
 ----- Main query goal 2, equivalent to lines 512-847 in nu_gft_v_officer_metrics -----
-Select g.year
-  , g.id_number
+Select to_number(nu_sys_f_getfiscalyear(acr.ask_or_stop_dt)) As year
+  , acr.assignment_id_number As id_number
   , 'MGS' As goal_type
-  , extract(year From acr.initial_contribution_date) As cal_year
-  , extract(month From acr.initial_contribution_date) As cal_month
-  , to_number(nu_sys_f_getquarter(acr.initial_contribution_date)) As fiscal_quarter
-  , to_number(advance_nu_rpt.performance_quarter(acr.initial_contribution_date)) As perf_quarter
-  , to_number(advance_nu_rpt.performance_year(acr.initial_contribution_date)) As perf_year
-  , g.goal_2 As goal
+  , extract(year From acr.ask_or_stop_dt) As cal_year
+  , extract(month From acr.ask_or_stop_dt) As cal_month
+  , to_number(nu_sys_f_getquarter(acr.ask_or_stop_dt)) As fiscal_quarter
+  , to_number(advance_nu_rpt.performance_quarter(acr.ask_or_stop_dt)) As perf_quarter
+  , to_number(advance_nu_rpt.performance_year(acr.ask_or_stop_dt)) As perf_year
+  , g.goal_2 As fy_goal
+  , pyg.goal_2 As py_goal
   , Count(Distinct acr.proposal_id) As cnt
-From goal g
-Inner Join asked_count_ranked acr
+From asked_count_ranked acr
+-- Fiscal year goals
+Left Join goal g
   On acr.assignment_id_number = g.id_number
-Where g.year = nu_sys_f_getfiscalyear(acr.initial_contribution_date) -- initial_contribution_date is 'ask_date'
-Group By g.year
-  , g.id_number
-  , extract(year From acr.initial_contribution_date)
-  , extract(month From acr.initial_contribution_date)
-  , nu_sys_f_getquarter(acr.initial_contribution_date)
-  , advance_nu_rpt.performance_quarter(acr.initial_contribution_date)
-  , advance_nu_rpt.performance_year(acr.initial_contribution_date)
+    And g.year = nu_sys_f_getfiscalyear(acr.ask_or_stop_dt) -- initial_contribution_date is 'ask_date'
+-- Performance year goals
+Left Join goal pyg
+  On acr.assignment_id_number = pyg.id_number
+    And pyg.year = advance_nu_rpt.performance_year(acr.ask_or_stop_dt)
+Group By nu_sys_f_getfiscalyear(acr.ask_or_stop_dt)
+  , acr.assignment_id_number
+  , extract(year From acr.ask_or_stop_dt)
+  , extract(month From acr.ask_or_stop_dt)
+  , nu_sys_f_getquarter(acr.ask_or_stop_dt)
+  , advance_nu_rpt.performance_quarter(acr.ask_or_stop_dt)
+  , advance_nu_rpt.performance_year(acr.ask_or_stop_dt)
   , g.goal_2
+  , pyg.goal_2
 Union
 ----- Main query goal 3, equivalent to lines 848-1391 in nu_gft_v_officer_metrics -----
-Select g.year
-  , g.id_number
+Select to_number(nu_sys_f_getfiscalyear(pd.date_of_record)) As year
+  , fr.assignment_id_number As id_number
   , 'MGDR' As goal_type
   , extract(year From pd.date_of_record) As cal_year
   , extract(month From pd.date_of_record) As cal_month
   , to_number(nu_sys_f_getquarter(pd.date_of_record)) As fiscal_quarter
   , to_number(advance_nu_rpt.performance_quarter(pd.date_of_record)) As perf_quarter
   , to_number(advance_nu_rpt.performance_year(pd.date_of_record)) As perf_year
-  , g.goal_3 As goal
+  , g.goal_3 As fy_goal
+  , pyg.goal_3 As py_goal
   , sum(fr.granted_amt) As cnt
-From goal g
-Inner Join funded_ranked fr
-  On fr.assignment_id_number = g.id_number
+From funded_ranked fr
 Inner Join proposal_dates pd
   On pd.proposal_id = fr.proposal_id
-Where g.year = nu_sys_f_getfiscalyear(pd.date_of_record)
-Group By g.year
-  , g.id_number
+-- Fiscal year goals
+Left Join goal g
+  On fr.assignment_id_number = g.id_number
+    And g.year = nu_sys_f_getfiscalyear(pd.date_of_record)
+-- Performance year goals
+Left Join goal pyg
+  On fr.assignment_id_number = pyg.id_number
+    And pyg.year = nu_sys_f_getfiscalyear(pd.date_of_record)
+Group By nu_sys_f_getfiscalyear(pd.date_of_record)
+  , fr.assignment_id_number
   , extract(year From pd.date_of_record)
   , extract(month From pd.date_of_record)
   , nu_sys_f_getquarter(pd.date_of_record)
   , advance_nu_rpt.performance_quarter(pd.date_of_record)
   , advance_nu_rpt.performance_year(pd.date_of_record)
   , g.goal_3
-Union
+  , pyg.goal_3
+Union*/
 ----- Main query goal 4, equivalent to lines 1392-1419 in nu_gft_v_officer_metrics -----
-Select Distinct g.year
-  , g.id_number
+Select Distinct c.c_year As year
+  , c.author_id_number As id_number
   , 'NOV' as goal_type
   , c.cal_year
   , c.cal_month
   , c.fiscal_qtr As fiscal_quarter
   , c.perf_quarter
   , c.perf_year
-  , g.goal_4 As goal
+  , g.goal_4 As fy_goal
+  , pyg.goal_4 As py_goal
   , count(Distinct c.report_id) As cnt
 From contact_reports c
 Inner Join contact_rpt_credit cr
   On cr.report_id = c.report_id
-Inner Join goal g
-  On g.id_number = c.author_id_number
-    Or g.id_number = cr.id_number
+-- Fiscal year goals
+Left Join goal g
+  On (g.id_number = c.author_id_number
+    Or g.id_number = cr.id_number)
+    And g.year = c.c_year
+-- Performance year goals
+Left Join goal pyg
+  On (pyg.id_number = c.author_id_number
+    Or pyg.id_number = cr.id_number)
+    And pyg.year = c.perf_year
 Where cr.contact_credit_type = '1' -- Primary credit only
-  And g.year = c.c_year
-Group By g.year
-  , g.id_number
+Group By c.c_year
+  , c.author_id_number
   , c.cal_year
   , c.cal_month
   , c.fiscal_qtr
   , c.perf_quarter
   , c.perf_year
   , g.goal_4
+  , pyg.goal_4
 Union
 ----- Main query goal 5, equivalent to lines 1420-1448 in nu_gft_v_officer_metrics -----
-Select Distinct g.year
-  , g.id_number
+Select Distinct c.c_year As year
+  , c.author_id_number As id_number
   , 'NOQV' As goal_type
   , c.cal_year
   , c.cal_month
   , c.fiscal_qtr As fiscal_quarter
   , c.perf_quarter
     , c.perf_year
-  , g.goal_5 As goal
+  , g.goal_5 As fy_goal
+  , pyg.goal_5 As py_goal
   , count(Distinct c.report_id) As cnt
 From contact_reports c
 Inner Join contact_rpt_credit cr
   On cr.report_id = c.report_id
-Inner Join goal g
-  On g.id_number = c.author_id_number
-    Or g.id_number = cr.id_number
+-- Fiscal year goals
+Left Join goal g
+  On (g.id_number = c.author_id_number
+    Or g.id_number = cr.id_number)
+    And g.year = c.c_year
+-- Performance year goals
+Left Join goal pyg
+  On (pyg.id_number = c.author_id_number
+    Or pyg.id_number = cr.id_number)
+    And pyg.year = c.perf_year
 Where c.contact_purpose_code = '1' -- Only count qualification visits
   And cr.contact_credit_type = '1' -- Primary credit only
-  And g.year = c.c_year
-Group By g.year
-  , g.id_number
+Group By c.c_year
+  , c.author_id_number
   , c.cal_year
   , c.cal_month
   , c.fiscal_qtr
   , c.perf_quarter
   , c.perf_year
   , g.goal_5
-Union
+  , pyg.goal_5
+/*Union
 ----- Main query goal 6, equivalent to lines 1449-1627 in nu_gft_v_officer_metrics -----
-Select g.year
-  , g.id_number
+Select to_number(nu_sys_f_getfiscalyear(acr.ask_or_stop_dt)) As year
+  , acr.assignment_id_number As id_number
   , 'PA' As goal_type
-  , extract(year From acr.initial_contribution_date) As cal_year
-  , extract(month From acr.initial_contribution_date) As cal_month
-  , to_number(nu_sys_f_getquarter(acr.initial_contribution_date)) As fiscal_quarter
-  , to_number(advance_nu_rpt.performance_quarter(acr.initial_contribution_date)) As perf_quarter
-  , to_number(advance_nu_rpt.performance_year(acr.initial_contribution_date)) As perf_year
-  , g.goal_6 As goal
+  , extract(year From acr.ask_or_stop_dt) As cal_year
+  , extract(month From acr.ask_or_stop_dt) As cal_month
+  , to_number(nu_sys_f_getquarter(acr.ask_or_stop_dt)) As fiscal_quarter
+  , to_number(advance_nu_rpt.performance_quarter(acr.ask_or_stop_dt)) As perf_quarter
+  , to_number(advance_nu_rpt.performance_year(acr.ask_or_stop_dt)) As perf_year
+  , g.goal_6 As fy_goal
+  , pyg.goal_6 As py_goal
   , count(Distinct acr.proposal_id) As cnt
-From goal g
-Inner Join assist_count_ranked acr
+From assist_count_ranked acr
+-- Fiscal year goals
+Left Join goal g
   On acr.assignment_id_number = g.id_number
-Where g.year = nu_sys_f_getfiscalyear(acr.initial_contribution_date) -- initial_contribution_date is 'ask_date'
-Group By g.year
-  , g.id_number
-  , extract(year From acr.initial_contribution_date)
-  , extract(month From acr.initial_contribution_date)
-  , nu_sys_f_getquarter(acr.initial_contribution_date)
-  , to_number(advance_nu_rpt.performance_quarter(acr.initial_contribution_date))
-  , advance_nu_rpt.performance_year(acr.initial_contribution_date)
+    And g.year = nu_sys_f_getfiscalyear(acr.ask_or_stop_dt) -- initial_contribution_date is 'ask_date'
+-- Performance year goals
+Left Join goal pyg
+  On acr.assignment_id_number = pyg.id_number
+    And pyg.year = advance_nu_rpt.performance_year(acr.ask_or_stop_dt)
+Group By nu_sys_f_getfiscalyear(acr.ask_or_stop_dt)
+  , acr.assignment_id_number
+  , extract(year From acr.ask_or_stop_dt)
+  , extract(month From acr.ask_or_stop_dt)
+  , nu_sys_f_getquarter(acr.ask_or_stop_dt)
+  , to_number(advance_nu_rpt.performance_quarter(acr.ask_or_stop_dt))
+  , advance_nu_rpt.performance_year(acr.ask_or_stop_dt)
   , g.goal_6
-;
+  , pyg.goal_6
+;*/
