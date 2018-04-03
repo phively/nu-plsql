@@ -88,7 +88,7 @@ custom_params As (
     , extract(year From contact_date)
       As cal_year
     , rpt_pbh634.ksm_pkg.get_fiscal_year(contact_date)
-      As c_year -- fiscal year
+      As fiscal_year
     , extract(month From contact_date)
       As cal_month
     , to_number(nu_sys_f_getquarter(contact_date))
@@ -296,11 +296,11 @@ custom_params As (
 )
 
 ----- Main query goal 1, equivalent to lines 4-511 in nu_gft_v_officer_metrics -----
-/*Select to_number(nu_sys_f_getfiscalyear(pd.date_of_record)) As year
-  , fcd.assignment_id_number As id_number
+Select fcd.assignment_id_number As id_number
   , 'MGC' As goal_type
   , extract(year From pd.date_of_record) As cal_year
   , extract(month From pd.date_of_record) As cal_month
+  , to_number(nu_sys_f_getfiscalyear(pd.date_of_record)) As fiscal_year
   , to_number(nu_sys_f_getquarter(pd.date_of_record)) As fiscal_quarter
   , to_number(advance_nu_rpt.performance_quarter(pd.date_of_record)) As perf_quarter
   , to_number(advance_nu_rpt.performance_year(pd.date_of_record)) As perf_year
@@ -329,11 +329,11 @@ Group By nu_sys_f_getfiscalyear(pd.date_of_record)
   , pyg.goal_1
 Union
 ----- Main query goal 2, equivalent to lines 512-847 in nu_gft_v_officer_metrics -----
-Select to_number(nu_sys_f_getfiscalyear(acr.ask_or_stop_dt)) As year
-  , acr.assignment_id_number As id_number
+Select acr.assignment_id_number As id_number
   , 'MGS' As goal_type
   , extract(year From acr.ask_or_stop_dt) As cal_year
   , extract(month From acr.ask_or_stop_dt) As cal_month
+  , to_number(nu_sys_f_getfiscalyear(acr.ask_or_stop_dt)) As fiscal_year
   , to_number(nu_sys_f_getquarter(acr.ask_or_stop_dt)) As fiscal_quarter
   , to_number(advance_nu_rpt.performance_quarter(acr.ask_or_stop_dt)) As perf_quarter
   , to_number(advance_nu_rpt.performance_year(acr.ask_or_stop_dt)) As perf_year
@@ -360,11 +360,11 @@ Group By nu_sys_f_getfiscalyear(acr.ask_or_stop_dt)
   , pyg.goal_2
 Union
 ----- Main query goal 3, equivalent to lines 848-1391 in nu_gft_v_officer_metrics -----
-Select to_number(nu_sys_f_getfiscalyear(pd.date_of_record)) As year
-  , fr.assignment_id_number As id_number
+Select fr.assignment_id_number As id_number
   , 'MGDR' As goal_type
   , extract(year From pd.date_of_record) As cal_year
   , extract(month From pd.date_of_record) As cal_month
+  , to_number(nu_sys_f_getfiscalyear(pd.date_of_record)) As fiscal_year
   , to_number(nu_sys_f_getquarter(pd.date_of_record)) As fiscal_quarter
   , to_number(advance_nu_rpt.performance_quarter(pd.date_of_record)) As perf_quarter
   , to_number(advance_nu_rpt.performance_year(pd.date_of_record)) As perf_year
@@ -391,13 +391,13 @@ Group By nu_sys_f_getfiscalyear(pd.date_of_record)
   , advance_nu_rpt.performance_year(pd.date_of_record)
   , g.goal_3
   , pyg.goal_3
-Union*/
+Union
 ----- Main query goal 4, equivalent to lines 1392-1419 in nu_gft_v_officer_metrics -----
-Select Distinct c.c_year As year
-  , c.author_id_number As id_number
+Select Distinct c.author_id_number As id_number
   , 'NOV' as goal_type
   , c.cal_year
   , c.cal_month
+  , c.fiscal_year
   , c.fiscal_qtr As fiscal_quarter
   , c.perf_quarter
   , c.perf_year
@@ -411,14 +411,14 @@ Inner Join contact_rpt_credit cr
 Left Join goal g
   On (g.id_number = c.author_id_number
     Or g.id_number = cr.id_number)
-    And g.year = c.c_year
+    And g.year = c.fiscal_year
 -- Performance year goals
 Left Join goal pyg
   On (pyg.id_number = c.author_id_number
     Or pyg.id_number = cr.id_number)
     And pyg.year = c.perf_year
 Where cr.contact_credit_type = '1' -- Primary credit only
-Group By c.c_year
+Group By c.fiscal_year
   , c.author_id_number
   , c.cal_year
   , c.cal_month
@@ -429,11 +429,11 @@ Group By c.c_year
   , pyg.goal_4
 Union
 ----- Main query goal 5, equivalent to lines 1420-1448 in nu_gft_v_officer_metrics -----
-Select Distinct c.c_year As year
-  , c.author_id_number As id_number
+Select Distinct c.author_id_number As id_number
   , 'NOQV' As goal_type
   , c.cal_year
   , c.cal_month
+  , c.fiscal_year
   , c.fiscal_qtr As fiscal_quarter
   , c.perf_quarter
     , c.perf_year
@@ -447,7 +447,7 @@ Inner Join contact_rpt_credit cr
 Left Join goal g
   On (g.id_number = c.author_id_number
     Or g.id_number = cr.id_number)
-    And g.year = c.c_year
+    And g.year = c.fiscal_year
 -- Performance year goals
 Left Join goal pyg
   On (pyg.id_number = c.author_id_number
@@ -455,7 +455,7 @@ Left Join goal pyg
     And pyg.year = c.perf_year
 Where c.contact_purpose_code = '1' -- Only count qualification visits
   And cr.contact_credit_type = '1' -- Primary credit only
-Group By c.c_year
+Group By c.fiscal_year
   , c.author_id_number
   , c.cal_year
   , c.cal_month
@@ -464,13 +464,13 @@ Group By c.c_year
   , c.perf_year
   , g.goal_5
   , pyg.goal_5
-/*Union
+Union
 ----- Main query goal 6, equivalent to lines 1449-1627 in nu_gft_v_officer_metrics -----
-Select to_number(nu_sys_f_getfiscalyear(acr.ask_or_stop_dt)) As year
-  , acr.assignment_id_number As id_number
+Select acr.assignment_id_number As id_number
   , 'PA' As goal_type
   , extract(year From acr.ask_or_stop_dt) As cal_year
   , extract(month From acr.ask_or_stop_dt) As cal_month
+  , to_number(nu_sys_f_getfiscalyear(acr.ask_or_stop_dt)) As fiscal_year
   , to_number(nu_sys_f_getquarter(acr.ask_or_stop_dt)) As fiscal_quarter
   , to_number(advance_nu_rpt.performance_quarter(acr.ask_or_stop_dt)) As perf_quarter
   , to_number(advance_nu_rpt.performance_year(acr.ask_or_stop_dt)) As perf_year
@@ -495,4 +495,4 @@ Group By nu_sys_f_getfiscalyear(acr.ask_or_stop_dt)
   , advance_nu_rpt.performance_year(acr.ask_or_stop_dt)
   , g.goal_6
   , pyg.goal_6
-;*/
+;
