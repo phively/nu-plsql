@@ -100,6 +100,19 @@ custom_params As (
   From contact_report
   Where contact_type = 'V' -- Only count visits
 )
+-- Deduped contact report credit and author IDs
+, cr_credit As (
+    Select
+      id_number
+      , report_id
+    From contact_rpt_credit
+    Where contact_credit_type = '1' -- Primary credit only
+  Union
+    Select
+      author_id_number
+      , report_id
+    From contact_reports
+)
 
 /**** Refactor goal 1 subqueries in lines 11-77 ****/
 -- 3 clones, at 138-204, 265-331, 392-458
@@ -393,7 +406,7 @@ Group By nu_sys_f_getfiscalyear(pd.date_of_record)
   , pyg.goal_3
 Union
 ----- Main query goal 4, equivalent to lines 1392-1419 in nu_gft_v_officer_metrics -----
-Select Distinct c.author_id_number As id_number
+Select Distinct cr.id_number As id_number
   , 'NOV' as goal_type
   , c.cal_year
   , c.cal_month
@@ -404,22 +417,19 @@ Select Distinct c.author_id_number As id_number
   , g.goal_4 As fy_goal
   , pyg.goal_4 As py_goal
   , count(Distinct c.report_id) As cnt
-From contact_reports c
-Inner Join contact_rpt_credit cr
+From cr_credit cr
+Inner Join contact_reports c
   On cr.report_id = c.report_id
 -- Fiscal year goals
 Left Join goal g
-  On (g.id_number = c.author_id_number
-    Or g.id_number = cr.id_number)
+  On g.id_number = cr.id_number
     And g.year = c.fiscal_year
 -- Performance year goals
 Left Join goal pyg
-  On (pyg.id_number = c.author_id_number
-    Or pyg.id_number = cr.id_number)
+  On pyg.id_number = cr.id_number
     And pyg.year = c.perf_year
-Where cr.contact_credit_type = '1' -- Primary credit only
 Group By c.fiscal_year
-  , c.author_id_number
+  , cr.id_number
   , c.cal_year
   , c.cal_month
   , c.fiscal_qtr
@@ -429,7 +439,7 @@ Group By c.fiscal_year
   , pyg.goal_4
 Union
 ----- Main query goal 5, equivalent to lines 1420-1448 in nu_gft_v_officer_metrics -----
-Select Distinct c.author_id_number As id_number
+Select Distinct cr.id_number As id_number
   , 'NOQV' As goal_type
   , c.cal_year
   , c.cal_month
@@ -440,23 +450,20 @@ Select Distinct c.author_id_number As id_number
   , g.goal_5 As fy_goal
   , pyg.goal_5 As py_goal
   , count(Distinct c.report_id) As cnt
-From contact_reports c
-Inner Join contact_rpt_credit cr
+From cr_credit cr
+Inner Join contact_reports c
   On cr.report_id = c.report_id
 -- Fiscal year goals
 Left Join goal g
-  On (g.id_number = c.author_id_number
-    Or g.id_number = cr.id_number)
+  On g.id_number = cr.id_number
     And g.year = c.fiscal_year
 -- Performance year goals
 Left Join goal pyg
-  On (pyg.id_number = c.author_id_number
-    Or pyg.id_number = cr.id_number)
+  On pyg.id_number = cr.id_number
     And pyg.year = c.perf_year
 Where c.contact_purpose_code = '1' -- Only count qualification visits
-  And cr.contact_credit_type = '1' -- Primary credit only
 Group By c.fiscal_year
-  , c.author_id_number
+  , cr.id_number
   , c.cal_year
   , c.cal_month
   , c.fiscal_qtr
