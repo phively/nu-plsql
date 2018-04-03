@@ -536,4 +536,5 @@ Select
   , progress
 From v_mgo_activity_monthly v
 Where fy_goal Is Not Null
+  And progress > 0
 ;
