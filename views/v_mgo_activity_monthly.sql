@@ -315,8 +315,8 @@ Select fcd.assignment_id_number As id_number
   , extract(month From pd.date_of_record) As cal_month
   , to_number(nu_sys_f_getfiscalyear(pd.date_of_record)) As fiscal_year
   , to_number(nu_sys_f_getquarter(pd.date_of_record)) As fiscal_quarter
-  , to_number(advance_nu_rpt.performance_quarter(pd.date_of_record)) As perf_quarter
   , to_number(advance_nu_rpt.performance_year(pd.date_of_record)) As perf_year
+  , to_number(advance_nu_rpt.performance_quarter(pd.date_of_record)) As perf_quarter
   , g.goal_1 As fy_goal
   , pyg.goal_1 As py_goal
   , Count(Distinct fcd.proposal_id) As progress
@@ -349,8 +349,8 @@ Select acr.assignment_id_number As id_number
   , extract(month From acr.ask_or_stop_dt) As cal_month
   , to_number(nu_sys_f_getfiscalyear(acr.ask_or_stop_dt)) As fiscal_year
   , to_number(nu_sys_f_getquarter(acr.ask_or_stop_dt)) As fiscal_quarter
-  , to_number(advance_nu_rpt.performance_quarter(acr.ask_or_stop_dt)) As perf_quarter
   , to_number(advance_nu_rpt.performance_year(acr.ask_or_stop_dt)) As perf_year
+  , to_number(advance_nu_rpt.performance_quarter(acr.ask_or_stop_dt)) As perf_quarter
   , g.goal_2 As fy_goal
   , pyg.goal_2 As py_goal
   -- Original definition: count only if ask date is filled in
@@ -384,8 +384,8 @@ Select fr.assignment_id_number As id_number
   , extract(month From pd.date_of_record) As cal_month
   , to_number(nu_sys_f_getfiscalyear(pd.date_of_record)) As fiscal_year
   , to_number(nu_sys_f_getquarter(pd.date_of_record)) As fiscal_quarter
-  , to_number(advance_nu_rpt.performance_quarter(pd.date_of_record)) As perf_quarter
   , to_number(advance_nu_rpt.performance_year(pd.date_of_record)) As perf_year
+  , to_number(advance_nu_rpt.performance_quarter(pd.date_of_record)) As perf_quarter
   , g.goal_3 As fy_goal
   , pyg.goal_3 As py_goal
   , sum(fr.granted_amt) As progress
@@ -418,8 +418,8 @@ Select Distinct cr.id_number As id_number
   , c.cal_month
   , c.fiscal_year
   , c.fiscal_qtr As fiscal_quarter
-  , c.perf_quarter
   , c.perf_year
+  , c.perf_quarter
   , g.goal_4 As fy_goal
   , pyg.goal_4 As py_goal
   , count(Distinct c.report_id) As progress
@@ -452,8 +452,8 @@ Select Distinct cr.id_number As id_number
   , c.cal_month
   , c.fiscal_year
   , c.fiscal_qtr As fiscal_quarter
+  , c.perf_year
   , c.perf_quarter
-    , c.perf_year
   , g.goal_5 As fy_goal
   , pyg.goal_5 As py_goal
   , count(Distinct c.report_id) As progress
@@ -487,8 +487,8 @@ Select acr.assignment_id_number As id_number
   , extract(month From acr.ask_or_stop_dt) As cal_month
   , to_number(nu_sys_f_getfiscalyear(acr.ask_or_stop_dt)) As fiscal_year
   , to_number(nu_sys_f_getquarter(acr.ask_or_stop_dt)) As fiscal_quarter
-  , to_number(advance_nu_rpt.performance_quarter(acr.ask_or_stop_dt)) As perf_quarter
   , to_number(advance_nu_rpt.performance_year(acr.ask_or_stop_dt)) As perf_year
+  , to_number(advance_nu_rpt.performance_quarter(acr.ask_or_stop_dt)) As perf_quarter
   , g.goal_6 As fy_goal
   , pyg.goal_6 As py_goal
   -- Original definition: count only if ask date is filled in
@@ -514,4 +514,26 @@ Group By nu_sys_f_getfiscalyear(acr.ask_or_stop_dt)
   , advance_nu_rpt.performance_year(acr.ask_or_stop_dt)
   , g.goal_6
   , pyg.goal_6
+;
+
+/***********************************************************************************************
+Goals view -- monthly refactored version of ADVANCE_NU.NU_GFT_V_OFFICER_METRICS
+***********************************************************************************************/
+
+Create Or Replace View v_mgo_goals_monthly As
+
+Select
+  id_number
+  , goal_type
+  , cal_year
+  , cal_month
+  , fiscal_year
+  , fiscal_quarter
+  , perf_year
+  , perf_quarter
+  , fy_goal
+  , py_goal
+  , progress
+From v_mgo_activity_monthly v
+Where fy_goal Is Not Null
 ;
