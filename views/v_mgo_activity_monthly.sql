@@ -1,5 +1,5 @@
 /***********************************************************************************************
-Tweak v_mgo_goals_monthly to show activity even in months/years without a goal entered
+Tweak original v_mgo_goals_monthly to show activity even in months/years without a goal entered
 ***********************************************************************************************/
 
 Create Or Replace View v_mgo_activity_monthly As
@@ -223,7 +223,7 @@ custom_params As (
 , asked_count_ranked As (
   Select proposal_id
     , assignment_id_number
-    , min(initial_contribution_date) keep(dense_rank First Order By info_rank Asc)
+    , min(initial_contribution_date) keep(dense_rank First Order By info_rank Asc)  -- initial_contribution_date is 'ask_date'
       As initial_contribution_date
     -- Replace null initial_contribution_date with proposal_stop_date
     , min(nvl(initial_contribution_date, proposal_stop_date)) keep(dense_rank First Order By info_rank Asc)
@@ -319,7 +319,8 @@ Select fcd.assignment_id_number As id_number
   , to_number(advance_nu_rpt.performance_year(pd.date_of_record)) As perf_year
   , g.goal_1 As fy_goal
   , pyg.goal_1 As py_goal
-  , Count(Distinct fcd.proposal_id) As cnt
+  , Count(Distinct fcd.proposal_id) As progress
+  , Count(Distinct fcd.proposal_id) As adjusted_progress
 From funded_count_distinct fcd
 Inner Join proposal_dates pd
   On pd.proposal_id = fcd.proposal_id
@@ -352,12 +353,16 @@ Select acr.assignment_id_number As id_number
   , to_number(advance_nu_rpt.performance_year(acr.ask_or_stop_dt)) As perf_year
   , g.goal_2 As fy_goal
   , pyg.goal_2 As py_goal
-  , Count(Distinct acr.proposal_id) As cnt
+  -- Original definition: count only if ask date is filled in
+  , Count(Distinct Case When acr.initial_contribution_date Is Not Null Then acr.proposal_id End)
+    As progress
+  -- Alternate definition: count if either ask date or stop date is filled in
+  , Count(Distinct acr.proposal_id) As adjusted_progress
 From asked_count_ranked acr
 -- Fiscal year goals
 Left Join goal g
   On acr.assignment_id_number = g.id_number
-    And g.year = nu_sys_f_getfiscalyear(acr.ask_or_stop_dt) -- initial_contribution_date is 'ask_date'
+    And g.year = nu_sys_f_getfiscalyear(acr.ask_or_stop_dt)
 -- Performance year goals
 Left Join goal pyg
   On acr.assignment_id_number = pyg.id_number
@@ -383,7 +388,8 @@ Select fr.assignment_id_number As id_number
   , to_number(advance_nu_rpt.performance_year(pd.date_of_record)) As perf_year
   , g.goal_3 As fy_goal
   , pyg.goal_3 As py_goal
-  , sum(fr.granted_amt) As cnt
+  , sum(fr.granted_amt) As progress
+  , sum(fr.granted_amt) As adjusted_progress
 From funded_ranked fr
 Inner Join proposal_dates pd
   On pd.proposal_id = fr.proposal_id
@@ -416,7 +422,8 @@ Select Distinct cr.id_number As id_number
   , c.perf_year
   , g.goal_4 As fy_goal
   , pyg.goal_4 As py_goal
-  , count(Distinct c.report_id) As cnt
+  , count(Distinct c.report_id) As progress
+  , count(Distinct c.report_id) As adjusted_progress
 From cr_credit cr
 Inner Join contact_reports c
   On cr.report_id = c.report_id
@@ -449,7 +456,8 @@ Select Distinct cr.id_number As id_number
     , c.perf_year
   , g.goal_5 As fy_goal
   , pyg.goal_5 As py_goal
-  , count(Distinct c.report_id) As cnt
+  , count(Distinct c.report_id) As progress
+  , count(Distinct c.report_id) As adjusted_progress
 From cr_credit cr
 Inner Join contact_reports c
   On cr.report_id = c.report_id
@@ -483,7 +491,11 @@ Select acr.assignment_id_number As id_number
   , to_number(advance_nu_rpt.performance_year(acr.ask_or_stop_dt)) As perf_year
   , g.goal_6 As fy_goal
   , pyg.goal_6 As py_goal
-  , count(Distinct acr.proposal_id) As cnt
+  -- Original definition: count only if ask date is filled in
+  , Count(Distinct Case When acr.initial_contribution_date Is Not Null Then acr.proposal_id End)
+    As progress
+  -- Alternate definition: count if either ask date or stop date is filled in
+  , Count(Distinct acr.proposal_id) As adjusted_progress
 From assist_count_ranked acr
 -- Fiscal year goals
 Left Join goal g
