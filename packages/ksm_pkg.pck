@@ -391,6 +391,12 @@ Function fytd_indicator(
   , day_offset In number Default -1 -- default offset in days; -1 means up to yesterday is year-to-date, 0 up to today, etc.
 ) Return character; -- Y or N
 
+/* Compute fiscal or performance quarter from date */
+Function get_quarter(
+  dt In date
+  , quarter In varchar2 Default 'fiscal'
+) Return number; -- Quarter, 1-4
+
 /* Takes a date and returns the fiscal year */
 -- Date version
 Function get_fiscal_year(
@@ -401,6 +407,12 @@ Function get_fiscal_year(
   dt In varchar2
   , format In varchar2 Default 'yyyy/mm/dd'
 ) Return number; -- Fiscal year part of date
+
+/* Takes a date and returns the performance year */
+-- Date version
+Function get_performance_year(
+  dt In date
+) Return number; -- Performance year part of date
 
 /* Quick SQL-only retrieval of KSM degrees concat */
 Function get_entity_degrees_concat_fast(
@@ -2163,6 +2175,27 @@ Function fytd_indicator(dt In date, day_offset In number)
     Return(output);
   End;
 
+/* Compute fiscal or performance quarter from date
+   Defaults to fiscal quarter
+   2018-04-06 */
+Function get_quarter(dt In date, quarter In varchar2 Default 'fiscal')
+  Return number Is
+  -- Declarations
+  this_month number;
+  chron_month number;
+  
+  Begin
+    this_month := extract(month from dt);
+    -- Convert to chronological month number, where FY/PY start month = 1
+    If lower(quarter) Like 'f%' Then
+      chron_month := math_mod(this_month - fy_start_month, 12) + 1;
+    ElsIf lower(quarter) Like 'p%' Then
+      chron_month := math_mod(this_month - py_start_month, 12) + 1;
+    End If;
+    -- Return appropriate quarter corresponding to month; 3 months per quarter
+    Return ceil(chron_month / 3);
+End;
+
 /* Compute fiscal year from date parameter
    2017-03-15 */
 -- Date version
@@ -2192,6 +2225,25 @@ Function get_fiscal_year(dt In varchar2, format In varchar2)
     -- If month is before fy_start_month, return this_year
     If extract(month from to_date(dt, format)) < fy_start_month
       Or fy_start_month = 1 Then
+      Return this_year;
+    End If;
+    -- Otherwise return out_year + 1
+    Return (this_year + 1);
+  End;
+
+/* Compute performance year from date parameter
+   2018-04-06 */
+-- Date version
+Function get_performance_year(dt In date)
+  Return number Is
+  -- Declarations
+  this_year number;
+  
+  Begin
+    this_year := extract(year from dt);
+    -- If month is before fy_start_month, return this_year
+    If extract(month from dt) < py_start_month
+      Or py_start_month = 1 Then
       Return this_year;
     End If;
     -- Otherwise return out_year + 1
