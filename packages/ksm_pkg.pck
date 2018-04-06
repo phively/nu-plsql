@@ -394,7 +394,7 @@ Function fytd_indicator(
 /* Compute fiscal or performance quarter from date */
 Function get_quarter(
   dt In date
-  , quarter In varchar2 Default 'fiscal'
+  , fisc_or_perf In varchar2 Default 'fiscal' -- 'f'iscal or 'p'erformance quarter
 ) Return number; -- Quarter, 1-4
 
 /* Takes a date and returns the fiscal year */
@@ -2178,7 +2178,7 @@ Function fytd_indicator(dt In date, day_offset In number)
 /* Compute fiscal or performance quarter from date
    Defaults to fiscal quarter
    2018-04-06 */
-Function get_quarter(dt In date, quarter In varchar2 Default 'fiscal')
+Function get_quarter(dt In date, fisc_or_perf In varchar2 Default 'fiscal')
   Return number Is
   -- Declarations
   this_month number;
@@ -2187,9 +2187,9 @@ Function get_quarter(dt In date, quarter In varchar2 Default 'fiscal')
   Begin
     this_month := extract(month from dt);
     -- Convert to chronological month number, where FY/PY start month = 1
-    If lower(quarter) Like 'f%' Then
+    If lower(fisc_or_perf) Like 'f%' Then
       chron_month := math_mod(this_month - fy_start_month, 12) + 1;
-    ElsIf lower(quarter) Like 'p%' Then
+    ElsIf lower(fisc_or_perf) Like 'p%' Then
       chron_month := math_mod(this_month - py_start_month, 12) + 1;
     End If;
     -- Return appropriate quarter corresponding to month; 3 months per quarter
