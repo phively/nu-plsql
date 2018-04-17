@@ -45,6 +45,7 @@ trans As (
       As ngc_lifetime_full_rec
     , sum(Case When tx_gypm_ind != 'Y' And anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
       As ngc_lifetime_nonanon_full_rec
+    , sum(Case When tx_gypm_ind != 'P' Then hh_credit Else 0 End) As cash_lifetime
     , sum(Case When tx_gypm_ind != 'Y' And cal.curr_fy = fiscal_year     Then hh_credit Else 0 End) As ngc_cfy
     , sum(Case When tx_gypm_ind != 'Y' And cal.curr_fy = fiscal_year + 1 Then hh_credit Else 0 End) As ngc_pfy1
     , sum(Case When tx_gypm_ind != 'Y' And cal.curr_fy = fiscal_year + 2 Then hh_credit Else 0 End) As ngc_pfy2
