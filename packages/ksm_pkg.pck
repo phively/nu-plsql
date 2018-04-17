@@ -326,6 +326,7 @@ Type trans_campaign Is Record (
 /* Special handling concat */
 Type special_handling Is Record (
      id_number entity.id_number%type
+     , spouse_id_number entity.spouse_id_number%type
      , special_handling_concat varchar2(1024)
      , spec_hnd_codes varchar2(1024)
      , mailing_list_concat varchar2(1024)
@@ -333,7 +334,10 @@ Type special_handling Is Record (
      , no_contact varchar2(1)
      , no_solicit varchar2(1)
      , no_release varchar2(1)
+     , never_engaged_forever varchar2(1)
      , has_opt_ins_opt_outs varchar2(1)
+     , exc_all_comm varchar2(1)
+     , exc_all_sols varchar2(1)
      , no_phone_ind varchar2(1)
      , no_phone_sol_ind varchar2(1)
      , no_email_ind varchar2(1)
@@ -1920,7 +1924,8 @@ Cursor c_special_handling_concat Is
   -- Special handling entities
   spec_hnd As (
     Select
-      id_number
+      h.id_number
+      , e.spouse_id_number
       , Listagg(
           ht.short_desc ||
           Case
@@ -1941,6 +1946,9 @@ Cursor c_special_handling_concat Is
       -- No release
       , max(Case When h.hnd_type_code = 'DNR' Then 'Y' End)
         As no_release
+      -- Never engaged forever
+      , max(Case When h.hnd_type_code = 'NED' Then 'Y' End)
+        As never_engaged_forever
       -- Has opt-outs
       , max(Case When h.hnd_type_code = 'OOO' Or h.hnd_type_code = 'OIO' Then 'Y' End)
         As has_opt_ins_opt_outs
@@ -1969,6 +1977,7 @@ Cursor c_special_handling_concat Is
       , max(Case When h.hnd_type_code = 'NTS' Then 'Y' End)
         As no_texts_solicit
     From handling h
+    Inner Join entity e On e.id_number = h.id_number
     Inner Join tms_handling_type ht On ht.handling_type = h.hnd_type_code
     Left Join tms_data_source ds On ds.data_source_code = h.data_source_code
     Where h.hnd_status_code = 'A'
@@ -1976,12 +1985,15 @@ Cursor c_special_handling_concat Is
         'CPG', 'ENT', 'FB', 'FW', 'HF', 'MAR', 'MCE', 'MFU', 'MLC'
         , 'NYF', 'NYW', 'PER', 'SPC', 'SRC', 'TEC', 'TF', 'VC'
       )
-    Group By id_number
+    Group By
+      h.id_number
+      , e.spouse_id_number
   )
   -- Mailing list entities
   , mailing_lists As (
     Select
-      id_number
+      ml.id_number
+      , e.spouse_id_number
       , Listagg(
           trim(
             mlc.short_desc || Case When uc.unit_code <> ' ' Then ' ' End || trim(uc.unit_code)
@@ -2023,6 +2035,7 @@ Cursor c_special_handling_concat Is
       , max(Case When ml.mail_list_code = 'MS' And ml.mail_list_ctrl_code = 'EXC' Then 'Y' End)
         As exc_mail_sols
     From mailing_list ml
+    Inner Join entity e On e.id_number = ml.id_number
     Inner Join tms_mail_list_code mlc On ml.mail_list_code = mlc.mail_list_code_code
     Left Join tms_unit_code uc On ml.unit_code = uc.unit_code
     Left Join tms_mail_list_ctrl c On ml.mail_list_ctrl_code = c.mail_list_ctrl_code
@@ -2035,19 +2048,22 @@ Cursor c_special_handling_concat Is
           And ml.mail_list_code In ('AC', 'AS', 'PC', 'PS', 'EC', 'ES', 'MC', 'MS')
          )
        )
-    Group By id_number
+    Group By
+      ml.id_number
+      , e.spouse_id_number
   )
   -- All IDs
   , ids As (
-    Select id_number
+    Select id_number, spouse_id_number
     From spec_hnd
     Union
-    Select id_number
+    Select id_number, spouse_id_number
     From mailing_lists
   )
   -- Main query
   Select
     ids.id_number
+    , ids.spouse_id_number
     , spec_hnd.special_handling_concat
     , spec_hnd.spec_hnd_codes
     , mailing_lists.mailing_list_concat
@@ -2056,7 +2072,11 @@ Cursor c_special_handling_concat Is
     , spec_hnd.no_contact
     , spec_hnd.no_solicit
     , spec_hnd.no_release
+    , spec_hnd.never_engaged_forever
     , spec_hnd.has_opt_ins_opt_outs
+    -- Overall mailing list indicators
+    , exc_all_comm
+    , exc_all_sols
     -- No phone combined
     , Case
         When no_contact = 'Y' Or no_phone = 'Y' Then 'Y'
