@@ -311,7 +311,8 @@ Type trans_campaign Is Record (
   , alloc_purpose nu_rpt_t_cmmt_dtl_daily.alloc_purpose%type
   , annual_sw nu_rpt_t_cmmt_dtl_daily.annual_sw%type
   , restrict_code nu_rpt_t_cmmt_dtl_daily.restrict_code%type
-  , transaction_type nu_rpt_t_cmmt_dtl_daily.transaction_type%type
+  , transaction_type_code nu_rpt_t_cmmt_dtl_daily.transaction_type%type
+  , transaction_type varchar2(40)
   , pledge_status nu_rpt_t_cmmt_dtl_daily.pledge_status%type
   , gift_pledge_or_match nu_rpt_t_cmmt_dtl_daily.gift_pledge_or_match%type
   , matched_donor_id nu_rpt_t_cmmt_dtl_daily.matched_donor_id%type
@@ -1787,6 +1788,20 @@ Cursor c_gift_credit_campaign_2008 Is
           And gftanon.gift_sequence = matching_gift.match_gift_matched_sequence
     )
   )
+  -- Transaction and pledge TMS table definition
+  , tms_trans As (
+    (
+      Select
+        transaction_type_code
+        , short_desc As transaction_type
+      From tms_transaction_type
+    ) Union All (
+      Select
+        pledge_type_code
+        , short_desc
+      From tms_pledge_type
+    )
+  )
   -- Main query
   (
   Select
@@ -1806,7 +1821,8 @@ Cursor c_gift_credit_campaign_2008 Is
     , alloc_purpose
     , annual_sw
     , restrict_code
-    , transaction_type
+    , daily.transaction_type As transaction_type_code
+    , tms_trans.transaction_type
     , pledge_status
     , gift_pledge_or_match
     , matched_donor_id
@@ -1816,6 +1832,7 @@ Cursor c_gift_credit_campaign_2008 Is
     , std_area
     , zipcountry
   From nu_rpt_t_cmmt_dtl_daily daily
+  Inner Join tms_trans On tms_trans.transaction_type_code = daily.transaction_type
   Left Join anons On anons.tx_number = daily.rcpt_or_plg_number
     And anons.tx_sequence = daily.xsequence
   Where daily.alloc_school = 'KM'
@@ -1838,7 +1855,8 @@ Cursor c_gift_credit_campaign_2008 Is
     , alloc_purpose
     , annual_sw
     , restrict_code
-    , transaction_type
+    , daily.transaction_type As transaction_type_code
+    , tms_trans.transaction_type
     , pledge_status
     , gift_pledge_or_match
     , matched_donor_id
@@ -1848,6 +1866,7 @@ Cursor c_gift_credit_campaign_2008 Is
     , std_area
     , zipcountry
   From nu_rpt_t_cmmt_dtl_daily daily
+  Inner Join tms_trans On tms_trans.transaction_type_code = daily.transaction_type
   Left Join anons On anons.tx_number = daily.rcpt_or_plg_number
     And anons.tx_sequence = daily.xsequence
   Where daily.rcpt_or_plg_number = '0002275766'

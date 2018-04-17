@@ -160,6 +160,8 @@ Select
   , proposal.proposal_id
   , Case When ksm_purp.proposal_id Is Not Null And ksm_amts.proposal_id Is Not Null Then 'Y' End
       As ksm_proposal_ind
+  , proposal.proposal_title
+  , proposal.description As proposal_description
   , assn.proposal_manager_id
   , assn.proposal_manager
   , asst.proposal_assist
@@ -261,6 +263,8 @@ Select
   , prospect_name_sort
   , proposal_id
   , ksm_proposal_ind
+  , proposal_title
+  , proposal_description
   , proposal_manager_id
   , proposal_manager
   , proposal_assist
