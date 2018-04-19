@@ -51,9 +51,19 @@ manual_exclusions As (
 , trustee As (
   Select
     id_number
-    , regexp_substr(institutional_suffix, 'Trustee.*') As trustee
-  From entity
-  Where institutional_suffix Like '%Trustee%'
+    , Case
+        When a.affil_code = 'TR' Then
+          Case
+            When tms_al.affil_level_code Is Not Null Then tms_al.short_desc || ' (' || a.affil_status_code || ')'
+            Else 'Trustee'
+          End
+        When a.affil_code = 'TS' Then trim(tms_ac.short_desc || ' (' || a.affil_status_code || ') ' || tms_al.short_desc)
+      End As trustee
+    , affil_status_code
+  From affiliation a
+  Left Join tms_affil_code tms_ac On tms_ac.affil_code = a.affil_code
+  Left Join tms_affiliation_level tms_al On tms_al.affil_level_code = a.affil_level_code
+  Where a.affil_code In ('TR', 'TS')
 )
 
 -- Merged ids
