@@ -3,11 +3,10 @@
 With
 
 -- Manual exclusions
-manual_exclusions As (
+manual_exclusions_pre As (
   Select
     id_number
     , report_name
-    , 'Y' As manual_exclusion
   From entity
   Where id_number In (
     NULL
@@ -17,6 +16,18 @@ manual_exclusions As (
     , '0000499489' -- DDJ spouse
 ------ ADD ID NUMBERS ABOVE HERE ------
   )
+)
+, manual_exclusions As (
+    Select
+      id_number
+      , 'Y' As manual_exclusion
+    From manual_exclusions_pre
+  Union
+    Select
+      entity.id_number
+      , 'Y' As manual_exclusion
+    From entity
+    Inner Join manual_exclusions_pre mep On mep.id_number = entity.spouse_id_number
 )
 
 -- Special handling
@@ -43,27 +54,35 @@ manual_exclusions As (
 , gab As (
   Select
     id_number
-    , trim('GAB ' || role) As gab
-  From table(ksm_pkg.tbl_committee_gab)
+    , Listagg(
+        trim('GAB ' || role)
+      , '; ') Within Group (Order By tcg.role Asc)
+      As gab
+  From table(ksm_pkg.tbl_committee_gab) tcg
+  Group By id_number
 )
 
 -- Trustee
 , trustee As (
   Select
     id_number
-    , Case
-        When a.affil_code = 'TR' Then
-          Case
-            When tms_al.affil_level_code Is Not Null Then tms_al.short_desc || ' (' || a.affil_status_code || ')'
-            Else 'Trustee'
-          End
-        When a.affil_code = 'TS' Then trim(tms_ac.short_desc || ' (' || a.affil_status_code || ') ' || tms_al.short_desc)
-      End As trustee
-    , affil_status_code
+    , Listagg(
+        Case
+          When a.affil_code = 'TR' Then
+            Case
+              When tms_al.affil_level_code Is Not Null Then tms_al.short_desc
+              Else 'Trustee'
+            End
+          When a.affil_code = 'TS' Then trim(tms_ac.short_desc || ' ' || tms_al.short_desc)
+        End
+      , '; ') Within Group (Order By a.affil_code Asc)
+      As trustee
   From affiliation a
   Left Join tms_affil_code tms_ac On tms_ac.affil_code = a.affil_code
   Left Join tms_affiliation_level tms_al On tms_al.affil_level_code = a.affil_level_code
-  Where a.affil_code In ('TR', 'TS')
+  Where a.affil_code In ('TR', 'TS') -- Trustee and Trustee Relation
+    And a.affil_status_code In ('C', 'A') -- Current and Active (deprecated) only
+  Group By id_number
 )
 
 -- Merged ids
