@@ -813,6 +813,8 @@ Cursor c_entity_degrees_concat_ksm (id In varchar2 Default NULL) Is
       , school_code
       , degrees.dept_code
       , tms_dept_code.short_desc As dept_desc
+      , degrees.division_code
+      , tms_division.short_desc As division_desc
       , Case
           When degrees.dept_code = '01MDB' Then 'MDMBA'
           When degrees.dept_code Like '01%' Then substr(degrees.dept_code, 3)
@@ -833,6 +835,8 @@ Cursor c_entity_degrees_concat_ksm (id In varchar2 Default NULL) Is
       On degrees.class_section = tms_class_section.section_code
     Left Join tms_dept_code -- For department short_desc
       On degrees.dept_code = tms_dept_code.dept_code
+    Left Join tms_division -- For division short_desc
+      On degrees.division_code = tms_division.division_code
     Left Join tms_degree_level -- For degree level short_desc
       On degrees.degree_level_code = tms_degree_level.degree_level_code
     Left Join tms_degrees -- For degreee short_desc (to replace degree_code)
@@ -907,6 +911,8 @@ Cursor c_entity_degrees_concat_ksm (id In varchar2 Default NULL) Is
       Select
         concat.id_number
         , Case
+            -- Account for certificate degree level/degree program mismatch by choosing exec ed
+            When last_noncert_year Is Null And clean_degrees_concat Is Not Null Then 'EXECED'
             -- People who have a completed degree
             -- ***** IMPORTANT: Keep in same order as below *****
             When clean_degrees_concat Like '%KGS2Y%' Then 'FT-2Y'
