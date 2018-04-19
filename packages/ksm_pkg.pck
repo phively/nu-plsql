@@ -903,7 +903,7 @@ Cursor c_entity_degrees_concat_ksm (id In varchar2 Default NULL) Is
           , '; '
         ) Within Group (Order By degree_year) As clean_degrees_concat
       From deg_data
-      Where non_grad_code <> 'N'
+      Where non_grad_code = ' ' Or non_grad_code Is Null
       Group By id_number
     )
     -- Extract program
@@ -912,7 +912,16 @@ Cursor c_entity_degrees_concat_ksm (id In varchar2 Default NULL) Is
         concat.id_number
         , Case
             -- Account for certificate degree level/degree program mismatch by choosing exec ed
-            When last_noncert_year Is Null And clean_degrees_concat Is Not Null Then 'EXECED'
+            When last_noncert_year Is Null And clean_degrees_concat Is Not Null Then
+              Case
+                When clean_degrees_concat Like '%KSM AEP%' Then 'EMP-AEP'
+                When clean_degrees_concat Like '%KSMEE%' Then 'EXECED'
+                When clean_degrees_concat Like '%CERT%' Then 'EXECED'
+                When clean_degrees_concat Like '%Institute for Mgmt%' Then 'EXECED'
+                When clean_degrees_concat Like '%LLM%' Then 'CERT-LLM'
+                When clean_degrees_verbose Like '%Certificate%' Then 'CERT'
+                Else 'EXECED'
+              End
             -- People who have a completed degree
             -- ***** IMPORTANT: Keep in same order as below *****
             When clean_degrees_concat Like '%KGS2Y%' Then 'FT-2Y'
