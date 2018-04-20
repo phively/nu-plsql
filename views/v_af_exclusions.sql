@@ -101,9 +101,12 @@ manual_exclusions_pre As (
       p.pledge_donor_id As id_number
       , p.pledge_pledge_number As pledge_number
       , p.pledge_pledge_type As pledge_type
+      , a.allocation_code
+      , a.alloc_school
       , tms_pt.short_desc As pledge_type_desc
     From pledge p
     Inner Join primary_pledge pp On p.pledge_pledge_number = pp.prim_pledge_number
+    Inner Join allocation a On a.allocation_code = p.pledge_allocation_name
     Inner Join tms_pledge_type tms_pt On tms_pt.pledge_type_code = p.pledge_pledge_type
     Where pp.prim_pledge_status = 'A' -- Active pledges only
       And p.pledge_pledge_type Not In ('BE', 'LE') -- Ignore planned giving
@@ -113,10 +116,13 @@ manual_exclusions_pre As (
       e.id_number
       , p.pledge_pledge_number As pledge_number
       , p.pledge_pledge_type As pledge_type
+      , a.allocation_code
+      , a.alloc_school
       , tms_pt.short_desc As pledge_type_desc
     From entity e
     Inner Join pledge p On p.pledge_donor_id = e.spouse_id_number
     Inner Join primary_pledge pp On p.pledge_pledge_number = pp.prim_pledge_number
+    Inner Join allocation a On a.allocation_code = p.pledge_allocation_name
     Inner Join tms_pledge_type tms_pt On tms_pt.pledge_type_code = p.pledge_pledge_type
     Where pp.prim_pledge_status = 'A' -- Active pledges only
       And p.pledge_pledge_type Not In ('BE', 'LE') -- Ignore planned giving
@@ -127,6 +133,7 @@ manual_exclusions_pre As (
     , count(Distinct pledge_number)
       As active_pledges
   From nu_pledges
+  Where alloc_school = 'KM' -- Kellogg only
   Group By id_number
 )
 
