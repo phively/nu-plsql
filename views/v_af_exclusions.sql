@@ -30,6 +30,15 @@ manual_exclusions_pre As (
     Inner Join manual_exclusions_pre mep On mep.id_number = entity.spouse_id_number
 )
 
+-- Deceased
+, deceased As (
+  Select
+    id_number
+    , record_status_code As deceased
+  From entity
+  Where record_status_code = 'D'
+)
+
 -- Special handling
 , spec_hnd As (
   Select
@@ -85,6 +94,60 @@ manual_exclusions_pre As (
   Group By id_number
 )
 
+-- Pledges/recurring gifts
+, nu_pledges As (
+    -- Pledge donor
+    Select
+      p.pledge_donor_id As id_number
+      , p.pledge_pledge_number As pledge_number
+      , p.pledge_pledge_type As pledge_type
+      , tms_pt.short_desc As pledge_type_desc
+    From pledge p
+    Inner Join primary_pledge pp On p.pledge_pledge_number = pp.prim_pledge_number
+    Inner Join tms_pledge_type tms_pt On tms_pt.pledge_type_code = p.pledge_pledge_type
+    Where pp.prim_pledge_status = 'A' -- Active pledges only
+      And p.pledge_pledge_type Not In ('BE', 'LE') -- Ignore planned giving
+  Union
+    -- Pledge donor spouse
+    Select
+      e.id_number
+      , p.pledge_pledge_number As pledge_number
+      , p.pledge_pledge_type As pledge_type
+      , tms_pt.short_desc As pledge_type_desc
+    From entity e
+    Inner Join pledge p On p.pledge_donor_id = e.spouse_id_number
+    Inner Join primary_pledge pp On p.pledge_pledge_number = pp.prim_pledge_number
+    Inner Join tms_pledge_type tms_pt On tms_pt.pledge_type_code = p.pledge_pledge_type
+    Where pp.prim_pledge_status = 'A' -- Active pledges only
+      And p.pledge_pledge_type Not In ('BE', 'LE') -- Ignore planned giving
+)
+, pledge_counts As (
+  Select
+    id_number
+    , count(Distinct pledge_number)
+      As active_pledges
+  From nu_pledges
+  Group By id_number
+)
+
+-- Open proposal data
+/* -- Currently on the slow side; can I optimize v_ksm_proposal_history?
+, ksm_proposals As (
+  Select
+    prospect_id
+    -- Submitted and approved by donor proposals
+    , count(Distinct Case When hierarchy_order In (20, 60) Then proposal_id End)
+      As proposals_submitted_approved
+    -- Anticipated proposal, close date in next 18 months
+    , count(Distinct Case When hierarchy_order = 10 And close_date <= add_months(cal.today, 18) Then proposal_id End)
+      As proposals_anticipated_18_mos
+  From v_ksm_proposal_history vph
+  Cross Join v_current_calendar cal
+  Where proposal_active = 'Y'
+    And proposal_in_progress = 'Y'
+  Group By prospect_id
+)*/
+
 -- Degree removals
 , degree_exclusion_ids As (
     -- Alumni with a PhD or IEMBA or certificate
@@ -122,6 +185,10 @@ manual_exclusions_pre As (
     Select id_number
     From manual_exclusions
   Union
+    -- Deceased
+    Select id_number
+    From deceased
+  Union
     -- Special handling
     Select id_number
     From spec_hnd
@@ -141,6 +208,10 @@ manual_exclusions_pre As (
     Select id_number
     From trustee
   Union
+    -- Pledges
+    Select id_number
+    From pledge_counts
+  Union
     -- Proposals
     -- Degrees
     Select id_number
@@ -152,6 +223,7 @@ Select
   entity.id_number
   , entity.report_name
   , me.manual_exclusion
+  , deceased.deceased
   , sh.special_handling_concat
   , shs.special_handling_concat As special_handling_spouse
   , sh.no_contact 
@@ -168,11 +240,14 @@ Select
   , trustee.trustee
   , dex.degrees_concat
   , dex.degree_program
+  , pc.active_pledges
 From ids
 Inner Join entity On entity.id_number = ids.id_number
 Left Join manual_exclusions me On me.id_number = ids.id_number
+Left Join deceased On deceased.id_number = ids.id_number
 Left Join spec_hnd sh On sh.id_number = ids.id_number
 Left Join spec_hnd shs On shs.spouse_id_number = ids.id_number
 Left Join gab On gab.id_number = ids.id_number
 Left Join trustee On trustee.id_number = ids.id_number
 Left Join degree_exclusion dex On dex.id_number = ids.id_number
+Left Join pledge_counts pc On pc.id_number = ids.id_number
