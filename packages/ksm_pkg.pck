@@ -424,12 +424,6 @@ Function get_entity_degrees_concat_fast(
   id In varchar2
 ) Return varchar2;
 
-/* Return concatenated Kellogg degrees as a string */
-Function get_entity_degrees_concat_ksm(
-  id In varchar2 -- entity id_number
-  , verbose In varchar2 Default 'FALSE' -- if TRUE, then preferentially return short_desc instead of code where unclear
-) Return varchar2; -- e.g. 2014 MBA KSM JDMBA
-
 /* Return specified master address information, defined as preferred if available, else home if available, else business.
    The field parameter should match an address table field or tms table name, e.g. street1, state_code, country, etc. */
 Function get_entity_address(
@@ -773,7 +767,7 @@ Cursor c_committee_members (my_committee_cd In varchar2) Is
 
 /* Definition of Kellogg degrees concatenated
    2017-02-15 */
-Cursor c_entity_degrees_concat_ksm (id In varchar2 Default NULL) Is
+Cursor c_entity_degrees_concat_ksm Is
   With
   -- Stewardship concatenated years; uses Distinct to de-dupe multiple degrees in one year
   stwrd_yrs As (
@@ -786,9 +780,6 @@ Cursor c_entity_degrees_concat_ksm (id In varchar2 Default NULL) Is
       And school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
       And degree_year <> ' ' -- Exclude rows with blank year
       And non_grad_code <> 'N' -- Exclude non-grads
-      -- Only for input ID, if provided
-      And (Case When id Is Not Null Then id_number Else 'T' End) = (Case When id Is Not Null Then id Else 'T' End)
-    Order By id_number, degree_year Asc
   )
   , stwrd_deg As (
     Select Distinct
@@ -843,8 +834,6 @@ Cursor c_entity_degrees_concat_ksm (id In varchar2 Default NULL) Is
       On degrees.degree_code = tms_degrees.degree_code
     Where institution_code = '31173' -- Northwestern institution code
       And school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
-      -- Only for input ID, if provided
-      And (Case When id Is Not Null Then id_number Else 'T' End) = (Case When id Is Not Null Then id Else 'T' End)
   )
   -- Listagg all degrees, including incomplete
   , concat As (
@@ -1044,7 +1033,7 @@ Cursor c_source_donor_ksm (receipt In varchar2) Is
 
 /* Definition of Kellogg householding
    2017-02-21 */
-Cursor c_entity_households_ksm (id In varchar2 Default NULL) Is
+Cursor c_entity_households_ksm Is
 With
   -- Entities and spouses, with Kellogg degrees concat fields
   degs As (
@@ -1166,11 +1155,10 @@ With
     Left Join entity spouse On spouse.id_number = ds.spouse_id_number
     Left Join tms_record_status tmsd On tmsd.record_status_code = spouse.record_status_code
     Left Join tms_marital_status tms_sms On tms_sms.marital_status_code = spouse.marital_status_code
-    Where entity.id_number In (
-      (Select id_number From deceased_spouse) Union All (Select spouse_id_number From deceased_spouse)
-    )
-      -- If updated, also change above in deceased_spouses query
-      And entity.marital_status_code In ('I', 'Q', 'Z', 'W', 'N', 'F', ' ')
+    Inner Join (Select id_number From deceased_spouse Union Select spouse_id_number From deceased_spouse) ds
+      On ds.id_number = entity.id_number
+    -- If updated, also change above in deceased_spouses query
+    Where entity.marital_status_code In ('I', 'Q', 'Z', 'W', 'N', 'F', ' ')
       And spouse.marital_status_code In ('I', 'Q', 'Z', 'W', 'N', 'F', ' ')
   )
   -- Main query
@@ -1217,9 +1205,6 @@ With
   Left Join couples On household.household_id = couples.id_number
   Left Join pref_addr On household.id_number = pref_addr.id_number
   Left Join fmr_spouse On household.id_number = fmr_spouse.id_number
-  -- Only for input ID, if provided
-  Where (Case When id Is Not Null Then household.id_number Else 'T' End)
-            = (Case When id Is Not Null Then id Else 'T' End)
   ;
 
 /* Definition of a Kellogg alum employed by a company */
@@ -2323,28 +2308,6 @@ Function get_entity_degrees_concat_fast(id In varchar2)
     Group By id_number;
     
     Return deg_conc;
-  End;
-
-/* Takes an entity id_number and returns concatenated Kellogg degrees as a string
-   2017-02-09 */
-Function get_entity_degrees_concat_ksm(id In varchar2, verbose In varchar2)
-  Return varchar2 Is
-  -- Declarations
-  Type degrees Is Table Of c_entity_degrees_concat_ksm%rowtype;
-  deg_conc degrees; -- hold concatenated degree results
-  
-  Begin
-    -- Retrieve selected row
-    Open c_entity_degrees_concat_ksm(id);
-      Fetch c_entity_degrees_concat_ksm Bulk Collect Into deg_conc;
-    Close c_entity_degrees_concat_ksm;
-    
-    -- Return appropriate concatenated string
-    If deg_conc.count = 0 Or deg_conc.count Is Null Then Return(NULL);
-    ElsIf upper(verbose) Like 'T%' Then Return (deg_conc(1).degrees_verbose);
-    Else Return(deg_conc(1).degrees_concat);
-    End If;
-
   End;
 
 /* Takes an ID and returns xsequence of master address, defined as preferred if available, else home,
