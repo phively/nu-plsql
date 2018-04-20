@@ -85,6 +85,37 @@ manual_exclusions_pre As (
   Group By id_number
 )
 
+-- Degree removals
+, degree_exclusion_ids As (
+    -- Alumni with a PhD or IEMBA or certificate
+    Select id_number
+    From degrees
+    Where institution_code = '31173'
+      And school_code In ('BUS', 'KSM')
+      And (
+        degree_code In ('PHD', 'MSMS')
+        Or campus_code In ('CAN', 'ISL', 'HK', 'GER')
+        Or degree_level_code = 'C'
+      )
+  Minus
+    -- Exclude alumni with a different degree
+    Select id_number
+    From degrees
+    Where institution_code = '31173'
+      And school_code In ('BUS', 'KSM')
+      And degree_level_code Not In ('C')
+      And degree_code Not In ('PHD', 'MSMS')
+      And campus_code Not In ('CAN', 'ISL', 'HK', 'GER')
+)
+, degree_exclusion As (
+  Select
+    dei.id_number
+    , deg.degrees_concat
+    , deg.program As degree_program
+  From degree_exclusion_ids dei
+  Inner Join v_entity_ksm_degrees deg On deg.id_number = dei.id_number
+)
+
 -- Merged ids
 , ids As (
     -- Manual exclusions
@@ -109,6 +140,11 @@ manual_exclusions_pre As (
     -- Current trustees/spouses
     Select id_number
     From trustee
+  Union
+    -- Proposals
+    -- Degrees
+    Select id_number
+    From degree_exclusion
 )
 
 -- Final query
@@ -130,6 +166,8 @@ Select
   , shs.exc_all_sols As exc_all_sols_spouse
   , gab.gab
   , trustee.trustee
+  , dex.degrees_concat
+  , dex.degree_program
 From ids
 Inner Join entity On entity.id_number = ids.id_number
 Left Join manual_exclusions me On me.id_number = ids.id_number
@@ -137,3 +175,4 @@ Left Join spec_hnd sh On sh.id_number = ids.id_number
 Left Join spec_hnd shs On shs.spouse_id_number = ids.id_number
 Left Join gab On gab.id_number = ids.id_number
 Left Join trustee On trustee.id_number = ids.id_number
+Left Join degree_exclusion dex On dex.id_number = ids.id_number
