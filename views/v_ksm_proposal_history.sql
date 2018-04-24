@@ -7,14 +7,21 @@ Create Or Replace View v_proposal_history As
 With
 
 -- Gifts with linked proposals
-linked As (
+trans As (
   Select
     proposal_id
-    , sum(legal_amount) As ksm_linked_amounts
+    , legal_amount
+    , tx_number
   From v_ksm_giving_trans
   Where proposal_id Is Not Null
     And legal_amount > 0
-    And tx_gypm_ind <> 'Y' -- Payment linked but pledge not is a data issue
+    And tx_gypm_ind <> 'Y'
+)
+, linked As (
+  Select
+    proposal_id
+    , sum(legal_amount) As ksm_linked_amounts
+  From trans
   Group By proposal_id
 )
 , linked_receipts As (
@@ -25,10 +32,7 @@ linked As (
     Select Distinct
       proposal_id
       , tx_number
-    From v_ksm_giving_trans
-    Where proposal_id Is Not Null
-      And legal_amount > 0
-      And tx_gypm_ind <> 'Y' -- Payment linked but pledge not is a data issue
+    From trans
   )
   Group By proposal_id
 )
