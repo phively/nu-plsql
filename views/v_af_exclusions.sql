@@ -1,4 +1,4 @@
--- Create Or Replace View v_af_exclusions As
+Create Or Replace View v_af_exclusions As
 
 With
 
@@ -138,22 +138,43 @@ manual_exclusions_pre As (
 )
 
 -- Open proposal data
-/* -- Currently on the slow side; can I optimize v_ksm_proposal_history?
-, ksm_proposals As (
+, ksm_proposal_data As (
   Select
     prospect_id
     -- Submitted and approved by donor proposals
-    , count(Distinct Case When hierarchy_order In (20, 60) Then proposal_id End)
-      As proposals_submitted_approved
+    , count(Distinct Case
+        When hierarchy_order In (20, 60) -- Submitted, approved by donor
+          And final_anticipated_or_ask_amt > 50000 -- Ignore ask/anticipated $50K or under
+          Then proposal_id 
+      End) As proposals_sub_appr
     -- Anticipated proposal, close date in next 18 months
-    , count(Distinct Case When hierarchy_order = 10 And close_date <= add_months(cal.today, 18) Then proposal_id End)
-      As proposals_anticipated_18_mos
+    , count(Distinct Case
+        When hierarchy_order = 10 -- anticipated
+          And final_anticipated_or_ask_amt > 50000 -- Ignore ask $50K or under
+          And close_date <= add_months(cal.today, 18)
+          Then proposal_id
+      End) As proposals_antic_18_mos
   From v_ksm_proposal_history vph
   Cross Join v_current_calendar cal
   Where proposal_active = 'Y'
     And proposal_in_progress = 'Y'
   Group By prospect_id
-)*/
+)
+
+-- Prospect entities with proposals, active only
+, ksm_proposal_counts As (
+  Select
+    pd.prospect_id
+    , pe.id_number
+    , pe.primary_ind
+    , pd.proposals_sub_appr
+    , pd.proposals_antic_18_mos
+  From ksm_proposal_data pd
+  Inner Join prospect_entity pe On pe.prospect_id = pd.prospect_id
+  Inner Join prospect p On p.prospect_id = pd.prospect_id
+  Where p.active_ind = 'Y' -- Active only
+    And pd.proposals_sub_appr + pd.proposals_antic_18_mos > 0 -- Must have proposals
+)
 
 -- Degree removals
 , degree_exclusion_ids As (
@@ -220,6 +241,9 @@ manual_exclusions_pre As (
     From pledge_counts
   Union
     -- Proposals
+    Select id_number
+    From ksm_proposal_counts
+  Union
     -- Degrees
     Select id_number
     From degree_exclusion
@@ -248,6 +272,8 @@ Select
   , dex.degrees_concat
   , dex.degree_program
   , pc.active_pledges
+  , propc.proposals_sub_appr
+  , propc.proposals_antic_18_mos
 From ids
 Inner Join entity On entity.id_number = ids.id_number
 Left Join manual_exclusions me On me.id_number = ids.id_number
@@ -258,3 +284,4 @@ Left Join gab On gab.id_number = ids.id_number
 Left Join trustee On trustee.id_number = ids.id_number
 Left Join degree_exclusion dex On dex.id_number = ids.id_number
 Left Join pledge_counts pc On pc.id_number = ids.id_number
+Left Join ksm_proposal_counts propc On propc.id_number = ids.id_number
