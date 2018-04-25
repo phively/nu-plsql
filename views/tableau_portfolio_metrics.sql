@@ -65,17 +65,27 @@ And assignment_id_number = '0000549376'
   Select
     prospect_id
     , tms_stage.stage_code
-    , tms_stage.short_desc
+    , tms_stage.short_desc As stage_desc
     , trunc(stage_date) As stage_start_dt
-    , min(trunc(stage_date)) -- Take the day before the next stage began as the current stage's stop date
-        Over(Partition By prospect_id Order By stage_date Asc Range Between 1 Following And Unbounded Following) - 1
-      As stage_stop_dt
+    -- Take the day before the next stage began as the current stage's stop date
+    -- If null, fill in end of this month
+    , nvl(
+        min(trunc(stage_date))
+          Over(Partition By prospect_id Order By stage_date Asc Rows Between 1 Following And Unbounded Following) - 1
+        , last_day(cal.today)
+      ) As stage_stop_dt
   From stage
+  Cross Join rpt_pbh634.v_current_calendar cal
   Inner Join tms_stage On stage.stage_code = tms_stage.stage_code
-    And tms_stage.status_code = 'A' -- Only want 
   Where program_code Is Null -- Main prospect stage only, not program stages
+    And proposal_id Is Null -- Ignore proposal stages
 )
 
 -- Main query
-Select *
-From assn_dense
+Select Distinct
+  asn.*
+  , stg_hist.stage_desc
+From assn_dense asn
+Left Join stage_history stg_hist
+  On stg_hist.prospect_id = asn.prospect_id
+  And asn.filled_date Between stg_hist.stage_start_dt And stg_hist.stage_stop_dt
