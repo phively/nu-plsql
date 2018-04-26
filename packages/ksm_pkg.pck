@@ -438,6 +438,11 @@ Function get_gift_source_donor_ksm(
   , debug In boolean Default FALSE -- if TRUE, debug output is printed via dbms_output.put_line()
 ) Return varchar2; -- entity id_number
 
+/* Take a string containing a dollar amount and extract the (first) numeric value */
+Function get_number_from_dollar(
+  str In varchar2
+) Return number;
+
 /* Take entity ID and return officer or evaluation rating bin from nu_prs_trp_prospect */
 Function get_prospect_rating_numeric(
   id In varchar2
@@ -1642,17 +1647,7 @@ Cursor c_gift_credit_ksm Is
       -- Recognition credit; for $0 internal transfers, extract dollar amount stated in comment
       , Case
           When tms_pmt_type.payment_type = 'Internal Transfer' And credit_amount = 0
-            -- Regular expression: extract string starting with $ up to the last digit, period, or comma,
-            -- replace K with 000 and M with 000000, then strip the $ and commas and treat as numeric
-            Then to_number(
-              regexp_replace(
-                regexp_replace(
-                  regexp_replace(
-                    regexp_substr(upper(primary_gift.prim_gift_comment), '\$[0-9,KM\.]*'),
-                  'K', '000'),
-                'M', '000000'),
-              '[^0-9\.]', '')
-            )
+            Then get_number_from_dollar(primary_gift.prim_gift_comment)
           Else credit_amount
         End As recognition_credit
     From nu_gft_trp_gifttrans gft
@@ -2420,6 +2415,33 @@ Function get_entity_address(id In varchar2, field In varchar2, debug In Boolean 
     Return(master_addr);
   End;
 
+/* Take a string containing a dollar amount and extract the (first) numeric value */
+Function get_number_from_dollar(str In varchar2) 
+  Return number Is
+  -- Delcarations
+  amt number;
+  
+  Begin
+    Select
+      -- Regular expression: extract string starting with $ up to the last digit, period, or comma,
+      -- replace K with 000 and M with 000000, then strip the $ and commas and treat as numeric
+      to_number( -- Convert string to numeric
+        regexp_replace(
+          regexp_replace(
+            regexp_replace(
+              -- Target substring starts with a dollar sign and may contain 0-9,.KM
+              regexp_substr(upper(str), '\$[0-9,KM\.]*')
+              , 'K', '000') -- Replace K with three 0s
+            , 'M', '000000') -- Replace M with six 0s
+          , '[^0-9\.]' -- Remove non-numeric characters
+          , '') -- Replace commas with null
+        )
+    Into amt
+    From DUAL;
+    
+    Return amt;  
+  End;
+
 /* Convert rating to numeric amount */
 Function get_prospect_rating_numeric(id In varchar2)
   Return number Is
@@ -2433,38 +2455,14 @@ Function get_prospect_rating_numeric(id In varchar2)
         -- If officer rating exists
         When officer_rating <> ' ' Then
           Case
-            When trim(substr(officer_rating, 1, 2)) = 'A1' Then 100
-            When trim(substr(officer_rating, 1, 2)) = 'A2' Then 50
-            When trim(substr(officer_rating, 1, 2)) = 'A3' Then 25
-            When trim(substr(officer_rating, 1, 2)) = 'A4' Then 10
-            When trim(substr(officer_rating, 1, 2)) = 'A5' Then 5
-            When trim(substr(officer_rating, 1, 2)) = 'A6' Then 2
-            When trim(substr(officer_rating, 1, 2)) = 'A7' Then 1
-            When trim(substr(officer_rating, 1, 2)) = 'B' Then 0.5
-            When trim(substr(officer_rating, 1, 2)) = 'C' Then 0.25
-            When trim(substr(officer_rating, 1, 2)) = 'D' Then 0.1
-            When trim(substr(officer_rating, 1, 2)) = 'E' Then 0.05
-            When trim(substr(officer_rating, 1, 2)) = 'F' Then 0.025
-            When trim(substr(officer_rating, 1, 2)) = 'G' Then 0.01
-            Else 0
+            When trim(substr(officer_rating, 1, 2)) = 'H' Then 0 -- Under $10K is 0
+            Else get_number_from_dollar(officer_rating) / 1000000 -- Everything else in millions
           End
         -- Else use evaluation rating
         When evaluation_rating <> ' ' Then
           Case
-            When trim(substr(evaluation_rating, 1, 2)) = 'A1' Then 100
-            When trim(substr(evaluation_rating, 1, 2)) = 'A2' Then 50
-            When trim(substr(evaluation_rating, 1, 2)) = 'A3' Then 25
-            When trim(substr(evaluation_rating, 1, 2)) = 'A4' Then 10
-            When trim(substr(evaluation_rating, 1, 2)) = 'A5' Then 5
-            When trim(substr(evaluation_rating, 1, 2)) = 'A6' Then 2
-            When trim(substr(evaluation_rating, 1, 2)) = 'A7' Then 1
-            When trim(substr(evaluation_rating, 1, 2)) = 'B' Then 0.5
-            When trim(substr(evaluation_rating, 1, 2)) = 'C' Then 0.25
-            When trim(substr(evaluation_rating, 1, 2)) = 'D' Then 0.1
-            When trim(substr(evaluation_rating, 1, 2)) = 'E' Then 0.05
-            When trim(substr(evaluation_rating, 1, 2)) = 'F' Then 0.025
-            When trim(substr(evaluation_rating, 1, 2)) = 'G' Then 0.01
-            Else 0 
+            When trim(substr(evaluation_rating, 1, 2)) = 'H' Then 0
+            Else get_number_from_dollar(evaluation_rating) / 1000000 -- Everthing else in millions
           End
         Else 0
       End
