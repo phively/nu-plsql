@@ -97,11 +97,13 @@ And assignment_id_number = '0000549376'
     , e.evaluation_type
     , tet.short_desc As eval_type_desc
     , trunc(e.evaluation_date) As eval_start_dt
-    -- Computed stop date for active evals is just the end of this month
+    -- Computed stop date for most recent active eval is just the end of this month
     -- For inactive evals, take the day before the next rating as the current rating's stop date
     -- If null, fill in modified date
     , Case
-        When active_ind = 'Y' Then last_day(cal.today)
+        When active_ind = 'Y' And evaluation_date = max(evaluation_date)
+          Over(Partition By Case When prospect_id Is Not Null Then to_char(prospect_id) Else id_number End)
+          Then last_day(cal.today)
         Else nvl(
           min(trunc(evaluation_date))
             Over(Partition By Case When prospect_id Is Not Null Then to_char(prospect_id) Else id_number End
@@ -125,11 +127,13 @@ And assignment_id_number = '0000549376'
   Where tet.evaluation_type In ('PR', 'UR') -- Research, UOR
 )
 
--- KSM major gifts
+-- KSM major gifts, count and dollars
 
 -- Contact reports
 -- Outreach
 -- Visits
+
+-- Proposals, count and dollars
 
 -- Main query
 Select Distinct
@@ -156,4 +160,3 @@ Left Join eval_history uor_hist
   And uor_hist.prospect_id Is Not Null
   And uor_hist.evaluation_type = 'UR'
   And asn.filled_date Between uor_hist.eval_start_dt And uor_hist.eval_stop_dt
-Where asn.prospect_id = 108838
