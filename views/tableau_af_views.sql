@@ -902,6 +902,8 @@ ksm_tbd As (
   Select *
   From allocation alloc
   Where lower(alloc.short_name) Like '%kellogg%tbd%'
+    -- Also include KSM Unrestricted Bequest
+    Or alloc.allocation_code = '3203004290301GFT'
 )
 
 /* KSM degrees concat definition */
