@@ -2434,7 +2434,7 @@ Function get_number_from_dollar(str In varchar2)
               , 'K', '000') -- Replace K with three 0s
             , 'M', '000000') -- Replace M with six 0s
           , '[^0-9\.]' -- Remove non-numeric characters
-          , '') -- Replace commas with null
+          , '') -- Replace non-numeric characters with null
         )
     Into amt
     From DUAL;

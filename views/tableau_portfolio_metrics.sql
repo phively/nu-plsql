@@ -2,8 +2,15 @@
 
 With
 
+-- Custom parameters/definitions
+params As (
+  Select
+    NULL
+  From DUAL
+)
+
 -- Assignment history
-assignments As (
+, assignments As (
   Select
     rownum As rn -- Number each row; important for assn_dense
     , prospect_id
@@ -19,7 +26,7 @@ assignments As (
     , ceil(
         months_between(last_day(Case When stop_dt_calc Is Null Then last_day(cal.today) Else stop_dt_calc End)
         , trunc(start_dt_calc, 'month'))
-      ) As nmonths
+      ) As months_assigned
     , assignment_active_calc
     , assignment_id_number
     , assignment_report_name
@@ -45,19 +52,20 @@ And assignment_id_number = '0000549376'
     , least(
         Case
           When level = 1 Then start_dt -- First filled_date is start_dt
-          When level = nmonths Then stop_dt -- Last filled date is stop_dt
+          When level = months_assigned Then stop_dt -- Last filled date is stop_dt
           Else trunc(add_months(start_dt, level - 1), 'month') -- Subsequent are 1st of month after previous row
         End
         , stop_dt
       ) As filled_date
+    , months_assigned
     , assignment_active_calc
     , assignment_id_number
     , assignment_report_name
   From assignments
   Connect By
-    level <= nmonths -- Hierarchical query
+    level <= months_assigned -- Hierarchical query
     And Prior rn = rn -- Restart when prospect/manager changes, since each prospect/pm combo has its own row
-    And Prior dbms_random.value != 1 -- Always false, as 0 < dbms_random.value < 1
+    And Prior dbms_random.value != 1 -- Always true, as 0 < dbms_random.value < 1
 )
 
 -- Stage history
@@ -81,11 +89,71 @@ And assignment_id_number = '0000549376'
     And proposal_id Is Null -- Ignore proposal stages
 )
 
+-- Evaluation rating
+, eval_history As (
+  Select
+    e.id_number
+    , e.prospect_id
+    , e.evaluation_type
+    , tet.short_desc As eval_type_desc
+    , trunc(e.evaluation_date) As eval_start_dt
+    -- Computed stop date for active evals is just the end of this month
+    -- For inactive evals, take the day before the next rating as the current rating's stop date
+    -- If null, fill in modified date
+    , Case
+        When active_ind = 'Y' Then last_day(cal.today)
+        Else nvl(
+          min(trunc(evaluation_date))
+            Over(Partition By Case When prospect_id Is Not Null Then to_char(prospect_id) Else id_number End
+              Order By evaluation_date Asc Rows Between 1 Following And Unbounded Following) - 1
+          , trunc(e.date_modified)
+        )
+      End As eval_stop_dt
+    , e.active_ind
+    , e.rating_code
+    , trt.short_desc As rating_desc
+    , e.xcomment As rating_comment
+    -- Numeric value of lower end of eval rating range, using regular expressions
+    , Case
+        When trt.rating_code = 0 Then 0 -- Under $10K becomes 0
+        Else rpt_pbh634.ksm_pkg.get_number_from_dollar(trt.short_desc)
+      End As rating_lower_bound
+  From evaluation e
+  Cross Join rpt_pbh634.v_current_calendar cal
+  Inner Join tms_evaluation_type tet On tet.evaluation_type = e.evaluation_type
+  Inner Join tms_rating trt On trt.rating_code = e.rating_code
+  Where tet.evaluation_type In ('PR', 'UR') -- Research, UOR
+)
+
+-- KSM major gifts
+
+-- Contact reports
+-- Outreach
+-- Visits
+
 -- Main query
 Select Distinct
   asn.*
   , stg_hist.stage_desc
+  -- UOR
+  , uor_hist.rating_lower_bound As uor_lower_bound
+  -- Eval rating
+  , evl_hist.rating_lower_bound As eval_lower_bound
 From assn_dense asn
+-- Prospect stage history
 Left Join stage_history stg_hist
   On stg_hist.prospect_id = asn.prospect_id
   And asn.filled_date Between stg_hist.stage_start_dt And stg_hist.stage_stop_dt
+-- Entity evaluation history
+Left Join eval_history evl_hist
+  On evl_hist.id_number = asn.id_number
+  And evl_hist.prospect_id Is Null
+  And evl_hist.evaluation_type = 'PR'
+  And asn.filled_date Between evl_hist.eval_start_dt And evl_hist.eval_stop_dt
+-- UOR history
+Left Join eval_history uor_hist
+  On uor_hist.prospect_id = asn.prospect_id
+  And uor_hist.prospect_id Is Not Null
+  And uor_hist.evaluation_type = 'UR'
+  And asn.filled_date Between uor_hist.eval_start_dt And uor_hist.eval_stop_dt
+Where asn.prospect_id = 108838
