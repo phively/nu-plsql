@@ -5,7 +5,7 @@ With
 -- Custom parameters/definitions
 params As (
   Select
-    NULL
+    100000 As mg_level -- Minimum amount for a major gift
   From DUAL
 )
 
@@ -51,13 +51,13 @@ And assignment_id_number = '0000549376'
     -- Take either 1 month in the future from last row, or the stop_dt, whichever is smaller
     , least(
         Case
-          When level = 1 Then start_dt -- First filled_date is start_dt
-          When level = months_assigned Then stop_dt -- Last filled date is stop_dt
+          When level = 1 Then trunc(start_dt, 'month') -- First filled_date is start_dt month
+          When level = months_assigned Then trunc(stop_dt, 'month') -- Last filled date is stop_dt month
           Else trunc(add_months(start_dt, level - 1), 'month') -- Subsequent are 1st of month after previous row
         End
         , stop_dt
       ) As filled_date
-    , months_assigned
+    , level As months_assigned
     , assignment_active_calc
     , assignment_id_number
     , assignment_report_name
@@ -127,13 +127,29 @@ And assignment_id_number = '0000549376'
   Where tet.evaluation_type In ('PR', 'UR') -- Research, UOR
 )
 
--- KSM major gifts, count and dollars
-
 -- Contact reports
--- Outreach
--- Visits
+, ard_contact As (
+  Select
+    report_id
+    , credited As credited_id
+    , prospect_id
+    , contact_date
+    , contact_type_category
+    , visit_type
+  From rpt_pbh634.v_contact_reports_fast
+  Where prospect_id Is Not Null
+    And ard_staff = 'Y'
+)
 
 -- Proposals, count and dollars
+
+
+-- Major gifts, count and dollars
+/*, gifts As (
+  Select *
+  From rpt_pbh634.v_ksm_giving_trans_hh gt
+  Where gt.recognition_credit >= (Select mg_level From params)
+)*/
 
 -- Main query
 Select Distinct
@@ -143,6 +159,26 @@ Select Distinct
   , uor_hist.rating_lower_bound As uor_lower_bound
   -- Eval rating
   , evl_hist.rating_lower_bound As eval_lower_bound
+  -- Visits
+  , Count(Distinct Case When ac.contact_type_category = 'Visit'
+      Then ac.report_id End)
+      Over(Partition By ac.prospect_id, ac.credited_id, asn.assignment_type, asn.filled_date)
+    As cr_visits
+  -- Events
+  , Count(Distinct Case When ac.contact_type_category = 'Event'
+      Then ac.report_id End)
+      Over(Partition By ac.prospect_id, ac.credited_id, asn.assignment_type, asn.filled_date)
+    As cr_events
+  -- Attempted outreach
+  , Count(Distinct Case When ac.contact_type_category = 'Attempted, E-mail, or Social'
+      Then ac.report_id End)
+      Over(Partition By ac.prospect_id, ac.credited_id, asn.assignment_type, asn.filled_date)
+    As cr_emails_attempts_social
+  -- Phone calls
+  , Count(Distinct Case When ac.contact_type_category = 'Phone'
+      Then ac.report_id End)
+      Over(Partition By ac.prospect_id, ac.credited_id, asn.assignment_type, asn.filled_date)
+    As cr_phone
 From assn_dense asn
 -- Prospect stage history
 Left Join stage_history stg_hist
@@ -160,3 +196,12 @@ Left Join eval_history uor_hist
   And uor_hist.prospect_id Is Not Null
   And uor_hist.evaluation_type = 'UR'
   And asn.filled_date Between uor_hist.eval_start_dt And uor_hist.eval_stop_dt
+-- Contact reports
+Left Join ard_contact ac
+  On ac.prospect_id = asn.prospect_id
+  And ac.credited_id = asn.assignment_id_number
+  And ac.contact_date Between asn.start_dt And asn.filled_date
+Order By
+  asn.assignment_report_name Asc
+  , asn.report_name Asc
+  , asn.filled_date Asc
