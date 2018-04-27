@@ -143,6 +143,14 @@ Type university_strategy Is Record (
   , strategy_sched_date task.sched_date%type
 );
 
+/* Numeric capacity */
+Type numeric_capacity Is Record (
+    rating_code tms_rating.rating_code%type
+    , rating_desc tms_rating.short_desc%type
+    , numeric_rating number
+    , numeric_bin number
+);
+
 /* Modeled score */
 Type modeled_score Is Record (
   id_number segment.id_number%type
@@ -360,6 +368,7 @@ Type t_committee_members Is Table Of committee_member;
 Type t_households Is Table Of household;
 Type t_src_donors Is Table Of src_donor;
 Type t_university_strategy Is Table Of university_strategy;
+Type t_numeric_capacity Is Table Of numeric_capacity;
 Type t_modeled_score Is Table Of modeled_score;
 Type t_klc_members Is Table Of klc_member;
 Type t_ksm_staff Is Table Of ksm_staff;
@@ -539,6 +548,10 @@ Function tbl_gift_credit_hh_campaign
 Function tbl_university_strategy
   Return t_university_strategy Pipelined;
 
+/* Return pipelined numeric ratings */
+Function tbl_numeric_capacity_ratings
+  Return t_numeric_capacity Pipelined;
+
 /* Return pipelined model scores */
 Function tbl_model_af_10k (
   model_year In integer
@@ -652,6 +665,35 @@ Cursor ct_frontline_ksm_staff Is
   From staff
   Inner Join entity On entity.id_number = staff.id_number
   Left Join employ on employ.id_number = staff.id_number
+  ;
+
+/* Definition of numeric capacity ratings
+   2018-04-27 */
+Cursor ct_numeric_capacity_ratings Is
+  With
+  -- Extract numeric ratings from tms_rating.short_desc
+  numeric_rating As (
+    Select
+      rating_code
+      , short_desc As rating_desc
+      , Case
+          When rating_code = 0 Then 0
+          Else rpt_pbh634.ksm_pkg.get_number_from_dollar(short_desc) / 1000000
+        End As numeric_rating
+    From tms_rating
+  )
+  -- Main query
+  Select
+    rating_code
+    , rating_desc
+    , numeric_rating
+    , Case
+        When numeric_rating >= 10 Then 10
+        When numeric_rating = 0.25 Then 0.1
+        When numeric_rating < 0.1 Then 0
+        Else numeric_rating
+      End As numeric_bin
+  From numeric_rating
   ;
 
 /*************************************************************************
@@ -2791,6 +2833,22 @@ Function tbl_university_strategy
     Close c_university_strategy;
     For i in 1..(task.count) Loop
       Pipe row(task(i));
+    End Loop;
+    Return;
+  End;
+
+/* Pipelined function returning numeric capacity and binned capacity */
+Function tbl_numeric_capacity_ratings
+  Return t_numeric_capacity Pipelined As
+  -- Declarations
+  caps t_numeric_capacity;
+  
+  Begin
+    Open ct_numeric_capacity_ratings;
+      Fetch ct_numeric_capacity_ratings Bulk Collect Into caps;
+    Close ct_numeric_capacity_ratings;
+    For i in 1..(caps.count) Loop
+      Pipe row(caps(i));
     End Loop;
     Return;
   End;
