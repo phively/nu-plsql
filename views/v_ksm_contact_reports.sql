@@ -38,6 +38,12 @@ pe As (
   Left Join table(ksm_pkg.tbl_nu_ard_staff) staff On staff.id_number = asi.id_number
 )
 
+/* Numeric rating bins */
+, rating_bins As (
+  Select *
+  From table(ksm_pkg.tbl_numeric_capacity_ratings)
+)
+
 /* Main query */
 Select
   contact_rpt_credit.id_number As credited
@@ -76,7 +82,11 @@ Select
       Case When contact_report.contact_purpose_code = '1' Then 'Qualification' Else 'Visit' End
       Else Null
     End As visit_type
-  , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(prs.id_number) As rating_bin
+  , Case
+      When officer_rating <> ' ' Then uor.numeric_bin
+      When evaluation_rating <> ' ' Then eval.numeric_bin
+      Else 0
+    End As rating_bin
   , cal.curr_fy
   , cal.prev_fy_start
   , cal.curr_fy_start
@@ -91,6 +101,8 @@ Inner Join tms_contact_rpt_type tms_ctype On tms_ctype.contact_type = contact_re
 Inner Join nu_prs_trp_prospect prs On prs.id_number = contact_report.id_number
 Inner Join entity contacted_entity On contacted_entity.id_number = contact_report.id_number
 Inner Join entity contacter On contacter.id_number = contact_rpt_credit.id_number
+Left Join rating_bins eval On eval.rating_desc = prs.evaluation_rating
+Left Join rating_bins uor On uor.rating_desc = prs.officer_rating
 Left Join ard_staff On ard_staff.id_number = contact_rpt_credit.id_number
 Left Join table(ksm_pkg.tbl_frontline_ksm_staff) ksm_staff On ksm_staff.id_number = ard_staff.id_number
 Left Join prospect On prospect.prospect_id = prs.prospect_id

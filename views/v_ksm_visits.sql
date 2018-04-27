@@ -22,6 +22,12 @@ tms_cpurp As (
   From v_current_calendar
 )
 
+/* Numeric rating bins */
+, rating_bins As (
+  Select *
+  From table(ksm_pkg.tbl_numeric_capacity_ratings)
+)
+
 /* Main query */
 Select
   contact_rpt_credit.id_number As credited
@@ -43,7 +49,11 @@ Select
   , strat.university_strategy
   -- Custom variables
   , Case When contact_report.contact_purpose_code = '1' Then 'Qualification' Else 'Visit' End As visit_type
-  , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(prs.id_number) As rating_bin
+  , Case
+      When officer_rating <> ' ' Then uor.numeric_bin
+      When evaluation_rating <> ' ' Then eval.numeric_bin
+      Else 0
+    End As rating_bin
   , cal.curr_fy
 From contact_report
 Cross Join cal
@@ -52,5 +62,7 @@ Inner Join tms_cpurp On tms_cpurp.contact_purpose_code = contact_report.contact_
 Inner Join table(ksm_pkg.tbl_frontline_ksm_staff) staff On staff.id_number = contact_rpt_credit.id_number
 Left Join nu_prs_trp_prospect prs On prs.id_number = contact_report.id_number
 Left Join table(ksm_pkg.tbl_university_strategy) strat On strat.prospect_id = contact_report.prospect_id
+Left Join rating_bins eval On eval.rating_desc = prs.evaluation_rating
+Left Join rating_bins uor On uor.rating_desc = prs.officer_rating
 Where contact_report.contact_date Between cal.prev_fy_start And cal.yesterday
   And contact_report.contact_type = 'V'

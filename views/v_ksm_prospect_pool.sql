@@ -10,7 +10,7 @@ ksm_deg As (
   Where record_status_code Not In ('D', 'X') -- Exclude deceased, purgable
 )
 
-/* Modeled scores */
+-- Modeled scores
 , af_10k_model As (
   Select *
   From v_ksm_model_af_10k
@@ -20,6 +20,12 @@ ksm_deg As (
 , ksm_150_300 As (
   Select *
   From table(rpt_pbh634.ksm_pkg.tbl_entity_top_150_300)
+)
+
+-- Numeric rating bins
+, rating_bins As (
+  Select *
+  From table(ksm_pkg.tbl_numeric_capacity_ratings)
 )
 
 -- Prospect entity table filtered for active prospects
@@ -216,7 +222,11 @@ Select Distinct
       When household_id = hh.id_number Then 'Y'
     End As hh_primary
   -- Rating bin
-  , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(prs.id_number) As rating_bin
+  , Case
+      When officer_rating <> ' ' Then uor.numeric_bin
+      When evaluation_rating <> ' ' Then eval.numeric_bin
+      Else 0
+    End As rating_bin
   -- Lifetime giving
   , prs.giving_total As nu_lifetime_recognition
   -- Which group?
@@ -248,6 +258,8 @@ From table(rpt_pbh634.ksm_pkg.tbl_entity_households_ksm) hh
 Inner Join ksm_prs_ids On ksm_prs_ids.id_number = hh.id_number -- Must be a valid Kellogg entity
 Left Join af_10k_model On af_10k_model.id_number = hh.id_number
 Left Join nu_prs_trp_prospect prs On prs.id_number = hh.id_number
+Left Join rating_bins eval On eval.rating_desc = prs.evaluation_rating
+Left Join rating_bins uor On uor.rating_desc = prs.officer_rating
 Left Join entity pm On pm.id_number = prs.prospect_manager_id
 Left Join prs_e On prs_e.prospect_id = prs.prospect_id And prs_e.id_number = hh.id_number
 Left Join prospect On prospect.prospect_id = prs.prospect_id
