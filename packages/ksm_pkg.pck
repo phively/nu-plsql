@@ -343,6 +343,7 @@ Type special_handling Is Record (
      , no_solicit varchar2(1)
      , no_release varchar2(1)
      , never_engaged_forever varchar2(1)
+     , never_engaged_reunion varchar2(1)
      , has_opt_ins_opt_outs varchar2(1)
      , exc_all_comm varchar2(1)
      , exc_all_sols varchar2(1)
@@ -1981,6 +1982,9 @@ Cursor c_special_handling_concat Is
       -- Never engaged forever
       , max(Case When h.hnd_type_code = 'NED' Then 'Y' End)
         As never_engaged_forever
+      -- Never engaged reunion
+      , max(Case When h.hnd_type_code = 'NDR' Then 'Y' End)
+        As never_engaged_reunion
       -- Has opt-outs
       , max(Case When h.hnd_type_code = 'OOO' Or h.hnd_type_code = 'OIO' Then 'Y' End)
         As has_opt_ins_opt_outs
@@ -2105,6 +2109,7 @@ Cursor c_special_handling_concat Is
     , spec_hnd.no_solicit
     , spec_hnd.no_release
     , spec_hnd.never_engaged_forever
+    , spec_hnd.never_engaged_reunion
     , spec_hnd.has_opt_ins_opt_outs
     -- Overall mailing list indicators
     , exc_all_comm
