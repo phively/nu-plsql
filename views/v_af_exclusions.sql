@@ -49,12 +49,14 @@ manual_exclusions_pre As (
     , no_contact
     , no_solicit
     , never_engaged_forever
+    , never_engaged_reunion
     , exc_all_comm
     , exc_all_sols
   From table(ksm_pkg.tbl_special_handling_concat) shc
   Where no_contact = 'Y'
     Or no_solicit = 'Y'
     Or never_engaged_forever = 'Y'
+    Or never_engaged_reunion = 'Y'
     Or exc_all_comm = 'Y'
     Or exc_all_sols = 'Y'
 )
@@ -263,6 +265,8 @@ Select
   , shs.no_solicit As no_solicit_spouse
   , sh.never_engaged_forever
   , shs.never_engaged_forever As never_engaged_forever_spouse
+  , sh.never_engaged_reunion
+  , shs.never_engaged_reunion As never_engaged_reunion_spouse
   , sh.exc_all_comm
   , shs.exc_all_comm As exc_all_comm_spouse
   , sh.exc_all_sols
