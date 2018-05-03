@@ -86,6 +86,15 @@ trans As (
     , min(Case When tx_gypm_ind != 'P' Then gfts.fiscal_year Else NULL End) As fy_giving_first_cash_yr
     , max(Case When tx_gypm_ind != 'P' Then gfts.fiscal_year Else NULL End) As fy_giving_last_cash_yr
     , count(Distinct Case When tx_gypm_ind != 'P' Then gfts.fiscal_year Else NULL End) As fy_giving_yr_cash_count
+    -- Last KSM gift
+    , min(gfts.tx_number) keep(dense_rank First Order By gfts.date_of_record Desc, gfts.tx_number Asc)
+      As last_gift_tx_number
+    , min(gfts.date_of_record) keep(dense_rank First Order By gfts.date_of_record Desc, gfts.tx_number Asc)
+      As last_gift_date
+    , min(gfts.transaction_type) keep(dense_rank First Order By gfts.date_of_record Desc, gfts.tx_number Asc)
+      As last_gift_type
+    , sum(gfts.hh_recognition_credit) keep(dense_rank First Order By gfts.date_of_record Desc, gfts.tx_number Asc)
+      As last_gift_recognition_credit
   From table(ksm_pkg.tbl_entity_households_ksm) hh
   Cross Join v_current_calendar cal
   Inner Join v_ksm_giving_trans_hh gfts On gfts.household_id = hh.household_id

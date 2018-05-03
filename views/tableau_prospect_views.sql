@@ -241,6 +241,10 @@ Select
   , gft.ngc_pfy2
   , gft.ngc_pfy3
   , gft.ngc_pfy4
+  , gft.last_gift_tx_number
+  , gft.last_gift_date
+  , gft.last_gift_type
+  , gft.last_gift_recognition_credit
   -- Proposal history fields
   , nu_proposal.open_proposals
   , ksm_proposal.open_ksm_proposals
