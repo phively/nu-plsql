@@ -6,6 +6,8 @@ With
 params As (
   Select
     100000 As mg_level -- Minimum amount for a major gift
+    , to_date('20200831', 'yyyymmdd') -- Close date of placeholder solicitations
+      As placeholder_date
   From DUAL
 )
 
@@ -14,8 +16,9 @@ params As (
   Select
     rownum As rn -- Number each row; important for assn_dense
     , prospect_id
-    , id_number
-    , report_name
+    , vah.id_number
+    , vah.report_name
+    , household_id
     , assignment_type
     , assignment_type_desc
     , start_dt_calc As start_dt
@@ -30,12 +33,14 @@ params As (
     , assignment_active_calc
     , assignment_id_number
     , assignment_report_name
-  From v_assignment_history
+  From v_assignment_history vah
   Cross Join rpt_pbh634.v_current_calendar cal
+  Inner Join rpt_pbh634.v_entity_ksm_households hh On hh.id_number = vah.id_number
   Where assignment_type In ('PM', 'PP') -- PM and PPM only
     And primary_ind = 'Y' -- Primary prospect entity only
 /****** FOR TESTING -- REMOVE LATER ******/
-And assignment_id_number = '0000549376'
+And assignment_id_number = '0000549376' -- JP
+-- And assignment_id_number = '0000565742'  -- SS
 )
 
 -- Assignment history by month between start_dt and stop_dt
@@ -44,6 +49,7 @@ And assignment_id_number = '0000549376'
     prospect_id
     , id_number
     , report_name
+    , household_id
     , assignment_type
     , assignment_type_desc
     , start_dt
@@ -142,14 +148,33 @@ And assignment_id_number = '0000549376'
 )
 
 -- Proposals, count and dollars
-
-
--- Major gifts, count and dollars
-/*, gifts As (
-  Select *
-  From rpt_pbh634.v_ksm_giving_trans_hh gt
-  Where gt.recognition_credit >= (Select mg_level From params)
+/*, proposals As (
+  Select
+    prospect_id
+    , proposal_id
+    , 
+  From v_proposal_history
 )*/
+-- Point-in-time proposal managers (tricky)
+
+-- New gifts & commitments
+, ksm_ngc As (
+  Select
+    gt.household_id
+    , gt.tx_number
+    , gt.tx_gypm_ind
+    , gt.af_flag
+    , gt.cru_flag
+    , gt.proposal_id
+    , gt.date_of_record
+    , gt.hh_recognition_credit
+    , pd.prim_pledge_original_amount
+  From rpt_pbh634.v_ksm_giving_trans_hh gt
+  -- Include discounted pledge original amounts
+  Left Join table(rpt_pbh634.ksm_pkg.plg_discount) pd On pd.pledge_number = gt.tx_number
+  Where gt.tx_gypm_ind <> 'Y' -- NGC excludes payments
+    And gt.hh_recognition_credit = gt.recognition_credit -- Exclude spouses
+)
 
 -- Main query
 Select Distinct
@@ -179,6 +204,35 @@ Select Distinct
       Then ac.report_id End)
       Over(Partition By ac.prospect_id, ac.credited_id, asn.assignment_type, asn.filled_date)
     As cr_phone
+  -- Correspondence
+  , Count(Distinct Case When ac.contact_type_category = 'Correspondence'
+      Then ac.report_id End)
+      Over(Partition By ac.prospect_id, ac.credited_id, asn.assignment_type, asn.filled_date)
+    As cr_correspondence
+  -- Major gifts
+  , Count(Distinct Case When ksm_ngc.hh_recognition_credit >= (Select mg_level From params) Then ksm_ngc.tx_number End)
+      Over(Partition By asn.household_id, asn.assignment_type, asn.filled_date)
+    As ksm_mg_count
+  -- Major gifts since assignment
+  , Count(Distinct
+        Case When ksm_ngc.hh_recognition_credit >= (Select mg_level From params)
+        And ksm_ngc.date_of_record >= asn.start_dt Then ksm_ngc.tx_number End)
+      Over(Partition By asn.household_id, asn.assignment_type, asn.filled_date)
+    As ksm_mg_since_assign
+  -- Major gifts in last 24 months
+  , Count(Distinct
+        Case When ksm_ngc.hh_recognition_credit >= (Select mg_level From params)
+        And ksm_ngc.date_of_record >= add_months(asn.filled_date, -24) Then ksm_ngc.tx_number End)
+      Over(Partition By asn.household_id, asn.assignment_type, asn.filled_date)
+    As ksm_mg_last_24_mo
+  -- KSM giving to present
+  , Sum(ksm_ngc.hh_recognition_credit)
+      Over(Partition By asn.household_id, asn.assignment_type, asn.filled_date)
+    As ksm_lifetime_giving
+  -- Giving in last 12-month window
+  , Sum(Case When ksm_ngc.date_of_record >= add_months(asn.filled_date, -12) Then ksm_ngc.hh_recognition_credit Else 0 End)
+      Over(Partition By asn.household_id, asn.assignment_type, asn.filled_date)
+    As ksm_giving_last_12_mo
 From assn_dense asn
 -- Prospect stage history
 Left Join stage_history stg_hist
@@ -201,6 +255,11 @@ Left Join ard_contact ac
   On ac.prospect_id = asn.prospect_id
   And ac.credited_id = asn.assignment_id_number
   And ac.contact_date Between asn.start_dt And asn.filled_date
+-- Gifts
+Left Join ksm_ngc
+  On ksm_ngc.household_id = asn.household_id
+  And ksm_ngc.date_of_record <= asn.filled_date
+-- Sort results
 Order By
   asn.assignment_report_name Asc
   , asn.report_name Asc
