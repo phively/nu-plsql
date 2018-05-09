@@ -223,6 +223,11 @@ Select Distinct
     End As hh_primary
   -- Rating bin
   , Case
+      When officer_rating <> ' ' Then uor.numeric_rating
+      When evaluation_rating <> ' ' Then eval.numeric_rating
+      Else 0
+    End As rating_numeric
+  , Case
       When officer_rating <> ' ' Then uor.numeric_bin
       When evaluation_rating <> ' ' Then eval.numeric_bin
       Else 0
