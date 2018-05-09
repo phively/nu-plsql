@@ -772,11 +772,11 @@ Cursor c_current_calendar (fy_start_month In integer, py_start_month In integer)
     -- Current performance year
     , curr_date.perf_yr As curr_py
     -- Start of performance year objects
-    , to_date(py_start_month || '/01/' || (curr_date.yr - yr_dif - 1), 'mm/dd/yyyy')
+    , to_date(py_start_month || '/01/' || (curr_date.perf_yr - yr_dif - 1), 'mm/dd/yyyy')
       As prev_py_start
-    , to_date(py_start_month || '/01/' || (curr_date.yr - yr_dif + 0), 'mm/dd/yyyy')
+    , to_date(py_start_month || '/01/' || (curr_date.perf_yr - yr_dif + 0), 'mm/dd/yyyy')
       As curr_py_start
-    , to_date(py_start_month || '/01/' || (curr_date.yr - yr_dif + 1), 'mm/dd/yyyy')
+    , to_date(py_start_month || '/01/' || (curr_date.perf_yr - yr_dif + 1), 'mm/dd/yyyy')
       As next_py_start
     -- Year-to-date objects
     , add_months(trunc(sysdate), -12) As prev_fy_today
