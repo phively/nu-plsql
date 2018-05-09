@@ -40,6 +40,7 @@ params As (
     And primary_ind = 'Y' -- Primary prospect entity only
 /****** FOR TESTING -- REMOVE LATER ******/
 And assignment_id_number = '0000549376' -- JP
+  And vah.id_number = '0000372980' -- AMD
 -- And assignment_id_number = '0000565742'  -- SS
 )
 
@@ -72,6 +73,39 @@ And assignment_id_number = '0000549376' -- JP
     level <= months_assigned -- Hierarchical query
     And Prior rn = rn -- Restart when prospect/manager changes, since each prospect/pm combo has its own row
     And Prior dbms_random.value != 1 -- Always true, as 0 < dbms_random.value < 1
+)
+
+-- Deduped assignments; choose PM over PPM assignment if available
+, assn_dedupe As (
+  Select
+    prospect_id
+    , id_number
+    , report_name
+    , household_id
+    , min(assignment_type) keep(dense_rank First Order By assignment_type Asc)
+      As assignment_type
+    , min(assignment_type_desc) keep(dense_rank First Order By assignment_type Asc)
+      As assignment_type_desc
+    , min(start_dt)
+      As start_dt
+    , max(stop_dt)
+      As stop_dt
+    , filled_date
+    , max(months_assigned)
+      As months_assigned
+    , min(assignment_active_calc)
+      As assignment_active_calc
+    , assignment_id_number
+    , assignment_report_name
+  From assn_dense
+  Group By
+    prospect_id
+    , id_number
+    , report_name
+    , household_id
+    , filled_date
+    , assignment_id_number
+    , assignment_report_name
 )
 
 -- Stage history
@@ -178,7 +212,23 @@ And assignment_id_number = '0000549376' -- JP
 
 -- Main query
 Select Distinct
-  asn.*
+  -- Assignment history dense fields
+  asn.prospect_id
+  , asn.id_number
+  , asn.report_name
+  , asn.household_id
+  , Max(asn.assignment_type) Over(Partition By asn.prospect_id, asn.filled_date)
+    As assignment_type
+  , Max(asn.assignment_type_desc) Over(Partition By asn.prospect_id, asn.filled_date)
+    As assignment_type_desc
+  , asn.start_dt
+  , asn.stop_dt
+  , asn.filled_date
+  , asn.months_assigned
+  , asn.assignment_active_calc
+  , asn.assignment_id_number
+  , asn.assignment_report_name
+  -- Point-in-time stage history
   , stg_hist.stage_desc
   -- UOR
   , uor_hist.rating_lower_bound As uor_lower_bound
@@ -186,54 +236,55 @@ Select Distinct
   , evl_hist.rating_lower_bound As eval_lower_bound
   -- Visits
   , Count(Distinct Case When ac.contact_type_category = 'Visit'
-      Then ac.report_id End)
-      Over(Partition By ac.prospect_id, ac.credited_id, asn.assignment_type, asn.filled_date)
-    As cr_visits
+      And ac.contact_date >= add_months(asn.filled_date, -24) Then ac.report_id End)
+      Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
+    As cr_visits_last_24_mo
   -- Events
   , Count(Distinct Case When ac.contact_type_category = 'Event'
-      Then ac.report_id End)
-      Over(Partition By ac.prospect_id, ac.credited_id, asn.assignment_type, asn.filled_date)
-    As cr_events
+      And ac.contact_date >= add_months(asn.filled_date, -24) Then ac.report_id End)
+      Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
+    As cr_events_last_24_mo
   -- Attempted outreach
   , Count(Distinct Case When ac.contact_type_category = 'Attempted, E-mail, or Social'
-      Then ac.report_id End)
-      Over(Partition By ac.prospect_id, ac.credited_id, asn.assignment_type, asn.filled_date)
-    As cr_emails_attempts_social
+      And ac.contact_date >= add_months(asn.filled_date, -24) Then ac.report_id End)
+      Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
+    As cr_emails_attempts_last_24_mo
   -- Phone calls
   , Count(Distinct Case When ac.contact_type_category = 'Phone'
-      Then ac.report_id End)
-      Over(Partition By ac.prospect_id, ac.credited_id, asn.assignment_type, asn.filled_date)
-    As cr_phone
+      And ac.contact_date >= add_months(asn.filled_date, -24) Then ac.report_id End)
+      Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
+    As cr_phone_last_24_mo
   -- Correspondence
   , Count(Distinct Case When ac.contact_type_category = 'Correspondence'
-      Then ac.report_id End)
-      Over(Partition By ac.prospect_id, ac.credited_id, asn.assignment_type, asn.filled_date)
-    As cr_correspondence
+      And ac.contact_date >= add_months(asn.filled_date, -24) Then ac.report_id End)
+      Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
+    As cr_correspondence_last_24_mo
   -- Major gifts
   , Count(Distinct Case When ksm_ngc.hh_recognition_credit >= (Select mg_level From params) Then ksm_ngc.tx_number End)
-      Over(Partition By asn.household_id, asn.assignment_type, asn.filled_date)
+      Over(Partition By asn.household_id, asn.filled_date)
     As ksm_mg_count
   -- Major gifts since assignment
   , Count(Distinct
         Case When ksm_ngc.hh_recognition_credit >= (Select mg_level From params)
         And ksm_ngc.date_of_record >= asn.start_dt Then ksm_ngc.tx_number End)
-      Over(Partition By asn.household_id, asn.assignment_type, asn.filled_date)
+      Over(Partition By asn.household_id, asn.filled_date)
     As ksm_mg_since_assign
   -- Major gifts in last 24 months
   , Count(Distinct
         Case When ksm_ngc.hh_recognition_credit >= (Select mg_level From params)
         And ksm_ngc.date_of_record >= add_months(asn.filled_date, -24) Then ksm_ngc.tx_number End)
-      Over(Partition By asn.household_id, asn.assignment_type, asn.filled_date)
+      Over(Partition By asn.household_id, asn.filled_date)
     As ksm_mg_last_24_mo
   -- KSM giving to present
-  , Sum(ksm_ngc.hh_recognition_credit)
-      Over(Partition By asn.household_id, asn.assignment_type, asn.filled_date)
+  , Sum(Case When ksm_ngc.date_of_record <= asn.filled_date Then ksm_ngc.hh_recognition_credit Else 0 End)
+      Over(Partition By asn.household_id, asn.filled_date)
     As ksm_lifetime_giving
-  -- Giving in last 12-month window
-  , Sum(Case When ksm_ngc.date_of_record >= add_months(asn.filled_date, -12) Then ksm_ngc.hh_recognition_credit Else 0 End)
-      Over(Partition By asn.household_id, asn.assignment_type, asn.filled_date)
-    As ksm_giving_last_12_mo
-From assn_dense asn
+  -- Giving in last 24-month window
+  , Sum(Case When ksm_ngc.date_of_record Between add_months(asn.filled_date, -24) And asn.filled_date
+      Then ksm_ngc.hh_recognition_credit Else 0 End)
+      Over(Partition By asn.household_id, asn.filled_date)
+    As ksm_giving_last_24_mo
+From assn_dedupe asn
 -- Prospect stage history
 Left Join stage_history stg_hist
   On stg_hist.prospect_id = asn.prospect_id
@@ -254,7 +305,7 @@ Left Join eval_history uor_hist
 Left Join ard_contact ac
   On ac.prospect_id = asn.prospect_id
   And ac.credited_id = asn.assignment_id_number
-  And ac.contact_date Between asn.start_dt And asn.filled_date
+  And ac.contact_date <= asn.filled_date
 -- Gifts
 Left Join ksm_ngc
   On ksm_ngc.household_id = asn.household_id
