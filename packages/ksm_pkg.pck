@@ -70,6 +70,7 @@ Type degreed_alumni Is Record (
   , stewardship_years varchar2(80)
   , program tms_dept_code.short_desc%type
   , program_group varchar2(20)
+  , program_group_rank number
 );
 
 /* Committee member list, for committee results */
@@ -1043,16 +1044,25 @@ Cursor c_entity_degrees_concat_ksm Is
       , last_noncert_year
       , stwrd_deg.stewardship_years
       , prg.program
-      -- program_group; use spaces to force non-alphabetic entries to apear first in sorts
+      -- program_group and program_group_rank; make sure to keep entries in the same order
       , Case
           When program Like '%NONGRD%' Then 'NONGRD'
-          When program Like 'FT%' Then  '  FT'
-          When program Like 'TMP%' Then '  TMP'
-          When program Like 'EMP%' Then ' EMP'
-          When program Like 'PHD%' Then ' PHD'
+          When program Like 'FT%' Then  'FT'
+          When program Like 'TMP%' Then 'TMP'
+          When program Like 'EMP%' Then 'EMP'
+          When program Like 'PHD%' Then 'PHD'
           When program Like 'EXEC%' Or program Like 'CERT%' Then 'EXECED'
           Else program
         End As program_group
+      , Case
+          When program Like '%NONGRD%' Then 100000
+          When program Like 'FT%' Then 10
+          When program Like 'TMP%' Then 20
+          When program Like 'EMP%' Then 30
+          When program Like 'PHD%' Then 40
+          When program Like 'EXEC%' Or program Like 'CERT%' Then 100
+          Else 9999999999
+        End As program_group_rank
     From concat
     Inner Join entity On entity.id_number = concat.id_number
     Inner Join prg On concat.id_number = prg.id_number
@@ -1103,6 +1113,7 @@ With
       , edc.first_masters_year
       , edc.last_noncert_year
       , edc.program_group
+      , edc.program_group_rank
       -- Spouse fields
       , entity.spouse_id_number
       , spouse.pref_mail_name As spouse_pref_mail_name
@@ -1113,6 +1124,7 @@ With
       , sdc.first_masters_year As spouse_first_masters_year
       , sdc.last_noncert_year As spouse_last_noncert_year
       , sdc.program_group As spouse_program_group
+      , sdc.program_group_rank As spouse_program_group_rank
     From entity
     Left Join degs edc On entity.id_number = edc.id_number
     Left Join degs sdc On entity.spouse_id_number = sdc.id_number
@@ -1144,8 +1156,8 @@ With
             Case When id_number < spouse_id_number Then id_number Else spouse_id_number End
           When spouse_program_group Is Null Then id_number -- if no spouse program, use id_number
           When program_group Is Null Then spouse_id_number -- if no self program, use spouse_id_number
-          When program_group < spouse_program_group Then id_number
-          When spouse_program_group < program_group Then spouse_id_number
+          When program_group_rank < spouse_program_group_rank Then id_number
+          When spouse_program_group_rank < program_group_rank Then spouse_id_number
         End As household_id
     From couples
   )
