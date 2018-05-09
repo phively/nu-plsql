@@ -40,7 +40,7 @@ params As (
     And primary_ind = 'Y' -- Primary prospect entity only
 /****** FOR TESTING -- REMOVE LATER ******/
 And assignment_id_number = '0000549376' -- JP
-  And vah.id_number = '0000372980' -- AMD
+--  And vah.id_number = '0000372980' -- AMD
 -- And assignment_id_number = '0000565742'  -- SS
 )
 
@@ -210,6 +210,43 @@ And assignment_id_number = '0000549376' -- JP
     And gt.hh_recognition_credit = gt.recognition_credit -- Exclude spouses
 )
 
+-- Aggregated point-in-time giving
+, ksm_giving As (
+  Select Distinct
+    assn.household_id
+    , assn.filled_date
+    -- KSM giving to present
+    , sum(Case When ngc.date_of_record <= assn.filled_date Then ngc.hh_recognition_credit Else 0 End)
+      As ksm_lifetime_giving
+    -- Giving in last 24-month window
+    , sum(Case When ngc.date_of_record Between add_months(assn.filled_date, -24) And assn.filled_date
+        Then ngc.hh_recognition_credit Else 0 End)
+      As ksm_giving_last_24_mo
+    -- Major gifts
+    , Count(Distinct
+        Case When ngc.hh_recognition_credit >= (Select mg_level From params)
+        And ngc.date_of_record <= assn.filled_date
+        Then ngc.tx_number End)
+      As ksm_mg_count
+    -- Major gifts since assignment
+    , Count(Distinct
+        Case When ngc.hh_recognition_credit >= (Select mg_level From params)
+        And ngc.date_of_record Between assn.start_dt And assn.filled_date
+        Then ngc.tx_number End)
+      As ksm_mg_since_assign
+    -- Major gifts in last 24 months
+    , Count(Distinct
+          Case When ngc.hh_recognition_credit >= (Select mg_level From params)
+          And ngc.date_of_record Between add_months(assn.filled_date, -24) And assn.filled_date
+          Then ngc.tx_number End)
+      As ksm_mg_last_24_mo
+  From assn_dedupe assn
+  Inner Join ksm_ngc ngc On ngc.household_id = assn.household_id
+  Group By
+    assn.household_id
+    , assn.filled_date
+)
+
 -- Main query
 Select Distinct
   -- Assignment history dense fields
@@ -217,10 +254,8 @@ Select Distinct
   , asn.id_number
   , asn.report_name
   , asn.household_id
-  , Max(asn.assignment_type) Over(Partition By asn.prospect_id, asn.filled_date)
-    As assignment_type
-  , Max(asn.assignment_type_desc) Over(Partition By asn.prospect_id, asn.filled_date)
-    As assignment_type_desc
+  , asn.assignment_type
+  , asn.assignment_type_desc
   , asn.start_dt
   , asn.stop_dt
   , asn.filled_date
@@ -259,31 +294,13 @@ Select Distinct
       And ac.contact_date >= add_months(asn.filled_date, -24) Then ac.report_id End)
       Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
     As cr_correspondence_last_24_mo
-  -- Major gifts
-  , Count(Distinct Case When ksm_ngc.hh_recognition_credit >= (Select mg_level From params) Then ksm_ngc.tx_number End)
-      Over(Partition By asn.household_id, asn.filled_date)
-    As ksm_mg_count
-  -- Major gifts since assignment
-  , Count(Distinct
-        Case When ksm_ngc.hh_recognition_credit >= (Select mg_level From params)
-        And ksm_ngc.date_of_record >= asn.start_dt Then ksm_ngc.tx_number End)
-      Over(Partition By asn.household_id, asn.filled_date)
-    As ksm_mg_since_assign
-  -- Major gifts in last 24 months
-  , Count(Distinct
-        Case When ksm_ngc.hh_recognition_credit >= (Select mg_level From params)
-        And ksm_ngc.date_of_record >= add_months(asn.filled_date, -24) Then ksm_ngc.tx_number End)
-      Over(Partition By asn.household_id, asn.filled_date)
-    As ksm_mg_last_24_mo
-  -- KSM giving to present
-  , Sum(Case When ksm_ngc.date_of_record <= asn.filled_date Then ksm_ngc.hh_recognition_credit Else 0 End)
-      Over(Partition By asn.household_id, asn.filled_date)
-    As ksm_lifetime_giving
-  -- Giving in last 24-month window
-  , Sum(Case When ksm_ngc.date_of_record Between add_months(asn.filled_date, -24) And asn.filled_date
-      Then ksm_ngc.hh_recognition_credit Else 0 End)
-      Over(Partition By asn.household_id, asn.filled_date)
-    As ksm_giving_last_24_mo
+  -- Aggregated giving
+  , gft.ksm_mg_count
+  , gft.ksm_mg_since_assign
+  , gft.ksm_mg_last_24_mo
+  , gft.ksm_lifetime_giving
+  , gft.ksm_giving_last_24_mo
+-- Assignment history deduped
 From assn_dedupe asn
 -- Prospect stage history
 Left Join stage_history stg_hist
@@ -306,10 +323,10 @@ Left Join ard_contact ac
   On ac.prospect_id = asn.prospect_id
   And ac.credited_id = asn.assignment_id_number
   And ac.contact_date <= asn.filled_date
--- Gifts
-Left Join ksm_ngc
-  On ksm_ngc.household_id = asn.household_id
-  And ksm_ngc.date_of_record <= asn.filled_date
+-- Aggregated giving
+Left Join ksm_giving gft
+  On gft.household_id = asn.household_id
+  And gft.filled_date = asn.filled_date
 -- Sort results
 Order By
   asn.assignment_report_name Asc
