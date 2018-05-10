@@ -2682,7 +2682,7 @@ Function tbl_alloc_annual_fund_ksm
     Return;
   End;
 
-/* Pipelined function returnign Kellogg current use allocations
+/* Pipelined function returning Kellogg current use allocations
    2017-07-11 */
 Function tbl_alloc_curr_use_ksm
   Return t_allocation Pipelined As

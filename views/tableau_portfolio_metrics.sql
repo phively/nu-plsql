@@ -40,7 +40,8 @@ params As (
     And primary_ind = 'Y' -- Primary prospect entity only
 /****** FOR TESTING -- REMOVE LATER ******/
 And assignment_id_number = '0000549376' -- JP
---  And vah.id_number = '0000372980' -- AMD
+--And vah.id_number = '0000372980' -- AMD
+--And vah.id_number In ('0000289544', '0000372980', '0000301415', '0000403400') -- CC and others
 -- And assignment_id_number = '0000565742'  -- SS
 )
 
@@ -64,7 +65,7 @@ And assignment_id_number = '0000549376' -- JP
         End
         , stop_dt
       ) As filled_date
-    , level As months_assigned
+    , level As months_assigned_strict -- Reset months_assigned to 1 for each new row in the assignment table
     , assignment_active_calc
     , assignment_id_number
     , assignment_report_name
@@ -91,8 +92,9 @@ And assignment_id_number = '0000549376' -- JP
     , max(stop_dt)
       As stop_dt
     , filled_date
-    , max(months_assigned)
-      As months_assigned
+    -- Grouping date to identify non-consecutive months
+    , add_months(filled_date, -1 * row_number() Over (Partition By prospect_id, assignment_id_number Order By filled_date Asc))
+      As date_grouper
     , min(assignment_active_calc)
       As assignment_active_calc
     , assignment_id_number
@@ -106,6 +108,26 @@ And assignment_id_number = '0000549376' -- JP
     , filled_date
     , assignment_id_number
     , assignment_report_name
+)
+
+, assn_final As (
+  Select
+    prospect_id
+    , id_number
+    , report_name
+    , household_id
+    , assignment_type
+    , assignment_type_desc
+    , start_dt
+    , stop_dt
+    , filled_date
+    -- Reset months_assigned to 1 if a filled_date is skipped
+    , row_number() Over(Partition By prospect_id, assignment_id_number, date_grouper Order By filled_date Asc)
+      As months_assigned
+    , assignment_active_calc
+    , assignment_id_number
+    , assignment_report_name
+  From assn_dedupe
 )
 
 -- Stage history
@@ -212,8 +234,9 @@ And assignment_id_number = '0000549376' -- JP
 
 -- Aggregated point-in-time giving
 , ksm_giving As (
-  Select Distinct
+  Select
     assn.household_id
+    , assn.assignment_id_number
     , assn.filled_date
     -- KSM giving to present
     , sum(Case When ngc.date_of_record <= assn.filled_date Then ngc.hh_recognition_credit Else 0 End)
@@ -240,10 +263,11 @@ And assignment_id_number = '0000549376' -- JP
           And ngc.date_of_record Between add_months(assn.filled_date, -24) And assn.filled_date
           Then ngc.tx_number End)
       As ksm_mg_last_24_mo
-  From assn_dedupe assn
+  From assn_final assn
   Inner Join ksm_ngc ngc On ngc.household_id = assn.household_id
   Group By
     assn.household_id
+    , assn.assignment_id_number
     , assn.filled_date
 )
 
@@ -301,7 +325,7 @@ Select Distinct
   , gft.ksm_lifetime_giving
   , gft.ksm_giving_last_24_mo
 -- Assignment history deduped
-From assn_dedupe asn
+From assn_final asn
 -- Prospect stage history
 Left Join stage_history stg_hist
   On stg_hist.prospect_id = asn.prospect_id
@@ -326,6 +350,7 @@ Left Join ard_contact ac
 -- Aggregated giving
 Left Join ksm_giving gft
   On gft.household_id = asn.household_id
+  And gft.assignment_id_number = asn.assignment_id_number
   And gft.filled_date = asn.filled_date
 -- Sort results
 Order By
