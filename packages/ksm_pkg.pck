@@ -619,13 +619,14 @@ Cursor ct_alloc_annual_fund_ksm Is
     -- Include additional fields
     Or allocation_code In (
       /************ UPDATE BELOW HERE ************/
-        '3203003665401GFT' -- Expendable Excellence Grant (Flanagan)
-      , '3203004227201GFT' -- Expendable Excellence Grant (Chai)
+        '3203003665401GFT' -- Expendable Excellence Grant (JRF)
+      , '3203004227201GFT' -- Expendable Excellence Grant (DC)
       , '3203000861201GFT' -- Real Estate Conference
-      , '3203004707901GFT' -- GIM Trip Scholarship (Samuels)
+      , '3203004707901GFT' -- GIM Trip Scholarship (LS)
       , '3203002954201GFT' -- KSM Student Club Support
       , '3303001899301GFT' -- KSM Gift-In-Kind
       , '3203000859901GFT' -- Center for Nonprofit Management
+      , '3203004959801GFT' -- Collaboration Plaza fund (MS -- building support)
       /************ UPDATE ABOVE HERE ************/
     )
   ;
