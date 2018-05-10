@@ -252,7 +252,8 @@ Left Join strat On strat.prospect_id = proposal.prospect_id
 -- Linked gift info
 Left Join linked On linked.proposal_id = proposal.proposal_id
 Left Join linked_receipts On linked_receipts.proposal_id = proposal.proposal_id
-Left Join linkednu On linkednu.proposal_id = proposal.proposal_id;
+Left Join linkednu On linkednu.proposal_id = proposal.proposal_id
+;
 
 /**************************************
 KSM version
@@ -309,3 +310,4 @@ Select
   , ksm_bin
 From v_proposal_history
 Where ksm_proposal_ind = 'Y'
+;

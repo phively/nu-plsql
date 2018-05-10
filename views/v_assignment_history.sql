@@ -11,6 +11,7 @@ Select
   , prospect_entity.primary_ind
   , assignment.assignment_id
   , assignment.assignment_type
+  , assignment.proposal_id
   , tms_at.short_desc As assignment_type_desc
   , trunc(assignment.start_date) As start_date
   , trunc(assignment.stop_date) As stop_date
@@ -39,6 +40,6 @@ Select
 From assignment
 Cross Join v_current_calendar cal
 Inner Join tms_assignment_type tms_at On tms_at.assignment_type = assignment.assignment_type
-Inner Join entity assignee On assignee.id_number = assignment.assignment_id_number
-Inner Join prospect_entity On prospect_entity.prospect_id = assignment.prospect_id
-Inner Join entity On entity.id_number = prospect_entity.id_number
+Left Join entity assignee On assignee.id_number = assignment.assignment_id_number
+Left Join prospect_entity On prospect_entity.prospect_id = assignment.prospect_id
+Left Join entity On entity.id_number = prospect_entity.id_number
