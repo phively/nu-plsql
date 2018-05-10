@@ -203,16 +203,6 @@ And assignment_id_number = '0000549376' -- JP
     And ard_staff = 'Y'
 )
 
--- Proposals, count and dollars
-/*, proposals As (
-  Select
-    prospect_id
-    , proposal_id
-    , 
-  From v_proposal_history
-)*/
--- Point-in-time proposal managers (tricky)
-
 -- New gifts & commitments
 , ksm_ngc As (
   Select
@@ -254,7 +244,13 @@ And assignment_id_number = '0000549376' -- JP
     -- Major gifts since assignment
     , Count(Distinct
         Case When ngc.hh_recognition_credit >= (Select mg_level From params)
-        And ngc.date_of_record Between assn.start_dt And assn.filled_date
+        And (
+          -- Gifts between start/stop date from assignment table
+          ngc.date_of_record Between assn.start_dt And assn.filled_date
+          -- Gifts since prospect entered portfolio, across start/stop date rows in assignment table
+          Or ngc.date_of_record Between add_months(assn.filled_date, -1 * (months_assigned - 1))
+            And assn.filled_date
+        )
         Then ngc.tx_number End)
       As ksm_mg_since_assign
     -- Major gifts in last 24 months
@@ -269,6 +265,75 @@ And assignment_id_number = '0000549376' -- JP
     assn.household_id
     , assn.assignment_id_number
     , assn.filled_date
+)
+
+-- Point-in-time proposal managers
+, prop_mgrs As (
+  Select
+    rownum As rn
+    , prospect_id
+    , report_name
+    , proposal_id
+    , start_dt_calc As start_dt
+    , Case When stop_dt_calc Is Null Then last_day(cal.today) Else stop_dt_calc End
+      As stop_dt
+    -- Number of months from start_dt_calc to stop_dt_calc, rounded up
+    , ceil(
+        months_between(last_day(Case When stop_dt_calc Is Null Then last_day(cal.today) Else stop_dt_calc End)
+        , trunc(start_dt_calc, 'month'))
+      ) As months_assigned
+    , assignment_active_calc
+    , assignment_id_number
+    , assignment_report_name
+  From v_assignment_history ah
+  Cross Join rpt_pbh634.v_current_calendar cal
+  Where assignment_type = 'PA' -- Proposal Manager (PM is taken by Prospect Manager)
+    And primary_ind = 'Y' -- Primary prospect only
+)
+-- Fill in dates
+, prop_mgrs_dense As (
+  Select
+    prospect_id
+    , report_name
+    , proposal_id
+    , start_dt
+    , stop_dt
+    , assignment_active_calc
+    , assignment_id_number
+    , assignment_report_name
+    -- Take either 1 month in the future from last row, or the stop_dt, whichever is smaller
+    , least(
+        Case
+          When level = 1 Then trunc(start_dt, 'month') -- First filled_date is start_dt month
+          When level = months_assigned Then trunc(stop_dt, 'month') -- Last filled date is stop_dt month
+          Else trunc(add_months(start_dt, level - 1), 'month') -- Subsequent are 1st of month after previous row
+        End
+        , stop_dt
+      ) As filled_date
+  From prop_mgrs
+  Connect By
+    level <= months_assigned -- Hierarchical query
+    And Prior rn = rn -- Restart when prospect/manager changes, since each prospect/pm combo has its own row
+    And Prior dbms_random.value != 1 -- Always true, as 0 < dbms_random.value < 1
+)
+-- Dedupe multiple assignments on same date
+, prop_mgrs_dedupe As (
+  Select
+    prospect_id
+    , report_name
+    , min(start_dt) As start_dt
+    , max(stop_dt) As stop_dt
+    , min(assignment_active_calc) As assignment_active_calc
+    , assignment_id_number
+    , assignment_report_name
+    , filled_date
+  From prop_mgrs_dense
+  Group By
+    prospect_id
+    , report_name
+    , assignment_id_number
+    , assignment_report_name
+    , filled_date
 )
 
 -- Main query
