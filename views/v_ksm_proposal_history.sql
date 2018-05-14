@@ -179,16 +179,32 @@ Select
     End As proposal_status
   , proposal.active_ind As proposal_active
   , Case When tms_ps.hierarchy_order < 70 Then 'Y' End As proposal_in_progress -- Anticipated, Submitted, Deferred, Approved
+  -- Active or inactive computation
+  , Case
+      When proposal.active_ind = 'Y' And tms_ps.hierarchy_order < 70 Then 'Active'
+      Else 'Inactive'
+    End As proposal_active_calc
   , ksm_purp.prop_purposes
   , ksm_purp.initiatives
   , other_purp.other_programs
   , strat.university_strategy
   , trunc(start_date) As start_date
   , ksm_pkg.get_fiscal_year(start_date) As start_fy
+  -- Calculated start date: use date_added if start_date unavailable
+  , Case
+      When start_date Is Not Null Then trunc(start_date)
+      Else trunc(proposal.date_added)
+    End As start_dt_calc
   , trunc(initial_contribution_date) As ask_date
   , ksm_pkg.get_fiscal_year(initial_contribution_date) As ask_fy
   , trunc(stop_date) As close_date
   , ksm_pkg.get_fiscal_year(stop_date) As close_fy
+    -- Calculated stop date: use date_modified if stop_date unavailable
+  , Case
+      When stop_date Is Not Null Then trunc(stop_date)
+      When proposal.active_ind <> 'Y' And tms_ps.hierarchy_order < 70 Then trunc(proposal.date_modified)
+      Else NULL
+    End As close_dt_calc
   , trunc(date_modified) As date_modified
   , linked_receipts.ksm_linked_receipts
   , linked.ksm_linked_amounts
@@ -278,6 +294,7 @@ Select
   , hierarchy_order
   , proposal_status
   , proposal_active
+  , proposal_active_calc
   , proposal_in_progress
   , prop_purposes
   , initiatives
@@ -285,10 +302,12 @@ Select
   , university_strategy
   , start_date
   , start_fy
+  , start_dt_calc
   , ask_date
   , ask_fy
   , close_date
   , close_fy
+  , close_dt_calc
   , date_modified
   , ksm_linked_receipts
   , ksm_linked_amounts
