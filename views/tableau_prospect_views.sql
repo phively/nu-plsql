@@ -136,6 +136,8 @@ geocode As (
         As last_credited_name
     , min(employer_unit) Keep(dense_rank First Order By contact_date Desc)
         As last_credited_unit
+    , min(frontline_ksm_staff) Keep(dense_rank First Order By contact_date Desc)
+        As last_credited_ksm
     , min(contact_type) Keep(dense_rank First Order By contact_date Desc)
         As last_contact_type
     , min(contact_type_category) Keep(dense_rank First Order By contact_date Desc)
@@ -160,6 +162,8 @@ geocode As (
     -- Most recent contact report
     , min(credited_name) Keep(dense_rank First Order By contact_date Desc, visit_type Asc)
         As last_visit_credited_name
+    , min(frontline_ksm_staff) Keep(dense_rank First Order By contact_date Desc)
+        As last_visit_credited_ksm
     , min(employer_unit)  Keep(dense_rank First Order By contact_date Desc, visit_type Asc)
         As last_visit_credited_unit
     , min(contact_type) Keep(dense_rank First Order By contact_date Desc, visit_type Asc)
@@ -267,6 +271,7 @@ Select
   , recent_contact.ard_contact_last_365_days
   , recent_visit.last_visit_credited_name
   , recent_visit.last_visit_credited_unit
+  , recent_visit.last_visit_credited_ksm
   , recent_visit.last_visit_contact_type
   , recent_visit.last_visit_category
   , recent_visit.last_visit_date
@@ -275,6 +280,7 @@ Select
   , recent_visit.last_visit_desc
   , recent_contact.last_credited_name
   , recent_contact.last_credited_unit
+  , recent_contact.last_credited_ksm
   , recent_contact.last_contact_type
   , recent_contact.last_contact_category
   , recent_contact.last_contact_date
