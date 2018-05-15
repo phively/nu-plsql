@@ -1,4 +1,4 @@
---Create Or Replace View vt_go_portfolio_time_series As
+Create Or Replace View vt_go_portfolio_time_series As
 
 With
 
@@ -39,12 +39,6 @@ params As (
   Inner Join rpt_pbh634.v_entity_ksm_households hh On hh.id_number = vah.id_number
   Where assignment_type In ('PM', 'PP') -- PM and PPM only
     And primary_ind = 'Y' -- Primary prospect entity only
-/****** FOR TESTING -- REMOVE LATER ******/
-And assignment_id_number = '0000549376' -- JP
---And vah.id_number = '0000372980' -- AMD
---And vah.id_number In ('0000289544', '0000372980', '0000301415', '0000403400') -- CC and others
---And assignment_id_number = '0000565742'  -- SS
---And assignment_id_number In ('0000549376', '0000562459', '0000776709') -- Midwest
 )
 
 -- Assignment history by month between start_dt and stop_dt
