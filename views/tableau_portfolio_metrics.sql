@@ -1,4 +1,4 @@
--- Create Or Replace View vt_go_portfolio_time_series As
+--Create Or Replace View vt_go_portfolio_time_series As
 
 With
 
@@ -6,6 +6,7 @@ With
 params As (
   Select
     100000 As mg_level -- Minimum amount for a major gift
+    , 100000 As placeholder_level -- Anticipated amount of placeholder solicitations
     , to_date('20200831', 'yyyymmdd') -- Close date of placeholder solicitations
       As placeholder_date
   From DUAL
@@ -42,7 +43,8 @@ params As (
 And assignment_id_number = '0000549376' -- JP
 --And vah.id_number = '0000372980' -- AMD
 --And vah.id_number In ('0000289544', '0000372980', '0000301415', '0000403400') -- CC and others
--- And assignment_id_number = '0000565742'  -- SS
+--And assignment_id_number = '0000565742'  -- SS
+--And assignment_id_number In ('0000549376', '0000562459', '0000776709') -- Midwest
 )
 
 -- Assignment history by month between start_dt and stop_dt
@@ -63,7 +65,7 @@ And assignment_id_number = '0000549376' -- JP
           When level = months_assigned Then trunc(stop_dt, 'month') -- Last filled date is stop_dt month
           Else trunc(add_months(start_dt, level - 1), 'month') -- Subsequent are 1st of month after previous row
         End
-        , stop_dt
+        , trunc(stop_dt, 'month')
       ) As filled_date
     , level As months_assigned_strict -- Reset months_assigned to 1 for each new row in the assignment table
     , assignment_active_calc
@@ -205,7 +207,7 @@ And assignment_id_number = '0000549376' -- JP
 
 -- New gifts & commitments
 , ksm_ngc As (
-  Select
+  Select Distinct
     gt.household_id
     , gt.tx_number
     , gt.tx_gypm_ind
@@ -271,22 +273,40 @@ And assignment_id_number = '0000549376' -- JP
 , prop_mgrs As (
   Select
     rownum As rn
-    , prospect_id
-    , report_name
-    , proposal_id
-    , start_dt_calc As start_dt
-    , Case When stop_dt_calc Is Null Then last_day(cal.today) Else stop_dt_calc End
-      As stop_dt
+    , ah.prospect_id
+    , ah.report_name
+    , ah.proposal_id
+    , ah.start_dt_calc As assignment_start_dt
+    , Case When ah.stop_dt_calc Is Null Then last_day(cal.today) Else ah.stop_dt_calc End
+      As assignment_stop_dt
     -- Number of months from start_dt_calc to stop_dt_calc, rounded up
     , ceil(
-        months_between(last_day(Case When stop_dt_calc Is Null Then last_day(cal.today) Else stop_dt_calc End)
-        , trunc(start_dt_calc, 'month'))
-      ) As months_assigned
-    , assignment_active_calc
-    , assignment_id_number
-    , assignment_report_name
+        months_between(
+          last_day(Case
+            -- If assignment history stop date is before proposal close date, use assignment history stop date
+            When ah.stop_dt_calc <= ph.close_dt_calc Then ah.stop_dt_calc
+            -- If assignment history stop date is after proposal close date, use proposal close date
+            When ah.stop_dt_calc > ph.close_dt_calc Then ph.close_dt_calc
+            -- When both are null use last day of this month
+            When ah.stop_dt_calc Is Null And ph.close_dt_calc Is Null Then last_day(cal.today)
+            -- When just assignment history stop date is null use proposal close date
+            When ah.stop_dt_calc Is Null And ph.close_dt_calc Is Not Null Then ph.close_dt_calc
+            -- Fallback
+            Else ah.stop_dt_calc
+          End)
+        , trunc(ah.start_dt_calc, 'month'))
+      ) As assignment_months_assigned
+    , ah.assignment_active_calc
+    , ph.close_dt_calc
+    , ph.proposal_active_calc
+    , ah.assignment_id_number
+    , ah.assignment_report_name
+    , ph.ksm_or_univ_ask
+    , ph.ksm_or_univ_orig_ask
+    , ph.ksm_or_univ_anticipated
   From v_assignment_history ah
   Cross Join rpt_pbh634.v_current_calendar cal
+  Inner Join v_proposal_history ph On ph.proposal_id = ah.proposal_id
   Where assignment_type = 'PA' -- Proposal Manager (PM is taken by Prospect Manager)
     And primary_ind = 'Y' -- Primary prospect only
 )
@@ -296,23 +316,28 @@ And assignment_id_number = '0000549376' -- JP
     prospect_id
     , report_name
     , proposal_id
-    , start_dt
-    , stop_dt
+    , assignment_start_dt
+    , assignment_stop_dt
     , assignment_active_calc
     , assignment_id_number
     , assignment_report_name
     -- Take either 1 month in the future from last row, or the stop_dt, whichever is smaller
     , least(
         Case
-          When level = 1 Then trunc(start_dt, 'month') -- First filled_date is start_dt month
-          When level = months_assigned Then trunc(stop_dt, 'month') -- Last filled date is stop_dt month
-          Else trunc(add_months(start_dt, level - 1), 'month') -- Subsequent are 1st of month after previous row
+          When level = 1 Then trunc(assignment_start_dt, 'month') -- First filled_date is start_dt month
+          When level = assignment_months_assigned Then trunc(assignment_stop_dt, 'month') -- Last filled date is stop_dt month
+          Else trunc(add_months(assignment_start_dt, level - 1), 'month') -- Subsequent are 1st of month after previous row
         End
-        , stop_dt
-      ) As filled_date
-  From prop_mgrs
+        , trunc(assignment_stop_dt, 'month')
+      ) As assignment_filled_date
+    , close_dt_calc
+    , proposal_active_calc
+    , ksm_or_univ_ask
+    , ksm_or_univ_orig_ask
+    , ksm_or_univ_anticipated
+  From prop_mgrs pm
   Connect By
-    level <= months_assigned -- Hierarchical query
+    level <= greatest(assignment_months_assigned, 1) -- Hierarchical query, but proposal forced to be active for at least 1 month
     And Prior rn = rn -- Restart when prospect/manager changes, since each prospect/pm combo has its own row
     And Prior dbms_random.value != 1 -- Always true, as 0 < dbms_random.value < 1
 )
@@ -321,19 +346,49 @@ And assignment_id_number = '0000549376' -- JP
   Select
     prospect_id
     , report_name
-    , min(start_dt) As start_dt
-    , max(stop_dt) As stop_dt
+    , proposal_id
+    , min(assignment_start_dt) As assignment_start_dt
+    , max(assignment_stop_dt) As assignment_stop_dt
     , min(assignment_active_calc) As assignment_active_calc
     , assignment_id_number
     , assignment_report_name
-    , filled_date
+    , assignment_filled_date
+    , close_dt_calc
+    , ksm_or_univ_ask
+    , ksm_or_univ_orig_ask
+    , ksm_or_univ_anticipated
   From prop_mgrs_dense
   Group By
     prospect_id
     , report_name
+    , proposal_id
     , assignment_id_number
     , assignment_report_name
-    , filled_date
+    , assignment_filled_date
+    , close_dt_calc
+    , ksm_or_univ_ask
+    , ksm_or_univ_orig_ask
+    , ksm_or_univ_anticipated
+)
+-- Final aggregated proposal stats
+, prop_final As (
+  Select
+    prospect_id
+    , assignment_id_number
+    , assignment_filled_date
+    , count(proposal_id) As proposal_count
+    , count(Case When ksm_or_univ_anticipated = (Select placeholder_level From params)
+        And close_dt_calc = (Select placeholder_date From params)
+        Then proposal_id End)
+      As proposal_placeholder_count
+    , sum(ksm_or_univ_ask) As proposal_asks
+    , sum(ksm_or_univ_orig_ask) As proposal_orig_asks
+    , sum(ksm_or_univ_anticipated) As proposal_anticipated
+  From prop_mgrs_dedupe
+  Group By
+    prospect_id
+    , assignment_id_number
+    , assignment_filled_date
 )
 
 -- Main query
@@ -389,6 +444,12 @@ Select Distinct
   , gft.ksm_mg_last_24_mo
   , gft.ksm_lifetime_giving
   , gft.ksm_giving_last_24_mo
+  -- Active proposal stats
+  , prp.proposal_count
+  , prp.proposal_placeholder_count
+  , prp.proposal_asks
+  , prp.proposal_orig_asks
+  , prp.proposal_anticipated
 -- Assignment history deduped
 From assn_final asn
 -- Prospect stage history
@@ -417,6 +478,11 @@ Left Join ksm_giving gft
   On gft.household_id = asn.household_id
   And gft.assignment_id_number = asn.assignment_id_number
   And gft.filled_date = asn.filled_date
+-- Proposal managers
+Left Join prop_final prp
+  On prp.prospect_id = asn.prospect_id
+  And prp.assignment_id_number = asn.assignment_id_number
+  And prp.assignment_filled_date = asn.filled_date
 -- Sort results
 Order By
   asn.assignment_report_name Asc
