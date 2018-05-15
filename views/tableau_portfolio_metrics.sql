@@ -294,7 +294,8 @@ And assignment_id_number = '0000549376' -- JP
             -- Fallback
             Else ah.stop_dt_calc
           End)
-        , trunc(ah.start_dt_calc, 'month'))
+        , trunc(ah.start_dt_calc, 'month')
+        )
       ) As assignment_months_assigned
     , ah.assignment_active_calc
     , ph.close_dt_calc
@@ -325,7 +326,9 @@ And assignment_id_number = '0000549376' -- JP
     , least(
         Case
           When level = 1 Then trunc(assignment_start_dt, 'month') -- First filled_date is start_dt month
-          When level = assignment_months_assigned Then trunc(assignment_stop_dt, 'month') -- Last filled date is stop_dt month
+          When level = assignment_months_assigned Then trunc( -- Last filled date is stop_dt month
+            least(assignment_stop_dt, close_dt_calc) -- If close date was before assignment stop date, use close date
+            , 'month')
           Else trunc(add_months(assignment_start_dt, level - 1), 'month') -- Subsequent are 1st of month after previous row
         End
         , trunc(assignment_stop_dt, 'month')
