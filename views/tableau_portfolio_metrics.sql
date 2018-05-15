@@ -124,6 +124,9 @@ params As (
     , assignment_id_number
     , assignment_report_name
   From assn_dedupe
+  -- Drop rows with impossible dates (typo)
+  Where filled_date >= to_date('19000101', 'yyyymmdd')
+    And filled_date >= to_date('19000101', 'yyyymmdd')
 )
 
 -- Stage history
@@ -304,6 +307,9 @@ params As (
   Inner Join v_proposal_history ph On ph.proposal_id = ah.proposal_id
   Where assignment_type = 'PA' -- Proposal Manager (PM is taken by Prospect Manager)
     And primary_ind = 'Y' -- Primary prospect only
+    -- Drop rows with impossible dates (typo)
+    And (ah.start_dt_calc Is Null Or ah.start_dt_calc >= to_date('19000101', 'yyyymmdd'))
+    And (ah.stop_dt_calc Is Null Or ah.stop_dt_calc >= to_date('19000101', 'yyyymmdd'))
 )
 -- Fill in dates
 , prop_mgrs_dense As (
