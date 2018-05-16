@@ -703,7 +703,7 @@ Cursor ct_numeric_capacity_ratings Is
 Private cursors -- data definitions
 *************************************************************************/
 
-/* Definition of Kellogg Current Use allocations
+/* Definition of Kellogg Current Use allocations for Annual Giving
    2017-07-11 */
 Cursor c_alloc_curr_use_ksm Is
   With
@@ -718,7 +718,9 @@ Cursor c_alloc_curr_use_ksm Is
     , nvl(af_flag, 'N') As af_flag
   From allocation alloc
   Left Join ksm_af On ksm_af.allocation_code = alloc.allocation_code
-  Where (agency = 'CRU' And alloc_school = 'KM')
+  Where (agency = 'CRU' And alloc_school = 'KM'
+      And alloc.allocation_code <> '3303002283701GFT' -- Exclude Envision building gifts
+    )
     Or alloc.allocation_code In ksm_af.allocation_code -- Include AF allocations that happen to not match criteria
   ;
 
