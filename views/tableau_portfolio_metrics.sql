@@ -303,6 +303,8 @@ params As (
     , ph.ksm_or_univ_ask
     , ph.ksm_or_univ_orig_ask
     , ph.ksm_or_univ_anticipated
+    , ph.ksm_linked_amounts
+    , ph.ksm_date_of_record
   From v_assignment_history ah
   Cross Join rpt_pbh634.v_current_calendar cal
   Inner Join v_proposal_history ph On ph.proposal_id = ah.proposal_id
@@ -339,6 +341,8 @@ params As (
     , ksm_or_univ_ask
     , ksm_or_univ_orig_ask
     , ksm_or_univ_anticipated
+    , ksm_linked_amounts
+    , ksm_date_of_record
   From prop_mgrs pm
   Connect By
     level <= greatest(assignment_months_assigned, 1) -- Hierarchical query, but proposal forced to be active for at least 1 month
@@ -361,6 +365,8 @@ params As (
     , ksm_or_univ_ask
     , ksm_or_univ_orig_ask
     , ksm_or_univ_anticipated
+    , ksm_linked_amounts
+    , ksm_date_of_record
   From prop_mgrs_dense
   Group By
     prospect_id
@@ -373,6 +379,8 @@ params As (
     , ksm_or_univ_ask
     , ksm_or_univ_orig_ask
     , ksm_or_univ_anticipated
+    , ksm_linked_amounts
+    , ksm_date_of_record
 )
 -- Final aggregated proposal stats
 , prop_final As (
@@ -388,6 +396,13 @@ params As (
     , sum(ksm_or_univ_ask) As proposal_asks
     , sum(ksm_or_univ_orig_ask) As proposal_orig_asks
     , sum(ksm_or_univ_anticipated) As proposal_anticipated
+    -- Was a KSM MG made this month?
+    , sum(Case
+        When ksm_linked_amounts >= (Select mg_level From params)
+          And ksm_date_of_record Between assignment_filled_date And last_day(assignment_filled_date)
+          Then ksm_linked_amounts
+        Else 0
+      End) As ksm_mg_dollars_this_mo
   From prop_mgrs_dedupe
   Group By
     prospect_id
@@ -423,6 +438,13 @@ Select Distinct
       And ac.contact_date >= add_months(asn.filled_date, -24) Then ac.report_id End)
       Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
     As cr_visits_last_24_mo
+  -- Primary visits per month assigned
+  , Count(Distinct Case When ac.contact_type_category = 'Visit'
+      And ac.contact_credit_type = 1
+      Then ac.report_id End)
+      Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
+      / asn.months_assigned
+    As cr_visits_per_mo_assigned
   -- Visits
   , Count(Distinct Case When ac.contact_type_category = 'Visit'
       And ac.contact_date >= add_months(asn.filled_date, -24) Then ac.report_id End)
@@ -460,7 +482,7 @@ Select Distinct
   , prp.proposal_asks
   , prp.proposal_orig_asks
   , prp.proposal_anticipated
--- Assignment history deduped
+  , prp.ksm_mg_dollars_this_mo
 From assn_final asn
 -- Prospect stage history
 Left Join stage_history stg_hist
