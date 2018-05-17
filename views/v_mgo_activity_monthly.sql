@@ -535,6 +535,6 @@ Select
   , py_goal
   , progress
 From v_mgo_activity_monthly v
-Where fy_goal Is Not Null
+Where py_goal Is Not Null
   And progress > 0
 ;

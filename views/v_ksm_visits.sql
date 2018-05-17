@@ -32,6 +32,8 @@ tms_cpurp As (
 Select
   contact_rpt_credit.id_number As credited
   , staff.report_name As credited_name
+  , tms_crc.contact_credit_type
+  , tms_crc.short_desc As contact_credit_desc
   , staff.job_title
   , tms_cpurp.short_desc As contact_purpose
   -- Contact report fields
@@ -60,6 +62,7 @@ Cross Join cal
 Inner Join contact_rpt_credit On contact_rpt_credit.report_id = contact_report.report_id
 Inner Join tms_cpurp On tms_cpurp.contact_purpose_code = contact_report.contact_purpose_code
 Inner Join table(ksm_pkg.tbl_frontline_ksm_staff) staff On staff.id_number = contact_rpt_credit.id_number
+Left Join tms_contact_rpt_credit_type tms_crc On tms_crc.contact_credit_type = contact_rpt_credit.contact_credit_type
 Left Join nu_prs_trp_prospect prs On prs.id_number = contact_report.id_number
 Left Join table(ksm_pkg.tbl_university_strategy) strat On strat.prospect_id = contact_report.prospect_id
 Left Join rating_bins eval On eval.rating_desc = prs.evaluation_rating
