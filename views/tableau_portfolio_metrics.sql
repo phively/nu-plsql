@@ -193,6 +193,7 @@ params As (
   Select
     report_id
     , credited As credited_id
+    , contact_credit_type
     , prospect_id
     , contact_date
     , contact_type_category
@@ -416,11 +417,17 @@ Select Distinct
   , uor_hist.rating_lower_bound As uor_lower_bound
   -- Eval rating
   , evl_hist.rating_lower_bound As eval_lower_bound
+  -- Primary visits
+  , Count(Distinct Case When ac.contact_type_category = 'Visit'
+      And ac.contact_credit_type = 1
+      And ac.contact_date >= add_months(asn.filled_date, -24) Then ac.report_id End)
+      Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
+    As cr_visits_last_24_mo
   -- Visits
   , Count(Distinct Case When ac.contact_type_category = 'Visit'
       And ac.contact_date >= add_months(asn.filled_date, -24) Then ac.report_id End)
       Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
-    As cr_visits_last_24_mo
+    As cr_all_visits_last_24_mo
   -- Events
   , Count(Distinct Case When ac.contact_type_category = 'Event'
       And ac.contact_date >= add_months(asn.filled_date, -24) Then ac.report_id End)

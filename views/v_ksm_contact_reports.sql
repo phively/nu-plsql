@@ -48,6 +48,8 @@ pe As (
 Select
   contact_rpt_credit.id_number As credited
   , contacter.report_name As credited_name
+  , tms_crc.contact_credit_type
+  , tms_crc.short_desc As contact_credit_desc
   , ard_staff.job_title
   , ard_staff.employer_unit
   , tms_ctype.short_desc As contact_type
@@ -101,6 +103,7 @@ Inner Join tms_contact_rpt_type tms_ctype On tms_ctype.contact_type = contact_re
 Inner Join nu_prs_trp_prospect prs On prs.id_number = contact_report.id_number
 Inner Join entity contacted_entity On contacted_entity.id_number = contact_report.id_number
 Inner Join entity contacter On contacter.id_number = contact_rpt_credit.id_number
+Left Join tms_contact_rpt_credit_type tms_crc On tms_crc.contact_credit_type = contact_rpt_credit.contact_credit_type
 Left Join rating_bins eval On eval.rating_desc = prs.evaluation_rating
 Left Join rating_bins uor On uor.rating_desc = prs.officer_rating
 Left Join ard_staff On ard_staff.id_number = contact_rpt_credit.id_number
@@ -132,6 +135,8 @@ hh As (
 Select
   credited
   , credited_name
+  , contact_credit_type
+  , contact_credit_desc
   , job_title
   , employer_unit
   , contact_type
@@ -180,6 +185,8 @@ Create Or Replace View v_ard_contact_reports As
 Select
   credited
   , credited_name
+  , contact_credit_type
+  , contact_credit_desc
   , job_title
   , employer_unit
   , contact_type
@@ -226,6 +233,8 @@ Create Or Replace View v_ksm_contact_reports As
 Select
   credited
   , credited_name
+  , contact_credit_type
+  , contact_credit_desc
   , job_title
   , employer_unit
   , contact_type
