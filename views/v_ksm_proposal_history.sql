@@ -12,6 +12,7 @@ trans As (
     proposal_id
     , legal_amount
     , tx_number
+    , date_of_record
   From v_ksm_giving_trans
   Where proposal_id Is Not Null
     And legal_amount > 0
@@ -21,6 +22,7 @@ trans As (
   Select
     proposal_id
     , sum(legal_amount) As ksm_linked_amounts
+    , trunc(min(date_of_record)) As ksm_date_of_record
   From trans
   Group By proposal_id
 )
@@ -207,6 +209,7 @@ Select
     End As close_dt_calc
   , trunc(date_modified) As date_modified
   , linked_receipts.ksm_linked_receipts
+  , linked.ksm_date_of_record
   , linked.ksm_linked_amounts
   , linkednu.nu_linked_amounts
   , original_ask_amt As total_original_ask_amt
@@ -310,6 +313,7 @@ Select
   , close_dt_calc
   , date_modified
   , ksm_linked_receipts
+  , ksm_date_of_record
   , ksm_linked_amounts
   , nu_linked_amounts
   , total_original_ask_amt

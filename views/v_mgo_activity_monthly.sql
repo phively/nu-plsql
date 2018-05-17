@@ -310,7 +310,9 @@ custom_params As (
 
 ----- Main query goal 1, equivalent to lines 4-511 in nu_gft_v_officer_metrics -----
 Select fcd.assignment_id_number As id_number
+  , e.report_name
   , 'MGC' As goal_type
+  , 'MG Closes' As goal_desc
   , extract(year From pd.date_of_record) As cal_year
   , extract(month From pd.date_of_record) As cal_month
   , rpt_pbh634.ksm_pkg.get_fiscal_year(pd.date_of_record) As fiscal_year
@@ -322,6 +324,7 @@ Select fcd.assignment_id_number As id_number
   , Count(Distinct fcd.proposal_id) As progress
   , Count(Distinct fcd.proposal_id) As adjusted_progress
 From funded_count_distinct fcd
+Inner Join entity e On e.id_number = fcd.assignment_id_number
 Inner Join proposal_dates pd
   On pd.proposal_id = fcd.proposal_id
 -- Fiscal year goals
@@ -334,6 +337,7 @@ Left Join goal pyg
     And pyg.year = rpt_pbh634.ksm_pkg.get_performance_year(pd.date_of_record)
 Group By rpt_pbh634.ksm_pkg.get_fiscal_year(pd.date_of_record)
   , fcd.assignment_id_number
+  , e.report_name
   , extract(year From pd.date_of_record)
   , extract(month From pd.date_of_record)
   , rpt_pbh634.ksm_pkg.get_quarter(pd.date_of_record, 'fisc')
@@ -344,7 +348,9 @@ Group By rpt_pbh634.ksm_pkg.get_fiscal_year(pd.date_of_record)
 Union
 ----- Main query goal 2, equivalent to lines 512-847 in nu_gft_v_officer_metrics -----
 Select acr.assignment_id_number As id_number
+  , e.report_name
   , 'MGS' As goal_type
+  , 'MG Sols' As goal_desc
   , extract(year From acr.ask_or_stop_dt) As cal_year
   , extract(month From acr.ask_or_stop_dt) As cal_month
   , rpt_pbh634.ksm_pkg.get_fiscal_year(acr.ask_or_stop_dt) As fiscal_year
@@ -359,6 +365,7 @@ Select acr.assignment_id_number As id_number
   -- Alternate definition: count if either ask date or stop date is filled in
   , Count(Distinct acr.proposal_id) As adjusted_progress
 From asked_count_ranked acr
+Inner Join entity e On e.id_number = acr.assignment_id_number
 -- Fiscal year goals
 Left Join goal g
   On acr.assignment_id_number = g.id_number
@@ -369,6 +376,7 @@ Left Join goal pyg
     And pyg.year = rpt_pbh634.ksm_pkg.get_performance_year(acr.ask_or_stop_dt)
 Group By rpt_pbh634.ksm_pkg.get_fiscal_year(acr.ask_or_stop_dt)
   , acr.assignment_id_number
+  , e.report_name
   , extract(year From acr.ask_or_stop_dt)
   , extract(month From acr.ask_or_stop_dt)
   , rpt_pbh634.ksm_pkg.get_quarter(acr.ask_or_stop_dt, 'fisc')
@@ -379,7 +387,9 @@ Group By rpt_pbh634.ksm_pkg.get_fiscal_year(acr.ask_or_stop_dt)
 Union
 ----- Main query goal 3, equivalent to lines 848-1391 in nu_gft_v_officer_metrics -----
 Select fr.assignment_id_number As id_number
+  , e.report_name
   , 'MGDR' As goal_type
+  , 'MG Dollars Raised' As goal_desc
   , extract(year From pd.date_of_record) As cal_year
   , extract(month From pd.date_of_record) As cal_month
   , rpt_pbh634.ksm_pkg.get_fiscal_year(pd.date_of_record) As fiscal_year
@@ -391,6 +401,7 @@ Select fr.assignment_id_number As id_number
   , sum(fr.granted_amt) As progress
   , sum(fr.granted_amt) As adjusted_progress
 From funded_ranked fr
+Inner Join entity e On e.id_number = fr.assignment_id_number
 Inner Join proposal_dates pd
   On pd.proposal_id = fr.proposal_id
 -- Fiscal year goals
@@ -403,6 +414,7 @@ Left Join goal pyg
     And pyg.year = rpt_pbh634.ksm_pkg.get_performance_year(pd.date_of_record)
 Group By rpt_pbh634.ksm_pkg.get_fiscal_year(pd.date_of_record)
   , fr.assignment_id_number
+  , e.report_name
   , extract(year From pd.date_of_record)
   , extract(month From pd.date_of_record)
   , rpt_pbh634.ksm_pkg.get_quarter(pd.date_of_record, 'fisc')
@@ -413,7 +425,9 @@ Group By rpt_pbh634.ksm_pkg.get_fiscal_year(pd.date_of_record)
 Union
 ----- Main query goal 4, equivalent to lines 1392-1419 in nu_gft_v_officer_metrics -----
 Select Distinct cr.id_number As id_number
+  , e.report_name
   , 'NOV' as goal_type
+  , 'Visits' As goal_desc
   , c.cal_year
   , c.cal_month
   , c.fiscal_year
@@ -425,6 +439,7 @@ Select Distinct cr.id_number As id_number
   , count(Distinct c.report_id) As progress
   , count(Distinct c.report_id) As adjusted_progress
 From cr_credit cr
+Inner Join entity e On e.id_number = cr.id_number
 Inner Join contact_reports c
   On cr.report_id = c.report_id
 -- Fiscal year goals
@@ -437,6 +452,7 @@ Left Join goal pyg
     And pyg.year = c.perf_year
 Group By c.fiscal_year
   , cr.id_number
+  , e.report_name
   , c.cal_year
   , c.cal_month
   , c.fiscal_qtr
@@ -447,7 +463,9 @@ Group By c.fiscal_year
 Union
 ----- Main query goal 5, equivalent to lines 1420-1448 in nu_gft_v_officer_metrics -----
 Select Distinct cr.id_number As id_number
+  , e.report_name
   , 'NOQV' As goal_type
+  , 'Qual Visits' As goal_desc
   , c.cal_year
   , c.cal_month
   , c.fiscal_year
@@ -459,6 +477,7 @@ Select Distinct cr.id_number As id_number
   , count(Distinct c.report_id) As progress
   , count(Distinct c.report_id) As adjusted_progress
 From cr_credit cr
+Inner Join entity e On e.id_number = cr.id_number
 Inner Join contact_reports c
   On cr.report_id = c.report_id
 -- Fiscal year goals
@@ -472,6 +491,7 @@ Left Join goal pyg
 Where c.contact_purpose_code = '1' -- Only count qualification visits
 Group By c.fiscal_year
   , cr.id_number
+  , e.report_name
   , c.cal_year
   , c.cal_month
   , c.fiscal_qtr
@@ -482,7 +502,9 @@ Group By c.fiscal_year
 Union
 ----- Main query goal 6, equivalent to lines 1449-1627 in nu_gft_v_officer_metrics -----
 Select acr.assignment_id_number As id_number
+  , e.report_name
   , 'PA' As goal_type
+  , 'Proposal Assists' As goal_desc
   , extract(year From acr.ask_or_stop_dt) As cal_year
   , extract(month From acr.ask_or_stop_dt) As cal_month
   , rpt_pbh634.ksm_pkg.get_fiscal_year(acr.ask_or_stop_dt) As fiscal_year
@@ -497,6 +519,7 @@ Select acr.assignment_id_number As id_number
   -- Alternate definition: count if either ask date or stop date is filled in
   , Count(Distinct acr.proposal_id) As adjusted_progress
 From assist_count_ranked acr
+Inner Join entity e On e.id_number = acr.assignment_id_number
 -- Fiscal year goals
 Left Join goal g
   On acr.assignment_id_number = g.id_number
@@ -507,6 +530,7 @@ Left Join goal pyg
     And pyg.year = rpt_pbh634.ksm_pkg.get_performance_year(acr.ask_or_stop_dt)
 Group By rpt_pbh634.ksm_pkg.get_fiscal_year(acr.ask_or_stop_dt)
   , acr.assignment_id_number
+  , e.report_name
   , extract(year From acr.ask_or_stop_dt)
   , extract(month From acr.ask_or_stop_dt)
   , rpt_pbh634.ksm_pkg.get_quarter(acr.ask_or_stop_dt, 'fisc')
@@ -524,7 +548,9 @@ Create Or Replace View v_mgo_goals_monthly As
 
 Select
   id_number
+  , report_name
   , goal_type
+  , goal_desc
   , cal_year
   , cal_month
   , fiscal_year
