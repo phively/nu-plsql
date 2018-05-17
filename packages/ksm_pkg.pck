@@ -258,6 +258,7 @@ Type trans_entity Is Record (
   , tx_sequence gift.gift_sequence%type
   , transaction_type varchar2(40)
   , tx_gypm_ind varchar2(1)
+  , pledge_number pledge.pledge_pledge_number%type
   , matched_tx_number matching_gift.match_gift_matched_receipt%type
   , payment_type tms_payment_type.short_desc%type
   , allocation_code allocation.allocation_code%type
@@ -284,6 +285,7 @@ Type trans_household Is Record (
   , tx_sequence gift.gift_sequence%type
   , transaction_type varchar2(40)
   , tx_gypm_ind varchar2(1)
+  , pledge_number pledge.pledge_pledge_number%type
   , matched_tx_number matching_gift.match_gift_matched_receipt%type
   , payment_type tms_payment_type.short_desc%type
   , allocation_code allocation.allocation_code%type
@@ -1601,6 +1603,7 @@ Cursor c_gift_credit_ksm Is
       , match_gift_matched_sequence
       , 'Matching Gift' As transaction_type
       , 'M' As tx_gypm_ind
+      , NULL As pledge_number
       , match_gift_matched_receipt As matched_tx_number
       , tms_pmt_type.payment_type
       , match_gift_allocation_name
@@ -1641,6 +1644,7 @@ Cursor c_gift_credit_ksm Is
       , match_gift_matched_sequence
       , 'Matching Gift' As transaction_type
       , 'M' As tx_gypm_ind
+      , NULL As pledge_number
       , match_gift_matched_receipt As matched_tx_number
       , tms_pmt_type.payment_type
       , match_gift_allocation_name
@@ -1689,6 +1693,7 @@ Cursor c_gift_credit_ksm Is
       , tx_sequence
       , tms_trans.transaction_type
       , tx_gypm_ind
+      , gft.pmt_on_pledge_number As pledge_number
       , NULL As matched_tx_number
       , tms_pmt_type.payment_type
       , gft.allocation_code
@@ -1730,6 +1735,7 @@ Cursor c_gift_credit_ksm Is
       , pledge.pledge_sequence
       , tms_trans.transaction_type
       , 'P' As tx_gypm_ind
+      , pledge.pledge_pledge_number As pledge_number
       , NULL As matched_tx_number
       , NULL As payment_type
       , pledge.pledge_allocation_name
@@ -1942,6 +1948,7 @@ Cursor c_gift_credit_hh_campaign_2008 Is
     , daily.xsequence
     , 'Internal Transfer' As transaction_type
     , daily.gift_pledge_or_match
+    , NULL As pledge_number
     , NULL As matched_tx_number
     , 'Internal Transfer'
     , daily.alloc_code
