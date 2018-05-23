@@ -300,6 +300,9 @@ params As (
     , ph.proposal_active_calc
     , ah.assignment_id_number
     , ah.assignment_report_name
+    , ph.total_ask_amt
+    , ph.total_anticipated_amt
+    , ph.total_granted_amt
     , ph.ksm_or_univ_ask
     , ph.ksm_or_univ_orig_ask
     , ph.ksm_or_univ_anticipated
@@ -338,6 +341,9 @@ params As (
       ) As assignment_filled_date
     , close_dt_calc
     , proposal_active_calc
+    , total_ask_amt
+    , total_anticipated_amt
+    , total_granted_amt
     , ksm_or_univ_ask
     , ksm_or_univ_orig_ask
     , ksm_or_univ_anticipated
@@ -362,6 +368,9 @@ params As (
     , assignment_report_name
     , assignment_filled_date
     , close_dt_calc
+    , total_ask_amt
+    , total_anticipated_amt
+    , total_granted_amt
     , ksm_or_univ_ask
     , ksm_or_univ_orig_ask
     , ksm_or_univ_anticipated
@@ -376,6 +385,9 @@ params As (
     , assignment_report_name
     , assignment_filled_date
     , close_dt_calc
+    , total_ask_amt
+    , total_anticipated_amt
+    , total_granted_amt
     , ksm_or_univ_ask
     , ksm_or_univ_orig_ask
     , ksm_or_univ_anticipated
@@ -393,9 +405,13 @@ params As (
         And close_dt_calc = (Select placeholder_date From params)
         Then proposal_id End)
       As proposal_placeholder_count
+    , sum(total_ask_amt) As nu_asks
+    , sum(total_anticipated_amt) As nu_anticipated
+    , sum(total_granted_amt) As nu_granted
     , sum(ksm_or_univ_ask) As proposal_asks
     , sum(ksm_or_univ_orig_ask) As proposal_orig_asks
     , sum(ksm_or_univ_anticipated) As proposal_anticipated
+    , sum(ksm_linked_amounts) As proposal_linked
     -- Was a KSM MG made this month?
     , sum(Case
         When ksm_linked_amounts >= (Select mg_level From params)
@@ -429,9 +445,9 @@ Select Distinct
   -- Point-in-time stage history
   , stg_hist.stage_desc
   -- UOR
-  , uor_hist.rating_lower_bound As uor_lower_bound
+  , nvl(uor_hist.rating_lower_bound, 0) As uor_lower_bound
   -- Eval rating
-  , evl_hist.rating_lower_bound As eval_lower_bound
+  , nvl(evl_hist.rating_lower_bound, 0) As eval_lower_bound
   -- Primary visits
   , Count(Distinct Case When ac.contact_type_category = 'Visit'
       And ac.contact_credit_type = 1
@@ -471,18 +487,22 @@ Select Distinct
       Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
     As cr_correspondence_last_24_mo
   -- Aggregated giving
-  , gft.ksm_mg_count
-  , gft.ksm_mg_since_assign
-  , gft.ksm_mg_last_24_mo
-  , gft.ksm_lifetime_giving
-  , gft.ksm_giving_last_24_mo
+  , nvl(gft.ksm_mg_count, 0) As ksm_mg_count
+  , nvl(gft.ksm_mg_since_assign, 0) As ksm_mg_since_assign
+  , nvl(gft.ksm_mg_last_24_mo, 0) As ksm_mg_last_24_mo
+  , nvl(gft.ksm_lifetime_giving, 0) As ksm_lifetime_giving
+  , nvl(gft.ksm_giving_last_24_mo, 0) As ksm_giving_last_24_mo
   -- Active proposal stats
-  , prp.proposal_count
-  , prp.proposal_placeholder_count
-  , prp.proposal_asks
-  , prp.proposal_orig_asks
-  , prp.proposal_anticipated
-  , prp.ksm_mg_dollars_this_mo
+  , nvl(prp.proposal_count, 0) As proposal_count
+  , nvl(prp.proposal_placeholder_count, 0) As proposal_placeholder_count
+  , nvl(prp.proposal_asks, 0) As proposal_asks
+  , nvl(prp.proposal_orig_asks, 0) As proposal_orig_asks
+  , nvl(prp.proposal_anticipated, 0) As proposal_anticipated
+  , nvl(prp.proposal_linked, 0) As proposal_linked
+  , nvl(prp.ksm_mg_dollars_this_mo, 0) As ksm_mg_dollars_this_mo
+  , nvl(prp.nu_asks, 0) As nu_asks
+  , nvl(prp.nu_anticipated, 0) As nu_anticipated
+  , nvl(prp.nu_granted, 0) As nu_granted
 From assn_final asn
 -- Prospect stage history
 Left Join stage_history stg_hist
