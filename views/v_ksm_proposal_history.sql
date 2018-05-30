@@ -103,14 +103,18 @@ trans As (
   Select
     assignment.proposal_id
     , max(assignment.assignment_id_number)
-        keep(dense_rank First Order By assignment.stop_date Desc, assignment.start_date Desc, assignment.date_added Desc, assignment.date_modified Desc)
+        keep(dense_rank First Order By assignment.active_ind Desc, assignment.stop_date Desc, assignment.start_date Desc
+          , assignment.date_added Desc, assignment.date_modified Desc)
         As proposal_manager_id
     , max(entity.report_name)
-        keep(dense_rank First Order By assignment.stop_date Desc, assignment.start_date Desc, assignment.date_added Desc, assignment.date_modified Desc)
+        keep(dense_rank First Order By assignment.active_ind Desc, assignment.stop_date Desc, assignment.start_date Desc
+          , assignment.date_added Desc, assignment.date_modified Desc)
         As proposal_manager
-    , Listagg(assignment.assignment_id_number, '; ') Within Group (Order By assignment.start_date Desc NULLS Last, assignment.date_modified Desc)
+    , Listagg(assignment.assignment_id_number, '; ') Within Group
+        (Order By assignment.active_ind Desc, assignment.start_date Desc NULLS Last, assignment.date_modified Desc)
         As historical_managers_id
-    , Listagg(entity.report_name, '; ') Within Group (Order By assignment.start_date Desc NULLS Last, assignment.date_modified Desc)
+    , Listagg(entity.report_name, '; ') Within Group
+        (Order By assignment.active_ind Desc, assignment.start_date Desc NULLS Last, assignment.date_modified Desc)
         As historical_managers
   From assignment
   Inner Join entity On entity.id_number = assignment.assignment_id_number
@@ -120,7 +124,8 @@ trans As (
 , asst As (
   Select
     assignment.proposal_id
-    , Listagg(entity.report_name, '; ') Within Group (Order By assignment.start_date Desc NULLS Last, assignment.date_modified Desc)
+    , Listagg(entity.report_name, '; ') Within Group
+        (Order By assignment.active_ind Desc, assignment.start_date Desc NULLS Last, assignment.date_modified Desc)
         As proposal_assist
   From assignment
   Inner Join entity On entity.id_number = assignment.assignment_id_number
