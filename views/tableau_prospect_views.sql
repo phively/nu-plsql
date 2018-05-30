@@ -77,7 +77,7 @@ geocode As (
     prospect_id
     , count(proposal_id) As open_proposals
   From v_proposal_history
-  Where proposal_in_progress = 'Y'
+  Where proposal_active_calc = 'Active'
   Group By prospect_id
 )
 , ksm_proposal As (
