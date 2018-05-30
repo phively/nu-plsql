@@ -1359,15 +1359,32 @@ Cursor c_entity_top_150_300 Is
 
 /* Definition of university strategy */
 Cursor c_university_strategy Is
+  With
+  -- Next upcoming university overall strategy)
+  next_uos As (
+    Select
+      prospect_id
+      -- Pull first upcoming University Overall Strategy
+      , min(task_description) keep(dense_rank First Order By sched_date Asc, task_id Asc) As university_strategy
+      , min(sched_date) keep(dense_rank First Order By sched_date Asc, task_id Asc) As strategy_sched_date
+    From task
+    Where task_code = 'ST' -- University Overall Strategy
+      And task_status_code Not In (4, 5) -- Not Completed (4) or Cancelled (5) status
+    Group By prospect_id
+  )
+  -- Main query; uses nu_prs_trp_prospect fields if available
   Select
-    prospect_id
-    -- Pull first upcoming University Overall Strategy
-    , min(task_description) keep(dense_rank First Order By sched_date Asc, task_id Asc) As university_strategy
-    , min(sched_date) keep(dense_rank First Order By sched_date Asc, task_id Asc) As strategy_sched_date
-  From task
-  Where task_code = 'ST' -- University Overall Strategy
-    And task_status_code Not In (4, 5) -- Not Completed (4) or Cancelled (5) status
-  Group By prospect_id
+    next_uos.prospect_id
+    , Case
+        When prs.strategy_description Is Not Null Then prs.strategy_description
+        Else next_uos.university_strategy
+      End As university_strategy
+    , Case
+        When prs.strategy_description Is Not Null Then to_date(prs.strategy_date, 'mm/dd/yyyy')
+        Else next_uos.strategy_sched_date
+      End As strategy_sched_date
+  From next_uos
+  Left Join advance_nu.nu_prs_trp_prospect prs On prs.prospect_id = next_uos.prospect_id
   ;
 
 /* Definition of Annual Fund 10K model scores as of the passed year and month */
