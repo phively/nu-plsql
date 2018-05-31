@@ -142,6 +142,7 @@ Type university_strategy Is Record (
   prospect_id prospect.prospect_id%type
   , university_strategy task.task_description%type
   , strategy_sched_date task.sched_date%type
+  , strategy_responsible entity.pref_mail_name%type
 );
 
 /* Numeric capacity */
@@ -1360,15 +1361,22 @@ Cursor c_entity_top_150_300 Is
 /* Definition of university strategy */
 Cursor c_university_strategy Is
   With
-  -- Next upcoming university overall strategy)
+  -- Next upcoming university overall strategy
   next_uos As (
     Select
       prospect_id
       -- Pull first upcoming University Overall Strategy
-      , min(task_description) keep(dense_rank First Order By sched_date Asc, task_id Asc) As university_strategy
-      , min(sched_date) keep(dense_rank First Order By sched_date Asc, task_id Asc) As strategy_sched_date
+      , min(task_description) keep(dense_rank First Order By sched_date Asc, task.task_id Asc) As university_strategy
+      , min(sched_date) keep(dense_rank First Order By sched_date Asc, task.task_id Asc) As strategy_sched_date
+      , Listagg(tr.id_number, ', ') Within Group (Order By tr.date_added Desc)
+        As strategy_responsible_id
+      , Listagg(entity.pref_mail_name, ', ') Within Group (Order By tr.date_added Desc)
+        As strategy_responsible
     From task
-    Where task_code = 'ST' -- University Overall Strategy
+    Left Join task_responsible tr On tr.task_id = task.task_id
+    Left Join entity On entity.id_number = tr.id_number
+    Where prospect_id Is Not Null -- Prospect strategies only
+      And task_code = 'ST' -- University Overall Strategy
       And task_status_code Not In (4, 5) -- Not Completed (4) or Cancelled (5) status
     Group By prospect_id
   )
@@ -1383,6 +1391,10 @@ Cursor c_university_strategy Is
         When prs.strategy_description Is Not Null Then to_date(prs.strategy_date, 'mm/dd/yyyy')
         Else next_uos.strategy_sched_date
       End As strategy_sched_date
+    , Case
+        When prs.strategy_description Is Not Null Then task_resp
+        Else next_uos.strategy_responsible
+      End As strategy_responsible
   From next_uos
   Left Join advance_nu.nu_prs_trp_prospect prs On prs.prospect_id = next_uos.prospect_id
   ;

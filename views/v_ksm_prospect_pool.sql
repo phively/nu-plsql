@@ -197,6 +197,7 @@ Select Distinct
   , prospect.prospect_name_sort
   , strat.university_strategy
   , strat.strategy_sched_date
+  , strat.strategy_responsible
   , dq.dq
   , perm_stew.ps As permanent_stewardship
   , spec_hnd.DNS
