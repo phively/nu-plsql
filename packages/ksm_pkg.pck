@@ -142,7 +142,7 @@ Type university_strategy Is Record (
   prospect_id prospect.prospect_id%type
   , university_strategy task.task_description%type
   , strategy_sched_date task.sched_date%type
-  , strategy_responsible entity.pref_mail_name%type
+  , strategy_responsible varchar2(1024)
 );
 
 /* Numeric capacity */
@@ -1361,42 +1361,54 @@ Cursor c_entity_top_150_300 Is
 /* Definition of university strategy */
 Cursor c_university_strategy Is
   With
-  -- Next upcoming university overall strategy
+  -- Pull first upcoming University Overall Strategy
   next_uos As (
     Select
       prospect_id
-      -- Pull first upcoming University Overall Strategy
+      , min(task_id) keep(dense_rank First Order By sched_date Asc, task.task_id Asc) As task_id
       , min(task_description) keep(dense_rank First Order By sched_date Asc, task.task_id Asc) As university_strategy
       , min(sched_date) keep(dense_rank First Order By sched_date Asc, task.task_id Asc) As strategy_sched_date
-      , Listagg(tr.id_number, ', ') Within Group (Order By tr.date_added Desc)
-        As strategy_responsible_id
-      , Listagg(entity.pref_mail_name, ', ') Within Group (Order By tr.date_added Desc)
-        As strategy_responsible
     From task
-    Left Join task_responsible tr On tr.task_id = task.task_id
-    Left Join entity On entity.id_number = tr.id_number
     Where prospect_id Is Not Null -- Prospect strategies only
       And task_code = 'ST' -- University Overall Strategy
       And task_status_code Not In (4, 5) -- Not Completed (4) or Cancelled (5) status
     Group By prospect_id
   )
+  -- Append task responsible data to first upcoming UOS
+  , next_uos_resp As (
+    Select
+      uos.prospect_id
+      , uos.university_strategy
+      , uos.strategy_sched_date
+      , Listagg(tr.id_number, ', ') Within Group (Order By tr.date_added Desc)
+        As strategy_responsible_id
+      , Listagg(entity.pref_mail_name, ', ') Within Group (Order By tr.date_added Desc)
+        As strategy_responsible
+    From next_uos uos
+    Left Join task_responsible tr On tr.task_id = uos.task_id
+    Left Join entity On entity.id_number = tr.id_number
+    Group By
+      uos.prospect_id
+      , uos.university_strategy
+      , uos.strategy_sched_date
+  )
   -- Main query; uses nu_prs_trp_prospect fields if available
   Select
-    next_uos.prospect_id
+    uos.prospect_id
     , Case
         When prs.strategy_description Is Not Null Then prs.strategy_description
-        Else next_uos.university_strategy
+        Else uos.university_strategy
       End As university_strategy
     , Case
         When prs.strategy_description Is Not Null Then to_date(prs.strategy_date, 'mm/dd/yyyy')
-        Else next_uos.strategy_sched_date
+        Else uos.strategy_sched_date
       End As strategy_sched_date
     , Case
         When prs.strategy_description Is Not Null Then task_resp
-        Else next_uos.strategy_responsible
+        Else uos.strategy_responsible
       End As strategy_responsible
-  From next_uos
-  Left Join advance_nu.nu_prs_trp_prospect prs On prs.prospect_id = next_uos.prospect_id
+  From next_uos_resp uos
+  Left Join advance_nu.nu_prs_trp_prospect prs On prs.prospect_id = uos.prospect_id
   ;
 
 /* Definition of Annual Fund 10K model scores as of the passed year and month */
