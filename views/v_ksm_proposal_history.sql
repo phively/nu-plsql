@@ -164,7 +164,7 @@ trans As (
 )
 
 -- Main query
-Select
+Select Distinct
   proposal.prospect_id
   , prs.prospect_name
   , prs.prospect_name_sort
