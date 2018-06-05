@@ -165,12 +165,13 @@ ksm_deg As (
     , office_code
     , assignment_id_number
     , entity.report_name
-    , Case When gos.former_staff Is Null Then 'Y' End
+    , Case When gos.id_number Is Not Null Then 'Y' End
       As curr_ksm_assignment
   From assignment
   Inner Join entity On entity.id_number = assignment.assignment_id_number
   Inner Join prospect_entity On prospect_entity.prospect_id = assignment.prospect_id
   Left Join table(ksm_pkg.tbl_frontline_ksm_staff) gos On gos.id_number = assignment.assignment_id_number
+    And gos.former_staff Is Null
   Where active_ind = 'Y' -- Active assignments only
     And assignment_type In ('PP', 'PM', 'AF') -- Program Manager (PP), Prospect Manager (PM), Annual Fund Officer (AF)
 )
