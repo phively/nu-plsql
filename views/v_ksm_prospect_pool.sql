@@ -165,9 +165,12 @@ ksm_deg As (
     , office_code
     , assignment_id_number
     , entity.report_name
+    , Case When gos.former_staff Is Null Then 'Y' End
+      As curr_ksm_assignment
   From assignment
   Inner Join entity On entity.id_number = assignment.assignment_id_number
   Inner Join prospect_entity On prospect_entity.prospect_id = assignment.prospect_id
+  Left Join table(ksm_pkg.tbl_frontline_ksm_staff) gos On gos.id_number = assignment.assignment_id_number
   Where active_ind = 'Y' -- Active assignments only
     And assignment_type In ('PP', 'PM', 'AF') -- Program Manager (PP), Prospect Manager (PM), Annual Fund Officer (AF)
 )
@@ -176,6 +179,7 @@ ksm_deg As (
     prospect_id
     , Listagg(report_name, ';  ') Within Group (Order By report_name) As managers
     , Listagg(assignment_id_number, ';  ') Within Group (Order By report_name) As manager_ids
+    , max(curr_ksm_assignment) As curr_ksm_manager
   From assign
   Group By prospect_id
 )
@@ -216,6 +220,7 @@ Select Distinct
   , contact_auth.report_name As contact_author
   , assign_conc.manager_ids
   , assign_conc.managers
+  , assign_conc.curr_ksm_manager
   -- Primary prospect for 150/300, or primary household member for everyone else
   , Case
       When ksm_150_300.primary_ind = 'Y' Then 'Y'
