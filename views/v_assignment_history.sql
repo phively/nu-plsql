@@ -6,8 +6,15 @@ Create Or Replace View v_assignment_history As
 
 Select
   assignment.prospect_id
-  , prospect_entity.id_number
-  , entity.report_name
+  -- Display entity depending on whether id_number is filled in
+  , Case
+      When assignment.id_number Is Not Null Then assignment.id_number
+      When prospect_entity.id_number Is Not Null Then prospect_entity.id_number
+    As id_number
+    , Case
+      When assignment.id_number Is Not Null Then entity.report_name
+      When prospect_entity.id_number Is Not Null Then pe_entity.report_name
+    As report_name
   , prospect_entity.primary_ind
   , assignment.assignment_id
   , assignment.assignment_type
@@ -53,11 +60,15 @@ Select
     End As assignment_active_calc
   , assignment.assignment_id_number
   , assignee.report_name As assignment_report_name
+  , assignment.committee_code
+  , committee_header.short_desc As committee_desc
   , assignment.xcomment As description
 From assignment
 Cross Join v_current_calendar cal
 Inner Join tms_assignment_type tms_at On tms_at.assignment_type = assignment.assignment_type
+Left Join entity On entity.id_number = assignment.id_number
 Left Join entity assignee On assignee.id_number = assignment.assignment_id_number
 Left Join prospect_entity On prospect_entity.prospect_id = assignment.prospect_id
-Left Join entity On entity.id_number = prospect_entity.id_number
+Left Join entity pe_entity On pe_entity.id_number = prospect_entity.id_number
 Left Join proposal On proposal.proposal_id = assignment.proposal_id
+Left Join committee_header On committee_header.committee_code = assignment.committee_code
