@@ -109,8 +109,6 @@ ksm_staff As (
     , ah.assignment_id_number
     , ah.prospect_id
     , 'Y' As assigned
-    , ah.assignment_type
-    , ah.assignment_type_desc
   From v_assignment_history ah
   Inner Join ksm_staff On ksm_staff.id_number = ah.assignment_id_number
   Inner Join prospect_entity On prospect_entity.prospect_id = ah.prospect_id
@@ -137,8 +135,6 @@ Select
   , prs.last_name As gift_officer
   , prs.staff_id As gift_officer_id
   , op.assigned
-  , op.assignment_type
-  , op.assignment_type_desc
   , vs.visits_last_365_days
   , vs.quals_last_365_days
   , vs.visits_this_py
