@@ -105,16 +105,20 @@ ksm_staff As (
 -- Own prospect pool
 , own_pool As (
   Select Distinct
-    last_name
-    , assignment_id_number
-    , assignment.prospect_id
+    ksm_staff.last_name
+    , ah.assignment_id_number
+    , ah.prospect_id
     , 'Y' As assigned
-  From assignment
-  Inner Join ksm_staff On ksm_staff.id_number = assignment.assignment_id_number
-  Inner Join prospect_entity On prospect_entity.prospect_id = assignment.prospect_id
-  Inner Join prospect On prospect.prospect_id = assignment.prospect_id
-  Where assignment.active_ind = 'Y' -- Active assignments only
-    And assignment_type In ('PP', 'PM', 'AF') -- Program Manager (PP), Prospect Manager (PM), Annual Fund Officer (AF)
+    , ah.assignment_type
+    , ah.assignment_type_desc
+  From v_assignment_history ah
+  Inner Join ksm_staff On ksm_staff.id_number = ah.assignment_id_number
+  Inner Join prospect_entity On prospect_entity.prospect_id = ah.prospect_id
+  Inner Join prospect On prospect.prospect_id = ah.prospect_id
+  Where ah.assignment_active_ind = 'Y' -- Active assignments only
+    And ah.assignment_type In
+      -- Program Manager (PP), Prospect Manager (PM), Annual Fund Officer (AF), Leadership Giving Officer (LG)
+      ('PP', 'PM', 'AF', 'LG')
     And prospect.active_ind = 'Y' -- Active prospects only
 )
 
@@ -133,6 +137,8 @@ Select
   , prs.last_name As gift_officer
   , prs.staff_id As gift_officer_id
   , op.assigned
+  , op.assignment_type
+  , op.assignment_type_desc
   , vs.visits_last_365_days
   , vs.quals_last_365_days
   , vs.visits_this_py

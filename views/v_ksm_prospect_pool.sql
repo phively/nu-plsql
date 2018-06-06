@@ -161,25 +161,25 @@ ksm_deg As (
 -- Prospect assignments
 , assign As (
   Select Distinct
-    assignment.prospect_id
-    , office_code
-    , assignment_id_number
-    , entity.report_name
+    ah.prospect_id
+    , ah.assignment_id_number
+    , ah.assignment_report_name
     , Case When gos.id_number Is Not Null Then 'Y' End
       As curr_ksm_assignment
-  From assignment
-  Inner Join entity On entity.id_number = assignment.assignment_id_number
-  Inner Join prospect_entity On prospect_entity.prospect_id = assignment.prospect_id
-  Left Join table(ksm_pkg.tbl_frontline_ksm_staff) gos On gos.id_number = assignment.assignment_id_number
+  From v_assignment_history ah
+  Left Join table(ksm_pkg.tbl_frontline_ksm_staff) gos On gos.id_number = ah.assignment_id_number
     And gos.former_staff Is Null
-  Where active_ind = 'Y' -- Active assignments only
-    And assignment_type In ('PP', 'PM', 'AF') -- Program Manager (PP), Prospect Manager (PM), Annual Fund Officer (AF)
+  Where ah.assignment_active_calc = 'Active' -- Active assignments only
+    And assignment_type In
+      -- Program Manager (PP), Prospect Manager (PM), Annual Fund Officer (AF), Leadership Giving Officer (LG)
+      ('PP', 'PM', 'AF', 'LG')
+    And ah.assignment_report_name Is Not Null -- Real managers only
 )
 , assign_conc As (
   Select
     prospect_id
-    , Listagg(report_name, ';  ') Within Group (Order By report_name) As managers
-    , Listagg(assignment_id_number, ';  ') Within Group (Order By report_name) As manager_ids
+    , Listagg(assignment_report_name, ';  ') Within Group (Order By assignment_report_name) As managers
+    , Listagg(assignment_id_number, ';  ') Within Group (Order By assignment_report_name) As manager_ids
     , max(curr_ksm_assignment) As curr_ksm_manager
   From assign
   Group By prospect_id

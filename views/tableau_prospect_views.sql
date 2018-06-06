@@ -224,7 +224,7 @@ geocode As (
 )
 
 /* Main query */
-Select
+Select Distinct
   prs.*
   -- Latitude/longitude
   , geocode.latitude
@@ -339,7 +339,7 @@ tasks As (
     , task_responsible_id
 )
 
-Select
+Select Distinct
   pool.*
   , mgo.gift_officer
   , mgo.assigned
