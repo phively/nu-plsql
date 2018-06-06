@@ -416,7 +416,9 @@ assignments As (
     , assignment_report_name As responsible_report_name
     , description
   From v_assignment_history
-  Where assignment_type In ('PP', 'PM', 'AF') -- Program Manager (PP), Prospect Manager (PM), Annual Fund Officer (AF)
+  Where assignment_type In
+    -- Program Manager (PP), Prospect Manager (PM), Annual Fund Officer (AF), Leadership Giving Officer (LG)
+    ('PP', 'PM', 'AF', 'LG')
 )
 
 -- University strategies

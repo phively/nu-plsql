@@ -4,18 +4,38 @@ NU historical assignments, including inactive
 
 Create Or Replace View v_assignment_history As
 
+With
+
+-- Active prospects from prospect_entity
+active_pe As (
+  Select
+    pre.id_number
+    , pre.prospect_id
+    , pre.primary_ind
+  From prospect_entity pre
+  Inner Join prospect p On p.prospect_id = pre.prospect_id
+  Where p.active_ind = 'Y'
+)
+
 Select
-  assignment.prospect_id
+    -- Display prospect depending on whether prospect_id is filled in
+    Case
+      When trim(assignment.prospect_id) Is Not Null Then assignment.prospect_id
+      When trim(active_pe.prospect_id) Is Not Null Then active_pe.prospect_id
+    End As prospect_id
   -- Display entity depending on whether id_number is filled in
   , Case
-      When assignment.id_number Is Not Null Then assignment.id_number
+      When trim(assignment.id_number) Is Not Null Then assignment.id_number
       When prospect_entity.id_number Is Not Null Then prospect_entity.id_number
-    As id_number
-    , Case
-      When assignment.id_number Is Not Null Then entity.report_name
+    End As id_number
+  , Case
+      When trim(assignment.id_number) Is Not Null Then entity.report_name
       When prospect_entity.id_number Is Not Null Then pe_entity.report_name
-    As report_name
-  , prospect_entity.primary_ind
+    End As report_name
+  , Case
+      When trim(assignment.prospect_id) Is Not Null Then prospect_entity.primary_ind
+      When trim(active_pe.prospect_id) Is Not Null Then active_pe.primary_ind
+    End As primary_ind
   , assignment.assignment_id
   , assignment.assignment_type
   , assignment.proposal_id
@@ -69,6 +89,7 @@ Inner Join tms_assignment_type tms_at On tms_at.assignment_type = assignment.ass
 Left Join entity On entity.id_number = assignment.id_number
 Left Join entity assignee On assignee.id_number = assignment.assignment_id_number
 Left Join prospect_entity On prospect_entity.prospect_id = assignment.prospect_id
+Left Join active_pe On active_pe.id_number = assignment.id_number
 Left Join entity pe_entity On pe_entity.id_number = prospect_entity.id_number
 Left Join proposal On proposal.proposal_id = assignment.proposal_id
 Left Join committee_header On committee_header.committee_code = assignment.committee_code
