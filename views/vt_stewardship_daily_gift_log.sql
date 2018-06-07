@@ -173,6 +173,11 @@ dts As (
         When gft.tx_gypm_ind = 'P' Then ppldg.prim_pledge_comment
         Else ppldgpay.prim_pledge_comment
       End As pledge_comment
+    -- Pledge payment schedule
+    , Case
+        When gft.tx_gypm_ind = 'P' Then ppldg.prim_pledge_payment_freq
+        Else ppldgpay.prim_pledge_payment_freq
+      End As pledge_payment_freq_code
   -- Tables
   From nu_gft_trp_gifttrans gft
   Cross Join dts -- Date ranges; 1 row only so cross join has no performance impact
@@ -318,6 +323,8 @@ Select Distinct
   , tms_trans.transaction_type
   , gft.pmt_on_pledge_number
   , trans.pledge_comment
+  , trans.pledge_payment_freq_code As pledge_payment_schedule_code
+  , tms_plg_sch.short_desc As pledge_payment_schedule
   , gft.date_of_record
   , Case When trunc(gft.date_of_record) = trunc(first_gift.first_ksm_gift_dt) Then 'Y' End As first_gift
   , gft.processed_date
@@ -387,6 +394,7 @@ Left Join pledge On pledge.pledge_pledge_number = gft.tx_number
 -- Other gift attributes
 Left Join first_gift On first_gift.id_number = gft.id_number
 Left Join ksm_cu cu On gft.allocation_code = cu.allocation_code
+Left Join tms_payment_frequency tms_plg_sch On tms_plg_sch.payment_frequency_code = trans.pledge_payment_freq_code
 -- Degree info
 Left Join tms_school On tms_school.school_code = entity.pref_school_code
 Left Join ksm_deg On ksm_deg.id_number = gft.id_number
