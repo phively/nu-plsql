@@ -178,6 +178,7 @@ Select Distinct
   , asst.proposal_assist
   , assn.historical_managers
   , proposal.proposal_status_code
+  , tms_pst.short_desc As probability
   , tms_ps.hierarchy_order
   , Case
       When proposal.proposal_status_code = 'B' Then 'Submitted' -- Letter of Inquiry Submitted
@@ -265,6 +266,7 @@ Inner Join tms_proposal_status tms_ps On tms_ps.proposal_status_code = proposal.
 -- KSM proposals
 Left Join ksm_purp On ksm_purp.proposal_id = proposal.proposal_id
 Left Join ksm_amts On ksm_amts.proposal_id = proposal.proposal_id
+Left Join tms_proposal_submit_type tms_pst On tms_pst.proposal_submit_type_code = proposal.submit_type
 -- Proposal info
 Left Join other_purp On other_purp.proposal_id = proposal.proposal_id
 Left Join assn On assn.proposal_id = proposal.proposal_id
@@ -298,6 +300,7 @@ Select
   , proposal_manager
   , proposal_assist
   , proposal_status_code
+  , probability
   , historical_managers
   , hierarchy_order
   , proposal_status
