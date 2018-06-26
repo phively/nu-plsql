@@ -630,6 +630,7 @@ Cursor ct_alloc_annual_fund_ksm Is
       , '3303001899301GFT' -- KSM Gift-In-Kind
       , '3203000859901GFT' -- Center for Nonprofit Management
       , '3203004959801GFT' -- Collaboration Plaza fund (MS -- building support)
+      , '3203004993001GFT' -- GIM Trip Scholarships (general)
       /************ UPDATE ABOVE HERE ************/
     )
   ;
