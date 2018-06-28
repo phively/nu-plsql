@@ -1394,7 +1394,7 @@ Cursor c_university_strategy Is
       , uos.strategy_sched_date
   )
   -- Main query; uses nu_prs_trp_prospect fields if available
-  Select
+  Select Distinct
     uos.prospect_id
     , Case
         When prs.strategy_description Is Not Null Then prs.strategy_description
