@@ -107,7 +107,6 @@ bi_entity As (
     , law_prog_flag
     , library_prog_flag
     , mccormick_prog_flag
-    , mccormick_prog_flag As mc
     , medill_prog_flag
     , nmh_prog_flag
     , scs_prog_flag
@@ -158,7 +157,8 @@ bi_entity As (
     , matching_gift_credit_amount + pledge_credit_disc_amount +
         Case When transaction_group_code = 'G' Then gift_credit_amount Else 0 End
       As ncg
-    , year_of_giving yr
+    , alloc.alloc_short_name
+    , p.pledge_status_code
   From dm_ard.fact_giving_trans@catrackstobi gv
   Left Join dm_ard.dim_date@catrackstobi dt
     On dt.day_date_key = date_of_record_key
@@ -168,6 +168,8 @@ bi_entity As (
     On alloc.allocation_sid = gv.allocation_sid
     And alloc.deleted_flag = 'N'
     And alloc.current_indicator = 'Y'
+  Left Join dm_ard.dim_primary_pledge@catrackstobi p
+    On trans_id_number = p.pledge_number
   Inner Join entity e
     On e.id_number = gv.entity_id_number
     And e.record_status_code = 'A'
@@ -180,46 +182,17 @@ bi_entity As (
 -- (can include either an outright gift or a pledge, but the pledge must be paid in full) 
 , bi_gift_transactions_single As (
   Select Distinct id_number
-  From (
--- PBH: This is 95% duplicated by the above bi_gift_transactions code
-    Select
-      entity_id_number As id_number
-      , gift_credit_amount
-      , trans_id_number
-      , to_date(day_mm_s_dd_s_yyyy_date, 'mm/dd/yyyy') As date_of_record
-      , year_of_giving
-      , trans.transaction_sub_group_code
-      , annual_sw
-      , matching_gift_credit_amount + pledge_credit_disc_amount +
-          Case When transaction_group_code = 'G' Then gift_credit_amount Else 0 End
-        As ncg
-      , year_of_giving yr
-      , alloc.alloc_short_name
-      , p.pledge_status_code
-    From dm_ard.fact_giving_trans@catrackstobi gv
-    Left Join dm_ard.dim_date@catrackstobi dt
-      On dt.day_date_key = date_of_record_key
-    Left Join dm_ard.dim_transaction_group@catrackstobi trans
-      On trans.transaction_group_sid = gv.transaction_group_sid
-    Left Join dm_ard.dim_allocation@catrackstobi alloc
-      On alloc.allocation_sid = gv.ALLOCATION_SID
-      And alloc.deleted_flag = 'N'
-      And alloc.current_indicator = 'Y'
-    Left Join dm_ard.dim_primary_pledge@catrackstobi p
-      On trans_id_number = p.pledge_number
-    Inner Join entity e
-      On e.id_number = gv.entity_id_number
-      And e.record_status_code In ('A')
-    Where transaction_sub_group_code In ('GC', 'PC') -- outright gifts & pledges
-  )
-  Where
-    (
-      NCG > 250000
-      And transaction_sub_group_code = 'GC'
-    ) Or (
-      NCG > 250000
-      And transaction_sub_group_code = 'PC'
-      And pledge_status_code = 'P'
+  From bi_gift_transactions
+  Where transaction_sub_group_code In ('GC', 'PC') -- outright gifts & pledges
+    And (
+      (
+        NCG > 250000
+        And transaction_sub_group_code = 'GC'
+      ) Or (
+        NCG > 250000
+        And transaction_sub_group_code = 'PC'
+        And pledge_status_code = 'P'
+      )
     )
 )
 
@@ -227,7 +200,7 @@ bi_entity As (
 , distinct_years As (
   Select
     id_number
-    , count(Distinct yr) As ct
+    , count(Distinct year_of_giving) As ct
   From bi_gift_transactions
   Group By id_number
 )
@@ -248,8 +221,8 @@ bi_entity As (
 , annual_25k As (
   Select entity_key
   From dm_ard.fact_donor_summary@catrackstobi
-  Where annual_fund_flag= 'Y'
-    And reporting_area= 'NA'
+  Where annual_fund_flag = 'Y'
+    And reporting_area = 'NA'
     And (
       max_fyear_giftcredit >= 25000
       Or max_fyear_pledgecredit >= 25000
@@ -301,50 +274,30 @@ group by id_number
     , active_pledge_balance
   From dm_ard.fact_donor_summary@catrackstobi
   Where annual_fund_flag = 'N'
-    And REPORTING_AREA = 'NA'
+    And reporting_area = 'NA'
 )
 
--- NU row-wise degrees
-, NU_degrees As (
+-- NU degrees concatenated
+, all_NU_degrees As (
   Select
     id_number
-    -- tms_school.short_desc || ' (' || degree_year || ')'
-    , tms_school.short_desc As degree_school
-    , degree_year
-    , degree_code
---    , tm.short_desc major_code1
---    , tm2.short_desc major_code2
+  --  , listagg(degree_school || ' , ' || major_code1 || ' , ' || degree_code || ' , ' || degree_year ,  ' ; ' )
+  --      Within Group (Order By NU_degrees.id_number)
+  --      As schoolslist
+    , listagg(tms_school.short_desc || ' , ' || degree_code || ', ' || degree_year ,  ' ; ' )
+        Within Group (Order By id_number)
+        As schoolslist
   From degrees
   Left Join tms_school
     On tms_school.school_code = degrees.school_code
-  Left Join tms_majors tm
-    On tm.major_code = degrees.major_code1
-  Left Join tms_majors tm2
-    On tm2.major_code = degrees.major_code2
   Where degrees.degree_year != ' '
     And (
       -- NU grads code
       degrees.institution_code = '31173'
       Or local_ind = 'Y'
     )
-)
-
--- PBH: consider doing the concatenation directly and skipping NU_degrees
--- NU degrees concatenated
-, all_NU_degrees As (
-  Select
-  id_number
---  , listagg(degree_school || ' , ' || major_code1 || ' , ' || degree_code || ' , ' || degree_year ,  ' ; ' )
---      Within Group (Order By NU_degrees.id_number)
---      As schoolslist
-  , listagg(degree_school || ' , ' || degree_code || ', ' || degree_year ,  ' ; ' )
-      Within Group (Order By NU_degrees.id_number)
-      As schoolslist
-  From NU_degrees
   Group By id_number
 )
-
--- PBH: consider combining all contact report data into one subquery
 
 -- Entity contact reports
 , contact_reports As (
@@ -378,62 +331,28 @@ Union All
   Where contact_report.id_number_2 <> ' '
 )
 
--- Most recent contact report
-, lastContactReport As (
+-- Contact report summary info
+, contact_summary As (
   Select
     id_number
+    -- Most recent contact report
     , max(contact_date) As last_contact_date
+    -- Most recent visit
+    , max(Case When contact_type = 'V' Then contact_date End) As last_visit_date
+    -- Count of all contact reports
+    , count(id_number) As contact_rpt_count
+    -- Count of all visits
+    , count(Case When contact_type = 'V' Then id_number End) As visit_count
+    -- Count of last year's contact reports
+    , count(Case When contact_date >= sysdate - 365 Then id_number End)
+      As contact_rpt_count_last_yr
+    -- Count of last year's visits
+    , count(Case When contact_date >= sysdate - 365 And contact_type = 'V' Then id_number End)
+      As visit_count_last_yr
+    -- President visits
+    , count(Case When author_id_number = '0000573302' And contact_type = 'V' Then id_number End)
+      As mos_visit
   From contact_reports
-  Group By id_number
-)
-
--- Most recent visit
-, lastContactReportV As (
-  Select
-    id_number
-    , max(contact_date) As last_contact_date
-  From contact_reports
-  Where contact_type = 'V'
-  Group By id_number
-)
-
--- Count of all contact reports
-, contactRptCount As (
-  Select
-    id_number
-    , count(*) As id_count
-  From contact_reports
-  Group By id_number
-)
-
--- Count of all visits
-, contactRptCountV As (
-  Select
-    id_number
-    , count(*) As id_count
-  From contact_reports
-  Where contact_type = 'V'
-  Group By id_number
-)
-
--- Count of last year's contact reports
-, contactRptCtLastYr As (
-  Select
-    id_number
-    , count(*) As id_count
-  From contact_reports
-  Where contact_date >= sysdate - 365
-  Group By id_number
-)
-
--- Count of last year's visits
-, contactRptCtLastYrV As (
-  Select
-    id_number
-    , count(*) As id_count
-  From contact_reports
-  Where contact_date >= sysdate - 365
-    And contact_type = 'V'
   Group By id_number
 )
 
@@ -453,17 +372,6 @@ Union All
     , row_number() Over (Partition By id_number, contact_type Order By contact_date Desc)
       As rownumber3
   From contact_reports
-)
-
--- President visits
-, MOS_visit As (
-  Select
-    id_number
-    , count(*) As visit_ct
-  From contact_reports
-  Where author_id_number = '0000573302'
-  And contact_type = 'V'
-  Group By id_number
 )
 
 -- Parent affiliation
@@ -568,15 +476,15 @@ Select
     As Age
   , Case When c_v_prmgr.contact_date > sysdate - (2 * 365) Then 1 Else 0 End
     As "PM Visit Last 2Yrs"
-  , Case When contactRptCountV.id_count > = 5 Then 1 Else 0 End
+  , Case When contact_summary.visit_count >= 5 Then 1 Else 0 End
     As "5 + Visits C Rpts"
   , Case When annual_25k.entity_key Is Not NULL Then 1 Else 0 End
     As "25K To Annual"
-  , Case When (dy.ct >= 10 And dy3.ct >=1) Then 1 Else 0 End
+  , Case When (dy.ct >= 10 And dy3.ct >= 1) Then 1 Else 0 End
     As "10+ Dist Yrs 1 Gft in Last 3"
   , Case When bi_gift_transactions_single.id_number Is Not NULL Then 1 Else 0 End
     As "MG $250000 or more"
-  , Case When MOS_visit.visit_ct >0 Then 1 Else 0 End
+  , Case When contact_summary.mos_visit > 0 Then 1 Else 0 End
     As "Morty Visit"
   , Case When committees.id_number Is Not NULL Then 1 Else 0 End
     As "Trustee or Advisory BD"
@@ -612,10 +520,8 @@ Left Join annual_25k -- added 2/22/2018
 --left outer join annual_fund_sum on annual_fund_sum.id_number = be.id_number  removed 2/22/2018
 Left Join distinct_years dy
   On dy.id_number = be.id_number
-Left Join contactRptCountV
-  On be.id_number = contactRptCountV.id_number
-Left Join MOS_visit
-  On MOS_visit.id_number = be.id_number
+Left Join contact_summary
+  On be.id_number = contact_summary.id_number
 Left Join committees
   On committees.id_number = be.id_number
 Left Join parents p2
