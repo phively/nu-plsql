@@ -71,15 +71,6 @@ bi_entity As (
     And address.addr_pref_ind = 'Y'
 )
 
--- PBH: this can be rolled up into bi_entity
--- To flag records where both household members are alumni
-, double_alum_HH As (
-  Select id_number
-  From bi_entity 
-  Where primary_record_type_desc = 'Alumnus/Alumna'
-    And sp_record_type = 'Alumnus/Alumna'
-)
-
 -- Prospect tables from @catrackstobi
 , bi_prospects As (
   Select
@@ -247,8 +238,8 @@ bi_entity As (
     id_number
     , count(Distinct year_of_giving) As ct
   From bi_gift_transactions
--- PBH: consider automating the below condition
-  Where year_of_giving In ('2018' , '2017', '2016') --removed 2015 on 2/22/2018
+  Where year_of_giving Between -- Must be between (this year - n) and (this year)
+    extract(year From sysdate) - 2 And extract(year From sysdate) 
   Group By id_number
 )
 
@@ -487,28 +478,22 @@ Union All
 
 -- Committee participation
 , committees As (
--- PBH: Unnecessary nested queries, as union already dedupes
-  Select Distinct id_number
-  From (
-    Select Distinct id_number
-    From committee
-    Where committee.committee_status_code In ('C', 'F') -- Current or Former
-      And committee.committee_code In (
-        Select committee_code
-        From committee_header
-        Where committee_type_code In ('TB', 'AB') -- Trustee Board, Advisory Board
-        And status_code = 'A'
-      )
-    Union 
-      Select id_number
-      From affiliation
-      Where affiliation.affil_code = 'TR' -- Trustee
-      And affiliation.affil_status_code In ('C', 'P') -- Current or Past
-    )
+  Select id_number
+  From committee
+  Inner Join committee_header
+    On committee_header.committee_code = committee.committee_code
+    And committee_header.committee_type_code In ('TB', 'AB') -- Trustee Board, Advisory Board
+    And committee_header.status_code = 'A'
+  Where committee.committee_status_code In ('C', 'F') -- Current or Former
+Union
+  Select id_number
+  From affiliation
+  Where affiliation.affil_code = 'TR' -- Trustee
+  And affiliation.affil_status_code In ('C', 'P') -- Current or Past
 )
 
 -- Season ticket holders
--- updated season tickets locgic 2/22/2018. Now looks for people who have 3+ years of season tickets
+-- updated season tickets logic 2/22/2018. Now looks for people who have 3+ years of season tickets
 , seasontickets As (
   Select Distinct id_number
   From activity
@@ -604,8 +589,7 @@ Select
   , Case When st.id_number Is Not NULL Then 1 Else 0 End
     As "3 Year Season-Ticket Holder"
   , Case When chi_t1_home.id_number Is Not NULL Then 1 Else 0 End
--- PBH: typo
-    As chiacgo_home
+    As chicago_home
   , p.prospect_manager_name As "Prospect Manager"
   , af.affinity_score As "Affinity Score"
   , gl.campaign_newgift_cmit_credit
@@ -632,8 +616,6 @@ Left Join contactRptCountV
   On be.id_number = contactRptCountV.id_number
 Left Join MOS_visit
   On MOS_visit.id_number = be.id_number
-Left Join double_alum_HH
-  On double_alum_HH.id_number = be.id_number
 Left Join committees
   On committees.id_number = be.id_number
 Left Join parents p2
