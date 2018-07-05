@@ -1,224 +1,270 @@
 -- Based on "principal gifts checklist _20180316.sql"
 
-create or replace view Pg_Cultivation as
-/* Officer Rated Prospects */ 
+--Create Or Replace View v_pg_checklist As
 
-WITH bi_entity as (
-select
-a.ID_NUMBER
-,a.PRIMARY_RECORD_TYPE_DESC
-,b.PRIMARY_RECORD_TYPE_DESC sp_record_type
-,a.BIRTH_DT
+/* N.B. this view uses @catrackstobi connector -- DO NOT RUN OUTSIDE OF BUSINESS HOURS! */
 
-  ,case when a.RECORD_STATUS_CODE = 'D' 
-    then null else floor(months_between(sysdate,
-       case when a.BIRTH_DATE_AGE_BASIS = a.BIRTH_DT
-          and a.BIRTH_DT <>'00000000' then to_date(a.BIRTH_DT,'YYYYMMDD') else null end) / 12) end as AGE 
+With
 
-,a.PREF_CLASS_YEAR
-,a.EMAIL_ADDRESS
-,a.PHONE_AREA_CODE
-,a.PHONE_NUMBER
-,a.GIVING_AFFILIATION_DESC
-,a.PREF_MAIL_NAME
-,a.PREF_NAME_SORT
-,a.PERSON_OR_ORG
-,a.spouse_id_number
-
-from dm_ard.dim_entity@catrackstobi a
-left outer join dm_ard.dim_entity@catrackstobi b on (a.spouse_id_number = b.id_number) 
-               and b.CURRENT_INDICATOR = 'Y' and b.deleted_flag = 'N'
-where a.CURRENT_INDICATOR = 'Y' and a.deleted_flag = 'N'
-and a.person_or_org='P' -- added 2/22/2018
-and a.ID_NUMBER NOT IN ('0' , ' ', '-1')
+-- Entity tables from @catrackstobi
+bi_entity As (
+  Select
+    de.id_number
+    , de.primary_record_type_desc
+    , de2.primary_record_type_desc sp_record_type
+    , de.birth_dt
+    , Case
+        -- Age not computed for deceased
+        When de.record_status_code = 'D' 
+          Then NULL
+        Else floor(
+          -- If date of birth is entered, find months between DOB and now
+          -- If no DOB, age is NULL
+          months_between(
+            sysdate
+            , Case
+                When de.birth_date_age_basis = de.birth_dt And de.birth_dt <> '00000000'
+                  Then to_date(de.birth_dt, 'YYYYMMDD')
+                Else NULL
+              End) / 12
+          )
+      End As age 
+    , de.pref_class_year
+    , de.email_address
+    , de.phone_area_code
+    , de.phone_number
+    , de.giving_affiliation_desc
+    , de.pref_mail_name
+    , de.pref_name_sort
+    , de.person_or_org
+    , de.spouse_id_number
+  From dm_ard.dim_entity@catrackstobi de
+  Left Join dm_ard.dim_entity@catrackstobi de2
+    On de.spouse_id_number = de2.id_number
+    And de2.current_indicator = 'Y'
+    And de2.deleted_flag = 'N'
+  Where de.current_indicator = 'Y' 
+    And de.deleted_flag = 'N'
+    And de.person_or_org = 'P' -- added 2/22/2018
+    And de.id_number Not In ('0' , ' ', '-1')
 )
 
-,addresses as (
-
-
-
-    SELECT address.ID_NUMBER,
-         case when  address.country_code IN (' ', 'US') then   tms_states.short_desc else  tc.short_desc end as category
-      
-  FROM address
-    INNER JOIN entity e on (e.id_number = address.id_number) and e.record_status_code = 'A'
-    LEFT OUTER JOIN tms_states on tms_states.state_code = address.state_code
-   LEFT OUTER JOIN tms_country tc on tc.country_code = address.country_code
-
-   WHERE address.addr_status_code = 'A'
-   and address.addr_pref_ind = 'Y'
+-- Per-entity preferred address region
+, addresses As (
+  Select
+    address.id_number
+    , Case
+        -- USA is usually blank country code
+        When address.country_code In (' ', 'US')
+          Then tms_states.short_desc
+        Else  tc.short_desc
+      End As category  
+  From address
+  Inner Join entity e
+    On e.id_number = address.id_number
+    And e.record_status_code = 'A'
+  Left Join tms_states
+    On tms_states.state_code = address.state_code
+  Left Join tms_country tc
+    On tc.country_code = address.country_code
+  Where address.addr_status_code = 'A'
+    And address.addr_pref_ind = 'Y'
 )
 
-
-
-, double_alum_HH as (
-
-select id_number from bi_entity 
-where primary_record_type_desc = 'Alumnus/Alumna'
-and sp_record_type = 'Alumnus/Alumna'
-
+-- PBH: this can be rolled up into bi_entity
+-- To flag records where both household members are alumni
+, double_alum_HH As (
+  Select id_number
+  From bi_entity 
+  Where primary_record_type_desc = 'Alumnus/Alumna'
+    And sp_record_type = 'Alumnus/Alumna'
 )
 
-
-
-
-,bi_prospects as (
-          select coalesce(
-          case when to_char(dp.prospect_id) = '0' then ' ' 
-        --- else to_char(prospect_id) end ,' ')  prospect_id
-             else to_char(dp.prospect_id) end ,' ')  prospect_id
-             ,PROSPECT_NAME, PROSPECT_TEAM_DESC, RATING_DESC, RESEARCH_EVALUATION_DESC, QUALIFICATION_DESC
-             ,LAST_CONTACT_REPORT_DATE, LAST_VISIT_DATE, VISIT_COUNT
-             ,LAST_PLEDGE_DATE, LAST_PLEDGE_PAYMENT_DATE, PROSPECT_MANAGER_NAME, PROSPECT_MANAGER_ID_NUMBER, PROSPECT_MANAGED_FLAG, 
-             ACTIVE_IND
-             	,coalesce(RATING_DESC,' ') as UOR_RATING 
-             ,ATHLETICS_PROG_FLAG
-             ,BIENEN_PROG_FLAG,BLOCK_PROG_FLAG,CENTER_INST_PROG_FLAG,COMMUNICATION_PROG_FLAG ,FEINBERG_PROG_FLAG,KELLOGG_PROG_FLAG,LAW_PROG_FLAG,LIBRARY_PROG_FLAG,MCCORMICK_PROG_FLAG
-             ,MCCORMICK_PROG_FLAG as MC
-             ,MEDILL_PROG_FLAG ,NMH_PROG_FLAG,SCS_PROG_FLAG ,SESP_PROG_FLAG,STU_LIFE_PROG_FLAG ,TBD_PROG_FLAG,TGS_PROG_FLAG,UNIV_UNRS_PROG_FLAG,WEINBERG_PROG_FLAG
-    
-from
-            DM_ARD.DIM_PROSPECT@CATRACKSTOBI dp
-            join prospect_entity --added this and below lines on 2/24/2018
-            on prospect_entity.prospect_id=dp.Prospect_id@CATRACKSTOBI
-            join entity
-            on entity.id_number=prospect_entity.id_number
-           where deleted_flag = 'N'
-           and current_indicator = 'Y'
-           and active_ind = 'Y'   --this was previously commented out. changed 2/24/2018. Did not impact count 
-          and dp.prospect_id > 0  
-          and entity.person_or_org='P' 
-          and prospect_entity.primary_ind='Y'   
+-- Prospect tables from @catrackstobi
+, bi_prospects As (
+  Select
+    coalesce( -- Replace prospect ID = 0 with blank
+      Case
+        When to_char(dp.prospect_id) = '0'
+          Then ' ' 
+        Else to_char(dp.prospect_id)
+      End
+      , ' '
+      ) As prospect_id
+    , prospect_name
+    , prospect_team_desc
+    , rating_desc
+    , research_evaluation_desc
+    , qualification_desc
+    , last_contact_report_date
+    , last_visit_date
+    , visit_count
+    , last_pledge_date
+    , last_pledge_payment_date
+    , prospect_manager_name
+    , prospect_manager_id_number
+    , prospect_managed_flag
+    , active_ind
+    , coalesce(rating_desc, ' ') As uor_rating 
+    , athletics_prog_flag
+    , bienen_prog_flag
+    , block_prog_flag
+    , center_inst_prog_flag
+    , communication_prog_flag
+    , feinberg_prog_flag
+    , kellogg_prog_flag
+    , law_prog_flag
+    , library_prog_flag
+    , mccormick_prog_flag
+    , mccormick_prog_flag As mc
+    , medill_prog_flag
+    , nmh_prog_flag
+    , scs_prog_flag
+    , sesp_prog_flag
+    , stu_life_prog_flag
+    , tbd_prog_flag
+    , tgs_prog_flag
+    , univ_unrs_prog_flag
+    , weinberg_prog_flag  
+  From dm_ard.dim_prospect@catrackstobi dp
+  Inner Join prospect_entity -- added this and below lines on 2/24/2018
+    On prospect_entity.prospect_id = dp.prospect_id@catrackstobi
+  Inner Join entity
+    On entity.id_number = prospect_entity.id_number
+  Where dp.deleted_flag = 'N'
+    And dp.current_indicator = 'Y'
+    And dp.active_ind = 'Y' -- this was previously commented out. changed 2/24/2018. Did not impact count 
+    And dp.prospect_id > 0
+    And entity.person_or_org = 'P'
+    And prospect_entity.primary_ind = 'Y'
 )
 
-
-,active_proposals as (
-
-select unique
-prospect_id
-from proposal p
-where p.active_ind = 'Y'
-
-
+-- To flag prospects with at least one active proposal
+, active_proposals As (
+  Select Distinct prospect_id
+  From proposal p
+  Where p.active_ind = 'Y'
 )
 
-,active_proposals1m as (
-
-select unique
-prospect_id
-from proposal p
-where p.active_ind = 'Y'
-and p.ask_amt > 1000000 --changed from $2m to $1m 2/22/2018
-
+-- To flag prospects with active high ask proposals
+, active_proposals1m As (
+  Select Distinct prospect_id
+  From proposal p
+  Where p.active_ind = 'Y'
+    And p.ask_amt > 1000000 --changed from $2m to $1m 2/22/2018
 )
 
---- giving data
-
-,bi_gift_transactions as (
-
-SELECT
-    entity_id_number as id_number,
-    gift_credit_amount
-    ,trans_id_number
-    ,to_date( (DAY_MM_S_DD_S_YYYY_DATE ) , 'mm/dd/yyyy' ) as date_of_record
-    ,year_of_giving
-    ,trans.TRANSACTION_SUB_GROUP_CODE
-    ,annual_sw
-    ,MATCHING_GIFT_CREDIT_AMOUNT + PLEDGE_CREDIT_DISC_AMOUNT + case when TRANSACTION_GROUP_CODE = 'G' then GIFT_CREDIT_AMOUNT else 0 end as NCG
-    ,year_of_giving yr
-FROM
-    DM_ARD.FACT_GIVING_TRANS@catrackstobi gv
-LEFT OUTER JOIN DM_ARD.DIM_DATE@catrackstobi dt on dt.day_date_key = date_of_record_key
-LEFT OUTER JOIN DM_ARD.DIM_Transaction_group@catrackstobi trans on trans.TRANSACTION_GROUP_SID = gv.TRANSACTION_GROUP_SID
-LEFT OUTER JOIN dm_ard.dim_allocation@catrackstobi alloc on (alloc.allocation_sid = gv.ALLOCATION_SID)
- and  alloc.DELETED_FLAG='N' and alloc.CURRENT_INDICATOR='Y'
-INNER JOIN entity e
-      on (e.id_number = gv.entity_id_number) and e.record_status_code IN ('A')
-where TRANSACTION_SUB_GROUP_CODE IN ('GC', 'YC', 'PC', 'MC')
-
-
+-- Giving data from @catrackstobi
+, bi_gift_transactions As (
+  Select
+    entity_id_number As id_number
+    , gift_credit_amount
+    , trans_id_number
+    , to_date(day_mm_s_dd_s_yyyy_date, 'mm/dd/yyyy') As date_of_record
+    , year_of_giving
+    , trans.transaction_sub_group_code
+    , annual_sw
+    , matching_gift_credit_amount + pledge_credit_disc_amount +
+        Case When transaction_group_code = 'G' Then gift_credit_amount Else 0 End
+      As ncg
+    , year_of_giving yr
+  From dm_ard.fact_giving_trans@catrackstobi gv
+  Left Join dm_ard.dim_date@catrackstobi dt
+    On dt.day_date_key = date_of_record_key
+  Left Join dm_ard.dim_transaction_group@catrackstobi trans
+    On trans.transaction_group_sid = gv.transaction_group_sid
+  Left Join dm_ard.dim_allocation@catrackstobi alloc
+    On alloc.allocation_sid = gv.allocation_sid
+    And alloc.deleted_flag = 'N'
+    And alloc.current_indicator = 'Y'
+  Inner Join entity e
+    On e.id_number = gv.entity_id_number
+    And e.record_status_code = 'A'
+  Where transaction_sub_group_code In ('GC', 'YC', 'PC', 'MC') -- Gift, Pledge Payment, Pledge, Matching Gift
 )
 
-, bi_gift_transactions_single as (
+-- PBH: Consider whether the rest of the giving subqueries can be rolled into bi_gift_transactions
 
----Completed major gift of $250K or more 
----(can include either an outright gift or a pledge, but the pledge must be paid in full) 
-
-
-select unique ID_NUMBER from (
-SELECT
-    entity_id_number as id_number,
-    gift_credit_amount
-    ,trans_id_number
-    ,to_date( (DAY_MM_S_DD_S_YYYY_DATE ) , 'mm/dd/yyyy' ) as date_of_record
-    ,year_of_giving
-    ,trans.TRANSACTION_SUB_GROUP_CODE
-    ,annual_sw
-    ,MATCHING_GIFT_CREDIT_AMOUNT + PLEDGE_CREDIT_DISC_AMOUNT + case when TRANSACTION_GROUP_CODE = 'G' then GIFT_CREDIT_AMOUNT else 0 end as NCG
-    ,year_of_giving yr
-    ,alloc.alloc_short_name
-    ,p.pledge_status_code
-   
-FROM
-    DM_ARD.FACT_GIVING_TRANS@catrackstobi gv
-LEFT OUTER JOIN DM_ARD.DIM_DATE@catrackstobi dt on dt.day_date_key = date_of_record_key
-LEFT OUTER JOIN DM_ARD.DIM_Transaction_group@catrackstobi trans on trans.TRANSACTION_GROUP_SID = gv.TRANSACTION_GROUP_SID
-LEFT OUTER JOIN dm_ard.dim_allocation@catrackstobi alloc on (alloc.allocation_sid = gv.ALLOCATION_SID)
- and  alloc.DELETED_FLAG='N' and alloc.CURRENT_INDICATOR='Y'
-left outer join dm_ard.dim_primary_pledge@catrackstobi p on trans_id_number = p.pledge_number
-
-INNER JOIN entity e
-      on (e.id_number = gv.entity_id_number) and e.record_status_code IN ('A')
-where TRANSACTION_SUB_GROUP_CODE IN ('GC', 'PC') --- outright gifts & pledges
-) where (NCG > 250000
-and transaction_sub_group_code = 'GC')
-
-or (NCG > 250000
-and transaction_sub_group_code = 'PC'
-and pledge_status_code = 'P')
-
-
-
-
-
-
-
-
+-- Completed major gift of $250K or more 
+-- (can include either an outright gift or a pledge, but the pledge must be paid in full) 
+, bi_gift_transactions_single As (
+  Select Distinct id_number
+  From (
+-- PBH: This is 95% duplicated by the above bi_gift_transactions code
+    Select
+      entity_id_number As id_number
+      , gift_credit_amount
+      , trans_id_number
+      , to_date(day_mm_s_dd_s_yyyy_date, 'mm/dd/yyyy') As date_of_record
+      , year_of_giving
+      , trans.transaction_sub_group_code
+      , annual_sw
+      , matching_gift_credit_amount + pledge_credit_disc_amount +
+          Case When transaction_group_code = 'G' Then gift_credit_amount Else 0 End
+        As ncg
+      , year_of_giving yr
+      , alloc.alloc_short_name
+      , p.pledge_status_code
+    From dm_ard.fact_giving_trans@catrackstobi gv
+    Left Join dm_ard.dim_date@catrackstobi dt
+      On dt.day_date_key = date_of_record_key
+    Left Join dm_ard.dim_transaction_group@catrackstobi trans
+      On trans.transaction_group_sid = gv.transaction_group_sid
+    Left Join dm_ard.dim_allocation@catrackstobi alloc
+      On alloc.allocation_sid = gv.ALLOCATION_SID
+      And alloc.deleted_flag = 'N'
+      And alloc.current_indicator = 'Y'
+    Left Join dm_ard.dim_primary_pledge@catrackstobi p
+      On trans_id_number = p.pledge_number
+    Inner Join entity e
+      On e.id_number = gv.entity_id_number
+      And e.record_status_code In ('A')
+    Where transaction_sub_group_code In ('GC', 'PC') -- outright gifts & pledges
+  )
+  Where
+    (
+      NCG > 250000
+      And transaction_sub_group_code = 'GC'
+    ) Or (
+      NCG > 250000
+      And transaction_sub_group_code = 'PC'
+      And pledge_status_code = 'P'
+    )
 )
 
-
-
-,distinct_years as (
-
-select id_number, count(distinct yr) ct
-from bi_gift_transactions
-group by id_number
-
+-- Derived years of giving
+, distinct_years As (
+  Select
+    id_number
+    , count(Distinct yr) As ct
+  From bi_gift_transactions
+  Group By id_number
 )
 
-
-,distinct_years_last_3 as (
-
-select id_number, count(distinct year_of_giving) ct
-from bi_gift_transactions
-where year_of_giving IN ('2018' , '2017', '2016') --removed 2015 on 2/22/2018
-group by id_number
-
-
+-- Derived years of giving out of last 3
+, distinct_years_last_3 As (
+  Select
+    id_number
+    , count(Distinct year_of_giving) As ct
+  From bi_gift_transactions
+-- PBH: consider automating the below condition
+  Where year_of_giving In ('2018' , '2017', '2016') --removed 2015 on 2/22/2018
+  Group By id_number
 )
 
-
---added 2/23/2018
-,annual_25k as (
-
-select entity_key
-from dm_ard.fact_donor_summary@catrackstobi
-where annual_fund_flag='Y'
-and reporting_area='NA'
-and (max_fyear_giftcredit >=25000 OR max_fyear_pledgecredit >=25000)
---and entity_key='0000020852' just for testing
----and entity_key='0000202258' just for testing
-
+-- Made a $25K+ AF gift, based on @catrackstobi
+-- added 2/23/2018
+, annual_25k As (
+  Select entity_key
+  From dm_ard.fact_donor_summary@catrackstobi
+  Where annual_fund_flag= 'Y'
+    And reporting_area= 'NA'
+    And (
+      max_fyear_giftcredit >= 25000
+      Or max_fyear_pledgecredit >= 25000
+    )
+  --And entity_key = '0000020852' -- just for testing
+  --And entity_key = '0000202258' -- just for testing
 )
 
 /*Removed 2/23/2018
@@ -234,400 +280,402 @@ group by id_number
 
 )*/
 
-/*  Total Unique Years of Giving */
-
-,bi_gift_transactions_summary as (
-
-select
-   id_number
-   ,gift_credit_amount
-   ,trans_id_number
-   ,date_of_record
-   ,year_of_giving
-   ,ROW_NUMBER() OVER (PARTITION BY id_number ORDER BY date_of_record desc) rownumber
-   ,count(distinct year_of_giving) over (partition by id_number) yr_count
-from
-bi_gift_transactions
-)
-
-
-, giving_lifetime as (
-   
-    /* overall giving summaries, aggregated */
-
-    /*FY should be set to current fy, per BI logic*/
-    select
-    entity_key as id_number
-    ,LIFETIME_GIFT_CREDIT_AMOUNT
-    ,to_char(LAST_GIFT_YEAR) as LAST_GIFT_YEAR
-    ,GIFT_CREDIT_YRS_IN_PREV5
-    ,PREVYEARS_GIFTCREDIT_1000
-    ,LIFETIME_NEWGIFT_CMIT_W_SPOUSE
-    ,CAMPAIGN_NEWGIFT_CMIT_CREDIT
-    ,active_pledge_balance
-    from dm_ard.fact_donor_summary@catrackstobi
-    where
-    annual_fund_flag = 'N'
-    and REPORTING_AREA = 'NA'
-)
-
-
-
-,NU_degrees as (
-
-     SELECT ID_NUMBER,
-                   /* tms_school.short_desc || ' (' || degree_year || ')' */ 
-                   
-                   tms_school.short_desc as degree_school,
-                   degree_year,
-                   degree_code
-                
-                   ---tm.short_desc major_code1,
-                   ---tm2.short_desc major_code2
-                   
-     FROM degrees
-              left outer join tms_school on tms_school.school_code = degrees.school_code
-              left outer join tms_majors tm on tm.major_code = degrees.major_code1
-              left outer join tms_majors tm2 on tm2.major_code = degrees.major_code2
-     WHERE (degrees.INSTITUTION_CODE = '31173' OR LOCAL_IND = 'Y') ---- NU grads code
-     AND degrees.degree_year != ' '
-     
- 
-
-)
-
-,all_NU_degrees as (
-
-    SELECT ID_NUMBER,
-     ---listagg(degree_school || ' , ' || major_code1 || ' , ' || degree_code || ' , ' || degree_year ,  ' ; ' ) within GROUP(ORDER BY NU_degrees.ID_NUMBER) as schoolslist
-     listagg(degree_school || ' , ' || degree_code || ', ' || degree_year ,  ' ; ' ) within GROUP(ORDER BY NU_degrees.ID_NUMBER) as schoolslist
-    
-    FROM NU_degrees
-    GROUP BY ID_NUMBER
-
-)
-
-
-
-,contact_reports as (
-    select
-    contact_report.id_number
-    ,e.pref_mail_name
-    ,contact_date
-    ,contact_type
-    ,p.short_desc as contact_purpose
-    ,contact_report.author_id_number
-    from contact_report
-    left outer join entity e on e.id_number = contact_report.author_id_number
-    left outer join tms_contact_rpt_purpose p on p.contact_purpose_code = contact_report.contact_purpose_code
-    ----inner join prospect p on (p.prospect_id = pe.prospect_id) and p.active_ind = 'Y'
-    where contact_report.id_number <> ' '
-
-    union all
-
-    select
-    contact_report.id_number_2
-    ,e.pref_mail_name
-    ,contact_date
-    ,contact_type
-    ,p.short_desc as contact_purpose
-    ,contact_report.author_id_number
-    from contact_report
-    left outer join entity e on e.id_number = contact_report.author_id_number
-    left outer join tms_contact_rpt_purpose p on p.contact_purpose_code = contact_report.contact_purpose_code
-    where contact_report.id_number_2 <> ' '
-)
-
-, lastContactReport as (
-
-  select id_number
-  ,max(contact_date) last_contact_date
-  from contact_reports
-  group by id_number
-
-
-)
-
-
-, lastContactReportV as (
-
-  select id_number
-  ,max(contact_date) last_contact_date
-  from contact_reports
-  where contact_type = 'V'
-  group by id_number
-
-
-)
-
-
-, contactRptCount as (
-  select
-  id_number
-  ,count(*) id_count
-  from contact_reports
-  group by id_number
-
-)
-
-
-
-, contactRptCountV as (
-  select
-  id_number
-  ,count(*) id_count
-  from contact_reports
-  where contact_type = 'V'
-  group by id_number
-
-)
-
-
-, contactRptCtLastYr as (
-  select
-  id_number
-  ,count(*) id_count
-  from contact_reports
-  where contact_date >= sysdate - (365)
-  group by id_number
-
-)
-
-, contactRptCtLastYrV as (
-  select
-  id_number
-  ,count(*) id_count
-  from contact_reports
-  where contact_date >= sysdate - (365)
-  and contact_type = 'V'
-  group by id_number
-
-)
-
-
-
-, contacts as (
-
-select
-
+-- Total Unique Years of Giving
+, bi_gift_transactions_summary As (
+  Select
     id_number
-    ,pref_mail_name
-    ,contact_date
-    ,contact_type
-    ,contact_purpose
-    ,author_id_number
-    ,row_number() OVER (PARTITION BY id_number, AUTHOR_ID_NUMBER ORDER BY CONTACT_DATE DESC) as rownumber
-    ,row_number() OVER (PARTITION BY id_number, AUTHOR_ID_NUMBER, CONTACT_TYPE ORDER BY CONTACT_DATE DESC) as rownumber2
-    ,row_number() OVER (PARTITION BY id_number, contact_type ORDER BY CONTACT_DATE DESC) as rownumber3
-from contact_reports
-
+    , gift_credit_amount
+    , trans_id_number
+    , date_of_record
+    , year_of_giving
+    , row_number() Over (Partition By id_number Order By date_of_record Desc)
+      As rownumber
+    , count(Distinct year_of_giving) Over (Partition By id_number)
+      As yr_count
+  From bi_gift_transactions
 )
 
-,MOS_visit as (
-
-select id_number
-,count(*) as visit_ct
-from contact_reports
-where author_id_number = '0000573302'
-and contact_type = 'V'
-group by id_number
-
+-- Lifetime giving from @catrackstobi
+-- overall giving summaries, aggregated
+-- FY should be set to current fy, per BI logic
+, giving_lifetime As (
+  Select
+    entity_key As id_number
+    , lifetime_gift_credit_amount
+    , to_char(last_gift_year) As last_gift_year
+    , gift_credit_yrs_in_prev5
+    , prevyears_giftcredit_1000
+    , lifetime_newgift_cmit_w_spouse
+    , campaign_newgift_cmit_credit
+    , active_pledge_balance
+  From dm_ard.fact_donor_summary@catrackstobi
+  Where annual_fund_flag = 'N'
+    And REPORTING_AREA = 'NA'
 )
 
-
-,
-parents as
- (
-  select unique id_number
-             from affiliation
-             left outer join tms_affil_code tac on tac.affil_code = affiliation.affil_code
-   where affil_level_code = 'PR'
-     and affil_status_code IN ('C' , 'P')
-
-  )
-
-
-, committees as (
-
-select distinct id_number from (
-
-select distinct id_number from committee
-where committee.committee_status_code IN ('C' , 'F')
-and committee.committee_code IN (
-    select committee_code
-    from committee_header
-    where committee_type_code IN ('TB' , 'AB')
-    and status_code = 'A'
+-- NU row-wise degrees
+, NU_degrees As (
+  Select
+    id_number
+    -- tms_school.short_desc || ' (' || degree_year || ')'
+    , tms_school.short_desc As degree_school
+    , degree_year
+    , degree_code
+--    , tm.short_desc major_code1
+--    , tm2.short_desc major_code2
+  From degrees
+  Left Join tms_school
+    On tms_school.school_code = degrees.school_code
+  Left Join tms_majors tm
+    On tm.major_code = degrees.major_code1
+  Left Join tms_majors tm2
+    On tm2.major_code = degrees.major_code2
+  Where degrees.degree_year != ' '
+    And (
+      -- NU grads code
+      degrees.institution_code = '31173'
+      Or local_ind = 'Y'
+    )
 )
 
-union 
-
-select id_number
-from affiliation
-where affiliation.affil_code = 'TR'
-and affiliation.affil_status_code IN ('C' , 'P')
+-- PBH: consider doing the concatenation directly and skipping NU_degrees
+-- NU degrees concatenated
+, all_NU_degrees As (
+  Select
+  id_number
+--  , listagg(degree_school || ' , ' || major_code1 || ' , ' || degree_code || ' , ' || degree_year ,  ' ; ' )
+--      Within Group (Order By NU_degrees.id_number)
+--      As schoolslist
+  , listagg(degree_school || ' , ' || degree_code || ', ' || degree_year ,  ' ; ' )
+      Within Group (Order By NU_degrees.id_number)
+      As schoolslist
+  From NU_degrees
+  Group By id_number
 )
+
+-- PBH: consider combining all contact report data into one subquery
+
+-- Entity contact reports
+, contact_reports As (
+  Select
+    contact_report.id_number
+    , e.pref_mail_name
+    , contact_date
+    , contact_type
+    , p.short_desc As contact_purpose
+    , contact_report.author_id_number
+  From contact_report
+  Left Join entity e
+    On e.id_number = contact_report.author_id_number
+  Left Join tms_contact_rpt_purpose p
+    On p.contact_purpose_code = contact_report.contact_purpose_code
+  ----inner join prospect p on (p.prospect_id = pe.prospect_id) and p.active_ind = 'Y'
+  Where contact_report.id_number <> ' '
+Union All
+  Select
+    contact_report.id_number_2
+    , e.pref_mail_name
+    , contact_date
+    , contact_type
+    , p.short_desc as contact_purpose
+    , contact_report.author_id_number
+  From contact_report
+  Left Join entity e
+    On e.id_number = contact_report.author_id_number
+  Left Join tms_contact_rpt_purpose p
+    On p.contact_purpose_code = contact_report.contact_purpose_code
+  Where contact_report.id_number_2 <> ' '
 )
 
---updated season tickets locgic 2/22/2018. Now looks for people who have 3+ years of season tickets
-,seasontickets as (
+-- Most recent contact report
+, lastContactReport As (
+  Select
+    id_number
+    , max(contact_date) As last_contact_date
+  From contact_reports
+  Group By id_number
+)
 
+-- Most recent visit
+, lastContactReportV As (
+  Select
+    id_number
+    , max(contact_date) As last_contact_date
+  From contact_reports
+  Where contact_type = 'V'
+  Group By id_number
+)
 
-  select distinct id_number
-  from activity
-  where activity_code in ('BBSEA','FBSEA')
-  having count (distinct substr(start_dt,1,4)) > 2
-  group by id_number 
+-- Count of all contact reports
+, contactRptCount As (
+  Select
+    id_number
+    , count(*) As id_count
+  From contact_reports
+  Group By id_number
+)
 
-  ) 
+-- Count of all visits
+, contactRptCountV As (
+  Select
+    id_number
+    , count(*) As id_count
+  From contact_reports
+  Where contact_type = 'V'
+  Group By id_number
+)
 
+-- Count of last year's contact reports
+, contactRptCtLastYr As (
+  Select
+    id_number
+    , count(*) As id_count
+  From contact_reports
+  Where contact_date >= sysdate - 365
+  Group By id_number
+)
 
-, affinity_score_all_rows as
+-- Count of last year's visits
+, contactRptCtLastYrV As (
+  Select
+    id_number
+    , count(*) As id_count
+  From contact_reports
+  Where contact_date >= sysdate - 365
+    And contact_type = 'V'
+  Group By id_number
+)
+
+-- All contact reports per contacted entity and author
+, contacts As (
+  Select
+    id_number
+    , pref_mail_name
+    , contact_date
+    , contact_type
+    , contact_purpose
+    , author_id_number
+    , row_number() Over (Partition By id_number, author_id_number Order By contact_date Desc)
+      As rownumber
+    , row_number() Over (Partition By id_number, author_id_number, contact_type Order By contact_date Desc)
+      As rownumber2
+    , row_number() Over (Partition By id_number, contact_type Order By contact_date Desc)
+      As rownumber3
+  From contact_reports
+)
+
+-- President visits
+, MOS_visit As (
+  Select
+    id_number
+    , count(*) As visit_ct
+  From contact_reports
+  Where author_id_number = '0000573302'
+  And contact_type = 'V'
+  Group By id_number
+)
+
+-- Parent affiliation
+, parents As (
+  Select Distinct id_number
+  From affiliation
+  Left Join tms_affil_code tac
+    On tac.affil_code = affiliation.affil_code
+  Where affil_level_code = 'PR' -- Parent
+    And affil_status_code In ('C', 'P') -- Current or Past
+)
+
+-- Committee participation
+, committees As (
+-- PBH: Unnecessary nested queries, as union already dedupes
+  Select Distinct id_number
+  From (
+    Select Distinct id_number
+    From committee
+    Where committee.committee_status_code In ('C', 'F') -- Current or Former
+      And committee.committee_code In (
+        Select committee_code
+        From committee_header
+        Where committee_type_code In ('TB', 'AB') -- Trustee Board, Advisory Board
+        And status_code = 'A'
+      )
+    Union 
+      Select id_number
+      From affiliation
+      Where affiliation.affil_code = 'TR' -- Trustee
+      And affiliation.affil_status_code In ('C', 'P') -- Current or Past
+    )
+)
+
+-- Season ticket holders
+-- updated season tickets locgic 2/22/2018. Now looks for people who have 3+ years of season tickets
+, seasontickets As (
+  Select Distinct id_number
+  From activity
+  Where activity_code In ('BBSEA', 'FBSEA') -- Basketball and Football season tickets
+  Having count(Distinct substr(start_dt, 1, 4)) > 2 -- 2 or more years
+  Group By id_number 
+)
+
+-- Affinity score segment
+, affinity_score_all_rows As
 (
-select segment.id_number
-, segment_code
-, case when nvl(length(trim(translate(xcomment, '0123456789.-',' '))),0) = 0
-  then round(to_number(rtrim(ltrim(xcomment)))) else null end affinity_score
-, case when nvl(length(trim(translate(xcomment, '0123456789.-',' '))),0) = 0
-  then to_number(rtrim(ltrim(xcomment))) else null end affinity_score_detail
-from segment
-where segment.segment_code like 'AFF__'
+  Select
+    segment.id_number
+    , segment_code
+    , Case
+        When nvl(length(trim(translate(xcomment, '0123456789.-', ' '))), 0) = 0
+          Then round(to_number(rtrim(ltrim(xcomment))))
+        Else NULL
+      End As affinity_score
+    , Case
+        When nvl(length(trim(translate(xcomment, '0123456789.-', ' '))), 0) = 0
+          Then to_number(rtrim(ltrim(xcomment)))
+        Else NULL
+      End As affinity_score_detail
+  From segment
+  Where segment.segment_code Like 'AFF__'
 )
 
+-- Return a single affinity score
 -- entity merges can create multiple rows for same entity
-, affinity_score_value as
-(
-select id_number
-, max(segment_code) affinity_segment
-, max(affinity_score) affinity_score
-, max(affinity_score_detail) affinity_score_detail
-from affinity_score_all_rows
-group by id_number
+, affinity_score_value As (
+  Select
+    id_number
+    , max(segment_code) As affinity_segment
+    , max(affinity_score) As affinity_score
+    , max(affinity_score_detail) As affinity_score_detail
+  From affinity_score_all_rows
+  Group By id_number
 )
 
---chicago_home added 2/22/2018. 
-
-, chi_t1_home as
-(
-
-    select address.id_number
-    from address
-    join address_geo
-    on ADDRESS.ID_NUMBER=ADDRESS_GEO.ID_NUMBER and ADDRESS.XSEQUENCE=ADDRESS_GEO.XSEQUENCE 
-    join geo_code
-    on ADDRESS_GEO.GEO_CODE=GEO_CODE.GEO_CODE
-    where address.addr_type_code='H'
-    and address.addr_status_code='A'
-    and ADDRESS_GEO.Geo_Code='T1CH'
-    --)
+-- Flag home addresses in the Chicago geo area
+-- chicago_home added 2/22/2018. 
+, chi_t1_home As (
+  Select address.id_number
+  From address
+  Inner Join address_geo
+    On address.id_number = address_geo.id_number
+    And address.xsequence = address_geo.xsequence 
+  Inner Join geo_code
+    On address_geo.geo_code = geo_code.geo_code
+  Where address.addr_type_code = 'H'
+    And address.addr_status_code = 'A'
+    And address_geo.geo_code = 'T1CH' -- Tier 1 Chicago
 )
 
-select 
- 
-
- be.id_number as "Primary Entity ID"
-,p.prospect_id as "Prospect ID"
-,p.prospect_name as "Prospect Name"
-,p.QUALIFICATION_DESC as "Qualification Level"
-
-, a.category as "Pref State US/ Country (Int)"
-, nvl(all_nu_degrees.schoolslist, ' ') as "All NU Degrees"
-, nvl(nu_deg_spouse.schoolslist, ' ') as "All NU Degrees Spouse" 
-
-
-, case when ap.prospect_id is not null then 1 else 0 end as "Active Prop Indicator"
-
---- Y/N inds
-
-, case when be.age > 59 then 1 else 0 end as Age
-, case when c_v_prmgr.contact_date > sysdate - (2 * 365) then 1 else 0 end as "PM Visit Last 2Yrs"
-, case when contactRptCountV.id_count > = 5 then 1 else 0 end as "5 + Visits C Rpts"
-, case when annual_25k.entity_key is not null then 1 else 0 end as "25K To Annual"
-, case when (dy.ct >= 10 and dy3.ct >=1) then 1 else 0 end as "10+ Dist Yrs 1 Gft in Last 3"
-
-
-, case when bi_gift_transactions_single.id_number is not null then 1 else 0 end as "MG $250000 or more"
-
-, case when MOS_visit.visit_ct >0 then 1 else 0 end as "Morty Visit"
-, case when committees.id_number is not null then 1 else 0 end as "Trustee or Advisory BD"
-, case when p2.id_number is not null then 1 else 0 end as "Past or Current Parent"
-, case when be.primary_record_type_desc = 'Alumnus/Alumna' then 1 else 0 end as "Alumnus"
-, case when be.primary_record_type_desc = 'Alumnus/Alumna' and sp_record_type = 'Alumnus/Alumna' then 1 else 0 end as "Double-Alum"
-, case when st.id_number is not null then 1 else 0 end as "3 Year Season-Ticket Holder"
-, case when chi_t1_home.id_number is not null then 1 else 0 end as chiacgo_home
-, p.prospect_manager_name as "Prospect Manager"
-, af.affinity_score as "Affinity Score"
-, gl.CAMPAIGN_NEWGIFT_CMIT_CREDIT
-, gl.ACTIVE_PLEDGE_BALANCE
-, be.pref_name_sort
-, pias.multi_or_single_interest
-, pias.potential_interest_areas
-from bi_prospects p
-left outer join prospect_entity pe on (pe.prospect_id = p.prospect_id) and pe.primary_ind = 'Y'
-left outer join bi_entity be on be.id_number = pe.id_number
-left outer join active_proposals ap on ap.prospect_id = p.prospect_id
-left outer join chi_t1_home on chi_t1_home.id_number = be.id_number  --added 2/22/2018
-
-left outer join annual_25k on annual_25k.entity_key=be.id_number --added 2/22/2018
+-- Main query
+Select
+  be.id_number As "Primary Entity ID"
+  , p.prospect_id As "Prospect ID"
+  , p.prospect_name As "Prospect Name"
+  , p.qualification_desc As "Qualification Level"
+  , a.category As "Pref State US/ Country (Int)"
+  , nvl(all_nu_degrees.schoolslist, ' ') As "All NU Degrees"
+  , nvl(nu_deg_spouse.schoolslist, ' ') As "All NU Degrees Spouse" 
+  , Case
+      When ap.prospect_id Is Not NULL
+        Then 1
+      Else 0
+    End As "Active Prop Indicator"
+  -- Y/N inds
+  , Case When be.age > 59 Then 1 Else 0 End
+    As Age
+  , Case When c_v_prmgr.contact_date > sysdate - (2 * 365) Then 1 Else 0 End
+    As "PM Visit Last 2Yrs"
+  , Case When contactRptCountV.id_count > = 5 Then 1 Else 0 End
+    As "5 + Visits C Rpts"
+  , Case When annual_25k.entity_key Is Not NULL Then 1 Else 0 End
+    As "25K To Annual"
+  , Case When (dy.ct >= 10 And dy3.ct >=1) Then 1 Else 0 End
+    As "10+ Dist Yrs 1 Gft in Last 3"
+  , Case When bi_gift_transactions_single.id_number Is Not NULL Then 1 Else 0 End
+    As "MG $250000 or more"
+  , Case When MOS_visit.visit_ct >0 Then 1 Else 0 End
+    As "Morty Visit"
+  , Case When committees.id_number Is Not NULL Then 1 Else 0 End
+    As "Trustee or Advisory BD"
+  , Case When p2.id_number Is Not NULL Then 1 Else 0 End
+    As "Past or Current Parent"
+  , Case When be.primary_record_type_desc = 'Alumnus/Alumna' Then 1 Else 0 End
+    As "Alumnus"
+  , Case When be.primary_record_type_desc = 'Alumnus/Alumna' And sp_record_type = 'Alumnus/Alumna' Then 1 Else 0 End
+    As "Double-Alum"
+  , Case When st.id_number Is Not NULL Then 1 Else 0 End
+    As "3 Year Season-Ticket Holder"
+  , Case When chi_t1_home.id_number Is Not NULL Then 1 Else 0 End
+-- PBH: typo
+    As chiacgo_home
+  , p.prospect_manager_name As "Prospect Manager"
+  , af.affinity_score As "Affinity Score"
+  , gl.campaign_newgift_cmit_credit
+  , gl.active_pledge_balance
+  , be.pref_name_sort
+  , pias.multi_or_single_interest
+  , pias.potential_interest_areas
+From bi_prospects p
+Left Join prospect_entity pe
+  On pe.prospect_id = p.prospect_id
+  And pe.primary_ind = 'Y'
+Left Join bi_entity be
+  On be.id_number = pe.id_number
+Left Join active_proposals ap
+  On ap.prospect_id = p.prospect_id
+Left Join chi_t1_home -- added 2/22/2018
+  On chi_t1_home.id_number = be.id_number
+Left Join annual_25k -- added 2/22/2018
+  On annual_25k.entity_key=be.id_number
 --left outer join annual_fund_sum on annual_fund_sum.id_number = be.id_number  removed 2/22/2018
-
-left outer join distinct_years dy on dy.id_number = be.id_number
-
-
-left outer join contactRptCountV on (be.id_number = contactRptCountV.id_number) 
-
-left outer join MOS_visit on MOS_visit.id_number = be.id_number
-left outer join double_alum_HH on (double_alum_HH.id_number = be.id_number)
-left outer join committees on committees.id_number = be.id_number
-left outer join parents p2 on p2.id_number = be.id_number
-left outer join seasontickets st on st.id_number = be.id_number
-left outer join bi_gift_transactions_single on bi_gift_transactions_single.id_number = be.id_number
-left outer join distinct_years_last_3 dy3 on dy3.id_number = be.id_number
-left outer join addresses a on a.id_number = be.id_number
-left outer join all_NU_Degrees on all_NU_Degrees.id_number = be.id_number
-left outer join all_NU_Degrees nu_deg_spouse on nu_deg_spouse.id_number = be.spouse_id_number
-left outer join affinity_score_value af on af.id_number = be.id_number 
-left outer join giving_lifetime gl on gl.id_number = be.id_number
-left outer join advance_nu_rpt.prospect_interest_area_summary pias on pias.prospect_id=p.prospect_id --added 3/16/2018 
-
-left outer join contacts c on (
-
-                           /* last contact by prospect manager */
-
-                           c.id_number = be.id_number
-
-                           and
-
-                           c.rownumber = 1
-
-                           and (c.author_id_number = p.prospect_manager_id_number)
-
-                           )
-                           
-                           
-left outer join contacts c_v_prmgr on /* last visit by prospect manager */
-
-                            c_v_prmgr.id_number = be.id_number
-
-                            and
-
-                            c_v_prmgr.rownumber2 = 1
-
-                            and
-
-                            c_v_prmgr.contact_type = 'V'
-
-                            and (c_v_prmgr.author_id_number = p.prospect_manager_id_number)
-                            
-                            
-                            
-where 
-(
-(p.QUALIFICATION_DESC IN ('A1 $100M+' , 'A2 $50M - 99.9M' , 'A3 $25M - $49.9M' , 'A4 $10M - $24.9M', 'A5 $5M - $9.9M', 'A6 $2M - $4.9M', 'A7 $1M - $1.9M') --updated 2/22/2018 to include $1M +
-and p.active_IND = 'Y') or (p.prospect_id >0 and p.prospect_id in (select prospect_id from active_proposals1m)))
-
-and p.prospect_name not like  '%Anonymous%'
-
+Left Join distinct_years dy
+  On dy.id_number = be.id_number
+Left Join contactRptCountV
+  On be.id_number = contactRptCountV.id_number
+Left Join MOS_visit
+  On MOS_visit.id_number = be.id_number
+Left Join double_alum_HH
+  On double_alum_HH.id_number = be.id_number
+Left Join committees
+  On committees.id_number = be.id_number
+Left Join parents p2
+  On p2.id_number = be.id_number
+Left Join seasontickets st
+  On st.id_number = be.id_number
+Left Join bi_gift_transactions_single
+  On bi_gift_transactions_single.id_number = be.id_number
+Left Join distinct_years_last_3 dy3
+  On dy3.id_number = be.id_number
+Left Join addresses a
+  On a.id_number = be.id_number
+Left Join all_NU_Degrees
+  On all_NU_Degrees.id_number = be.id_number
+Left Join all_NU_Degrees nu_deg_spouse
+  On nu_deg_spouse.id_number = be.spouse_id_number
+Left Join affinity_score_value af
+  On af.id_number = be.id_number 
+Left Join giving_lifetime gl
+  On gl.id_number = be.id_number
+Left Join advance_nu_rpt.prospect_interest_area_summary pias -- added 3/16/2018
+  On pias.prospect_id=p.prospect_id
+Left Join contacts c -- last contact by prospect manager
+  On c.id_number = be.id_number
+  And c.rownumber = 1
+  And c.author_id_number = p.prospect_manager_id_number
+Left Join contacts c_v_prmgr -- last visit by prospect manager
+  On c_v_prmgr.id_number = be.id_number
+  And c_v_prmgr.rownumber2 = 1
+  And c_v_prmgr.contact_type = 'V'
+  And c_v_prmgr.author_id_number = p.prospect_manager_id_number
+Where (
+    ( -- updated 2/22/2018 to include $1M +
+      p.qualification_desc In ('A1 $100M+', 'A2 $50M - 99.9M', 'A3 $25M - $49.9M', 'A4 $10M - $24.9M'
+        , 'A5 $5M - $9.9M', 'A6 $2M - $4.9M', 'A7 $1M - $1.9M')
+      And p.active_ind = 'Y'
+    ) Or (
+      p.prospect_id > 0 
+      And p.prospect_id In (Select prospect_id From active_proposals1m)
+    )
+  )
+  And p.prospect_name Not Like  '%Anonymous%' 
 ---below removed on 2/23/2018
 --and p.prospect_name <> 'Northwestern Memorial HealthCare'
 --and p.prospect_name <> 'Northwestern Memorial Fdn'
