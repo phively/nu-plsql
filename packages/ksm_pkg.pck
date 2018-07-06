@@ -98,6 +98,7 @@ Type household Is Record (
   , last_noncert_year degrees.degree_year%type
   , institutional_suffix entity.institutional_suffix%type
   , spouse_id_number entity.spouse_id_number%type
+  , spouse_report_name entity.report_name%type
   , spouse_pref_mail_name entity.pref_mail_name%type
   , spouse_suffix entity.institutional_suffix%type
   , spouse_degrees_concat varchar2(512)
@@ -1149,6 +1150,7 @@ With
       , last_noncert_year
       , program_group
       , spouse_id_number
+      , spouse_report_name
       , spouse_pref_mail_name
       , spouse_suffix
       , spouse_degrees_concat
@@ -1240,6 +1242,7 @@ With
     , household.last_noncert_year
     , household.institutional_suffix
     , household.spouse_id_number
+    , household.spouse_report_name
     , household.spouse_pref_mail_name
     , household.spouse_suffix
     , household.spouse_degrees_concat
