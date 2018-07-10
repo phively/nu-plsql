@@ -162,6 +162,7 @@ ksm_deg As (
 , assign As (
   Select Distinct
     ah.prospect_id
+    , ah.id_number
     , ah.assignment_id_number
     , ah.assignment_report_name
     , Case When gos.id_number Is Not Null Then 'Y' End
@@ -176,13 +177,31 @@ ksm_deg As (
     And ah.assignment_report_name Is Not Null -- Real managers only
 )
 , assign_conc As (
-  Select
+  Select Distinct
     prospect_id
     , Listagg(assignment_report_name, ';  ') Within Group (Order By assignment_report_name) As managers
     , Listagg(assignment_id_number, ';  ') Within Group (Order By assignment_report_name) As manager_ids
     , max(curr_ksm_assignment) As curr_ksm_manager
-  From assign
+  From ( -- Dedupe prospect IDs with multiple associated entities
+    Select Distinct
+      prospect_id
+      , assignment_id_number
+      , assignment_report_name
+      , curr_ksm_assignment
+    From assign
+  )
+  Where prospect_id Is Not Null
   Group By prospect_id
+)
+, assign_conc_entity As (
+  Select Distinct
+    id_number
+    , Listagg(assignment_report_name, ';  ') Within Group (Order By assignment_report_name) As managers
+    , Listagg(assignment_id_number, ';  ') Within Group (Order By assignment_report_name) As manager_ids
+    , max(curr_ksm_assignment) As curr_ksm_manager
+  From assign
+  Where prospect_id Is Null
+  Group By id_number
 )
 
 -- Main query
@@ -219,9 +238,19 @@ Select Distinct
   , prs.prospect_stage
   , prs.contact_date
   , contact_auth.report_name As contact_author
-  , assign_conc.manager_ids
-  , assign_conc.managers
-  , assign_conc.curr_ksm_manager
+  -- Concatenated managers on prospect or entity ID as appropriate
+  , Case When assign_conc.manager_ids Is Not Null
+      Then assign_conc.manager_ids
+      Else assign_conc_entity.manager_ids
+    End As manager_ids
+  , Case When assign_conc.manager_ids Is Not Null
+      Then assign_conc.managers
+      Else assign_conc_entity.managers
+    End As managers
+  , Case When assign_conc.manager_ids Is Not Null
+      Then assign_conc.curr_ksm_manager
+      Else assign_conc_entity.curr_ksm_manager
+    End As curr_ksm_manager
   -- Primary prospect for 150/300, or primary household member for everyone else
   , Case
       When ksm_150_300.primary_ind = 'Y' Then 'Y'
@@ -250,10 +279,11 @@ Select Distinct
       When ksm_150_300.prospect_category_code = 'KT3'
         Then 'B. Top 300'
       -- Assigned; exclude managed by Kellogg Donor Relations
-      When manager_ids Is Not Null And prospect_manager_id Not In ('0000292130')
+      When (assign_conc.manager_ids Is Not Null Or assign_conc_entity.manager_ids Is Not Null)
+        And prospect_manager_id Not In ('0000292130')
         Then 'C. Assigned'
       -- Leads
-      When manager_ids Is Null -- Unmanaged
+      When assign_conc.manager_ids Is Null And assign_conc_entity.manager_ids Is Null -- Unmanaged
         And (officer_rating <> ' ' Or evaluation_rating <> ' ') -- Has a rating
         And officer_rating Not In ('G  $10K - $24K') -- Not officer disqualified
         And dq.dq Is Null -- Not previously disqualified
@@ -278,6 +308,7 @@ Left Join prospect On prospect.prospect_id = prs.prospect_id
 Left Join ksm_150_300 On ksm_150_300.id_number = hh.id_number
 Left Join entity contact_auth On contact_auth.id_number = prs.contact_author
 Left Join assign_conc On assign_conc.prospect_id = prs.prospect_id
+Left Join assign_conc_entity On assign_conc_entity.id_number = prs.id_number
 Left Join dq On dq.id_number = hh.id_number
 Left Join perm_stew On perm_stew.id_number = hh.id_number
 Left Join spec_hnd On spec_hnd.id_number = hh.id_number
