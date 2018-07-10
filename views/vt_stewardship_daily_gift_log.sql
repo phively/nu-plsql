@@ -343,21 +343,23 @@ Select Distinct
   , prs.officer_rating
   , prs.evaluation_rating
   , prs.team
+  , ppool.managers
+  , ppool.curr_ksm_manager
   -- Dates
   , dts.curr_fy
   -- Associated donor 2 information
   , dnr2.id_number As assoc2_id_number
-  , entitydnr2.pref_mail_name AS assoc2_pref_mail_name
-  , entitydnr2.pref_jnt_mail_name1 AS assoc2_pref_jnt_mail_name1
-  , entitydnr2.pref_jnt_mail_name2 AS assoc2_pref_jnt_mail_name2
-  , addrdnr2.line_1 AS assoc2_line_1
-  , addrdnr2.line_2 AS assoc2_line_2
-  , addrdnr2.line_3 AS assoc2_line_3
-  , addrdnr2.line_4 AS assoc2_line_4
-  , addrdnr2.line_5 AS assoc2_line_5
-  , addrdnr2.line_6 AS assoc2_line_6
-  , addrdnr2.line_7 AS assoc2_line_7
-  , addrdnr2.line_8 AS assoc2_line_8
+  , entitydnr2.pref_mail_name As assoc2_pref_mail_name
+  , entitydnr2.pref_jnt_mail_name1 As assoc2_pref_jnt_mail_name1
+  , entitydnr2.pref_jnt_mail_name2 As assoc2_pref_jnt_mail_name2
+  , addrdnr2.line_1 As assoc2_line_1
+  , addrdnr2.line_2 As assoc2_line_2
+  , addrdnr2.line_3 As assoc2_line_3
+  , addrdnr2.line_4 As assoc2_line_4
+  , addrdnr2.line_5 As assoc2_line_5
+  , addrdnr2.line_6 As assoc2_line_6
+  , addrdnr2.line_7 As assoc2_line_7
+  , addrdnr2.line_8 As assoc2_line_8
   -- Per Lola, got rid of this because she already has it in column E
   --, ksm_deg2.degrees_concat AS assoc2_degrees_concat
 -- Tables start here
@@ -403,6 +405,7 @@ Left Join ksm_deg jksm_deg On jksm_deg.id_number = entity.spouse_id_number
 Left Join addr On addr.id_number = gft.id_number
 -- Prospect reporting table
 Left Join nu_prs_trp_prospect prs On prs.id_number = gft.id_number
+Left Join v_ksm_prospect_pool ppool On ppool.id_number = gft.id_number
 -- Appeal code definitions
 Left Join appeal_header On appeal_header.appeal_code = gft.appeal_code
 --Associated donor 2 address
