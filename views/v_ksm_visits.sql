@@ -40,7 +40,7 @@ Select
   , contact_report.report_id
   , contact_report.id_number
   , contact_report.contacted_name
-  , contact_report.prospect_id
+  , prs.prospect_id
   , contact_report.contact_date
   , rpt_pbh634.ksm_pkg.get_fiscal_year(contact_report.contact_date) As fiscal_year
   , contact_report.description
