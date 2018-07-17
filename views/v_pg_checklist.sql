@@ -238,22 +238,7 @@ bi_entity As (
       max_fyear_giftcredit >= 25000
       Or max_fyear_pledgecredit >= 25000
     )
-  --And entity_key = '0000020852' -- just for testing
-  --And entity_key = '0000202258' -- just for testing
 )
-
-/*Removed 2/23/2018
-
-, annual_fund_sum as (
-/* Soft Credit New Gifts and Commitments 
-select id_number, sum(ncg) as ngc, sum(gift_credit_amount) as gc from ( 
-select id_number, trans_id_number, ncg, gift_credit_amount from bi_gift_transactions
-where annual_sw = 'Y'
-and date_of_record >= sysdate - (365 *3)
-)
-group by id_number
-
-)*/
 
 -- Total Unique Years of Giving
 , bi_gift_transactions_summary As (
@@ -292,9 +277,6 @@ group by id_number
 , all_NU_degrees As (
   Select
     id_number
-  --  , listagg(degree_school || ' , ' || major_code1 || ' , ' || degree_code || ' , ' || degree_year ,  ' ; ' )
-  --      Within Group (Order By NU_degrees.id_number)
-  --      As schoolslist
     , listagg(tms_school.short_desc || ' , ' || degree_code || ', ' || degree_year ,  ' ; ' )
         Within Group (Order By id_number)
         As schoolslist
@@ -324,7 +306,6 @@ group by id_number
     On e.id_number = contact_report.author_id_number
   Left Join tms_contact_rpt_purpose p
     On p.contact_purpose_code = contact_report.contact_purpose_code
-  ----inner join prospect p on (p.prospect_id = pe.prospect_id) and p.active_ind = 'Y'
   Where contact_report.id_number <> ' '
 Union All
   Select
@@ -528,7 +509,6 @@ Left Join chi_t1_home -- added 2/22/2018
   On chi_t1_home.id_number = be.id_number
 Left Join annual_25k -- added 2/22/2018
   On annual_25k.entity_key=be.id_number
---left outer join annual_fund_sum on annual_fund_sum.id_number = be.id_number  removed 2/22/2018
 Left Join distinct_years dy
   On dy.id_number = be.id_number
 Left Join contact_summary
@@ -574,8 +554,4 @@ Where (
       And p.prospect_id In (Select prospect_id From active_proposals1m)
     )
   )
-  And p.prospect_name Not Like  '%Anonymous%' 
----below removed on 2/23/2018
---and p.prospect_name <> 'Northwestern Memorial HealthCare'
---and p.prospect_name <> 'Northwestern Memorial Fdn'
---and be.id_number <> '0000267298' 
+  And p.prospect_name Not Like  '%Anonymous%'
