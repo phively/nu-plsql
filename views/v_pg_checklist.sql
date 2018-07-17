@@ -1,6 +1,6 @@
 -- Based on "principal gifts checklist _20180316.sql"
 
---Create Or Replace View v_pg_checklist As
+Create Or Replace View v_pg_checklist As
 
 /* N.B. this view uses @catrackstobi connector -- DO NOT RUN OUTSIDE OF BUSINESS HOURS! */
 
@@ -544,14 +544,6 @@ Left Join contacts c_v_prmgr -- last visit by prospect manager
   And c_v_prmgr.rownumber2 = 1
   And c_v_prmgr.contact_type = 'V'
   And c_v_prmgr.author_id_number = p.prospect_manager_id_number
-Where (
-    ( -- updated 2/22/2018 to include $1M +
-      p.qualification_desc In ('A1 $100M+', 'A2 $50M - 99.9M', 'A3 $25M - $49.9M', 'A4 $10M - $24.9M'
-        , 'A5 $5M - $9.9M', 'A6 $2M - $4.9M', 'A7 $1M - $1.9M')
-      And p.active_ind = 'Y'
-    ) Or (
-      p.prospect_id > 0 
-      And p.prospect_id In (Select prospect_id From active_proposals1m)
-    )
-  )
-  And p.prospect_name Not Like  '%Anonymous%'
+Where
+  p.active_ind = 'Y'
+  And p.prospect_name Not Like '%Anonymous%'

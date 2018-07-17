@@ -1,3 +1,5 @@
+-- N.B. this view uses @catrackstobi connector -- DO NOT RUN OUTSIDE OF BUSINESS HOURS
+
 With
 
 predata As (
@@ -10,9 +12,9 @@ predata As (
       End As "Deep Engagement"
     , "Active Prop Indicator" + "AGE" + "PM Visit Last 2Yrs" + "5 + Visits C Rpts" + "25K To Annual" + 
       "10+ Dist Yrs 1 Gft in Last 3" + "MG $250000 or more" + "Morty Visit" + "Trustee or Advisory BD" + 
-      "Alumnus" + "CHIACGO_HOME"
+      "Alumnus" + "CHICAGO_HOME"
       As other_indicators
-  From rpt_sjs971.pg_cultivation pgc
+  From rpt_pbh634.v_pg_checklist pgc
 )
 
 Select
@@ -41,7 +43,7 @@ Select
   , "Trustee or Advisory BD"
   , "Alumnus"
   , "Deep Engagement"
-  , "CHIACGO_HOME"
+  , "CHICAGO_HOME"
   , "Double-Alum"
   , "3 Year Season-Ticket Holder"
   , "Past or Current Parent"
