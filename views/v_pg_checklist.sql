@@ -205,14 +205,25 @@ bi_entity As (
   Group By id_number
 )
 
+-- Calculate current fiscal year
+, curr_fy As (
+  Select
+    -- Start with current calendar year, then add 1 if month is 9 through 12
+    extract(year From sysdate) +
+      (Case When extract(month From sysdate) >= 9 Then 1 Else 0 End)
+    As fy
+  From DUAL
+)
+
 -- Derived years of giving out of last 3
 , distinct_years_last_3 As (
   Select
     id_number
     , count(Distinct year_of_giving) As ct
   From bi_gift_transactions
+  Cross Join curr_fy
   Where year_of_giving Between -- Must be between (this year - n) and (this year)
-    extract(year From sysdate) - 2 And extract(year From sysdate) 
+    curr_fy.fy - 2 And curr_fy.fy
   Group By id_number
 )
 
