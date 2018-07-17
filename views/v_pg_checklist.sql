@@ -497,6 +497,18 @@ Select
   , be.pref_name_sort
   , pias.multi_or_single_interest
   , pias.potential_interest_areas
+  -- Flag entities meeting criteria for the original PG checklist
+  , Case
+      When ( -- updated 2/22/2018 to include $1M +
+          p.qualification_desc In ('A1 $100M+', 'A2 $50M - 99.9M', 'A3 $25M - $49.9M', 'A4 $10M - $24.9M'
+            , 'A5 $5M - $9.9M', 'A6 $2M - $4.9M', 'A7 $1M - $1.9M')
+          And p.active_ind = 'Y'
+        ) Or (
+          p.prospect_id > 0 
+          And p.prospect_id In (Select prospect_id From active_proposals1m)
+        )
+      Then 'Y'
+    End As "PG Prospect Flag"
 From bi_prospects p
 Left Join prospect_entity pe
   On pe.prospect_id = p.prospect_id

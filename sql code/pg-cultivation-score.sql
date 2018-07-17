@@ -48,6 +48,7 @@ Select
   , "3 Year Season-Ticket Holder"
   , "Past or Current Parent"
   , "PREF_NAME_SORT"
+  , "PG Prospect Flag"
 From predata
 Order By
   ("Deep Engagement" + other_indicators) Desc
