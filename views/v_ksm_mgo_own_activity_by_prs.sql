@@ -122,11 +122,17 @@ ksm_staff As (
 
 -- Full list deduped
 , prs As (
-  Select prospect_id, last_name, staff_id From ksm_visits
+    Select prospect_id, last_name, staff_id
+    From ksm_visits
+    Where prospect_id <> 0
   Union
-  Select prospect_id, last_name, proposal_manager_id From ksm_sols
+    Select prospect_id, last_name, proposal_manager_id
+    From ksm_sols
+    Where prospect_id <> 0
   Union
-  Select prospect_id, last_name, assignment_id_number From own_pool
+    Select prospect_id, last_name, assignment_id_number
+    From own_pool
+    Where prospect_id <> 0
 )
 
 -- Main query
