@@ -185,6 +185,7 @@ Type ksm_staff Is Record (
   id_number entity.id_number%type
   , report_name entity.report_name%type
   , last_name entity.last_name%type
+  , team varchar2(2)
   , former_staff varchar2(1)
   , job_title employment.job_title%type
   , employer employment.employer_unit%type
@@ -644,11 +645,12 @@ Cursor ct_frontline_ksm_staff Is
     -- First query block pulls from past KSM staff materialized view
     Select
       id_number
+      , team
       , Case When stop_dt Is Not Null Then 'Y' End As former_staff
     From mv_past_ksm_gos
     /************ MANUAL ADDITIONS -- UPDATE BELOW HERE ************/
-    Union All Select '0000760399', NULL From DUAL -- Guynn
-    Union All Select '0000292130', NULL From DUAL -- Chiang
+    Union All Select '0000760399', NULL, NULL From DUAL -- Guynn
+    Union All Select '0000292130', NULL, NULL From DUAL -- Chiang
     /************ MANUAL ADDITIONS -- UPDATE ABOVE HERE ************/
   )
   -- Job title information
@@ -667,6 +669,7 @@ Cursor ct_frontline_ksm_staff Is
     staff.id_number
     , entity.report_name
     , entity.last_name
+    , staff.team
     , staff.former_staff
     , employ.job_title
     , employ.employer
