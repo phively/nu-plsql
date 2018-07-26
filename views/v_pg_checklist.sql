@@ -181,7 +181,9 @@ bi_entity As (
 -- Completed major gift of $250K or more 
 -- (can include either an outright gift or a pledge, but the pledge must be paid in full) 
 , bi_gift_transactions_single As (
-  Select Distinct id_number
+  Select
+    id_number
+    , count(Distinct trans_id_number) As gifts
   From bi_gift_transactions
   Where transaction_sub_group_code In ('GC', 'PC') -- outright gifts & pledges
     And (
@@ -194,6 +196,7 @@ bi_entity As (
         And pledge_status_code = 'P'
       )
     )
+  Group By id_number
 )
 
 -- Derived years of giving
@@ -395,10 +398,11 @@ Union
 -- Season ticket holders
 -- updated season tickets logic 2/22/2018. Now looks for people who have 3+ years of season tickets
 , seasontickets As (
-  Select Distinct id_number
+  Select
+    id_number
+    , count(Distinct substr(start_dt, 1, 4)) As season_ticket_years
   From activity
   Where activity_code In ('BBSEA', 'FBSEA') -- Basketball and Football season tickets
-  Having count(Distinct substr(start_dt, 1, 4)) > 2 -- 2 or more years
   Group By id_number 
 )
 
@@ -463,6 +467,17 @@ Select
         Then 1
       Else 0
     End As "Active Prop Indicator"
+  -- Underlying data
+  , be.age As numeric_age -- age in years
+    -- Unable to compute current PM visits from subquery
+  , contact_summary.visit_count -- total visit count
+    -- Unable to compute years of 25K AF giving from subquery
+  , dy.ct As years_of_giving -- total years of giving
+  , dy3.ct As years_of_giving_last_3 -- years of giving in last 3
+  , bi_gift_transactions_single.gifts As mg_250k_count -- total number of $250K+ gifts
+  , contact_summary.mos_visit As president_visits -- president visits
+    -- Unable to compute total trustee and board affiliation years
+  , st.season_ticket_years -- season ticket years
   -- Y/N inds
   , Case When be.age > 59 Then 1 Else 0 End
     As Age
@@ -486,7 +501,7 @@ Select
     As "Alumnus"
   , Case When be.primary_record_type_desc = 'Alumnus/Alumna' And sp_record_type = 'Alumnus/Alumna' Then 1 Else 0 End
     As "Double-Alum"
-  , Case When st.id_number Is Not NULL Then 1 Else 0 End
+  , Case When st.season_ticket_years >= 3 Then 1 Else 0 End
     As "3 Year Season-Ticket Holder"
   , Case When chi_t1_home.id_number Is Not NULL Then 1 Else 0 End
     As chicago_home
