@@ -263,6 +263,7 @@ Type trans_entity Is Record (
   , tx_gypm_ind varchar2(1)
   , pledge_number pledge.pledge_pledge_number%type
   , matched_tx_number matching_gift.match_gift_matched_receipt%type
+  , matched_fiscal_year number
   , payment_type tms_payment_type.short_desc%type
   , allocation_code allocation.allocation_code%type
   , alloc_short_name allocation.short_name%type
@@ -290,6 +291,7 @@ Type trans_household Is Record (
   , tx_gypm_ind varchar2(1)
   , pledge_number pledge.pledge_pledge_number%type
   , matched_tx_number matching_gift.match_gift_matched_receipt%type
+  , matched_fiscal_year number
   , payment_type tms_payment_type.short_desc%type
   , allocation_code allocation.allocation_code%type
   , alloc_short_name allocation.short_name%type
@@ -1653,6 +1655,7 @@ Cursor c_gift_credit_ksm Is
       , 'M' As tx_gypm_ind
       , NULL As pledge_number
       , match_gift_matched_receipt As matched_tx_number
+      , to_number(gift.gift_year_of_giving) As matched_fiscal_year
       , tms_pmt_type.payment_type
       , match_gift_allocation_name
       , ksm_allocs.short_name
@@ -1669,6 +1672,8 @@ Cursor c_gift_credit_ksm Is
       , match_gift_amount
     From matching_gift
     Inner Join entity On entity.id_number = matching_gift.match_gift_company_id
+    -- Matched gift data
+    Left Join gift On gift.gift_receipt_number = match_gift_matched_receipt
     -- Only KSM allocations
     Inner Join ksm_allocs On ksm_allocs.allocation_code = matching_gift.match_gift_allocation_name
     -- Anonymous association on the matched gift
@@ -1694,6 +1699,7 @@ Cursor c_gift_credit_ksm Is
       , 'M' As tx_gypm_ind
       , NULL As pledge_number
       , match_gift_matched_receipt As matched_tx_number
+      , to_number(gift.gift_year_of_giving) As matched_fiscal_year
       , tms_pmt_type.payment_type
       , match_gift_allocation_name
       , ksm_allocs.short_name
@@ -1709,6 +1715,8 @@ Cursor c_gift_credit_ksm Is
       , match_gift_amount
       , match_gift_amount
     From matching_gift
+    -- Matched gift data
+    Left Join gift On gift.gift_receipt_number = match_gift_matched_receipt
     -- Inner join to add all attributed donor IDs on the original gift
     Inner Join (
         Select
@@ -1743,6 +1751,7 @@ Cursor c_gift_credit_ksm Is
       , tx_gypm_ind
       , gft.pmt_on_pledge_number As pledge_number
       , NULL As matched_tx_number
+      , NULL As matched_fiscal_year
       , tms_pmt_type.payment_type
       , gft.allocation_code
       , gft.alloc_short_name
@@ -1785,6 +1794,7 @@ Cursor c_gift_credit_ksm Is
       , 'P' As tx_gypm_ind
       , pledge.pledge_pledge_number As pledge_number
       , NULL As matched_tx_number
+      , NULL As matched_fiscal_year
       , NULL As payment_type
       , pledge.pledge_allocation_name
       , Case
@@ -1998,6 +2008,7 @@ Cursor c_gift_credit_hh_campaign_2008 Is
     , daily.gift_pledge_or_match
     , NULL As pledge_number
     , NULL As matched_tx_number
+    , NULL As matched_fiscal_year
     , 'Internal Transfer'
     , daily.alloc_code
     , allocation.short_name
