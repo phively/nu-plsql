@@ -288,10 +288,24 @@ Filter on ksm_proposal_ind = 'Y'
 
 Create Or Replace View v_ksm_proposal_history As
 
+With
+
+-- Subquery to add household ID of primary prospect
+households As (
+  Select Distinct
+    pe.prospect_id
+    , hh.household_id
+  From v_entity_ksm_households hh
+  Inner Join prospect_entity pe
+    On pe.id_number = hh.id_number
+  Where pe.primary_ind = 'Y'
+)
+
 Select
-  prospect_id
+  ph.prospect_id
   , prospect_name
   , prospect_name_sort
+  , households.household_id -- New field, not in v_proposal_history 
   , proposal_id
   , ksm_proposal_ind
   , proposal_title
@@ -339,6 +353,8 @@ Select
   , ksm_or_univ_anticipated
   , final_anticipated_or_ask_amt
   , ksm_bin
-From v_proposal_history
+From v_proposal_history ph
+Left Join households
+  On households.prospect_id = ph.prospect_id
 Where ksm_proposal_ind = 'Y'
 ;
