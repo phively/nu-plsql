@@ -65,7 +65,7 @@ trans As (
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 3 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy3
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 4 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy4
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 5 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy5
-    -- Current Use cash totals (for KLC
+    -- Current Use cash totals (for KLC)
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year     And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_cfy
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 1 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy1
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 2 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy2
@@ -79,6 +79,13 @@ trans As (
     , sum(Case When cal.curr_fy = fiscal_year + 3 Then hh_credit Else 0 End) As stewardship_pfy3
     , sum(Case When cal.curr_fy = fiscal_year + 4 Then hh_credit Else 0 End) As stewardship_pfy4
     , sum(Case When cal.curr_fy = fiscal_year + 5 Then hh_credit Else 0 End) As stewardship_pfy5
+    -- Anonymous stewardship giving per FY
+    , sum(Case When cal.curr_fy = fiscal_year     And anonymous <> ' ' Then hh_credit Else 0 End) As anonymous_cfy
+    , sum(Case When cal.curr_fy = fiscal_year + 1 And anonymous <> ' ' Then hh_credit Else 0 End) As anonymous_pfy1
+    , sum(Case When cal.curr_fy = fiscal_year + 2 And anonymous <> ' ' Then hh_credit Else 0 End) As anonymous_pfy2
+    , sum(Case When cal.curr_fy = fiscal_year + 3 And anonymous <> ' ' Then hh_credit Else 0 End) As anonymous_pfy3
+    , sum(Case When cal.curr_fy = fiscal_year + 4 And anonymous <> ' ' Then hh_credit Else 0 End) As anonymous_pfy4
+    , sum(Case When cal.curr_fy = fiscal_year + 5 And anonymous <> ' ' Then hh_credit Else 0 End) As anonymous_pfy5
     -- Giving history
     , min(gfts.fiscal_year) As fy_giving_first_yr
     , max(gfts.fiscal_year) As fy_giving_last_yr
@@ -97,7 +104,8 @@ trans As (
       As last_gift_recognition_credit
   From table(ksm_pkg.tbl_entity_households_ksm) hh
   Cross Join v_current_calendar cal
-  Inner Join v_ksm_giving_trans_hh gfts On gfts.household_id = hh.household_id
+  Inner Join v_ksm_giving_trans_hh gfts
+    On gfts.household_id = hh.household_id
   Group By
     hh.id_number
     , hh.household_id
@@ -121,7 +129,18 @@ Select
       When af_pfy2 + af_pfy3 + af_pfy4 > 0 Then 'PYBUNT'
       When af_pfy1 + af_pfy2 + af_pfy3 + af_pfy4 = 0 Then 'Lapsed/Non'
     End As af_status_fy_start
+  -- Anonymous flags
+  , shc.anonymous_donor
+  , Case When anonymous_cfy > 0 Then 'Y' End As anonymous_cfy_flag
+  , Case When anonymous_pfy1 > 0 Then 'Y' End As anonymous_pfy1_flag
+  , Case When anonymous_pfy2 > 0 Then 'Y' End As anonymous_pfy2_flag
+  , Case When anonymous_pfy3 > 0 Then 'Y' End As anonymous_pfy3_flag
+  , Case When anonymous_pfy4 > 0 Then 'Y' End As anonymous_pfy4_flag
+  , Case When anonymous_pfy5 > 0 Then 'Y' End As anonymous_pfy5_flag
+  
 From trans
+Left Join table(ksm_pkg.tbl_special_handling_concat) shc
+  On shc.id_number = trans.id_number
 ;
 
 /*************************************************

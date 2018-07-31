@@ -353,6 +353,7 @@ Type special_handling Is Record (
      , never_engaged_forever varchar2(1)
      , never_engaged_reunion varchar2(1)
      , has_opt_ins_opt_outs varchar2(1)
+     , anonymous_donor varchar2(1)
      , exc_all_comm varchar2(1)
      , exc_all_sols varchar2(1)
      , no_phone_ind varchar2(1)
@@ -2093,6 +2094,9 @@ Cursor c_special_handling_concat Is
       -- No text solicitation
       , max(Case When h.hnd_type_code = 'NTS' Then 'Y' End)
         As no_texts_solicit
+      -- Anonymous donor
+      , max(Case When h.hnd_type_code = 'AN' Then 'Y' End)
+        As anonymous_donor
     From handling h
     Inner Join entity e On e.id_number = h.id_number
     Inner Join tms_handling_type ht On ht.handling_type = h.hnd_type_code
@@ -2180,7 +2184,7 @@ Cursor c_special_handling_concat Is
   -- Main query
   Select
     ids.id_number
-    , ids.spouse_id_number
+    , trim(ids.spouse_id_number) As spouse_id_number
     , spec_hnd.special_handling_concat
     , spec_hnd.spec_hnd_codes
     , mailing_lists.mailing_list_concat
@@ -2192,6 +2196,7 @@ Cursor c_special_handling_concat Is
     , spec_hnd.never_engaged_forever
     , spec_hnd.never_engaged_reunion
     , spec_hnd.has_opt_ins_opt_outs
+    , spec_hnd.anonymous_donor
     -- Overall mailing list indicators
     , exc_all_comm
     , exc_all_sols
