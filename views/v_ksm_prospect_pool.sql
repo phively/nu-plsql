@@ -45,6 +45,7 @@ ksm_deg As (
     prs_e.prospect_id
     , prs_e.id_number
     , prs_e.primary_ind
+    , 'Y' As ksm_prospect_interest_flag -- N.B. includes the 150/300 list
   From program_prospect prs
   Inner Join prs_e On prs_e.prospect_id = prs.prospect_id
   Inner Join entity on entity.id_number = prs_e.id_number
@@ -61,29 +62,54 @@ ksm_deg As (
 )
 
 -- Previously disqualified prospects; note that this will include people with multiple prospect records
-, dq As (
+, dq_list As (
   (
   -- Overall disqualified
   Select
     prospect.prospect_id
     , id_number
     , tms_stage.short_desc As dq
+    , Case
+        When prospect.stop_date Is Not Null
+          Then prospect.stop_date
+        Else prospect.date_modified
+      End
+      As dq_date
   From prospect
   Inner Join prospect_entity On prospect_entity.prospect_id = prospect.prospect_id
   Left Join tms_stage On tms_stage.stage_code = prospect.stage_code
   Where prospect.stage_code = 7
-  ) Union (
+  ) Union All (
   -- Program disqualified
   Select
     pp.prospect_id
     , id_number
     , tms_stage.short_desc As dq
+    , Case
+        When pp.stop_date Is Not Null
+          Then pp.stop_date
+        Else pp.date_modified
+      End
+      As dq_date
   From program_prospect pp
   Inner Join prospect_entity On prospect_entity.prospect_id = pp.prospect_id
   Left Join tms_stage On tms_stage.stage_code = pp.stage_code
   Where pp.stage_code = 7
     And pp.program_code = 'KM'
   )
+)
+-- Dedupe, using most recent DQ date as final
+, dq As (
+  Select Distinct
+    prospect_id
+    , id_number
+    , dq
+    , trunc(max(dq_date)) As dq_date
+  From dq_list
+  Group By
+    prospect_id
+    , id_number
+    , dq
 )
 
 -- Permanent stewardship prospects
@@ -223,6 +249,7 @@ Select Distinct
   , strat.strategy_sched_date
   , strat.strategy_responsible
   , dq.dq
+  , dq.dq_date
   , perm_stew.ps As permanent_stewardship
   , spec_hnd.DNS
   , prs.evaluation_rating
@@ -271,6 +298,7 @@ Select Distinct
   -- Lifetime giving
   , prs.giving_total As nu_lifetime_recognition
   -- Which group?
+  , ksm_prs.ksm_prospect_interest_flag
   , Case
       -- Top 150
       When ksm_150_300.prospect_category_code = 'KT1'
@@ -297,7 +325,10 @@ Select Distinct
       Else 'Z. None'
     End As pool_group
 From table(rpt_pbh634.ksm_pkg.tbl_entity_households_ksm) hh
-Inner Join ksm_prs_ids On ksm_prs_ids.id_number = hh.id_number -- Must be a valid Kellogg entity
+Inner Join ksm_prs_ids -- Must be a valid Kellogg entity
+  On ksm_prs_ids.id_number = hh.id_number
+Left Join ksm_prs
+  On ksm_prs.id_number = hh.id_number
 Left Join af_10k_model On af_10k_model.id_number = hh.id_number
 Left Join nu_prs_trp_prospect prs On prs.id_number = hh.id_number
 Left Join rating_bins eval On eval.rating_desc = prs.evaluation_rating

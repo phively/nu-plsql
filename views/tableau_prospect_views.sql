@@ -124,7 +124,27 @@ geocode As (
   Group By prospect_id
 )
 
+/* Assignment IDs */
+, assign As (
+  Select Distinct
+    ah.prospect_id
+    , ah.id_number
+    , ah.assignment_id_number
+    , ah.assignment_report_name
+  From v_assignment_history ah
+  Where ah.assignment_active_calc = 'Active' -- Active assignments only
+    And assignment_type In
+      -- Program Manager (PP), Prospect Manager (PM), Annual Fund Officer (AF), Leadership Giving Officer (LG)
+      ('PP', 'PM', 'AF', 'LG')
+    And ah.assignment_report_name Is Not Null -- Real managers only
+)
+
 /* Contact data */
+, ard_contacts As (
+  Select *
+  From v_contact_reports_fast
+  Where ard_staff = 'Y'
+)
 , recent_contact As (
   Select
     id_number
@@ -148,10 +168,37 @@ geocode As (
         As last_contact_purpose
     , min(description) Keep(dense_rank First Order By contact_date Desc)
         As last_contact_desc
-  From v_ard_contact_reports
+  From ard_contacts
   Where contact_type <> 'Visit'
-    And ard_staff = 'Y'
   Group By id_number
+)
+, recent_assn_contacts As (
+  Select
+    ac.id_number
+    -- Most recent contact report from an assigned manager
+    , min(credited_name) Keep(dense_rank First Order By contact_date Desc)
+        As last_assigned_credited_name
+    , min(employer_unit) Keep(dense_rank First Order By contact_date Desc)
+        As last_assigned_credited_unit
+    , min(frontline_ksm_staff) Keep(dense_rank First Order By contact_date Desc)
+        As last_assigned_credited_ksm
+    , min(contact_type) Keep(dense_rank First Order By contact_date Desc)
+        As last_assigned_contact_type
+    , min(contact_type_category) Keep(dense_rank First Order By contact_date Desc)
+        As last_assigned_contact_category
+    , min(contact_date) Keep(dense_rank First Order By contact_date Desc)
+        As last_assigned_contact_date
+    , min(contact_purpose) Keep(dense_rank First Order By contact_date Desc)
+        As last_assigned_contact_purpose
+    , min(description) Keep(dense_rank First Order By contact_date Desc)
+        As last_assigned_contact_desc
+  From ard_contacts ac
+  Inner Join assign
+    On assign.id_number = ac.id_number
+    And assign.assignment_id_number = ac.credited
+  Where contact_type <> 'Visit'
+    And assign.assignment_id_number Is Not Null
+  Group By ac.id_number       
 )
 , recent_visit As (
   Select
@@ -178,9 +225,8 @@ geocode As (
         As last_visit_type
     , min(description) Keep(dense_rank First Order By contact_date Desc, visit_type Asc)
         As last_visit_desc
-  From v_ard_contact_reports
+  From ard_contacts
   Where contact_type = 'Visit'
-    And ard_staff = 'Y'
   Group By id_number
 )
 
@@ -286,6 +332,14 @@ Select Distinct
   , recent_contact.last_contact_date
   , recent_contact.last_contact_purpose
   , recent_contact.last_contact_desc
+  , recent_assn_contacts.last_assigned_credited_name
+  , recent_assn_contacts.last_assigned_credited_unit
+  , recent_assn_contacts.last_assigned_credited_ksm
+  , recent_assn_contacts.last_assigned_contact_type
+  , recent_assn_contacts.last_assigned_contact_category
+  , recent_assn_contacts.last_assigned_contact_date
+  , recent_assn_contacts.last_assigned_contact_purpose
+  , recent_assn_contacts.last_assigned_contact_desc
   -- Tasks data
   , tasks.tasks_open
   , tasks.tasks_open_ksm
@@ -306,6 +360,7 @@ Left Join v_ksm_giving_campaign cmp On cmp.id_number = prs.id_number
 Left Join nu_proposal On nu_proposal.prospect_id = prs.prospect_id
 Left Join ksm_proposal On ksm_proposal.prospect_id = prs.prospect_id
 Left Join recent_contact On recent_contact.id_number = prs.id_number
+Left Join recent_assn_contacts On recent_assn_contacts.id_number = prs.id_number
 Left Join recent_visit On recent_visit.id_number = prs.id_number
 Left Join tasks On tasks.prospect_id = prs.prospect_id
 Left Join next_outreach_task On next_outreach_task.prospect_id = prs.prospect_id
