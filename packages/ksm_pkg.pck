@@ -1494,7 +1494,7 @@ Cursor c_nu_ard_staff Is
     Or lower(nuemploy.employer_unit) Like '%alumni%'
     Or lower(nuemploy.employer_unit) Like '%development%'
     Or lower(nuemploy.employer_unit) Like '%advancement%'
-    Or lower(nuemploy.employer_unit) Like '%ard%'
+    Or nuemploy.employer_unit Like '%ARD%'
     Or lower(nuemploy.employer_unit) Like '%campaign strategy%'
     Or lower(nuemploy.employer_unit) Like '%external relations%'
     Or lower(nuemploy.employer_unit) Like '%gifts%'
