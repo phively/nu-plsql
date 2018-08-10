@@ -118,6 +118,21 @@ geocode As (
     , min(ksm_or_univ_anticipated)
       keep(dense_rank First Order By hierarchy_order Desc, date_modified Desc, proposal_id Asc)
       As recent_ksm_anticipated
+    , min(proposal_id)
+      keep(dense_rank First Order By close_date Asc, hierarchy_order Desc, date_modified Desc, proposal_id Asc)
+      As next_proposal_id
+    , min(proposal_manager)
+      keep(dense_rank First Order By close_date Asc, hierarchy_order Desc, date_modified Desc, proposal_id Asc)
+      As next_proposal_manager
+    , min(close_date)
+      keep(dense_rank First Order By close_date Asc, hierarchy_order Desc, date_modified Desc, proposal_id Asc)
+      As next_close_date
+    , min(ksm_or_univ_ask)
+      keep(dense_rank First Order By close_date Asc, hierarchy_order Desc, date_modified Desc, proposal_id Asc)
+      As next_ksm_ask
+    , min(ksm_or_univ_anticipated)
+      keep(dense_rank First Order By close_date Asc, hierarchy_order Desc, date_modified Desc, proposal_id Asc)
+      As next_ksm_anticipated
   From v_ksm_proposal_history
   Where proposal_in_progress = 'Y'
     And ksm_proposal_ind = 'Y'
@@ -312,6 +327,11 @@ Select Distinct
   , ksm_proposal.recent_date_modified
   , ksm_proposal.recent_ksm_ask
   , ksm_proposal.recent_ksm_anticipated
+  , ksm_proposal.next_proposal_id
+  , ksm_proposal.next_proposal_manager
+  , ksm_proposal.next_close_date
+  , ksm_proposal.next_ksm_ask
+  , ksm_proposal.next_ksm_anticipated
   -- Recent contact data
   , recent_visit.ard_visit_last_365_days
   , recent_contact.ard_contact_last_365_days
