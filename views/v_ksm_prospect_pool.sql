@@ -41,24 +41,32 @@ ksm_deg As (
 
 -- Kellogg prospect interest
 , ksm_prs As (
+  (
+  -- Top 150/300
   Select
     prs_e.prospect_id
     , prs_e.id_number
     , prs_e.primary_ind
     , 'Y' As ksm_prospect_interest_flag -- N.B. includes the 150/300 list
   From program_prospect prs
+  Inner Join ksm_150_300 On ksm_150_300.prospect_id = prs.prospect_id
+  Inner Join prs_e On prs_e.prospect_id = prs.prospect_id
+  Inner Join entity on entity.id_number = prs_e.id_number
+  ) Union (
+  Select
+    prs_e.prospect_id
+    , prs_e.id_number
+    , prs_e.primary_ind
+    , 'Y' As ksm_prospect_interest_flag
+  From program_prospect prs
   Inner Join prs_e On prs_e.prospect_id = prs.prospect_id
   Inner Join entity on entity.id_number = prs_e.id_number
   Where
-    (
-      -- Top 150/300
-      prs.prospect_id In (Select prospect_id From ksm_150_300)
-    ) Or (
       prs.program_code = 'KM' -- Kellogg only
       And prs.active_ind = 'Y' -- Active only
       And entity.record_status_code Not In ('D', 'X') -- Exclude deceased, purgable
       And prs.stage_code Not In (7, 11) -- Exclude Disqualified, Permanent Stewardship
-    )
+  )
 )
 
 -- Previously disqualified prospects; note that this will include people with multiple prospect records
