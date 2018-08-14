@@ -411,7 +411,10 @@ params As (
     , sum(ksm_or_univ_ask) As proposal_asks
     , sum(ksm_or_univ_orig_ask) As proposal_orig_asks
     , sum(ksm_or_univ_anticipated) As proposal_anticipated
-    , sum(ksm_linked_amounts) As proposal_linked
+    -- Count linked amount only when date of record is in month
+    , sum(Case When ksm_date_of_record Between assignment_filled_date And last_day(assignment_filled_date)
+        Then ksm_linked_amounts Else 0 End)
+      As proposal_linked
     -- Was a KSM MG made this month?
     , sum(Case
         When ksm_linked_amounts >= (Select mg_level From params)
@@ -449,6 +452,12 @@ Select Distinct
   -- Eval rating
   , nvl(evl_hist.rating_lower_bound, 0) As eval_lower_bound
   -- Primary visits
+  , Count(Distinct Case When ac.contact_type_category = 'Visit'
+      And ac.contact_credit_type = 1
+      Then ac.report_id End)
+      Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
+    As cr_visits_by_assigned
+  -- Primary visits last N montths
   , Count(Distinct Case When ac.contact_type_category = 'Visit'
       And ac.contact_credit_type = 1
       And ac.contact_date >= add_months(asn.filled_date, -24) Then ac.report_id End)
