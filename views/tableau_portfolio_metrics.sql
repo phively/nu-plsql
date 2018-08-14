@@ -2,6 +2,11 @@ Create Or Replace View vt_go_portfolio_time_series As
 
 With
 
+/******
+This view returns point-in-time portfolio information. The filled_date field gives the point-in-time date,
+and all portfolio metrics are as of the LAST DAY of that month.
+******/
+
 -- Custom parameters/definitions
 params As (
   Select
@@ -126,7 +131,6 @@ params As (
   From assn_dedupe
   -- Drop rows with impossible dates (typo)
   Where filled_date >= to_date('19000101', 'yyyymmdd')
-    And filled_date >= to_date('19000101', 'yyyymmdd')
 )
 
 -- Stage history
@@ -194,13 +198,22 @@ params As (
     report_id
     , credited As credited_id
     , contact_credit_type
-    , prospect_id
+    , Case
+        When vcrf.prospect_id Is Not Null Then vcrf.prospect_id
+        When pe.prospect_id Is Not Null Then pe.prospect_id
+      End
+      As prospect_id
     , contact_date
     , contact_type_category
     , visit_type
-  From rpt_pbh634.v_contact_reports_fast
-  Where prospect_id Is Not Null
-    And ard_staff = 'Y'
+  From rpt_pbh634.v_contact_reports_fast vcrf
+  Left Join table(ksm_pkg.tbl_prospect_entity_active) pe
+    On pe.id_number = vcrf.id_number
+  Where ard_staff = 'Y'
+    And (
+      pe.prospect_id Is Not Null
+      Or vcrf.prospect_id Is Not Null
+    )
 )
 
 -- New gifts & commitments
@@ -229,16 +242,16 @@ params As (
     , assn.assignment_id_number
     , assn.filled_date
     -- KSM giving to present
-    , sum(Case When ngc.date_of_record <= assn.filled_date Then ngc.hh_recognition_credit Else 0 End)
+    , sum(Case When ngc.date_of_record <= last_day(assn.filled_date) Then ngc.hh_recognition_credit Else 0 End)
       As ksm_lifetime_giving
     -- Giving in last 24-month window
-    , sum(Case When ngc.date_of_record Between add_months(assn.filled_date, -24) And assn.filled_date
+    , sum(Case When ngc.date_of_record Between add_months(assn.filled_date, -24) And last_day(assn.filled_date)
         Then ngc.hh_recognition_credit Else 0 End)
       As ksm_giving_last_24_mo
     -- Major gifts
     , Count(Distinct
         Case When ngc.hh_recognition_credit >= (Select mg_level From params)
-        And ngc.date_of_record <= assn.filled_date
+        And ngc.date_of_record <= last_day(assn.filled_date)
         Then ngc.tx_number End)
       As ksm_mg_count
     -- Major gifts since assignment
@@ -246,17 +259,17 @@ params As (
         Case When ngc.hh_recognition_credit >= (Select mg_level From params)
         And (
           -- Gifts between start/stop date from assignment table
-          ngc.date_of_record Between assn.start_dt And assn.filled_date
+          ngc.date_of_record Between assn.start_dt And last_day(assn.filled_date)
           -- Gifts since prospect entered portfolio, across start/stop date rows in assignment table
           Or ngc.date_of_record Between add_months(assn.filled_date, -1 * (months_assigned - 1))
-            And assn.filled_date
+            And last_day(assn.filled_date)
         )
         Then ngc.tx_number End)
       As ksm_mg_since_assign
     -- Major gifts in last 24 months
     , Count(Distinct
           Case When ngc.hh_recognition_credit >= (Select mg_level From params)
-          And ngc.date_of_record Between add_months(assn.filled_date, -24) And assn.filled_date
+          And ngc.date_of_record Between add_months(assn.filled_date, -24) And last_day(assn.filled_date)
           Then ngc.tx_number End)
       As ksm_mg_last_24_mo
   From assn_final assn
@@ -300,6 +313,8 @@ params As (
     , ph.proposal_active_calc
     , ah.assignment_id_number
     , ah.assignment_report_name
+    , ph.start_date
+    , ph.ask_date
     , ph.total_ask_amt
     , ph.total_anticipated_amt
     , ph.total_granted_amt
@@ -341,6 +356,8 @@ params As (
       ) As assignment_filled_date
     , close_dt_calc
     , proposal_active_calc
+    , start_date
+    , ask_date
     , total_ask_amt
     , total_anticipated_amt
     , total_granted_amt
@@ -368,6 +385,8 @@ params As (
     , assignment_report_name
     , assignment_filled_date
     , close_dt_calc
+    , start_date
+    , ask_date
     , total_ask_amt
     , total_anticipated_amt
     , total_granted_amt
@@ -385,6 +404,8 @@ params As (
     , assignment_report_name
     , assignment_filled_date
     , close_dt_calc
+    , start_date
+    , ask_date
     , total_ask_amt
     , total_anticipated_amt
     , total_granted_amt
@@ -411,10 +432,20 @@ params As (
     , sum(ksm_or_univ_ask) As proposal_asks
     , sum(ksm_or_univ_orig_ask) As proposal_orig_asks
     , sum(ksm_or_univ_anticipated) As proposal_anticipated
+    -- Count as new ask when ask date was this month, or proposal start date was this month
+    , count(Distinct
+        Case
+          When ask_date Between assignment_filled_date And last_day(assignment_filled_date)
+            Then proposal_id
+          When start_date Between assignment_filled_date And last_day(assignment_filled_date)
+            Then proposal_id
+        End
+      )
+      As asks_this_mo
     -- Count linked amount only when date of record is in month
     , sum(Case When ksm_date_of_record Between assignment_filled_date And last_day(assignment_filled_date)
         Then ksm_linked_amounts Else 0 End)
-      As proposal_linked
+      As proposal_linked_this_mo
     -- Was a KSM MG made this month?
     , sum(Case
         When ksm_linked_amounts >= (Select mg_level From params)
@@ -470,6 +501,13 @@ Select Distinct
       Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
       / asn.months_assigned
     As cr_visits_per_mo_assigned
+  -- Visit this month, while assigned
+  , Count(Distinct Case When ac.contact_type_category = 'Visit'
+      And ac.contact_credit_type = 1
+      And ac.contact_date Between asn.start_dt + 1 And asn.stop_dt -- Visit on assignment start date doesn't count
+      Then ac.report_id End)
+      Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
+    As cr_visits_this_mo
   -- Visits
   , Count(Distinct Case When ac.contact_type_category = 'Visit'
       And ac.contact_date >= add_months(asn.filled_date, -24) Then ac.report_id End)
@@ -507,7 +545,8 @@ Select Distinct
   , nvl(prp.proposal_asks, 0) As proposal_asks
   , nvl(prp.proposal_orig_asks, 0) As proposal_orig_asks
   , nvl(prp.proposal_anticipated, 0) As proposal_anticipated
-  , nvl(prp.proposal_linked, 0) As proposal_linked
+  , nvl(prp.asks_this_mo, 0) As proposal_asked_this_mo
+  , nvl(prp.proposal_linked_this_mo, 0) As proposal_linked_this_mo
   , nvl(prp.ksm_mg_dollars_this_mo, 0) As ksm_mg_dollars_this_mo
   , nvl(prp.nu_asks, 0) As nu_asks
   , nvl(prp.nu_anticipated, 0) As nu_anticipated
@@ -533,7 +572,7 @@ Left Join eval_history uor_hist
 Left Join ard_contact ac
   On ac.prospect_id = asn.prospect_id
   And ac.credited_id = asn.assignment_id_number
-  And ac.contact_date <= asn.filled_date
+  And ac.contact_date <= last_day(asn.filled_date)
 -- Aggregated giving
 Left Join ksm_giving gft
   On gft.household_id = asn.household_id
