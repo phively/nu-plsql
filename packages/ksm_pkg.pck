@@ -203,6 +203,14 @@ Type nu_ard_staff Is Record (
   , stop_dt employment.stop_dt%type
 );
 
+/* Active prospect entities */
+Type prospect_entity_active Is Record (
+  prospect_id prospect.prospect_id%type
+  , id_number entity.id_number%type
+  , report_name entity.report_name%type
+  , primary_ind prospect_entity.primary_ind%type
+);
+
 /* Employee record type for company queries */
 Type employee Is Record (
   id_number entity.id_number%type
@@ -382,6 +390,7 @@ Type t_numeric_capacity Is Table Of numeric_capacity;
 Type t_modeled_score Is Table Of modeled_score;
 Type t_klc_members Is Table Of klc_member;
 Type t_ksm_staff Is Table Of ksm_staff;
+Type t_prospect_entity_active Is Table Of prospect_entity_active;
 Type t_nu_ard_staff Is Table Of nu_ard_staff;
 Type t_employees Is Table Of employee;
 Type t_prospect_categories Is Table Of prospect_categories;
@@ -532,6 +541,10 @@ Function tbl_klc_history
 /* Return pipelined table of frontline KSM staff */
 Function tbl_frontline_ksm_staff
   Return t_ksm_staff Pipelined;
+
+/* Return pipelined table of active prospect entities */
+Function tbl_prospect_entity_active
+  Return t_prospect_entity_active Pipelined;
 
 /* Return pipelined table of current and past NU ARD staff, with most recent NU job */
 Function tbl_nu_ard_staff
@@ -1598,6 +1611,19 @@ Cursor c_plg_discount Is
   Where pledge.pledge_program_code = 'KM'
     Or pledge_alloc_school = 'KM'
   ;
+
+/* Prospect entity table filtered for active prospects only */
+Cursor c_prospect_entity_active Is
+  Select
+    pe.prospect_id
+    , pe.id_number
+    , e.report_name
+    , pe.primary_ind
+  From prospect_entity pe
+  Inner Join prospect p On p.prospect_id = pe.prospect_id
+  Inner Join entity e On e.id_number = pe.id_number
+  Where p.active_ind = 'Y' -- Active only
+;
 
 /* Definition of KSM giving transactions for summable credit */
 Cursor c_gift_credit_ksm Is
@@ -2890,6 +2916,23 @@ Function tbl_frontline_ksm_staff
     Close ct_frontline_ksm_staff;
     For i in 1..(staff.count) Loop
       Pipe row(staff(i));
+    End Loop;
+    Return;
+  End;
+
+/* Pipelined function returning prospect entity table filtered for active prospects
+   2018-08-14 */
+Function tbl_prospect_entity_active
+  Return t_prospect_entity_active Pipelined As
+  -- Declarations
+  pe t_prospect_entity_active;
+    
+  Begin
+    Open c_prospect_entity_active;
+      Fetch c_prospect_entity_active Bulk Collect Into pe;
+    Close c_prospect_entity_active;
+    For i in 1..(pe.count) Loop
+      Pipe row(pe(i));
     End Loop;
     Return;
   End;
