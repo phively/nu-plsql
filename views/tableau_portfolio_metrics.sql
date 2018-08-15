@@ -315,6 +315,7 @@ params As (
     , ah.assignment_report_name
     , ph.start_date
     , ph.ask_date
+    , ph.proposal_status_code
     , ph.total_ask_amt
     , ph.total_anticipated_amt
     , ph.total_granted_amt
@@ -358,6 +359,7 @@ params As (
     , proposal_active_calc
     , start_date
     , ask_date
+    , proposal_status_code
     , total_ask_amt
     , total_anticipated_amt
     , total_granted_amt
@@ -387,6 +389,7 @@ params As (
     , close_dt_calc
     , start_date
     , ask_date
+    , proposal_status_code
     , total_ask_amt
     , total_anticipated_amt
     , total_granted_amt
@@ -406,6 +409,7 @@ params As (
     , close_dt_calc
     , start_date
     , ask_date
+    , proposal_status_code
     , total_ask_amt
     , total_anticipated_amt
     , total_granted_amt
@@ -433,11 +437,15 @@ params As (
     , sum(ksm_or_univ_orig_ask) As proposal_orig_asks
     , sum(ksm_or_univ_anticipated) As proposal_anticipated
     -- Count as new ask when ask date was this month, or proposal start date was this month
+    -- Only count statuses B (Letter of Inquiry), C (Submitted), 5 (Approved), 7 (Funded), 8 (Declined)
     , count(Distinct
         Case
           When ask_date Between assignment_filled_date And last_day(assignment_filled_date)
+            And proposal_status_code In ('B', 'C', '5', '7', '8')
             Then proposal_id
-          When start_date Between assignment_filled_date And last_day(assignment_filled_date)
+          When ask_date Is Null
+            And proposal_status_code In ('B', 'C', '5', '7', '8')
+            And start_date Between assignment_filled_date And last_day(assignment_filled_date)
             Then proposal_id
         End
       )
@@ -504,7 +512,9 @@ Select Distinct
   -- Visit this month, while assigned
   , Count(Distinct Case When ac.contact_type_category = 'Visit'
       And ac.contact_credit_type = 1
-      And ac.contact_date Between asn.start_dt + 1 And asn.stop_dt -- Visit on assignment start date doesn't count
+      And ac.contact_date Between
+        greatest(asn.start_dt + 1, asn.filled_date) -- Visit on assignment start date doesn't count
+        And least(asn.stop_dt, last_day(asn.filled_date))
       Then ac.report_id End)
       Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
     As cr_visits_this_mo
@@ -555,19 +565,19 @@ From assn_final asn
 -- Prospect stage history
 Left Join stage_history stg_hist
   On stg_hist.prospect_id = asn.prospect_id
-  And asn.filled_date Between stg_hist.stage_start_dt And stg_hist.stage_stop_dt
+  And last_day(asn.filled_date) Between stg_hist.stage_start_dt And stg_hist.stage_stop_dt
 -- Entity evaluation history
 Left Join eval_history evl_hist
   On evl_hist.id_number = asn.id_number
   And evl_hist.prospect_id Is Null
   And evl_hist.evaluation_type = 'PR'
-  And asn.filled_date Between evl_hist.eval_start_dt And evl_hist.eval_stop_dt
+  And last_day(asn.filled_date) Between evl_hist.eval_start_dt And evl_hist.eval_stop_dt
 -- UOR history
 Left Join eval_history uor_hist
   On uor_hist.prospect_id = asn.prospect_id
   And uor_hist.prospect_id Is Not Null
   And uor_hist.evaluation_type = 'UR'
-  And asn.filled_date Between uor_hist.eval_start_dt And uor_hist.eval_stop_dt
+  And last_day(asn.filled_date) Between uor_hist.eval_start_dt And uor_hist.eval_stop_dt
 -- Contact reports
 Left Join ard_contact ac
   On ac.prospect_id = asn.prospect_id
