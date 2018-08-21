@@ -100,6 +100,10 @@ trans As (
       As last_gift_date
     , min(gfts.transaction_type) keep(dense_rank First Order By gfts.date_of_record Desc, gfts.tx_number Asc)
       As last_gift_type
+    , min(gfts.allocation_code) keep(dense_rank First Order By gfts.date_of_record Desc, gfts.tx_number Asc, gfts.alloc_short_name Asc)
+      As last_gift_alloc_code
+    , min(gfts.alloc_short_name) keep(dense_rank First Order By gfts.date_of_record Desc, gfts.tx_number Asc, gfts.alloc_short_name Asc)
+      As last_gift_alloc
     , sum(gfts.hh_recognition_credit) keep(dense_rank First Order By gfts.date_of_record Desc, gfts.tx_number Asc)
       As last_gift_recognition_credit
   From table(ksm_pkg.tbl_entity_households_ksm) hh
