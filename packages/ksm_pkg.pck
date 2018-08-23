@@ -2023,7 +2023,8 @@ Cursor c_gift_credit_hh_campaign_2008 Is
   (
   Select hh_cred.*
   From table(tbl_gift_credit_hh_ksm) hh_cred
-  Where hh_cred.tx_number In (Select Distinct rcpt_or_plg_number From nu_rpt_t_cmmt_dtl_daily)
+  Inner Join nu_rpt_t_cmmt_dtl_daily daily
+    On hh_cred.tx_number = daily.rcpt_or_plg_number
   ) Union All (
   -- Internal transfer; 344303 is 50%
   Select
