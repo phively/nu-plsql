@@ -173,6 +173,7 @@ Select Distinct
       As ksm_proposal_ind
   , proposal.proposal_title
   , proposal.description As proposal_description
+  , tms_pt.short_desc As proposal_type
   , assn.proposal_manager_id
   , assn.proposal_manager
   , asst.proposal_assist
@@ -267,6 +268,7 @@ Inner Join tms_proposal_status tms_ps On tms_ps.proposal_status_code = proposal.
 Left Join ksm_purp On ksm_purp.proposal_id = proposal.proposal_id
 Left Join ksm_amts On ksm_amts.proposal_id = proposal.proposal_id
 Left Join tms_proposal_submit_type tms_pst On tms_pst.proposal_submit_type_code = proposal.submit_type
+Left Join tms_proposal_type tms_pt On tms_pt.proposal_type = proposal.proposal_type
 -- Proposal info
 Left Join other_purp On other_purp.proposal_id = proposal.proposal_id
 Left Join assn On assn.proposal_id = proposal.proposal_id
@@ -310,6 +312,7 @@ Select
   , ksm_proposal_ind
   , proposal_title
   , proposal_description
+  , proposal_type
   , proposal_manager_id
   , proposal_manager
   , proposal_assist
