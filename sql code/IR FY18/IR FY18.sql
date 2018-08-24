@@ -7,11 +7,35 @@
 
 With
 
+/* Parameters -- update this each year
+  Also look for <UPDATE THIS> comment */
+params_cfy As (
+  Select
+    2018 As params_cfy -- <UPDATE THIS>
+  From DUAL
+)
+, params As (
+  Select
+    params_cfy
+    , params_cfy - 1 As params_pfy1
+    , params_cfy - 2 As params_pfy2
+    , params_cfy - 3 As params_pfy3
+    , params_cfy - 4 As params_pfy4
+    , params_cfy - 5 As params_pfy5
+    , params_cfy - 6 As params_pfy6
+    , params_cfy - 7 As params_pfy7
+    , params_cfy - 8 As params_pfy8
+    , params_cfy - 9 As params_pfy9
+    , params_cfy - 10 As params_pfy10
+  From params_cfy
+)
+
+
 /* Degree strings
   Kellogg stewardship degree years as defined by ksm_pkg. For the FY18 IR these are in the format:
   'YY, 'YY
   With years listed in chronological order and de-duped (listagg) */
-degs As (
+, degs As (
   Select id_number, stewardship_years As yrs
   From table(ksm_pkg.tbl_entity_degrees_concat_ksm) deg
 ),
@@ -104,7 +128,7 @@ dec_spouse_ids As (
       When ds.id_join = hh.household_id Then hhd.yrs Else hhd.yrs_spouse End As yrs_join,
     Case When hhd.household_spouse_rpt_name Is Null Then hhd.household_rpt_name
       When ds.id_join = hh.household_id Then hhd.household_rpt_name Else hhd.household_spouse_rpt_name End As snj
-  From rpt_pbh634.tbl_ir_fy18_dec_spouse ds
+  From rpt_pbh634.tbl_ir_fy18_dec_spouse ds -- <UPDATE THIS>
   Inner Join hh On hh.id_number = ds.id_number
   Inner Join hh hhd On hhd.id_number = ds.id_join
 ),
@@ -133,25 +157,30 @@ assign_conc As (
 young_klc As (
   Select klc.*
   From table(ksm_pkg.tbl_klc_history) klc
-  Where fiscal_year Between 2013 And 2018 -- KLC member in current or 5 previous FYs
+  Cross Join params
+  Where fiscal_year Between params_pfy5 And params_cfy -- KLC member in current or 5 previous FYs
 ),
 fy_klc As (
-  Select Distinct household_id, '<KLC18>' As klc
+  Select Distinct
+    household_id
+    , '<KLC18>' As klc -- <UPDATE THIS>
   From young_klc
-  Where fiscal_year = 2018
+  Cross Join params
+  Where fiscal_year = params_cfy
 ),
 
 /* Loyal households
   Stewardship giving as defined by ksm_giving_trans (and thus indirectly by ksm_pkg).
   For the FY18 IR, loyal implies either spouse is credited toward any KSM gift > $0, including matches, for each of FY18, FY17, FY16  */
 loyal_giving As (
-  Select Distinct hhs.household_id,
+  Select Distinct
+    hhs.household_id
     -- WARNING: includes new gifts and commitments as well as cash
-    sum(Case When fiscal_year = 2016 Then hh_credit Else 0 End) As stewardship_pfy2,
-    sum(Case When fiscal_year = 2017 Then hh_credit Else 0 End) As stewardship_pfy1,
-    sum(Case When fiscal_year = 2018 Then hh_credit Else 0 End) As stewardship_cfy
+    , sum(Case When fiscal_year = params_pfy2 Then hh_credit Else 0 End) As stewardship_pfy2
+    , sum(Case When fiscal_year = params_pfy1 Then hh_credit Else 0 End) As stewardship_pfy1
+    , sum(Case When fiscal_year = params_cfy Then hh_credit Else 0 End) As stewardship_cfy
   From hhs
-  Cross Join v_current_calendar cal
+  Cross Join params
   Inner Join v_ksm_giving_trans_hh gfts On gfts.household_id = hhs.household_id
   Group By hhs.household_id
 ),
@@ -165,78 +194,94 @@ loyal As (
   ksm_pkg rewrite of Kellogg campaign giving, based on Bill's campaign reporting table.
   For the FY18 IR, this deliberately counts bequests/life expectancy at face value, but only the PAID amounts of cancelled pledges. */
 cgft As (
-  Select gft.*,
-  -- Custom giving level indicator
-  Case When custlvl.id_number Is Not Null Then 'Y' End As manual_giving_level,
-  -- Giving level string
-  Case
-    -- Custom level override
-    When custlvl.id_number Is Not Null Then
-      Case
-        When upper(custlvl.custom_level) Like '%ORG%' Then 'Z. Org'
-        When upper(custlvl.custom_level) Like '%10M%' Then 'A. 10M+'
-        When upper(custlvl.custom_level) Like '%2.5M%' Then 'C. 2.5M+' -- Before 5M so we don't match the 5M in 2.5M
-        When upper(custlvl.custom_level) Like '%5M%' Then 'B. 5M+'
-        When upper(custlvl.custom_level) Like '%1M%' Then 'D. 1M+'
-        When upper(custlvl.custom_level) Like '%500K%' Then 'E. 500K+'
-        When upper(custlvl.custom_level) Like '%250K%' Then 'F. 250K+'
-        When upper(custlvl.custom_level) Like '%100K%' Then 'G. 100K+'
-        When upper(custlvl.custom_level) Like '%50K%' Then 'H. 50K+'
-        When upper(custlvl.custom_level) Like '%25K%' Then 'I. 25K+'
-        When upper(custlvl.custom_level) Like '%10K%' Then 'J. 10K+'
-        When upper(custlvl.custom_level) Like '%2.5K%' Then 'L. 2.5K+' -- Before 5K so we don't match the 5K in 2.5K
-        When upper(custlvl.custom_level) Like '%5K%' Then 'K. 5K+'
-        Else 'CHECK BY HAND'
-      End
-    -- All others
-    When entity.person_or_org = 'O' Then 'Z. Org'
-    When campaign_steward_thru_fy18 >= 10000000 Then 'A. 10M+'
-    When campaign_steward_thru_fy18 >=  5000000 Then 'B. 5M+'
-    When campaign_steward_thru_fy18 >=  2500000 Then 'C. 2.5M+'
-    When campaign_steward_thru_fy18 >=  1000000 Then 'D. 1M+'
-    When campaign_steward_thru_fy18 >=   500000 Then 'E. 500K+'
-    When campaign_steward_thru_fy18 >=   250000 Then 'F. 250K+'
-    When campaign_steward_thru_fy18 >=   100000 Then 'G. 100K+'
-    When campaign_steward_thru_fy18 >=    50000 Then 'H. 50K+'
-    When campaign_steward_thru_fy18 >=    25000 Then 'I. 25K+'
-    When campaign_steward_thru_fy18 >=    10000 Then 'J. 10K+'
-    When campaign_steward_thru_fy18 >=     5000 Then 'K. 5K+'
-    Else 'L. 2.5K+'
-  End As proposed_giving_level,
-  Case
-    When entity.person_or_org = 'O' Then 'Z. Org'
-    When nonanon_steward_thru_fy18 >= 10000000 Then 'A. 10M+'
-    When nonanon_steward_thru_fy18 >=  5000000 Then 'B. 5M+'
-    When nonanon_steward_thru_fy18 >=  2500000 Then 'C. 2.5M+'
-    When nonanon_steward_thru_fy18 >=  1000000 Then 'D. 1M+'
-    When nonanon_steward_thru_fy18 >=   500000 Then 'E. 500K+'
-    When nonanon_steward_thru_fy18 >=   250000 Then 'F. 250K+'
-    When nonanon_steward_thru_fy18 >=   100000 Then 'G. 100K+'
-    When nonanon_steward_thru_fy18 >=    50000 Then 'H. 50K+'
-    When nonanon_steward_thru_fy18 >=    25000 Then 'I. 25K+'
-    When nonanon_steward_thru_fy18 >=    10000 Then 'J. 10K+'
-    When nonanon_steward_thru_fy18 >=     5000 Then 'K. 5K+'
-    Else 'L. 2.5K+'
-  End As nonanon_giving_level
+  Select
+    gft.*
+    -- Custom giving level indicator
+    , Case When custlvl.id_number Is Not Null Then 'Y' End As manual_giving_level
+    -- Giving level string
+    , Case
+      -- Custom level override
+      When custlvl.id_number Is Not Null Then
+        Case
+          When upper(custlvl.custom_level) Like '%ORG%' Then 'Z. Org'
+          When upper(custlvl.custom_level) Like '%10M%' Then 'A. 10M+'
+          When upper(custlvl.custom_level) Like '%2.5M%' Then 'C. 2.5M+' -- Before 5M so we don't match the 5M in 2.5M
+          When upper(custlvl.custom_level) Like '%5M%' Then 'B. 5M+'
+          When upper(custlvl.custom_level) Like '%1M%' Then 'D. 1M+'
+          When upper(custlvl.custom_level) Like '%500K%' Then 'E. 500K+'
+          When upper(custlvl.custom_level) Like '%250K%' Then 'F. 250K+'
+          When upper(custlvl.custom_level) Like '%100K%' Then 'G. 100K+'
+          When upper(custlvl.custom_level) Like '%50K%' Then 'H. 50K+'
+          When upper(custlvl.custom_level) Like '%25K%' Then 'I. 25K+'
+          When upper(custlvl.custom_level) Like '%10K%' Then 'J. 10K+'
+          When upper(custlvl.custom_level) Like '%2.5K%' Then 'L. 2.5K+' -- Before 5K so we don't match the 5K in 2.5K
+          When upper(custlvl.custom_level) Like '%5K%' Then 'K. 5K+'
+          Else 'CHECK BY HAND'
+        End
+      -- All others
+      When entity.person_or_org = 'O' Then 'Z. Org'
+      When campaign_steward_thru_fy18 >= 10000000 Then 'A. 10M+' -- <UPDATE THIS>
+      When campaign_steward_thru_fy18 >=  5000000 Then 'B. 5M+' -- <UPDATE THIS>
+      When campaign_steward_thru_fy18 >=  2500000 Then 'C. 2.5M+' -- <UPDATE THIS>
+      When campaign_steward_thru_fy18 >=  1000000 Then 'D. 1M+' -- <UPDATE THIS>
+      When campaign_steward_thru_fy18 >=   500000 Then 'E. 500K+' -- <UPDATE THIS>
+      When campaign_steward_thru_fy18 >=   250000 Then 'F. 250K+' -- <UPDATE THIS>
+      When campaign_steward_thru_fy18 >=   100000 Then 'G. 100K+' -- <UPDATE THIS>
+      When campaign_steward_thru_fy18 >=    50000 Then 'H. 50K+' -- <UPDATE THIS>
+      When campaign_steward_thru_fy18 >=    25000 Then 'I. 25K+' -- <UPDATE THIS>
+      When campaign_steward_thru_fy18 >=    10000 Then 'J. 10K+' -- <UPDATE THIS>
+      When campaign_steward_thru_fy18 >=     5000 Then 'K. 5K+' -- <UPDATE THIS>
+      Else 'L. 2.5K+'
+    End As proposed_giving_level
+    , Case
+      When entity.person_or_org = 'O' Then 'Z. Org'
+      When nonanon_steward_thru_fy18 >= 10000000 Then 'A. 10M+' -- <UPDATE THIS>
+      When nonanon_steward_thru_fy18 >=  5000000 Then 'B. 5M+' -- <UPDATE THIS>
+      When nonanon_steward_thru_fy18 >=  2500000 Then 'C. 2.5M+' -- <UPDATE THIS>
+      When nonanon_steward_thru_fy18 >=  1000000 Then 'D. 1M+' -- <UPDATE THIS>
+      When nonanon_steward_thru_fy18 >=   500000 Then 'E. 500K+' -- <UPDATE THIS>
+      When nonanon_steward_thru_fy18 >=   250000 Then 'F. 250K+' -- <UPDATE THIS>
+      When nonanon_steward_thru_fy18 >=   100000 Then 'G. 100K+' -- <UPDATE THIS>
+      When nonanon_steward_thru_fy18 >=    50000 Then 'H. 50K+' -- <UPDATE THIS>
+      When nonanon_steward_thru_fy18 >=    25000 Then 'I. 25K+' -- <UPDATE THIS>
+      When nonanon_steward_thru_fy18 >=    10000 Then 'J. 10K+' -- <UPDATE THIS>
+      When nonanon_steward_thru_fy18 >=     5000 Then 'K. 5K+' -- <UPDATE THIS>
+      Else 'L. 2.5K+'
+    End As nonanon_giving_level
   From v_ksm_giving_campaign gft
-  Inner Join entity On entity.id_number = gft.id_number
+  Inner Join entity
+    On entity.id_number = gft.id_number
   -- Interface for custom giving levels override; add to the tbl_ir_fy18_custom_level table and they'll show up here
-  Left Join tbl_ir_fy18_custom_level custlvl On custlvl.id_number = gft.id_number
+  Left Join tbl_ir_fy18_custom_level custlvl -- <UPDATE THIS>
+    On custlvl.id_number = gft.id_number
 ),
 
 /* Cash giving amounts
   Determine how much young alumni gave in a sliding 5FY window; for the FY18 IR it has to be at least $1,000 in a single year to be included. */
 cash As (
-  Select Distinct hhs.id_number, hhs.household_id, hhs.household_rpt_name, hhs.household_spouse_id, hhs.household_spouse,
+  Select Distinct
+    hhs.id_number
+    , hhs.household_id
+    , hhs.household_rpt_name
+    , hhs.household_spouse_id
+    , hhs.household_spouse
     -- Cash giving for KLC young alumni determination
-    sum(Case When fiscal_year = 2013 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End) As cash_fy13,
-    sum(Case When fiscal_year = 2014 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End) As cash_fy14,
-    sum(Case When fiscal_year = 2015 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End) As cash_fy15,
-    sum(Case When fiscal_year = 2016 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End) As cash_fy16,
-    sum(Case When fiscal_year = 2017 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End) As cash_fy17,
-    sum(Case When fiscal_year = 2018 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End) As cash_fy18
+    , sum(Case When fiscal_year = params_pfy5 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
+      As cash_fy13 -- <UPDATE THIS>
+    , sum(Case When fiscal_year = params_pfy4 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
+      As cash_fy14 -- <UPDATE THIS>
+    , sum(Case When fiscal_year = params_pfy3 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
+      As cash_fy15 -- <UPDATE THIS>
+    , sum(Case When fiscal_year = params_pfy2 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
+      As cash_fy16 -- <UPDATE THIS>
+    , sum(Case When fiscal_year = params_pfy1 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
+      As cash_fy17 -- <UPDATE THIS>
+    , sum(Case When fiscal_year = params_cfy And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
+      As cash_fy18 -- <UPDATE THIS>
   From hhs
-  Inner Join v_ksm_giving_trans_hh gfts On gfts.household_id = hhs.household_id
+  Cross Join params
+  Inner Join v_ksm_giving_trans_hh gfts
+    On gfts.household_id = hhs.household_id
   Group By hhs.id_number, hhs.household_id, hhs.household_rpt_name, hhs.household_spouse_id, hhs.household_spouse
 ),
 
@@ -251,7 +296,7 @@ donorlist As (
     hh.no_joint_gifts_flag
   From cgft
   Inner Join hh On hh.id_number = cgft.id_number
-  Where cgft.campaign_steward_thru_fy18 >= 2500
+  Where cgft.campaign_steward_thru_fy18 >= 2500 -- <UPDATE THIS>
     And hh.person_or_org = 'P' -- People
   ) Union All (
   -- $100K+ cumulative campaign giving for orgs
@@ -261,7 +306,7 @@ donorlist As (
     hh.no_joint_gifts_flag
   From cgft
   Inner Join hh On hh.id_number = cgft.id_number
-  Where cgft.campaign_steward_thru_fy18 >= 100000
+  Where cgft.campaign_steward_thru_fy18 >= 100000 -- <UPDATE THIS>
     And hh.person_or_org = 'O' -- Orgs
   ) Union All (
   -- Young alumni giving $1000+ from FY12 on
@@ -270,23 +315,42 @@ donorlist As (
     hh.person_or_org, hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status,
     no_joint_gifts_flag
   From cgft
+  Cross Join params
   Inner Join hh On hh.id_number = cgft.id_number
   Left Join cash On cash.id_number = cgft.id_number
   -- Graduated within "past" 5 years and gave at least $1000 "this" year
   Where cgft.household_id In (Select Distinct household_id From young_klc)
     And (
-         ((hh.last_noncert_year Between 2008 And 2013 Or hh.spouse_last_noncert_year Between 2008 And 2013)
-          And (campaign_fy13 >= 1000 Or cash_fy13 >= 1000))
-      Or ((hh.last_noncert_year Between 2009 And 2014 Or hh.spouse_last_noncert_year Between 2009 And 2014)
-          And (campaign_fy14 >= 1000 Or cash_fy14 >= 1000))
-      Or ((hh.last_noncert_year Between 2010 And 2015 Or hh.spouse_last_noncert_year Between 2010 And 2015)
-          And (campaign_fy15 >= 1000 Or cash_fy15 >= 1000))
-      Or ((hh.last_noncert_year Between 2011 And 2016 Or hh.spouse_last_noncert_year Between 2011 And 2016)
-          And (campaign_fy16 >= 1000 Or cash_fy16 >= 1000))
-      Or ((hh.last_noncert_year Between 2012 And 2017 Or hh.spouse_last_noncert_year Between 2012 And 2017)
-          And (campaign_fy17 >= 1000 Or cash_fy17 >= 1000))
-      Or ((hh.last_noncert_year Between 2013 And 2018 Or hh.spouse_last_noncert_year Between 2013 And 2018)
-          And (campaign_fy18 >= 1000 Or cash_fy18 >= 1000))
+      (
+        (hh.last_noncert_year Between params_pfy10 And params_pfy5
+          Or hh.spouse_last_noncert_year Between params_pfy10 And params_pfy5)
+        And (campaign_fy13 >= 1000 Or cash_fy13 >= 1000) -- <UPDATE THIS>
+      )
+      Or (
+        (hh.last_noncert_year Between params_pfy9 And params_pfy4
+          Or hh.spouse_last_noncert_year Between params_pfy9 And params_pfy4)
+        And (campaign_fy14 >= 1000 Or cash_fy14 >= 1000) -- <UPDATE THIS>
+      )
+      Or (
+        (hh.last_noncert_year Between params_pfy8 And params_pfy3
+          Or hh.spouse_last_noncert_year Between params_pfy8 And params_pfy3)
+        And (campaign_fy15 >= 1000 Or cash_fy15 >= 1000) -- <UPDATE THIS>
+      )
+      Or (
+        (hh.last_noncert_year Between params_pfy7 And params_pfy2
+          Or hh.spouse_last_noncert_year Between params_pfy7 And params_pfy2)
+        And (campaign_fy16 >= 1000 Or cash_fy16 >= 1000) -- <UPDATE THIS>
+      )
+      Or (
+        (hh.last_noncert_year Between params_pfy6 And params_pfy1
+          Or hh.spouse_last_noncert_year Between params_pfy6 And params_pfy1)
+        And (campaign_fy17 >= 1000 Or cash_fy17 >= 1000) -- <UPDATE THIS>
+      )
+      Or (
+        (hh.last_noncert_year Between params_pfy5 And params_cfy
+          Or hh.spouse_last_noncert_year Between params_pfy5 And params_cfy)
+        And (campaign_fy18 >= 1000 Or cash_fy18 >= 1000) -- <UPDATE THIS>
+      )
     )
   )
 ),
@@ -330,8 +394,10 @@ rec_name_logic As (
   From donorlist
   Left Join dec_spouse_ids On dec_spouse_ids.id_number = donorlist.id_number
   Left Join anon On anon.household_id = donorlist.household_id
-  Left Join tbl_IR_FY18_custom_name cust_name On cust_name.id_number = donorlist.id_number
-  Left Join Tbl_IR_FY18_custom_level custlvl On custlvl.id_number = donorlist.id_number
+  Left Join tbl_IR_FY18_custom_name cust_name -- <UPDATE THIS>
+    On cust_name.id_number = donorlist.id_number
+  Left Join Tbl_IR_FY18_custom_level custlvl -- <UPDATE THIS>
+    On custlvl.id_number = donorlist.id_number
 ),
 rec_name As (
   Select rn.id_number, rn.name_order, anon.anon,
@@ -412,7 +478,8 @@ rec_name As (
   Left Join fy_klc On fy_klc.household_id = rn.household_id
   Left Join loyal On loyal.household_id = rn.household_id
   Left Join anon On anon.household_id = rn.household_id
-  Left Join tbl_IR_FY18_custom_name cust_name On cust_name.id_number = rn.id_number
+  Left Join tbl_IR_FY18_custom_name cust_name -- <UPDATE THIS>
+    On cust_name.id_number = rn.id_number
 )
 
 /* Main query */
@@ -432,12 +499,12 @@ Select Distinct
   proposed_giving_level,
   -- Anonymous flags
   Case When proposed_giving_level <> nonanon_giving_level And rec_name.anon Is Null Then nonanon_giving_level End As different_nonanon_level,
-  rec_name.anon,
-  anon_steward_thru_fy18,
-  nonanon_steward_thru_fy18,
+  rec_name.anon
+  , anon_steward_thru_fy18 -- <UPDATE THIS>
+  , nonanon_steward_thru_fy18 -- <UPDATE THIS>
   -- Fields
-  campaign_steward_thru_fy18,
-  manual_giving_level,
+  , campaign_steward_thru_fy18 -- <UPDATE THIS>
+  , manual_giving_level,
   Case When rec_name.name_order = 'Manually HH' Then 'Y' End As manually_householded,
   rec_name.manually_named,
   Case
@@ -489,8 +556,8 @@ Select Distinct
   campaign_fy15,
   campaign_fy16,
   campaign_fy17,
-  campaign_fy18,
-  campaign_fy19
+  campaign_fy18
+  , campaign_fy19 -- <UPDATE THIS>
 From donorlist
 Inner Join rec_name On rec_name.id_number = donorlist.id_number
 Left Join assign_conc On assign_conc.household_id = donorlist.household_id
