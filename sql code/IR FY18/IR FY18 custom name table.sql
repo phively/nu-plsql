@@ -25,7 +25,13 @@ Commit Work
 ;
 
 -- Test results
-Select cust_name.id_number, entity.report_name, entity.spouse_name, custom_name, override_suffixes
+Select
+  cust_name.id_number
+  , entity.report_name
+  , entity.spouse_name
+  , custom_name
+  , override_suffixes
 From tbl_IR_FY18_custom_name cust_name
-Inner Join entity On entity.id_number = cust_name.id_number
+Inner Join entity
+  On entity.id_number = cust_name.id_number
 ;
