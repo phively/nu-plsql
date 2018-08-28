@@ -1,58 +1,13 @@
 /**************************************
-NU historical proposals, including inactive
+No KSM linking for speed
 **************************************/
 
-Create Or Replace View v_proposal_history As
+Create Or Replace View v_proposal_history_fast As
 
 With
 
--- Gifts with linked proposals
-trans As (
-  Select
-    proposal_id
-    , legal_amount
-    , tx_number
-    , date_of_record
-  From v_ksm_giving_trans
-  Where proposal_id Is Not Null
-    And legal_amount > 0
-    And tx_gypm_ind <> 'Y'
-)
-, linked As (
-  Select
-    proposal_id
-    , sum(legal_amount) As ksm_linked_amounts
-    , trunc(min(date_of_record)) As ksm_date_of_record
-  From trans
-  Group By proposal_id
-)
-, linked_receipts As (
-  Select
-    proposal_id
-    , Listagg(tx_number, '; ') Within Group (Order By tx_number Asc) As ksm_linked_receipts
-  From (
-    Select Distinct
-      proposal_id
-      , tx_number
-    From trans
-  )
-  Group By proposal_id
-)
-, linkednu As (
-  Select
-    proposal_id
-    , sum(prim_pledge_amount) As nu_linked_amounts
-  From (
-    Select proposal_id, prim_pledge_amount From primary_pledge
-    Union All
-    Select proposal_id, prim_gift_amount From primary_gift Where pledge_payment_ind = 'N'
-  )
-  Where proposal_id Is Not Null
-  Group By proposal_id
-)
-
 -- Current calendar
-, cal As (
+cal As (
   Select *
   From table(rpt_pbh634.ksm_pkg.tbl_current_calendar)
 )
@@ -215,10 +170,6 @@ Select Distinct
       Else NULL
     End As close_dt_calc
   , trunc(date_modified) As date_modified
-  , linked_receipts.ksm_linked_receipts
-  , linked.ksm_date_of_record
-  , linked.ksm_linked_amounts
-  , linkednu.nu_linked_amounts
   , original_ask_amt As total_original_ask_amt
   , ask_amt As total_ask_amt
   , anticipated_amt As total_anticipated_amt
@@ -277,10 +228,124 @@ Left Join asst On asst.proposal_id = proposal.proposal_id
 Left Join (Select prospect_id, prospect_name, prospect_name_sort From prospect) prs
   On prs.prospect_id = proposal.prospect_id
 Left Join strat On strat.prospect_id = proposal.prospect_id
+;
+
+/**************************************
+NU historical proposals, including inactive
+**************************************/
+
+Create Or Replace View v_proposal_history As
+
+With
+
+-- Gifts with linked proposals
+trans As (
+  Select
+    proposal_id
+    , legal_amount
+    , tx_number
+    , date_of_record
+  From v_ksm_giving_trans
+  Where proposal_id Is Not Null
+    And legal_amount > 0
+    And tx_gypm_ind <> 'Y'
+)
+, linked As (
+  Select
+    proposal_id
+    , sum(legal_amount) As ksm_linked_amounts
+    , trunc(min(date_of_record)) As ksm_date_of_record
+  From trans
+  Group By proposal_id
+)
+, linked_receipts As (
+  Select
+    proposal_id
+    , Listagg(tx_number, '; ') Within Group (Order By tx_number Asc) As ksm_linked_receipts
+  From (
+    Select Distinct
+      proposal_id
+      , tx_number
+    From trans
+  )
+  Group By proposal_id
+)
+, linkednu As (
+  Select
+    proposal_id
+    , sum(prim_pledge_amount) As nu_linked_amounts
+  From (
+    Select proposal_id, prim_pledge_amount From primary_pledge
+    Union All
+    Select proposal_id, prim_gift_amount From primary_gift Where pledge_payment_ind = 'N'
+  )
+  Where proposal_id Is Not Null
+  Group By proposal_id
+)
+
+-- Main query
+Select Distinct
+  phf.prospect_id
+  , prospect_name
+  , prospect_name_sort
+  , phf.proposal_id
+  , ksm_proposal_ind
+  , proposal_title
+  , proposal_description
+  , proposal_type
+  , proposal_manager_id
+  , proposal_manager
+  , proposal_assist
+  , historical_managers
+  , proposal_status_code
+  , probability
+  , hierarchy_order
+  , proposal_status
+  , proposal_active
+  , proposal_in_progress
+  -- Active or inactive computation
+  , proposal_active_calc
+  , prop_purposes
+  , initiatives
+  , other_programs
+  , university_strategy
+  , start_date
+  , start_fy
+  -- Calculated start date: use date_added if start_date unavailable
+  , start_dt_calc
+  , ask_date
+  , ask_fy
+  , close_date
+  , close_fy
+    -- Calculated stop date: use date_modified if stop_date unavailable
+  , close_dt_calc
+  , date_modified
+  , linked_receipts.ksm_linked_receipts
+  , linked.ksm_date_of_record
+  , linked.ksm_linked_amounts
+  , linkednu.nu_linked_amounts
+  , total_original_ask_amt
+  , total_ask_amt
+  , total_anticipated_amt
+  , total_granted_amt
+  , ksm_ask
+  , ksm_anticipated
+  , ksm_af_ask
+  , ksm_af_anticipated
+  , ksm_facilities_ask
+  , ksm_facilities_anticipated
+  , ksm_or_univ_ask
+  , ksm_or_univ_orig_ask
+  , ksm_or_univ_anticipated
+  -- Anticipated or ask amount depending on stage and data quality
+  , final_anticipated_or_ask_amt
+  -- Anticipated bin: use anticipated amount if available, otherwise fall back to ask amount
+  , ksm_bin
+From v_proposal_history_fast phf
 -- Linked gift info
-Left Join linked On linked.proposal_id = proposal.proposal_id
-Left Join linked_receipts On linked_receipts.proposal_id = proposal.proposal_id
-Left Join linkednu On linkednu.proposal_id = proposal.proposal_id
+Left Join linked On linked.proposal_id = phf.proposal_id
+Left Join linked_receipts On linked_receipts.proposal_id = phf.proposal_id
+Left Join linkednu On linkednu.proposal_id = phf.proposal_id
 ;
 
 /**************************************
