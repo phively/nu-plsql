@@ -149,13 +149,6 @@ manual_exclusions_pre As (
           And final_anticipated_or_ask_amt > 50000 -- Ignore ask/anticipated $50K or under
           Then proposal_id 
       End) As proposals_sub_appr
-    -- Anticipated proposal, close date in next 18 months
-    , count(Distinct Case
-        When hierarchy_order = 10 -- anticipated
-          And final_anticipated_or_ask_amt > 50000 -- Ignore ask $50K or under
-          And close_date <= add_months(cal.today, 18)
-          Then proposal_id
-      End) As proposals_antic_18_mos
   From v_ksm_proposal_history vph
   Cross Join v_current_calendar cal
   Where proposal_active = 'Y'
@@ -170,12 +163,11 @@ manual_exclusions_pre As (
     , pe.id_number
     , pe.primary_ind
     , pd.proposals_sub_appr
-    , pd.proposals_antic_18_mos
   From ksm_proposal_data pd
   Inner Join prospect_entity pe On pe.prospect_id = pd.prospect_id
   Inner Join prospect p On p.prospect_id = pd.prospect_id
   Where p.active_ind = 'Y' -- Active only
-    And pd.proposals_sub_appr + pd.proposals_antic_18_mos > 0 -- Must have proposals
+    And pd.proposals_sub_appr > 0 -- Must have proposals
 )
 
 -- Degree removals
@@ -277,7 +269,6 @@ Select
   , dex.degree_program
   , pc.active_pledges
   , propc.proposals_sub_appr
-  , propc.proposals_antic_18_mos
 From ids
 Inner Join entity On entity.id_number = ids.id_number
 Left Join manual_exclusions me On me.id_number = ids.id_number
