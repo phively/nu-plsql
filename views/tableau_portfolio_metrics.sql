@@ -176,6 +176,7 @@ params As (
           , trunc(e.date_modified)
         )
       End As eval_stop_dt
+    , e.evaluator_id_number
     , e.active_ind
     , e.rating_code
     , trt.short_desc As rating_desc
@@ -488,6 +489,16 @@ Select Distinct
   , stg_hist.stage_desc
   -- UOR
   , nvl(uor_hist.rating_lower_bound, 0) As uor_lower_bound
+  , Case
+      When uor_hist.evaluator_id_number = asn.assignment_id_number
+        Then 'Y'
+      End
+    As uor_by_assigned
+  , Case
+      When uor_hist.evaluator_id_number = asn.assignment_id_number
+        Then uor_hist.eval_start_dt
+      End
+    As uor_by_assigned_dt
   -- Eval rating
   , nvl(evl_hist.rating_lower_bound, 0) As eval_lower_bound
   -- Primary visits
@@ -502,6 +513,11 @@ Select Distinct
       And ac.contact_date >= add_months(asn.filled_date, -24) Then ac.report_id End)
       Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
     As cr_visits_last_24_mo
+  , Count(Distinct Case When ac.contact_type_category = 'Visit'
+      And ac.contact_credit_type = 1
+      And ac.contact_date >= add_months(asn.filled_date, -12) Then ac.report_id End)
+      Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
+    As cr_visits_last_12_mo
   -- Primary visits per month assigned
   , Count(Distinct Case When ac.contact_type_category = 'Visit'
       And ac.contact_credit_type = 1
@@ -518,6 +534,26 @@ Select Distinct
       Then ac.report_id End)
       Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
     As cr_visits_this_mo
+  -- Primary contacts last N montths
+  , Count(Distinct Case When ac.contact_type_category <> 'Visit'
+      And ac.contact_credit_type = 1
+      And ac.contact_date >= add_months(asn.filled_date, -24) Then ac.report_id End)
+      Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
+    As cr_contacts_last_24_mo
+  , Count(Distinct Case When ac.contact_type_category <> 'Visit'
+      And ac.contact_credit_type = 1
+      And ac.contact_date >= add_months(asn.filled_date, -12) Then ac.report_id End)
+      Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
+    As cr_contacts_last_12_mo
+    -- Non-visit contacts this month, while assigned
+    , Count(Distinct Case When ac.contact_type_category <> 'Visit'
+      And ac.contact_credit_type = 1
+      And ac.contact_date Between
+        greatest(asn.start_dt + 1, asn.filled_date) -- Visit on assignment start date doesn't count
+        And least(asn.stop_dt, last_day(asn.filled_date))
+      Then ac.report_id End)
+      Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
+    As cr_contacts_this_mo
   -- Visits
   , Count(Distinct Case When ac.contact_type_category = 'Visit'
       And ac.contact_date >= add_months(asn.filled_date, -24) Then ac.report_id End)
