@@ -537,14 +537,14 @@ Select Distinct
   -- Primary contacts last N montths
   , Count(Distinct Case When ac.contact_type_category <> 'Visit'
       And ac.contact_credit_type = 1
-      And ac.contact_date >= add_months(asn.filled_date, -24) Then ac.report_id End)
-      Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
-    As cr_contacts_last_24_mo
-  , Count(Distinct Case When ac.contact_type_category <> 'Visit'
-      And ac.contact_credit_type = 1
       And ac.contact_date >= add_months(asn.filled_date, -12) Then ac.report_id End)
       Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
     As cr_contacts_last_12_mo
+  , Count(Distinct Case When ac.contact_type_category <> 'Visit'
+      And ac.contact_credit_type = 1
+      And ac.contact_date >= add_months(asn.filled_date, -6) Then ac.report_id End)
+      Over(Partition By ac.prospect_id, ac.credited_id, asn.filled_date)
+    As cr_contacts_last_6_mo
     -- Non-visit contacts this month, while assigned
     , Count(Distinct Case When ac.contact_type_category <> 'Visit'
       And ac.contact_credit_type = 1
