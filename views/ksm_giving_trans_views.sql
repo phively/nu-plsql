@@ -32,14 +32,25 @@ Householded entity giving summaries
 Create Or Replace View v_ksm_giving_summary As
 -- View implementing Kellogg gift credit, householded, with several common types
 With
+-- Parameters defining KLC years/amounts
+params As (
+  Select
+    2500 As klc_amt -- Edit this
+    , 1000 As young_klc_amt -- Edit this
+    , 5 As young_klc_yrs
+  From DUAL
+)
 -- Sum transaction amounts
-trans As (
+, trans As (
   Select Distinct
     hh.id_number
     , hh.household_id
     , hh.household_rpt_name
     , hh.household_spouse_id
     , hh.household_spouse
+    , hh.household_last_masters_year
+    , max(Case When household_last_masters_year >= cal.curr_fy - young_klc_yrs Then 'Y' End)
+      As af_young_alum
     , sum(Case When tx_gypm_ind != 'Y' Then hh_credit Else 0 End) As ngc_lifetime
     , sum(Case When tx_gypm_ind != 'Y' Then hh_recognition_credit Else 0 End) -- Count bequests at face value and internal transfers at > $0
       As ngc_lifetime_full_rec
@@ -106,8 +117,9 @@ trans As (
       As last_gift_alloc
     , sum(gfts.hh_recognition_credit) keep(dense_rank First Order By gfts.date_of_record Desc, gfts.tx_number Asc)
       As last_gift_recognition_credit
-  From table(ksm_pkg.tbl_entity_households_ksm) hh
+  From v_entity_ksm_households hh
   Cross Join v_current_calendar cal
+  Cross Join params
   Inner Join v_ksm_giving_trans_hh gfts
     On gfts.household_id = hh.household_id
   Group By
@@ -116,6 +128,7 @@ trans As (
     , hh.household_rpt_name
     , hh.household_spouse_id
     , hh.household_spouse
+    , hh.household_last_masters_year
 )
 -- Main query
 Select
@@ -133,6 +146,77 @@ Select
       When af_pfy2 + af_pfy3 + af_pfy4 > 0 Then 'PYBUNT'
       When af_pfy1 + af_pfy2 + af_pfy3 + af_pfy4 = 0 Then 'Lapsed/Non'
     End As af_status_fy_start
+  -- AF giving segment
+  , Case
+      -- $2500+ for 3 years is KLC
+      When cru_pfy1 >= klc_amt
+        And cru_pfy2 >= klc_amt
+        And cru_pfy3 >= klc_amt
+          Then 'KLC Loyal 3+'
+      -- Check for KLC young alum loyal
+      When af_young_alum = 'Y'
+        And cru_pfy1 >= young_klc_amt
+        And cru_pfy2 >= young_klc_amt
+        And cru_pfy3 >= young_klc_amt
+          Then 'KLC YA Loyal 3+'
+      -- $2500+ 2 of 3 is KLC loyal
+      When (cru_pfy1 >= klc_amt And cru_pfy2 >= klc_amt)
+        Or (cru_pfy1 >= klc_amt And cru_pfy3 >= klc_amt)
+        Or (cru_pfy2 >= klc_amt And cru_pfy3 >= klc_amt)
+          Then 'KLC Loyal 2 of 3'
+      -- Check for KLC young alum loyal
+      When af_young_alum = 'Y'
+        And (
+          (cru_pfy1 >= young_klc_amt And cru_pfy2 >= young_klc_amt)
+          Or (cru_pfy1 >= young_klc_amt And cru_pfy3 >= young_klc_amt)
+          Or (cru_pfy2 >= young_klc_amt And cru_pfy3 >= young_klc_amt)
+        )
+          Then 'KLC YA Loyal 2 of 3'
+      -- KLC LYBUNT designation
+      When cru_pfy1 >= klc_amt
+        Then 'KLC LYBUNT'
+      When af_young_alum = 'Y'
+        And cru_pfy1 >= young_klc_amt
+          Then 'KLC YA LYBUNT'
+      -- KLC PYBUNT designation
+      When cru_pfy2 >= klc_amt
+        Or cru_pfy3 >= klc_amt
+        Or cru_pfy4 >= klc_amt
+        Or cru_pfy5 >= klc_amt
+          Then 'KLC PYBUNT'
+      -- KLC YA PYBUNT designation
+      When af_young_alum = 'Y'
+        And (
+          cru_pfy2 >= young_klc_amt
+          Or cru_pfy3 >= young_klc_amt
+          Or cru_pfy4 >= young_klc_amt
+          Or cru_pfy5 >= young_klc_amt
+        )
+          Then 'KLC YA PYBUNT'
+      -- 3 years in a row is loyal
+      When cru_pfy1 > 0
+        And cru_pfy2 > 0
+        And cru_pfy3 > 0
+          Then 'Loyal 3+'
+      -- 2 of 3 is loyal
+      When (cru_pfy1 > 0 And cru_pfy2 > 0)
+        Or (cru_pfy1 > 0 And cru_pfy3 > 0)
+        Or (cru_pfy2 > 0 And cru_pfy3 > 0)
+          Then 'Loyal 2 of 3'
+      -- Standard designation
+      When cru_pfy1 > 0
+        Then 'LYBUNT'
+      When cru_pfy2 > 0
+        Then 'PYBUNT-2'
+      When cru_pfy3 > 0
+        Then 'PYBUNT-3'
+      When cru_pfy4 > 0
+        Then 'PYBUNT-4'
+      When cru_pfy1 + cru_pfy2 + cru_pfy3 + cru_pfy4 = 0
+        Then 'Lapsed/Non'
+      Else 'Never'
+      End
+    As af_giving_segment
   -- Anonymous flags
   , shc.anonymous_donor
   , Case When anonymous_cfy > 0 Then 'Y' End As anonymous_cfy_flag
@@ -141,8 +225,8 @@ Select
   , Case When anonymous_pfy3 > 0 Then 'Y' End As anonymous_pfy3_flag
   , Case When anonymous_pfy4 > 0 Then 'Y' End As anonymous_pfy4_flag
   , Case When anonymous_pfy5 > 0 Then 'Y' End As anonymous_pfy5_flag
-  
 From trans
+Cross Join params
 Left Join table(ksm_pkg.tbl_special_handling_concat) shc
   On shc.id_number = trans.id_number
 ;
