@@ -66,6 +66,7 @@ Type degreed_alumni Is Record (
   , degrees_concat varchar2(512)
   , first_ksm_year degrees.degree_year%type
   , first_masters_year degrees.degree_year%type
+  , last_masters_year degrees.degree_year%type
   , last_noncert_year degrees.degree_year%type
   , stewardship_years varchar2(80)
   , program tms_dept_code.short_desc%type
@@ -120,6 +121,7 @@ Type household Is Record (
   , household_spouse_suffix entity.institutional_suffix%type
   , household_ksm_year degrees.degree_year%type
   , household_masters_year degrees.degree_year%type
+  , household_last_masters_year degrees.degree_year%type
   , household_program_group varchar2(20)
   , xsequence address.xsequence%type
   , household_city address.city%type
@@ -941,6 +943,13 @@ Cursor c_entity_degrees_concat_ksm Is
           Else NULL
         End)
         As first_masters_year
+      , max(Case
+          When degree_level_code = 'M' -- Master's level
+            Or degree_code In('MBA', 'MMGT', 'MS', 'MSDI', 'MSHA', 'MSMS') -- In case of data errors
+            Then trim(Case When non_grad_code = 'N' Then NULL Else degree_year End)
+          Else NULL
+        End)
+        As last_masters_year
       -- Last non-certificate year, e.g. for young alumni status, excluding non-grad years
       , max(Case
           When degree_level_code In('B', 'D', 'M')
@@ -1070,6 +1079,7 @@ Cursor c_entity_degrees_concat_ksm Is
       , degrees_concat
       , first_ksm_year
       , first_masters_year
+      , last_masters_year
       , last_noncert_year
       , stwrd_deg.stewardship_years
       , prg.program
@@ -1140,6 +1150,7 @@ With
       , edc.degrees_concat
       , edc.first_ksm_year
       , edc.first_masters_year
+      , edc.last_masters_year
       , edc.last_noncert_year
       , edc.program_group
       , edc.program_group_rank
@@ -1151,6 +1162,7 @@ With
       , sdc.degrees_concat As spouse_degrees_concat
       , sdc.first_ksm_year As spouse_first_ksm_year
       , sdc.first_masters_year As spouse_first_masters_year
+      , sdc.last_masters_year As spouse_last_masters_year
       , sdc.last_noncert_year As spouse_last_noncert_year
       , sdc.program_group As spouse_program_group
       , sdc.program_group_rank As spouse_program_group_rank
@@ -1189,6 +1201,13 @@ With
           When program_group_rank < spouse_program_group_rank Then id_number
           When spouse_program_group_rank < program_group_rank Then spouse_id_number
         End As household_id
+      -- Compute last master's degree year in household
+      , Case
+          When spouse_last_masters_year Is Null Then last_masters_year
+          When last_masters_year Is Null Then spouse_last_masters_year
+          When last_masters_year >= spouse_last_masters_year Then last_masters_year
+          When spouse_last_masters_year >= last_masters_year Then spouse_last_masters_year
+        End As household_last_masters_year
     From couples
   )
   , pref_addr As (
@@ -1285,6 +1304,7 @@ With
     , couples.spouse_suffix As household_spouse_suffix
     , couples.first_ksm_year As household_ksm_year
     , couples.first_masters_year As household_masters_year
+    , household.household_last_masters_year
     -- Household last non-certificate year, for (approximate) young alumni designation
     , couples.program_group As household_program_group
     , pref_addr.xsequence
