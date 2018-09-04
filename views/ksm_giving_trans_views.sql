@@ -51,6 +51,12 @@ params As (
     , hh.household_last_masters_year
     , max(Case When household_last_masters_year >= cal.curr_fy - young_klc_yrs Then 'Y' End)
       As af_young_alum
+    , max(Case When household_last_masters_year >= cal.curr_fy - young_klc_yrs - 1 Then 'Y' End)
+      As af_young_alum1
+    , max(Case When household_last_masters_year >= cal.curr_fy - young_klc_yrs - 2 Then 'Y' End)
+      As af_young_alum2
+    , max(Case When household_last_masters_year >= cal.curr_fy - young_klc_yrs - 3 Then 'Y' End)
+      As af_young_alum3
     , sum(Case When tx_gypm_ind != 'Y' Then hh_credit Else 0 End) As ngc_lifetime
     , sum(Case When tx_gypm_ind != 'Y' Then hh_recognition_credit Else 0 End) -- Count bequests at face value and internal transfers at > $0
       As ngc_lifetime_full_rec
@@ -159,6 +165,24 @@ Select
         And cru_pfy2 >= young_klc_amt
         And cru_pfy3 >= young_klc_amt
           Then 'KLC YA Loyal 3+'
+      -- Check for KLC young alum -1 loyal
+      When af_young_alum1 = 'Y'
+        And cru_pfy1 >= young_klc_amt
+        And cru_pfy2 >= young_klc_amt
+        And cru_pfy3 >= young_klc_amt
+          Then 'KLC YA1 Loyal 3+'
+      -- Check for KLC young alum -2 loyal
+      When af_young_alum2 = 'Y'
+        And cru_pfy1 >= klc_amt
+        And cru_pfy2 >= young_klc_amt
+        And cru_pfy3 >= young_klc_amt
+          Then 'KLC YA2 Loyal 3+'
+      -- Check for KLC young alum -3 loyal
+      When af_young_alum3 = 'Y'
+        And cru_pfy1 >= klc_amt
+        And cru_pfy2 >= klc_amt
+        And cru_pfy3 >= young_klc_amt
+          Then 'KLC YA3 Loyal 3+'
       -- $2500+ 2 of 3 is KLC loyal
       When (cru_pfy1 >= klc_amt And cru_pfy2 >= klc_amt)
         Or (cru_pfy1 >= klc_amt And cru_pfy3 >= klc_amt)
@@ -172,12 +196,45 @@ Select
           Or (cru_pfy2 >= young_klc_amt And cru_pfy3 >= young_klc_amt)
         )
           Then 'KLC YA Loyal 2 of 3'
+      -- Check for KLC young alum -1 loyal
+      When af_young_alum1 = 'Y'
+        And (
+          (cru_pfy1 >= young_klc_amt And cru_pfy2 >= young_klc_amt)
+          Or (cru_pfy1 >= young_klc_amt And cru_pfy3 >= young_klc_amt)
+          Or (cru_pfy2 >= young_klc_amt And cru_pfy3 >= young_klc_amt)
+        )
+          Then 'KLC YA1 Loyal 2 of 3'
+      -- Check for KLC young alum -2 loyal
+      When af_young_alum2 = 'Y'
+        And (
+          (cru_pfy1 >= klc_amt And cru_pfy2 >= young_klc_amt)
+          Or (cru_pfy1 >= klc_amt And cru_pfy3 >= young_klc_amt)
+          Or (cru_pfy2 >= young_klc_amt And cru_pfy3 >= young_klc_amt)
+        )
+          Then 'KLC YA2 Loyal 2 of 3'
+      -- Check for KLC young alum -3 loyal
+      When af_young_alum3 = 'Y'
+        And (
+          (cru_pfy1 >= klc_amt And cru_pfy2 >= klc_amt)
+          Or (cru_pfy1 >= klc_amt And cru_pfy3 >= young_klc_amt)
+          Or (cru_pfy2 >= klc_amt And cru_pfy3 >= young_klc_amt)
+        )
+          Then 'KLC YA3 Loyal 2 of 3'
       -- KLC LYBUNT designation
       When cru_pfy1 >= klc_amt
         Then 'KLC LYBUNT'
       When af_young_alum = 'Y'
         And cru_pfy1 >= young_klc_amt
           Then 'KLC YA LYBUNT'
+      When af_young_alum1 = 'Y'
+        And cru_pfy1 >= young_klc_amt
+          Then 'KLC YA1 LYBUNT'
+      When af_young_alum2 = 'Y'
+        And cru_pfy1 >= klc_amt
+          Then 'KLC YA2 LYBUNT'
+      When af_young_alum3 = 'Y'
+        And cru_pfy1 >= klc_amt
+          Then 'KLC YA3 LYBUNT'
       -- KLC PYBUNT designation
       When cru_pfy2 >= klc_amt
         Or cru_pfy3 >= klc_amt
@@ -193,6 +250,33 @@ Select
           Or cru_pfy5 >= young_klc_amt
         )
           Then 'KLC YA PYBUNT'
+      -- KLC YA PYBUNT -1
+      When af_young_alum1 = 'Y'
+        And (
+          cru_pfy2 >= young_klc_amt
+          Or cru_pfy3 >= young_klc_amt
+          Or cru_pfy4 >= young_klc_amt
+          Or cru_pfy5 >= young_klc_amt
+        )
+          Then 'KLC YA1 PYBUNT'
+      -- KLC YA PYBUNT -2
+      When af_young_alum2 = 'Y'
+        And (
+          cru_pfy2 >= young_klc_amt
+          Or cru_pfy3 >= young_klc_amt
+          Or cru_pfy4 >= young_klc_amt
+          Or cru_pfy5 >= young_klc_amt
+        )
+          Then 'KLC YA2 PYBUNT'
+      -- KLC YA PYBUNT -3
+      When af_young_alum3 = 'Y'
+        And (
+          cru_pfy2 >= klc_amt
+          Or cru_pfy3 >= young_klc_amt
+          Or cru_pfy4 >= young_klc_amt
+          Or cru_pfy5 >= young_klc_amt
+        )
+          Then 'KLC YA3 PYBUNT'
       -- 3 years in a row is loyal
       When cru_pfy1 > 0
         And cru_pfy2 > 0
