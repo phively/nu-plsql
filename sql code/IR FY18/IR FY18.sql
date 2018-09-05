@@ -42,6 +42,25 @@ params_cfy As (
   From table(ksm_pkg.tbl_entity_degrees_concat_ksm) deg
 )
 
+/* Honor roll names
+  CATracks honor roll names, where available */
+, hr_names As (
+  Select
+    id_number
+    , trim(pref_name) As honor_roll_name
+    , Case
+        -- If prefix is at start of name then remove it
+        When pref_name Like (prefix || '%')
+          Then trim(
+            regexp_replace(pref_name, prefix, '', 1) -- Remove first occurrence only
+          )
+        Else pref_name
+        End
+      As honor_roll_name_no_prefix
+  From name
+  Where name_type_code = 'HR'
+)
+
 /* Household data
   Household IDs and definitions as defined by ksm_pkg. Names are based on primary name and personal suffix. */
 , hhs As (
@@ -66,11 +85,17 @@ params_cfy As (
     , trim(
         trim(
           trim(
-            trim(
-              trim(
-                trim(entity.first_name) || ' ' || trim(entity.middle_name)
-              ) || ' ' || trim(entity.last_name)
-            ) || ' ' || entity.pers_suffix
+            -- Choose honor roll name or constructed name
+            Case
+              When hr_names.honor_roll_name_no_prefix Is Not Null
+                Then hr_names.honor_roll_name_no_prefix
+              Else
+                trim(
+                  trim(
+                    trim(entity.first_name) || ' ' || trim(entity.middle_name)
+                  ) || ' ' || trim(entity.last_name)
+                ) || ' ' || entity.pers_suffix
+              End
           ) || ' ' || degs.yrs
         ) || (Case When entity.record_status_code = 'D' Then '<DECEASED>' End)
       )
@@ -78,11 +103,17 @@ params_cfy As (
     , trim(
         trim(
           trim(
-            trim(
-              trim(
-                trim(entity_s.first_name) || ' ' || trim(entity_s.middle_name)
-              ) || ' ' || trim(entity_s.last_name)
-            ) || ' ' || entity_s.pers_suffix
+            -- Choose honor roll name or constructed name
+            Case
+              When hr_names_s.honor_roll_name_no_prefix Is Not Null
+                Then hr_names_s.honor_roll_name_no_prefix
+              Else
+                trim(
+                  trim(
+                    trim(entity_s.first_name) || ' ' || trim(entity_s.middle_name)
+                  ) || ' ' || trim(entity_s.last_name)
+                ) || ' ' || entity_s.pers_suffix
+              End
           ) || ' ' || degs_s.yrs
         ) || (Case When entity_s.record_status_code = 'D' Then '<DECEASED>' End)
       )
@@ -95,6 +126,10 @@ params_cfy As (
     On entity.id_number = hhs.household_id
   Left Join entity entity_s
     On entity_s.id_number = hhs.household_spouse_id
+  Left Join hr_names
+    On hr_names.id_number = hhs.household_id
+  Left Join hr_names hr_names_s
+    On hr_names_s.id_number = hhs.household_spouse_id
   Left Join degs
     On degs.id_number = hhs.household_id
   Left Join degs degs_s
@@ -768,6 +803,7 @@ Select Distinct
   , primary_name
   , yrs
   , gender
+  , hr_names.honor_roll_name
   , household_masters_year
   , household_spouse_id
   , household_spouse_rpt_name
@@ -775,6 +811,7 @@ Select Distinct
   , primary_name_spouse
   , yrs_spouse
   , gender_spouse
+  , hr_names_s.honor_roll_name
   , loyal.stewardship_cfy
   , loyal.stewardship_pfy1
   , loyal.stewardship_pfy2
@@ -804,6 +841,10 @@ Left Join loyal
   On loyal.household_id = donorlist.household_id
 Left Join dec_spouse_conc
   On dec_spouse_conc.id_number = donorlist.id_number
+Left Join hr_names
+  On hr_names.id_number = donorlist.household_id
+Left Join hr_names hr_names_s
+  On hr_names_s.id_number = donorlist.household_spouse_id
 Order By
   proposed_giving_level Asc
   , lower(proposed_sort_name) Asc
