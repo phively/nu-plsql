@@ -67,20 +67,12 @@ params_cfy As (
   Select *
   From table(ksm_pkg.tbl_entity_households_ksm)
 )
-, hh As (
+, hh_name As (
   Select
-    hhs.*
-    , entity.gender_code As gender
-    , entity_s.gender_code As gender_spouse
-    , entity.record_status_code As record_status
-    , entity_s.record_status_code As record_status_spouse
-    -- Is either spouse no joint gifts?
-    , Case
-        When hhs.household_spouse_rpt_name Is Not Null
-          And (entity.jnt_gifts_ind = 'N' Or entity_s.jnt_gifts_ind = 'N')
-          Then 'Y'
-        End
-      As no_joint_gifts_flag
+    hhs.id_number
+    , entity.gender_code
+    , entity.record_status_code
+    , entity.jnt_gifts_ind
     -- First Middle Last Suffix 'YY
     , trim(
         trim(
@@ -100,40 +92,40 @@ params_cfy As (
         ) || (Case When entity.record_status_code = 'D' Then '<DECEASED>' End)
       )
       As primary_name
-    , trim(
-        trim(
-          trim(
-            -- Choose honor roll name or constructed name
-            Case
-              When hr_names_s.honor_roll_name_no_prefix Is Not Null
-                Then hr_names_s.honor_roll_name_no_prefix
-              Else
-                trim(
-                  trim(
-                    trim(entity_s.first_name) || ' ' || trim(entity_s.middle_name)
-                  ) || ' ' || trim(entity_s.last_name)
-                ) || ' ' || entity_s.pers_suffix
-              End
-          ) || ' ' || degs_s.yrs
-        ) || (Case When entity_s.record_status_code = 'D' Then '<DECEASED>' End)
-      )
-      As primary_name_spouse
     , degs.yrs
-    , degs_s.yrs As yrs_spouse
+  From hhs
+  Inner Join entity
+    On entity.id_number = hhs.id_number
+  Left Join degs
+    On degs.id_number = hhs.id_number
+  Left Join hr_names
+    On hr_names.id_number = hhs.id_number
+)
+, hh As (
+  Select
+    hhs.*
+    , hh_name.gender_code As gender
+    , hh_name_s.gender_code As gender_spouse
+    , hh_name.record_status_code As record_status
+    , hh_name_s.record_status_code As record_status_spouse
+    -- Is either spouse no joint gifts?
+    , Case
+        When hhs.household_spouse_rpt_name Is Not Null
+          And (hh_name.jnt_gifts_ind = 'N' Or hh_name_s.jnt_gifts_ind = 'N')
+          Then 'Y'
+        End
+      As no_joint_gifts_flag
+    -- First Middle Last Suffix 'YY
+    , hh_name.primary_name
+    , hh_name_s.primary_name As primary_name_spouse
+    , hh_name.yrs
+    , hh_name_s.yrs As yrs_spouse
   From hhs hhs
   -- Names and strings for formatting
-  Inner Join entity
-    On entity.id_number = hhs.household_id
-  Left Join entity entity_s
-    On entity_s.id_number = hhs.household_spouse_id
-  Left Join hr_names
-    On hr_names.id_number = hhs.household_id
-  Left Join hr_names hr_names_s
-    On hr_names_s.id_number = hhs.household_spouse_id
-  Left Join degs
-    On degs.id_number = hhs.household_id
-  Left Join degs degs_s
-    On degs_s.id_number = hhs.household_spouse_id
+  Inner Join hh_name
+    On hh_name.id_number = hhs.household_id
+  Left Join hh_name hh_name_s
+    On hh_name_s.id_number = hhs.household_spouse_id
   -- Exclude purgable entities
   Where hhs.record_status_code <> 'X'
 )
