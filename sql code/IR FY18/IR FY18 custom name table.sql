@@ -25,13 +25,44 @@ Commit Work
 ;
 
 -- Test results
+With
+hr_names As (
+  Select
+    id_number
+    , trim(pref_name) As honor_roll_name
+    , Case
+        -- If prefix is at start of name then remove it
+        When pref_name Like (prefix || '%')
+          Then trim(
+            regexp_replace(pref_name, prefix, '', 1) -- Remove first occurrence only
+          )
+        Else pref_name
+        End
+      As honor_roll_name_no_prefix
+  From name
+  Where name_type_code = 'HR'
+)
+
 Select
   cust_name.id_number
   , entity.report_name
   , entity.spouse_name
   , custom_name
   , override_suffixes
+  , hr_names.honor_roll_name_no_prefix
+  , Case
+      When lower(custom_name) Like '%anonymous%'
+        Then 'Y'
+      When honor_roll_name_no_prefix Is NULL
+        Then NULL
+      When regexp_like(custom_name, honor_roll_name_no_prefix, 'c')
+        Then NULL
+      Else 'Y'
+      End
+    As check_by_hand
 From tbl_IR_FY18_custom_name cust_name
 Inner Join entity
   On entity.id_number = cust_name.id_number
+Left Join hr_names
+  On hr_names.id_number = cust_name.id_number
 ;

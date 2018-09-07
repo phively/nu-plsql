@@ -183,6 +183,14 @@ Select
   , spouse.report_name As spouse_name
   , spouse.record_status_code As spouse_record_status
   , entity.jnt_gifts_ind
+  , entity.spouse_id_number As curr_spouse_id
+  , spouse.spouse_id_number As spouse_curr_spouse_id
+  , Case
+      When trim(entity.spouse_id_number) Is Not Null
+        Or trim(spouse.spouse_id_number) Is Not Null
+        Then 'Y'
+      End
+    As check_by_hand
 From tbl_IR_FY18_dec_spouse ds
 Inner Join entity
   On ds.id_number = entity.id_number

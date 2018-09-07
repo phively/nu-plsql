@@ -93,9 +93,16 @@ params_cfy As (
       )
       As primary_name
     , degs.yrs
+    , Case
+        When entity.record_status_code = 'D'
+          And trunc(entity.status_change_date) Between cal.prev_fy_start And cal.today
+          Then 'Y'
+        End
+      As deceased_past_year
   From hhs
   Inner Join entity
     On entity.id_number = hhs.id_number
+  Cross Join v_current_calendar cal
   Left Join degs
     On degs.id_number = hhs.id_number
   Left Join hr_names
@@ -108,6 +115,7 @@ params_cfy As (
     , hh_name_s.gender_code As gender_spouse
     , hh_name.record_status_code As record_status
     , hh_name_s.record_status_code As record_status_spouse
+    , hh_name.deceased_past_year
     -- Is either spouse no joint gifts?
     , Case
         When hhs.household_spouse_rpt_name Is Not Null
@@ -430,7 +438,7 @@ params_cfy As (
   (
   -- $2500+ cumulative campaign giving for people
   Select
-    cgft.*, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix
+    cgft.*, hh.deceased_past_year, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix
     , hh.household_masters_year, hh.primary_name, hh.gender, hh.primary_name_spouse, hh.gender_spouse
     , hh.person_or_org, hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status
     , hh.no_joint_gifts_flag
@@ -442,7 +450,7 @@ params_cfy As (
   ) Union All (
   -- $100K+ cumulative campaign giving for orgs
   Select
-    cgft.*, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix
+    cgft.*, hh.deceased_past_year, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix
     , hh.household_masters_year, hh.primary_name, hh.gender, hh.primary_name_spouse, hh.gender_spouse
     , hh.person_or_org, hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status
     , hh.no_joint_gifts_flag
@@ -454,7 +462,7 @@ params_cfy As (
   ) Union All (
   -- Young alumni giving $1000+ from FY12 on
   Select
-    cgft.*, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix
+    cgft.*, hh.deceased_past_year, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix
     , hh.household_masters_year, hh.primary_name, hh.gender, hh.primary_name_spouse, hh.gender_spouse
     , hh.person_or_org, hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status
     , hh.no_joint_gifts_flag
@@ -757,6 +765,7 @@ Select Distinct
   , nonanon_steward_thru_fy18 -- <UPDATE THIS>
   -- Fields
   , campaign_steward_thru_fy18 -- <UPDATE THIS>
+  , deceased_past_year
   , manual_giving_level
   , Case
       When rec_name.name_order = 'Manually HH'
@@ -764,6 +773,12 @@ Select Distinct
       End
     As manually_householded
   , rec_name.manually_named
+  , Case
+      When hr_names_s.honor_roll_name Is Not Null
+        Or hr_names.honor_roll_name Is Not Null
+        Then 'Y'
+      End
+      As has_nu_honor_roll_name
   , Case
       When proposed_sort_name = ' '
         Then NULL
