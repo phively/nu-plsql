@@ -152,6 +152,18 @@ Select
       When af_pfy2 + af_pfy3 + af_pfy4 > 0 Then 'PYBUNT'
       When af_pfy1 + af_pfy2 + af_pfy3 + af_pfy4 = 0 Then 'Lapsed/Non'
     End As af_status_fy_start
+  -- AF KLC LYBUNT flag
+  , Case
+      When cru_pfy1 >= klc_amt
+        Then 'Y'
+      When af_young_alum = 'Y'
+        And cru_pfy1 >= young_klc_amt
+        Then 'Y'
+      When af_young_alum1 = 'Y'
+        And cru_pfy1 >= young_klc_amt
+        Then 'Y'
+      End
+    As klc_lybunt
   -- AF giving segment
   , Case
       -- $2500+ for 3 years is KLC
