@@ -149,10 +149,11 @@ manual_exclusions_pre As (
           And final_anticipated_or_ask_amt > 50000 -- Ignore ask/anticipated $50K or under
           Then proposal_id 
       End) As proposals_sub_appr
-  From v_ksm_proposal_history vph
+  From v_proposal_history_fast vph
   Cross Join v_current_calendar cal
   Where proposal_active = 'Y'
     And proposal_in_progress = 'Y'
+    And ksm_proposal_ind = 'Y'
   Group By prospect_id
 )
 
