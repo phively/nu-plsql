@@ -82,13 +82,32 @@ params As (
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 3 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy3
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 4 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy4
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 5 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy5
-    -- Current Use cash totals (for KLC)
+    -- Current Use cash totals
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year     And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_cfy
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 1 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy1
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 2 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy2
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 3 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy3
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 4 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy4
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 5 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy5
+    -- KLC cash totals; count matching gift credit in year of matched gift
+    , sum(Case When tx_gypm_ind != 'P' And cru_flag = 'Y' And (
+        (cal.curr_fy = fiscal_year     And tx_gypm_ind != 'M') Or (cal.curr_fy = matched_fiscal_year     And tx_gypm_ind = 'M')
+      ) Then hh_credit Else 0 End) As klc_cfy
+    , sum(Case When tx_gypm_ind != 'P' And cru_flag = 'Y' And (
+        (cal.curr_fy = fiscal_year + 1 And tx_gypm_ind != 'M') Or (cal.curr_fy = matched_fiscal_year + 1 And tx_gypm_ind = 'M')
+      ) Then hh_credit Else 0 End) As klc_pfy1
+    , sum(Case When tx_gypm_ind != 'P' And cru_flag = 'Y' And (
+        (cal.curr_fy = fiscal_year + 2 And tx_gypm_ind != 'M') Or (cal.curr_fy = matched_fiscal_year + 2 And tx_gypm_ind = 'M')
+      ) Then hh_credit Else 0 End) As klc_pfy2
+    , sum(Case When tx_gypm_ind != 'P' And cru_flag = 'Y' And (
+        (cal.curr_fy = fiscal_year + 3 And tx_gypm_ind != 'M') Or (cal.curr_fy = matched_fiscal_year + 3 And tx_gypm_ind = 'M')
+      ) Then hh_credit Else 0 End) As klc_pfy3
+    , sum(Case When tx_gypm_ind != 'P' And cru_flag = 'Y' And (
+        (cal.curr_fy = fiscal_year + 4 And tx_gypm_ind != 'M') Or (cal.curr_fy = matched_fiscal_year + 4 And tx_gypm_ind = 'M')
+      ) Then hh_credit Else 0 End) As klc_pfy4
+    , sum(Case When tx_gypm_ind != 'P' And cru_flag = 'Y' And (
+        (cal.curr_fy = fiscal_year + 5 And tx_gypm_ind != 'M') Or (cal.curr_fy = matched_fiscal_year + 5 And tx_gypm_ind = 'M')
+      ) Then hh_credit Else 0 End) As klc_pfy5
     -- WARNING: includes new gifts and commitments as well as cash
     , sum(Case When cal.curr_fy = fiscal_year     Then hh_credit Else 0 End) As stewardship_cfy
     , sum(Case When cal.curr_fy = fiscal_year + 1 Then hh_credit Else 0 End) As stewardship_pfy1
@@ -154,13 +173,13 @@ Select
     End As af_status_fy_start
   -- AF KLC LYBUNT flag
   , Case
-      When cru_pfy1 >= klc_amt
+      When klc_pfy1 >= klc_amt
         Then 'Y'
       When af_young_alum = 'Y'
-        And cru_pfy1 >= young_klc_amt
+        And klc_pfy1 >= young_klc_amt
         Then 'Y'
       When af_young_alum1 = 'Y'
-        And cru_pfy1 >= young_klc_amt
+        And klc_pfy1 >= young_klc_amt
         Then 'Y'
       End
     As klc_lybunt
