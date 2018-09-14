@@ -643,6 +643,12 @@ params_cfy As (
                And cust_name.override_suffixes Is Null
                  Then fy_klc.klc
              End
+        -- Add Cornerstone tag if applicable
+        || Case
+             When cornerstone.id_number Is Not Null
+               Or cornerstone_s.id_number Is Not Null
+                 Then '<CORNERSTONE>'
+             End
       As proposed_recognition_name
     -- Proposed sort name within groups
     , Case
@@ -730,6 +736,10 @@ params_cfy As (
     On anon.household_id = rn.household_id
   Left Join tbl_IR_FY18_custom_name cust_name -- <UPDATE THIS>
     On cust_name.id_number = rn.id_number
+  Left Join tbl_IR_FY18_cornerstone cornerstone -- <UPDATE THIS>
+    On cornerstone.id_number = rn.household_id
+  Left Join tbl_IR_FY18_cornerstone cornerstone_s -- <UPDATE THIS>
+    On cornerstone_s.id_number = rn.household_spouse_id
 )
 
 /* Main query */
