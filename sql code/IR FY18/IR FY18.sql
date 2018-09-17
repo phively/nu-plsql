@@ -793,8 +793,8 @@ Select Distinct
       When proposed_sort_name = ' '
         Then NULL
       When dense_rank() Over(
-          Partition By lower(proposed_sort_name)
-          Order By proposed_giving_level Asc, donorlist.id_number Asc
+          Partition By lower(proposed_recognition_name)
+          Order By proposed_giving_level Asc, lower(proposed_sort_name) Asc, donorlist.id_number Asc
         ) > 1
         And dense_rank() Over(
           Partition By ids_for_deduping
