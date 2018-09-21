@@ -259,24 +259,19 @@ params_cfy As (
 , assign As (
   Select Distinct
     hh.household_id
-    , assignment.prospect_id
-    , office_code
+    , prospect_id
     , assignment_id_number
-    , entity.report_name
-  From assignment
-  Inner Join entity
-    On entity.id_number = assignment.assignment_id_number
-  Inner Join prospect_entity
-    On prospect_entity.prospect_id = assignment.prospect_id
+    , assignment_report_name
+  From v_assignment_history ah
   Inner Join hh
-    On hh.id_number = prospect_entity.id_number
-  Where active_ind = 'Y' -- Active assignments only
-    And assignment_type In ('PP', 'PM') -- Program Manager (PP), Prospect Manager (PM)
+    On hh.id_number = ah.id_number
+  Where assignment_active_calc = 'Active' -- Active assignments only
+    And assignment_type In ('PP', 'PM', 'LG') -- Program Manager (PP), Prospect Manager (PM), Leadership Giving Officer (LG)
 )
 , assign_conc As (
   Select
     household_id
-    , Listagg(report_name, ';  ') Within Group (Order By report_name)
+    , Listagg(assignment_report_name, ';  ') Within Group (Order By assignment_report_name)
       As managers
   From assign
   Group By household_id
@@ -445,8 +440,11 @@ params_cfy As (
   From cgft
   Inner Join hh
     On hh.id_number = cgft.id_number
-  Where cgft.campaign_steward_thru_fy18 >= 2500 -- <UPDATE THIS>
-    And hh.person_or_org = 'P' -- People
+  Where hh.person_or_org = 'P' -- People
+    And (
+      cgft.campaign_steward_thru_fy18 >= 2500 -- <UPDATE THIS>
+      Or manual_giving_level = 'Y' -- Always include custom level override even if below $2500
+    )
   ) Union All (
   -- $100K+ cumulative campaign giving for orgs
   Select
@@ -457,8 +455,11 @@ params_cfy As (
   From cgft
   Inner Join hh
     On hh.id_number = cgft.id_number
-  Where cgft.campaign_steward_thru_fy18 >= 100000 -- <UPDATE THIS>
-    And hh.person_or_org = 'O' -- Orgs
+  Where hh.person_or_org = 'O' -- Orgs
+    And (
+      cgft.campaign_steward_thru_fy18 >= 100000 -- <UPDATE THIS>
+      Or manual_giving_level = 'Y' -- Always include custom level override even if below $2500
+    )
   ) Union All (
   -- Young alumni giving $1000+ from FY12 on
   Select
