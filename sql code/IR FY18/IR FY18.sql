@@ -530,15 +530,15 @@ params_cfy As (
           Or lower(primary_name) Like '%anonymous%donor%'
           Or lower(cust_name.custom_name) Like '%anonymous%'
             Then 'Anon'
+        -- If on deceased spouse list, override
+        When dec_spouse_ids.id_number Is Not Null
+          Then 'Manually HH'
         -- Organizations next
         When donorlist.person_or_org = 'O'
           Then 'Org'
         When donorlist.person_or_org = 'P'
           And upper(custlvl.custom_level) Like '%ORG%'
             Then 'Org'
-        -- If on deceased spouse list, override
-        When dec_spouse_ids.id_number Is Not Null
-          Then 'Manually HH'
         -- If no joint gift indicator, self only
         When no_joint_gifts_flag Is Not Null
           Then 'No Joint'
