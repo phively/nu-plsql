@@ -117,6 +117,8 @@ Type household Is Record (
   , household_spouse_id entity.id_number%type
   , household_spouse entity.pref_mail_name%type
   , household_spouse_rpt_name entity.report_name%type
+  , household_list_first entity.id_number%type
+  , household_list_second entity.id_number%type
   , household_suffix entity.institutional_suffix%type
   , household_spouse_suffix entity.institutional_suffix%type
   , household_ksm_year degrees.degree_year%type
@@ -1144,6 +1146,7 @@ With
       , entity.pref_mail_name
       , entity.report_name
       , entity.record_type_code
+      , entity.gender_code
       , entity.person_or_org
       , entity.record_status_code
       , entity.institutional_suffix
@@ -1158,6 +1161,7 @@ With
       , entity.spouse_id_number
       , spouse.pref_mail_name As spouse_pref_mail_name
       , spouse.report_name As spouse_report_name
+      , spouse.gender_code As spouse_gender_code
       , spouse.institutional_suffix As spouse_suffix
       , sdc.degrees_concat As spouse_degrees_concat
       , sdc.first_ksm_year As spouse_first_ksm_year
@@ -1270,6 +1274,46 @@ With
     Where entity.marital_status_code In ('I', 'Q', 'Z', 'W', 'N', 'F', ' ')
       And spouse.marital_status_code In ('I', 'Q', 'Z', 'W', 'N', 'F', ' ')
   )
+  -- Spouse order for mailing lists, etc.
+  , mailing_order As (
+    Select Distinct
+      household.household_id
+      , Case
+          -- Check whether household spouse ID exists
+          When trim(household.spouse_id_number) Is Not Null
+            Then Case
+              -- Check whether male is alum and female is nonalum
+              When couples.gender_code = 'M'
+                And couples.first_ksm_year Is Not Null
+                And couples.spouse_gender_code = 'F'
+                And couples.spouse_first_ksm_year Is Null
+                  Then household_id
+              When couples.gender_code = 'F'
+                And couples.first_ksm_year Is Null
+                And couples.spouse_gender_code = 'M'
+                And couples.spouse_first_ksm_year Is Not Null
+                  Then couples.spouse_id_number
+              -- Check whether one record is male and one female
+              When couples.gender_code = 'M'
+                And couples.spouse_gender_code = 'F'
+                  Then couples.spouse_id_number
+              When couples.gender_code = 'F'
+                And couples.spouse_gender_code = 'M'
+                  Then household_id
+              -- Alpha order as a fallback
+              When lower(couples.report_name) <= lower(couples.spouse_report_name)
+                Then household_id
+              When lower(couples.report_name) > lower(couples.spouse_report_name)
+                Then couples.spouse_id_number
+              Else '#ERROR'
+            End
+          -- When no household spouse ID use household ID
+          Else household_id
+          End
+        As household_list_first
+    From household
+    Left Join couples On household.household_id = couples.id_number
+  )
   -- Main query
   Select
     household.id_number
@@ -1300,12 +1344,19 @@ With
     , couples.spouse_id_number As household_spouse_id
     , couples.spouse_pref_mail_name As household_spouse
     , couples.spouse_report_name As household_spouse_rpt_name
+    , mailing_order.household_list_first
+    , Case
+        When mailing_order.household_list_first <> household.household_id
+          Then household.household_id
+        Else trim(couples.spouse_id_number)
+        End
+      As household_list_second
     , couples.institutional_suffix As household_suffix
     , couples.spouse_suffix As household_spouse_suffix
     , couples.first_ksm_year As household_ksm_year
     , couples.first_masters_year As household_masters_year
-    , household.household_last_masters_year
     -- Household last non-certificate year, for (approximate) young alumni designation
+    , household.household_last_masters_year
     , couples.program_group As household_program_group
     , pref_addr.xsequence
     , pref_addr.pref_city
@@ -1314,6 +1365,7 @@ With
     , pref_addr.pref_continent
   From household
   Left Join couples On household.household_id = couples.id_number
+  Left Join mailing_order On household.household_id = mailing_order.household_id
   Left Join pref_addr On household.id_number = pref_addr.id_number
   Left Join fmr_spouse On household.id_number = fmr_spouse.id_number
   ;
