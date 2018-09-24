@@ -171,6 +171,15 @@ Select
       When af_pfy2 + af_pfy3 + af_pfy4 > 0 Then 'PYBUNT'
       When af_pfy1 + af_pfy2 + af_pfy3 + af_pfy4 = 0 Then 'Lapsed/Non'
     End As af_status_fy_start
+  -- AF KLC flag
+  , Case
+      When klc_cfy >= klc_amt
+        Then 'Y'
+      When af_young_alum = 'Y'
+        And klc_cfy >= young_klc_amt
+        Then 'Y'
+      End
+    As klc_current
   -- AF KLC LYBUNT flag
   , Case
       When klc_pfy1 >= klc_amt
