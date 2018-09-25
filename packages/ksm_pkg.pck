@@ -1300,6 +1300,13 @@ With
               When couples.gender_code = 'F'
                 And couples.spouse_gender_code = 'M'
                   Then household_id
+              -- Check whether one record is alum and one nonalum
+              When couples.first_ksm_year Is Not Null
+                And couples.spouse_first_ksm_year Is Null
+                  Then household_id
+              When couples.first_ksm_year Is Null
+                And couples.spouse_first_ksm_year Is Not Null
+                  Then couples.spouse_id_number
               -- Alpha order as a fallback
               When lower(couples.report_name) <= lower(couples.spouse_report_name)
                 Then household_id
