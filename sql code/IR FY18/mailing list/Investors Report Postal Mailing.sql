@@ -2,42 +2,31 @@ With
 
 KLC AS (
       Select *
-      From KLC_17_18
+      From rpt_dgz654.KLC_17_18
 ),
 
 Campaign_Donors AS(
       Select *
-      From IR_100K_Campaign
+      From rpt_dgz654.IR_100K_Campaign
 ),
 
 BE_Donors AS (
-      Select 
-      HH.household_ID AS ID_Number
-      , case When household_ID is NOT NULL
-         Then 'Y'
-           Else ' '
-           End BE_Donors
-  --  , HH.Report_name
-  --  , e.record_status_code
-  --  , HH.tx_Number
-  --  , HH.transaction_type
-  --  , HH.hh_recognition_credit
-      FROM rpt_pbh634.v_ksm_giving_campaign_trans_hh HH
-      LEFT JOIN Entity e
-      ON e.Id_number = HH.HOUSEHOLD_ID
-      Where (HH.transaction_type LIKE 'Bequest%Expectancy'
-      OR HH.transaction_type LIKE 'Bequest%Received')
-      AND HH.hh_recognition_credit > 0
+      Select
+        gt.id_number
+        , 'Y' BE_Donors --<!> no need for conditional
+      FROM rpt_pbh634.v_ksm_giving_campaign_trans gt --<!> No need for householding at this stage
+      INNER JOIN Entity e --<!> inner join for speed
+      ON e.Id_number = gt.id_number
+      Where (gt.transaction_type LIKE 'Bequest%Expectancy'
+      OR gt.transaction_type LIKE 'Bequest%Received')
+      AND gt.credited_amount > 0
       AND e.record_status_code = 'A'
-      GROUP BY hh.HOUSEHOLD_ID
+      AND gt.pledge_status <> 'I'
 ),
 
 GAB AS (
       SELECT c.id_number
-      , case When ID_Number is NOT NULL
-         Then 'Y'
-           Else ' '
-           End GAB
+      ,'Y' GAB
       From committee c
       where c.committee_code = 'U'
       AND c.committee_status_code = 'C'
@@ -45,10 +34,7 @@ GAB AS (
 
 BOT AS (
       SELECT c.ID_Number
-      , case When ID_Number is NOT NULL
-         Then 'Y'
-           Else ' '
-           End Trustee
+      , 'Y'  Trustee
       From committee c
       where c.committee_code = 'TBOT'
       AND c.committee_status_code = 'C'   
@@ -56,10 +42,7 @@ BOT AS (
 
 KAC AS (
       SELECT c.id_number
-      , case When ID_Number is NOT NULL
-         Then 'Y'
-           Else ' '
-           End KAC
+      , 'Y' KAC
       From committee c
       where c.committee_code = 'KACNA'
       AND c.committee_status_code = 'C'
@@ -67,10 +50,7 @@ KAC AS (
 
 ACT_CL AS (
       SELECT c.ID_Number
-      , case When ID_Number is NOT NULL
-         Then 'Y'
-           Else ' '
-           End Club_Leaders
+      , 'Y' Club_Leaders
       From committee c
       where c.committee_code = 'KACLE'
       AND c.committee_status_code = 'C'
@@ -78,10 +58,7 @@ ACT_CL AS (
 
 PHS AS (
       SELECT c.ID_number
-      , case When ID_Number is NOT NULL
-         Then 'Y'
-           Else ' '
-           End PHS
+      , 'Y' PHS
       From committee c
       where c.committee_code = 'KPH'
       AND c.committee_status_code = 'C'
@@ -122,9 +99,9 @@ Spouse AS(
 ),
 
 P_Sally_Salut AS(
-Select
+    Select
       ID_Number
-      , max(salutation) keep(dense_rank First Order By ID_number Asc, date_modified) AS Latest_Sal
+      , max(salutation) keep(dense_rank First Order By ID_number Asc, date_modified Desc) AS Latest_Sal
       From salutation
       WHERE signer_ID_number = '0000299349'
       AND Active_IND = 'Y'
@@ -133,48 +110,64 @@ Select
       Order by ID_number
 ),
 
-Sally_Salut AS (
-      SELECT * 
-      FROM (Select E.ID_Number
-      , E.Spouse_Id_Number
-      , Case When PSS.Latest_sal IS NOT NULL Then PSS.Latest_Sal
-             -- '%.%' means there is a dot somewhere in first name (initial)
-             When PSS.Latest_sal IS NULL AND E.First_name != ' ' AND E.First_name NOT LIKE '%.%'
-               THEN E.First_Name
-             When PSS.Latest_sal IS NULL AND E.First_name = ' ' AND E.First_name LIKE '%.%'
-               THEN NULL
-          ELSE NULL
-            END Dean_Salut
-      From Entity E
-      Left Join P_Sally_Salut PSS
-      ON PSS.Id_number = E.ID_number)
-      Where Dean_Salut IS NOT NULL
+NAMES AS(
+  Select Distinct
+    aseg.id_number
+    , Case
+        When PSS.Latest_sal IS NOT NULL Then trim(PSS.Latest_Sal)
+        -- '%.%' means there is a dot somewhere in first name (initial)
+        When PSS.Latest_sal IS NULL AND entity.First_name != ' ' AND entity.First_name NOT LIKE '%.%'
+          THEN trim(entity.First_Name)
+        When PSS.Latest_sal IS NULL AND entity.First_name = ' ' AND entity.First_name LIKE '%.%'
+          THEN NULL
+        ELSE NULL
+        END
+      As P_Dean_Salut
+    , Case
+        When pss_s.Latest_sal IS NOT NULL Then trim(pss_s.Latest_Sal)
+        -- '%.%' means there is a dot somewhere in first name (initial)
+        When pss_s.Latest_sal IS NULL AND spouse.First_name != ' ' AND spouse.First_name NOT LIKE '%.%'
+          THEN trim(spouse.First_Name)
+        When pss_s.Latest_sal IS NULL AND spouse.First_name = ' ' AND spouse.First_name LIKE '%.%'
+          THEN NULL
+        ELSE NULL
+        END
+      As Spouse_Dean_Salut
+    , entity.pref_mail_name As p_pref_mail_name
+    , spouse.pref_mail_name As spouse_pref_name
+  From ALL_Segments aseg
+  Inner Join rpt_pbh634.v_entity_ksm_households hh
+    On hh.household_id = aseg.id_number
+  Inner Join entity
+    On entity.id_number = hh.household_id
+  Left Join entity spouse
+    On spouse.id_number = hh.household_spouse_id
+  Left Join P_Sally_Salut pss
+    On pss.id_number = hh.household_id
+  Left Join P_Sally_salut pss_s
+    On pss_s.id_number = hh.household_spouse_id
 ),
 
-JOINT_DEANS_SALUT AS ( 
-      Select distinct
-            HH.ID_NUMBER
-            , PS.Dean_Salut || ' and ' || SSA.Dean_salut AS Joint_Dean_Salut
-      FROM rpt_pbh634.v_entity_ksm_households HH
-      LEFT Join Sally_Salut PS
-      ON HH.Household_LIST_First = PS.Id_Number
-      LEFT Join Sally_Salut SSA
-      ON HH.Household_LIST_Second = SSA.Id_Number
-      WHERE PS.Dean_Salut IS NOT NULL
-      AND SSA.Dean_salut IS NOT NULL
-),
-
-JOINT_PREFNAME AS ( 
-      Select distinct
-            HH.ID_NUMBER
-            , PE.Pref_Mail_Name || ' and ' || SE.Pref_Mail_Name AS Joint_Prefname
-      FROM rpt_pbh634.v_entity_ksm_households HH
-      LEFT Join Entity PE
-      ON HH.Household_LIST_First = PE.Id_Number
-      LEFT Join Entity SE
-      ON HH.Household_LIST_Second = SE.Id_Number
-      WHERE PE.Pref_Mail_Name IS NOT NULL
-      AND SE.Pref_Mail_Name IS NOT NULL
+ALL_NAMES AS (
+  Select
+    id_number
+    , P_Dean_Salut
+    , p_pref_mail_name
+    , Spouse_Dean_Salut
+    , spouse_pref_name
+    , Case
+        When P_Dean_Salut IS NOT NULL
+          And Spouse_Dean_Salut IS NOT NULL
+            Then P_Dean_Salut || ' and ' || Spouse_Dean_Salut
+        End
+      As Joint_Dean_Salut
+    , Case
+        When p_pref_mail_name IS NOT NULL
+          And spouse_pref_name IS NOT NULL
+            Then p_pref_mail_name || ' and ' || spouse_pref_name
+        End
+      As Joint_Prefname
+  From NAMES
 ),
 
 PrefAddress AS( 
@@ -206,7 +199,7 @@ PrefAddress AS(
 
 Seas_Address AS(
       SELECT *
-      FROM v_seasonal_addr SA
+      FROM rpt_dgz654.v_seasonal_addr SA
       WHERE CURRENT_DATE
         BETWEEN SA.real_start_date1 AND SA.real_stop_date1 
         OR CURRENT_DATE BETWEEN SA.real_start_date2 AND SA.real_stop_date2
@@ -249,19 +242,19 @@ Emails AS (
 
 SELECT DISTINCT
   E.ID_NUMBER AS Household_ID
-  ,E.Pref_Mail_Name P_Pref_Mail_Name
-  ,Sal.Dean_salut AS P_Dean_Salut
+  ,ALL_NAMES.P_Pref_Mail_Name
+  ,ALL_NAMES.P_Dean_Salut
   ,E.RECORD_STATUS_CODE P_Record_Status 
   ,D.DEGREES_CONCAT P_Degrees_Concat
   ,E.Gender_Code As P_Gender
   ,E.spouse_ID_Number AS Spouse_ID
-  ,S.pref_mail_name AS Spouse_Pref_Name
-  ,SSAL.Dean_salut AS Spouse_Dean_Salut
+  ,ALL_NAMES.Spouse_Pref_Name
+  ,ALL_NAMES.Spouse_Dean_Salut
   ,S.record_status_code AS Spouse_Status
   ,SD.DEGREES_CONCAT S_Degrees_concat
   ,S.gender_code AS Spouse_Gender
-  ,JDS.Joint_Dean_Salut
-  ,JPN.Joint_prefname
+  ,ALL_NAMES.Joint_Dean_Salut
+  ,ALL_NAMES.Joint_prefname
   ,PM.pref_Mail_Name AS Prospect_Manager
   ,PP.PPM_Names AS Program_Prospect_Manager
   ,Case
@@ -335,8 +328,12 @@ SELECT DISTINCT
 FROM rpt_pbh634.v_entity_ksm_households HH
    INNER JOIN ALL_Segments ALS
    ON HH.HOUSEHOLD_ID = ALS.ID_Number
-   LEFT JOIN Entity E
+   INNER JOIN Entity E --<!> Should be inner join for speed
    ON HH.HOUSEHOLD_ID = E.ID_Number
+   -- Joins for dean salutations
+   LEFT JOIN ALL_NAMES
+   ON ALL_NAMES.id_number = HH.HOUSEHOLD_ID
+   -- All other joins
    LEFT JOIN rpt_pbh634.v_entity_ksm_degrees D
    ON HH.Household_ID = D."ID_NUMBER"
    LEFT JOIN rpt_pbh634.v_entity_ksm_degrees SD
@@ -351,14 +348,6 @@ FROM rpt_pbh634.v_entity_ksm_households HH
    ON HH.Household_ID = S.ID_NUMBER
    LEFT JOIN Prospect_Manager PM
    ON HH.Household_ID = PM.ID_Number
-   LEFT JOIN Sally_salut SAL
-   ON HH.HOUSEHOLD_ID = SAL.ID_number
-   LEFT JOIN Sally_salut SSAL
-   ON HH.HOUSEHOLD_SPOUSE_ID = SSAL.spouse_ID_number
-   LEFT JOIN JOINT_Deans_salut JDS
-   ON HH.Household_ID = JDS.ID_Number
-   LEFT JOIN JOINT_Prefname JPN
-   ON HH.Household_ID = JPN.ID_number
    LEFT JOIN Prospect_Manager PM
    ON HH.Household_ID = PM.ID_Number
    LEFT JOIN Prog_Prospect_Manager PP
