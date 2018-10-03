@@ -137,7 +137,7 @@ NAMES AS(
     , spouse.pref_mail_name As spouse_pref_name
   From ALL_Segments aseg
   Inner Join rpt_pbh634.v_entity_ksm_households hh
-    On hh.household_id = aseg.id_number
+    On hh.id_number = aseg.id_number
   Inner Join entity
     On entity.id_number = hh.household_id
   Left Join entity spouse
@@ -327,12 +327,12 @@ SELECT DISTINCT
   ,E.Pref_Name_Sort
 FROM rpt_pbh634.v_entity_ksm_households HH
    INNER JOIN ALL_Segments ALS
-   ON HH.HOUSEHOLD_ID = ALS.ID_Number
+   ON HH.id_number = ALS.ID_Number
    INNER JOIN Entity E --<!> Should be inner join for speed
    ON HH.HOUSEHOLD_ID = E.ID_Number
    -- Joins for dean salutations
    LEFT JOIN ALL_NAMES
-   ON ALL_NAMES.id_number = HH.HOUSEHOLD_ID
+   ON ALL_NAMES.id_number = HH.id_number
    -- All other joins
    LEFT JOIN rpt_pbh634.v_entity_ksm_degrees D
    ON HH.Household_ID = D."ID_NUMBER"
