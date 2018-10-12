@@ -442,6 +442,15 @@ Select Distinct
   -- Recognition amounts for stewardship purposes; includes face value of bequests and life expectancy intentions
   , sum(cgft.hh_recognition_credit - cgft.hh_credit) As campaign_discounted_bequests
   , sum(cgft.hh_recognition_credit) As campaign_steward_giving
+  , sum(Case When fiscal_year <= 2008 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy08
+  , sum(Case When fiscal_year <= 2009 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy09
+  , sum(Case When fiscal_year <= 2010 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy10
+  , sum(Case When fiscal_year <= 2011 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy11
+  , sum(Case When fiscal_year <= 2012 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy12
+  , sum(Case When fiscal_year <= 2013 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy13
+  , sum(Case When fiscal_year <= 2014 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy14
+  , sum(Case When fiscal_year <= 2015 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy15
+  , sum(Case When fiscal_year <= 2016 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy16
   , sum(Case When fiscal_year <= 2017 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy17
   , sum(Case When fiscal_year <= 2017 And cgft.anonymous In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
     As anon_steward_thru_fy17

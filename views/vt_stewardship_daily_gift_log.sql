@@ -326,6 +326,11 @@ Select Distinct
   , trans.pledge_payment_freq_code As pledge_payment_schedule_code
   , tms_plg_sch.short_desc As pledge_payment_schedule
   , gft.date_of_record
+  -- Added per Lola on 10/12/18
+  , gft.adjustment_reason As reason_changed
+  , gft.last_modified_date As reason_changed_date
+  , gft.date_of_receipt
+  , pg.prim_gift_comment As gift_comment
   , Case When trunc(gft.date_of_record) = trunc(first_gift.first_ksm_gift_dt) Then 'Y' End As first_gift
   , gft.processed_date
   , gft.legal_amount
@@ -397,6 +402,8 @@ Left Join pledge On pledge.pledge_pledge_number = gft.tx_number
 Left Join first_gift On first_gift.id_number = gft.id_number
 Left Join ksm_cu cu On gft.allocation_code = cu.allocation_code
 Left Join tms_payment_frequency tms_plg_sch On tms_plg_sch.payment_frequency_code = trans.pledge_payment_freq_code
+-- Gift comment addition per Lola on 10/12/18
+Left Join primary_gift pg On gft.tx_number = pg.prim_gift_receipt_number
 -- Degree info
 Left Join tms_school On tms_school.school_code = entity.pref_school_code
 Left Join ksm_deg On ksm_deg.id_number = gft.id_number
