@@ -251,12 +251,14 @@ Type plg_disc Is Record (
   , pledge_sequence pledge.pledge_sequence%type
   , prim_pledge_type primary_pledge.prim_pledge_type%type
   , prim_pledge_status primary_pledge.prim_pledge_status%type
+  , status_change_date primary_pledge.status_change_date%type
   , proposal_id primary_pledge.proposal_id%type
   , pledge_comment primary_pledge.prim_pledge_comment%type
   , pledge_amount pledge.pledge_amount%type
   , pledge_associated_credit_amt pledge.pledge_associated_credit_amt%type
   , prim_pledge_amount primary_pledge.prim_pledge_amount%type
   , prim_pledge_amount_paid primary_pledge.prim_pledge_amount_paid%type
+  , prim_pledge_remaining_balance primary_pledge.prim_pledge_amount%type
   , prim_pledge_original_amount primary_pledge.prim_pledge_original_amount%type
   , discounted_amt primary_pledge.prim_pledge_amount%type
   , legal primary_pledge.prim_pledge_amount%type
@@ -1630,12 +1632,20 @@ Cursor c_plg_discount Is
     , pledge.pledge_sequence
     , pplg.prim_pledge_type
     , pplg.prim_pledge_status
+    , trim(pplg.status_change_date)
+      As status_change_date
     , pplg.proposal_id
     , pplg.prim_pledge_comment
     , pledge.pledge_amount
     , pledge.pledge_associated_credit_amt
     , pplg.prim_pledge_amount
     , pplg.prim_pledge_amount_paid
+    , Case
+        When pplg.prim_pledge_status = 'A'
+          Then pplg.prim_pledge_amount - pplg.prim_pledge_amount_paid
+        Else 0
+        End
+      As prim_pledge_remaining_balance
     , pplg.prim_pledge_original_amount
     , pplg.discounted_amt
     -- Discounted pledge legal amounts
