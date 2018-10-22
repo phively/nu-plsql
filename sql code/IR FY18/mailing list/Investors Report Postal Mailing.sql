@@ -82,6 +82,17 @@ UNION
 Select ID_number From PHS
 ),
 
+/*
+ALL_SEGMENTS_HOUSEHOLDED As (
+Select Distinct
+household_id
+-- Do all household_id and entity_id joined fields here
+From ALL_Segments
+Inner Join v_entity_ksm_households hhs
+On hhs.id_number = ALL_Segments.id_number
+),
+*/
+
 Spouse AS(
        SELECT 
        E.ID_NUMBER
@@ -167,12 +178,24 @@ ALL_NAMES AS (
         When P_Dean_Salut IS NOT NULL
           And Spouse_Dean_Salut IS NOT NULL
             Then P_Dean_Salut || ' and ' || Spouse_Dean_Salut
+        When P_Dean_Salut IS NOT NULL
+          And Spouse_Dean_Salut IS NULL
+            Then P_Dean_Salut
+        When P_Dean_Salut IS NULL
+          And Spouse_Dean_Salut IS NOT NULL
+            Then Spouse_Dean_Salut
         End
       As Joint_Dean_Salut
     , Case
         When p_pref_mail_name IS NOT NULL
           And spouse_pref_name IS NOT NULL
             Then p_pref_mail_name || ' and ' || spouse_pref_name
+        When p_pref_mail_name IS NOT NULL
+          And spouse_pref_name IS NULL
+            Then p_pref_mail_name
+        When p_pref_mail_name IS NULL
+          And spouse_pref_name IS NOT NULL
+            Then spouse_pref_name
         End
       As Joint_Prefname
   From NAMES
@@ -249,13 +272,13 @@ Emails AS (
 )
 
 SELECT DISTINCT
-  E.ID_NUMBER AS Household_ID
+  HH.Household_ID
   ,ALL_NAMES.P_Pref_Mail_Name
   ,ALL_NAMES.P_Dean_Salut
   ,E.RECORD_STATUS_CODE P_Record_Status 
   ,D.DEGREES_CONCAT P_Degrees_Concat
   ,E.Gender_Code As P_Gender
-  ,E.spouse_ID_Number AS Spouse_ID
+  ,HH.HOUSEHOLD_SPOUSE_ID
   ,ALL_NAMES.Spouse_Pref_Name
   ,ALL_NAMES.Spouse_Dean_Salut
   ,S.record_status_code AS Spouse_Status
@@ -339,13 +362,13 @@ FROM rpt_pbh634.v_entity_ksm_households HH
    INNER JOIN Entity E --<!> Should be inner join for speed
    ON HH.HOUSEHOLD_ID = E.ID_Number
    -- Joins for dean salutations
-   LEFT JOIN ALL_NAMES
+   INNER JOIN ALL_NAMES -- Paul Was Here
    ON ALL_NAMES.id_number = HH.HOUSEHOLD_ID
    -- All other joins
    LEFT JOIN rpt_pbh634.v_entity_ksm_degrees D
-   ON HH.ID_Number = D."ID_NUMBER"
+   ON HH.household_ID = D."ID_NUMBER"
    LEFT JOIN rpt_pbh634.v_entity_ksm_degrees SD
-   ON E.SPOUSE_ID_NUMBER = D."ID_NUMBER"
+   ON HH.HOUSEHOLD_SPOUSE_ID = SD."ID_NUMBER"
    LEFT JOIN PrefAddress PA
    ON HH.Household_ID = PA.ID_NUMBER
    LEFT JOIN Seas_Address SA
