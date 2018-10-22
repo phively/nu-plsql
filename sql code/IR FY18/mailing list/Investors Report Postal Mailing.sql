@@ -109,6 +109,14 @@ P_Sally_Salut AS(
       Group by ID_Number
       Order by ID_number
 ),
+/*
+P_Sally_Salut AS (
+     SELECT hh.HOUSEHOLD_LIST_FIRST, HH.HOUSEHOLD_LIST_SECOND
+     FROM rpt_pbh634.v_entity_ksm_households hh
+     Inner Join PSS
+     ON HH.ID_NUMBER = PSS.Household_List
+),
+*/
 
 NAMES AS(
   Select Distinct
@@ -139,13 +147,13 @@ NAMES AS(
   Inner Join rpt_pbh634.v_entity_ksm_households hh
     On hh.id_number = aseg.id_number
   Inner Join entity
-    On entity.id_number = hh.household_id
+    On entity.id_number = hh.household_list_first
   Left Join entity spouse
-    On spouse.id_number = hh.household_spouse_id
+    On spouse.id_number = hh.household_list_second
   Left Join P_Sally_Salut pss
-    On pss.id_number = hh.household_id
+    On pss.id_number = hh.household_list_first
   Left Join P_Sally_salut pss_s
-    On pss_s.id_number = hh.household_spouse_id
+    On pss_s.id_number = hh.household_list_second
 ),
 
 ALL_NAMES AS (
@@ -327,15 +335,15 @@ SELECT DISTINCT
   ,E.Pref_Name_Sort
 FROM rpt_pbh634.v_entity_ksm_households HH
    INNER JOIN ALL_Segments ALS
-   ON HH.id_number = ALS.ID_Number
+   ON HH.ID_Number = ALS.ID_Number
    INNER JOIN Entity E --<!> Should be inner join for speed
    ON HH.HOUSEHOLD_ID = E.ID_Number
    -- Joins for dean salutations
    LEFT JOIN ALL_NAMES
-   ON ALL_NAMES.id_number = HH.id_number
+   ON ALL_NAMES.id_number = HH.HOUSEHOLD_ID
    -- All other joins
    LEFT JOIN rpt_pbh634.v_entity_ksm_degrees D
-   ON HH.Household_ID = D."ID_NUMBER"
+   ON HH.ID_Number = D."ID_NUMBER"
    LEFT JOIN rpt_pbh634.v_entity_ksm_degrees SD
    ON E.SPOUSE_ID_NUMBER = D."ID_NUMBER"
    LEFT JOIN PrefAddress PA
@@ -372,13 +380,9 @@ FROM rpt_pbh634.v_entity_ksm_households HH
    AND SPH.NO_CONTACT IS NULL
    AND SPH.NO_MAIL_IND IS NULL
    
-/* For the people that have been removed from Mailing 
+/* For the people that have been removed from Mailing  
    WHERE E.RECORD_STATUS_CODE = 'D'
    OR (SPH.NO_CONTACT = 'Y'
    OR SPH.NO_MAIL_IND = 'Y')
-    */   
-   
-   
-   
-
- 
+     
+*/  
