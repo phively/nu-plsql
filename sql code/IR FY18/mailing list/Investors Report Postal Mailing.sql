@@ -168,8 +168,8 @@ NAMES AS(
 ),
 
 ALL_NAMES AS (
-  Select
-    id_number
+  Select Distinct
+    hh.household_id
     , P_Dean_Salut
     , p_pref_mail_name
     , Spouse_Dean_Salut
@@ -199,6 +199,8 @@ ALL_NAMES AS (
         End
       As Joint_Prefname
   From NAMES
+  Inner Join v_entity_ksm_households hh
+  On hh.id_number = NAMES.id_number
 ),
 
 PrefAddress AS( 
@@ -363,7 +365,7 @@ FROM rpt_pbh634.v_entity_ksm_households HH
    ON HH.HOUSEHOLD_ID = E.ID_Number
    -- Joins for dean salutations
    INNER JOIN ALL_NAMES -- Paul Was Here
-   ON ALL_NAMES.id_number = HH.HOUSEHOLD_ID
+   ON ALL_NAMES.household_id = HH.HOUSEHOLD_ID
    -- All other joins
    LEFT JOIN rpt_pbh634.v_entity_ksm_degrees D
    ON HH.household_ID = D."ID_NUMBER"
