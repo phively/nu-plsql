@@ -285,7 +285,7 @@ Select
   , curr_fy
   , data_as_of
   -- Aggregated giving amounts
-  , sum(legal_amount) As legal_amount  
+  , sum(legal_amount) As legal_amount
 From vt_af_gifts_srcdnr_5fy af_gifts
 Left Join deg entity_deg On entity_deg.id_number = af_gifts.id_hh_src_dnr
 Left Join deg spouse_deg On spouse_deg.id_number = af_gifts.spouse_id_number
@@ -494,6 +494,11 @@ cal As (
     , max(Case When fiscal_year = (curr_fy - 0) And af_flag = 'Y' Then date_of_record Else NULL End) As last_gift_curr_fy
     , max(Case When fiscal_year = (curr_fy - 1) And af_flag = 'Y' Then date_of_record Else NULL End) As last_gift_prev_fy1
     , max(Case When fiscal_year = (curr_fy - 2) And af_flag = 'Y' Then date_of_record Else NULL End) As last_gift_prev_fy2
+    -- First gift per FY details
+    , min(Case When fiscal_year = (curr_fy - 0) And af_flag = 'Y' Then date_of_record End) As ksm_af_curr_fy_dt
+    , min(Case When fiscal_year = (curr_fy - 1) And af_flag = 'Y' Then date_of_record End) As ksm_af_prev_fy1_dt
+    , min(Case When fiscal_year = (curr_fy - 0) Then date_of_record End) As cru_curr_fy_dt
+    , min(Case When fiscal_year = (curr_fy - 1) Then date_of_record End) As cru_prev_fy1_dt
     -- Count of gifts per year
     , sum(Case When fiscal_year = (curr_fy - 0) And af_flag = 'Y' Then 1 Else 0 End) As gifts_curr_fy
     , sum(Case When fiscal_year = (curr_fy - 1) And af_flag = 'Y' Then 1 Else 0 End) As gifts_prev_fy1
@@ -569,6 +574,8 @@ Select Distinct
   , data_as_of
   -- Precalculated giving fields
   , first_af.first_af_gift_year
+  , ksm_af_curr_fy_dt
+  , ksm_af_prev_fy1_dt
   , ksm_af_curr_fy
   , ksm_af_prev_fy1
   , ksm_af_prev_fy2
@@ -599,6 +606,8 @@ Select Distinct
   , gifts_curr_fy
   , gifts_prev_fy1
   , gifts_prev_fy2
+  , cru_curr_fy_dt
+  , cru_prev_fy1_dt
   , cru_curr_fy
   , cru_prev_fy1
   , cru_prev_fy2
