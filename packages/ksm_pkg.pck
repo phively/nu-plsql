@@ -657,6 +657,7 @@ Cursor ct_alloc_annual_fund_ksm Is
       , '3203004993001GFT' -- GIM Trip Scholarships (general)
       , '3203003655501GFT' -- EMP Scholarships
       , '3203004984101GFT' -- Deloitte Scholarship
+      , '3203005137401GFT' -- Expendable Excellence Grant (TMS)
       /************ UPDATE ABOVE HERE ************/
     )
   ;
