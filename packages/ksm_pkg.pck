@@ -619,6 +619,9 @@ Function tbl_committee_KFN
  Function tbl_committee_AMP
   Return t_committee_members Pipelined;
 
+Function tbl_committee_trustee
+  Return t_committee_members Pipelined;
+
 /*************************************************************************
 End of package
 *************************************************************************/
@@ -2394,6 +2397,7 @@ committee_WomenSummit Constant committee.committee_code%type := 'KGWS'; -- KSM G
 committee_DivSummit Constant committee.committee_code%type := 'KCDO'; -- KSM chief Diversity Officer Summit code
 committee_RealEstCouncil Constant committee.committee_code%type := 'KREAC'; -- Real Estate Advisory Council code
 committee_AMP Constant committee.committee_code%type := 'KAMP'; -- AMP Advisory Council code
+committee_trustee Constant committee.committee_code%type := 'TBOT'; -- NU Board of Trustees code
 
 /* Miscellaneous */
 fy_start_month Constant number := 9; -- fiscal start month, 9 = September
@@ -3329,6 +3333,19 @@ Function tbl_special_handling_concat
     
     Begin
       committees := committee_members (my_committee_cd => committee_AMP);
+      For i in 1..committees.count Loop
+        Pipe row(committees(i));
+      End Loop;
+      Return;
+    End;
+
+  /* Trustees */
+  Function tbl_committee_trustee
+    Return t_committee_members Pipelined As
+    committees t_committee_members;
+    
+    Begin
+      committees := committee_members (my_committee_cd => committee_trustee);
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
