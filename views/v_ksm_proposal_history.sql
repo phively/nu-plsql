@@ -368,6 +368,38 @@ households As (
   Where pe.primary_ind = 'Y'
 )
 
+-- Subquery to get recent prospect visits
+, recent_visit As (
+  Select
+    prospect_id
+    -- Visits in last 365 days
+    , sum(Case When contact_date Between yesterday - 365 And yesterday Then 1 Else 0 End)
+        As ard_visit_last_365_days
+    -- Most recent contact report
+    , min(credited_name) Keep(dense_rank First Order By contact_date Desc, visit_type Asc)
+        As last_visit_credited_name
+    , min(frontline_ksm_staff) Keep(dense_rank First Order By contact_date Desc)
+        As last_visit_credited_ksm
+    , min(employer_unit)  Keep(dense_rank First Order By contact_date Desc, visit_type Asc)
+        As last_visit_credited_unit
+    , min(contact_type) Keep(dense_rank First Order By contact_date Desc, visit_type Asc)
+        As last_visit_contact_type
+    , min(contact_type_category) Keep(dense_rank First Order By contact_date Desc, visit_type Asc)
+        As last_visit_category
+    , min(contact_date)  Keep(dense_rank First Order By contact_date Desc, visit_type Asc)
+        As last_visit_date
+    , min(contact_purpose) Keep(dense_rank First Order By contact_date Desc, visit_type Asc)
+        As last_visit_purpose
+    , min(visit_type)  Keep(dense_rank First Order By contact_date Desc, visit_type Asc)
+        As last_visit_type
+    , min(description) Keep(dense_rank First Order By contact_date Desc, visit_type Asc)
+        As last_visit_desc
+  From v_contact_reports_fast
+  Where ard_staff = 'Y'
+    And contact_type = 'Visit'
+  Group By prospect_id
+)
+
 Select
   ph.prospect_id
   , prospect_name
@@ -421,8 +453,19 @@ Select
   , ksm_or_univ_anticipated
   , final_anticipated_or_ask_amt
   , ksm_bin
+  , recent_visit.last_visit_credited_name
+  , recent_visit.last_visit_credited_ksm
+  , recent_visit.last_visit_credited_unit
+  , recent_visit.last_visit_contact_type
+  , recent_visit.last_visit_category
+  , recent_visit.last_visit_date
+  , recent_visit.last_visit_purpose
+  , recent_visit.last_visit_type
+  , recent_visit.last_visit_desc
 From v_proposal_history ph
 Left Join households
   On households.prospect_id = ph.prospect_id
+Left Join recent_visit
+  On recent_visit.prospect_id = ph.prospect_id
 Where ksm_proposal_ind = 'Y'
 ;
