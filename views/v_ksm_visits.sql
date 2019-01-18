@@ -4,8 +4,8 @@ Create Or Replace View v_nu_visits As
 With
 
 /*
-Visits from the beginning of the previous fiscal year to yesterday
-Only inlcudes living entities, but prospect records may have since been deactivated
+Visits through yesterday
+Prospect records may have since been deactivated
 */
 
 /* VIP visits */
@@ -92,14 +92,13 @@ Left Join table(ksm_pkg.tbl_university_strategy) strat On strat.prospect_id = co
 Left Join vips On vips.id_number = contact_rpt_credit.id_number
 Left Join rating_bins eval On eval.rating_desc = prs.evaluation_rating
 Left Join rating_bins uor On uor.rating_desc = prs.officer_rating
-Where contact_report.contact_date Between cal.prev_fy_start And cal.yesterday
-  And contact_report.contact_type = 'V'
+Where contact_report.contact_type = 'V'
 ;
 
 /* Kellogg-specific visits */
 Create Or Replace View v_ksm_visits As
 
-/* Only the visits made by Kellogg frontline staff */
+/* Only the visits made by Kellogg frontline staff in the current or previous FY */
 
 Select
   credited
@@ -124,7 +123,9 @@ Select
   -- Custom variables
   , visit_type
   , rating_bin
-  , curr_fy
+  , cal.curr_fy
 From v_nu_visits
+Cross Join v_current_calendar cal
 Inner Join table(ksm_pkg.tbl_frontline_ksm_staff) staff On staff.id_number = v_nu_visits.credited
+Where contact_date Between cal.prev_fy_start And cal.yesterday
 ;
