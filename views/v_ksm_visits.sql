@@ -10,11 +10,14 @@ Only inlcudes living entities, but prospect records may have since been deactiva
 
 /* VIP visits */
 vips As (
-  Select '0000573302' As id_number, 'President' As affil, NULL As start_dt, NULL As stop_dt From DUAL -- MOS
-  Union 
-  Select '0000299349', 'Dean', to_date('20100701', 'yyyymmdd'), to_date('20180831', 'yyyymmdd') From DUAL -- SB
-  Union
-  Select '0000246649', 'Dean', to_date('20180901', 'yyyymmdd'), to_date('20500831', 'yyyymmdd') From DUAL -- KH
+  Select
+    id_number
+    , affil
+    , start_dt
+    , nvl(stop_dt, cal.next_fy_start)
+      As stop_dt
+  From mv_nu_vips
+  Cross Join v_current_calendar cal
 )
 
 /* TMS values for purpose (e.g. qualification, solicitation, ...) */
@@ -66,15 +69,16 @@ Select
     End As rating_bin
   , Case
       When vips.affil = 'President'
+        And contact_report.contact_date Between start_dt And stop_dt
         Then 'Y'
       End
     As president_visit
   , Case
-      When vips.affil = 'Dean'
+      When vips.affil = 'KSM Dean'
         And contact_report.contact_date Between start_dt And stop_dt
         Then 'Y'
       End
-    As dean_visit
+    As ksm_dean_visit
   , cal.curr_fy
 From contact_report
 Cross Join cal
