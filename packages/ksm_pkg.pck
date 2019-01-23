@@ -2424,6 +2424,11 @@ committee_RealEstCouncil Constant committee.committee_code%type := 'KREAC'; -- R
 committee_AMP Constant committee.committee_code%type := 'KAMP'; -- AMP Advisory Council code
 committee_trustee Constant committee.committee_code%type := 'TBOT'; -- NU Board of Trustees code
 
+/* Segments */
+seg_af_10k Constant segment.segment_code%type := 'KMAA_'; -- AF $10K model pattern
+seg_mg_id Constant segment.segment_code%type := 'KMID_'; -- MG identification model pattern
+seg_mg_pr Constant segment.segment_code%type := 'KMPR_'; -- MG prioritization model pattern
+
 /* Miscellaneous */
 fy_start_month Constant number := 9; -- fiscal start month, 9 = September
 py_start_month Constant number := 5; -- performance start month, 5 = May
@@ -3111,7 +3116,8 @@ Function tbl_numeric_capacity_ratings
   
 /* Pipelined function for Kellogg modeled scores */
 
-  -- Generic function returning matching segment(s)
+  /* Generic function returning matching segment(s)
+     2019-01-23 */
   Function segment_extract (year In integer, month In integer, code In varchar2)
     Return t_modeled_score As
     -- Declarations
@@ -3132,7 +3138,7 @@ Function tbl_numeric_capacity_ratings
     score t_modeled_score;
     
     Begin
-      score := segment_extract (year => model_year, month => model_month, code => 'KMAA_');
+      score := segment_extract (year => model_year, month => model_month, code => seg_af_10k);
       For i in 1..(score.count) Loop
         Pipe row(score(i));
       End Loop;
@@ -3146,7 +3152,7 @@ Function tbl_numeric_capacity_ratings
     score t_modeled_score;
     
     Begin
-      Open c_segment_from_mv(year => model_year, month => model_month, code => 'KMID_');
+      Open c_segment_from_mv(year => model_year, month => model_month, code => seg_mg_id);
         Fetch c_segment_from_mv Bulk Collect Into score;
       Close c_segment_from_mv;
       For i in 1..(score.count) Loop
@@ -3162,7 +3168,7 @@ Function tbl_numeric_capacity_ratings
     score t_modeled_score;
     
     Begin
-      Open c_segment_from_mv(year => model_year, month => model_month, code => 'KMPR_');
+      Open c_segment_from_mv(year => model_year, month => model_month, code => seg_mg_pr);
         Fetch c_segment_from_mv Bulk Collect Into score;
       Close c_segment_from_mv;
       For i in 1..(score.count) Loop
@@ -3244,9 +3250,7 @@ Function tbl_numeric_capacity_ratings
      2017-09-05 */
   Function tbl_gift_credit_hh_campaign
     Return t_trans_household Pipelined As
---    Return t_trans_campaign_hh Pipelined As
     -- Declarations
---    trans t_trans_campaign_hh;
     trans t_trans_household;
     
     Begin
@@ -3293,7 +3297,7 @@ Function tbl_special_handling_concat
       Return committees;
     End;
 
-  /* GAB */
+  -- GAB
   Function tbl_committee_gab
     Return t_committee_members Pipelined As
     committees t_committee_members;
@@ -3306,7 +3310,7 @@ Function tbl_special_handling_concat
       Return;
     End;
   
-  /* KAC */
+  -- KAC
   Function tbl_committee_kac
     Return t_committee_members Pipelined As
     committees t_committee_members;
@@ -3319,7 +3323,7 @@ Function tbl_special_handling_concat
       Return;
     End;
 
-  /* PHS */
+  -- PHS
   Function tbl_committee_phs
     Return t_committee_members Pipelined As
     committees t_committee_members;
@@ -3332,7 +3336,7 @@ Function tbl_special_handling_concat
       Return;
     End;
 
-  /* KFN */
+  -- KFN
   Function tbl_committee_KFN
     Return t_committee_members Pipelined As
     committees t_committee_members;
@@ -3345,7 +3349,7 @@ Function tbl_special_handling_concat
       Return;
     End;
 
-  /* CorpGov */
+  -- CorpGov
   Function tbl_committee_CorpGov
     Return t_committee_members Pipelined As
     committees t_committee_members;
@@ -3358,7 +3362,7 @@ Function tbl_special_handling_concat
       Return;
     End;
     
-  /* GlobalWomenSummit */
+  -- GlobalWomenSummit
   Function tbl_committee_WomenSummit
     Return t_committee_members Pipelined As
     committees t_committee_members;
@@ -3371,7 +3375,7 @@ Function tbl_special_handling_concat
       Return;
     End;
     
-  /* DivSummit */
+  -- DivSummit
   Function tbl_committee_DivSummit
     Return t_committee_members Pipelined As
     committees t_committee_members;
@@ -3384,7 +3388,7 @@ Function tbl_special_handling_concat
       Return;
     End;
     
-  /* RealEstCouncil */
+  -- RealEstCouncil
   Function tbl_committee_RealEstCouncil
     Return t_committee_members Pipelined As
     committees t_committee_members;
@@ -3397,7 +3401,7 @@ Function tbl_special_handling_concat
       Return;
     End;
 
-  /* AMP */
+  -- AMP
   Function tbl_committee_AMP
     Return t_committee_members Pipelined As
     committees t_committee_members;
@@ -3410,7 +3414,7 @@ Function tbl_special_handling_concat
       Return;
     End;
 
-  /* Trustees */
+  -- Trustees
   Function tbl_committee_trustee
     Return t_committee_members Pipelined As
     committees t_committee_members;
