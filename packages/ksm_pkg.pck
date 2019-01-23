@@ -587,6 +587,16 @@ Function tbl_model_af_10k (
   , model_month In integer
 ) Return t_modeled_score Pipelined;
 
+Function tbl_model_mg_identification (
+  model_year In integer
+  , model_month In integer
+) Return t_modeled_score Pipelined;
+
+Function tbl_model_mg_prioritization (
+  model_year In integer
+  , model_month In integer
+) Return t_modeled_score Pipelined;
+
 /* Return pipelined special handling preferences */
 Function tbl_special_handling_concat
     Return t_special_handling Pipelined;
@@ -1521,8 +1531,8 @@ Cursor c_university_strategy Is
   Left Join advance_nu.nu_prs_trp_prospect prs On prs.prospect_id = uos.prospect_id
   ;
 
-/* Definition of Annual Fund 10K model scores as of the passed year and month */
-Cursor c_model_af_10k (model_year In integer, model_month In integer) Is
+/* Extract from the segment table given the passed year, month, and segment code */
+Cursor c_segment_extract (year In integer, month In integer, code In varchar2) Is
   Select
     s.id_number
     , s.segment_year
@@ -1531,9 +1541,24 @@ Cursor c_model_af_10k (model_year In integer, model_month In integer) Is
     , s.xcomment As score
   From segment s
   Inner Join segment_header sh On sh.segment_code = s.segment_code
-  Where s.segment_code Like 'KMAA_'
-    And s.segment_year = model_year
-    And s.segment_month = model_month
+  Where s.segment_code Like code
+    And s.segment_year = year
+    And s.segment_month = month
+  ;
+
+/* Definition of MG model scores as of the passed year, month, and model */
+Cursor c_segment_from_mv (year In integer, month In integer, code In varchar2) Is
+  Select
+    s.id_number
+    , s.segment_year
+    , s.segment_month
+    , sh.description
+    , s.xcomment As score
+  From tmp_2019_ksm_mg_scores s
+  Inner Join segment_header sh On sh.segment_code = s.segment_code
+  Where s.segment_code Like code
+    And s.segment_year = year
+    And s.segment_month = month
   ;
 
 /* Definition of historical NU ARD employees */
@@ -3085,20 +3110,66 @@ Function tbl_numeric_capacity_ratings
   End;
   
 /* Pipelined function for Kellogg modeled scores */
-Function tbl_model_af_10k (model_year In integer, model_month In integer)
-  Return t_modeled_score Pipelined As
-  -- Declarations
-  score t_modeled_score;
-  
-  Begin
-    Open c_model_af_10k(model_year => model_year, model_month => model_month);
-      Fetch c_model_af_10k Bulk Collect Into score;
-    Close c_model_af_10k;
-    For i in 1..(score.count) Loop
-      Pipe row(score(i));
-    End Loop;
-    Return;
-  End;
+
+  -- Generic function returning matching segment(s)
+  Function segment_extract (year In integer, month In integer, code In varchar2)
+    Return t_modeled_score As
+    -- Declarations
+    score t_modeled_score;
+    
+    -- Return table results
+    Begin
+      Open c_segment_extract (year => year, month => month, code => code);
+        Fetch c_segment_extract Bulk Collect Into score;
+      Close c_segment_extract;
+      Return score;
+    End;
+
+  -- AF 10K model
+  Function tbl_model_af_10k (model_year In integer, model_month In integer)
+    Return t_modeled_score Pipelined As
+    -- Declarations
+    score t_modeled_score;
+    
+    Begin
+      score := segment_extract (year => model_year, month => model_month, code => 'KMAA_');
+      For i in 1..(score.count) Loop
+        Pipe row(score(i));
+      End Loop;
+      Return;
+    End;
+
+  -- MG identification model
+  Function tbl_model_mg_identification (model_year In integer, model_month In integer)
+    Return t_modeled_score Pipelined As
+    -- Declarations
+    score t_modeled_score;
+    
+    Begin
+      Open c_segment_from_mv(year => model_year, month => model_month, code => 'KMID_');
+        Fetch c_segment_from_mv Bulk Collect Into score;
+      Close c_segment_from_mv;
+      For i in 1..(score.count) Loop
+        Pipe row(score(i));
+      End Loop;
+      Return;
+    End;
+
+  -- MG prioritization model
+  Function tbl_model_mg_prioritization (model_year In integer, model_month In integer)
+    Return t_modeled_score Pipelined As
+    -- Declarations
+    score t_modeled_score;
+    
+    Begin
+      Open c_segment_from_mv(year => model_year, month => model_month, code => 'KMPR_');
+        Fetch c_segment_from_mv Bulk Collect Into score;
+      Close c_segment_from_mv;
+      For i in 1..(score.count) Loop
+        Pipe row(score(i));
+      End Loop;
+      Return;
+    End;
 
 /* Pipelined function returning giving credit for entities or households */
 
