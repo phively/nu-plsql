@@ -10,11 +10,11 @@ With
 nu_dates As (
   Select 'notarealid' As id_number, 'noaffil' As affil, NULL As start_dt, NULL As stop_dt From DUAL
   Union
-  Select '0000573302', 'President', to_date('20090901', 'yyyymmdd'), NULL From DUAL -- MOS
+  Select '0000573302', 'President', to_date('20090901', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL -- MOS
   Union 
   Select '0000299349', 'KSM Dean', to_date('20100701', 'yyyymmdd'), to_date('20180831', 'yyyymmdd') From DUAL -- SB
   Union
-  Select '0000246649', 'KSM Dean', to_date('20180901', 'yyyymmdd'), NULL From DUAL -- KH
+  Select '0000246649', 'KSM Dean', to_date('20180901', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL -- KH
 )
 
 Select
