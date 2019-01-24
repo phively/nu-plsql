@@ -424,6 +424,18 @@ Function math_mod(
   , n In number
 ) Return number; -- m % n
   
+/* Rewritten to_date to return NULL for invalid dates */
+Function to_date2(
+  str In varchar2
+  , format In varchar2 Default 'yyyymmdd'
+) Return date;
+
+/* Parse yyyymmdd string into a date after checking for invalid terms */
+Function date_parse(
+  str In varchar2
+  , dt In date Default current_date()
+) Return date;
+
 /* Fiscal year to date indicator */
 Function fytd_indicator(
   dt In date
@@ -2453,6 +2465,74 @@ Function math_mod(m In number, n In number)
     Return(remainder);
   End;
 
+/* Check whether a passed yyyymmdd string can be parsed sucessfully as a date 
+   2019-01-24 */
+Function to_date2(str In varchar2, format In varchar2)
+  Return date Is
+  
+  Begin
+    Return to_date(str, format);
+    Exception
+      When Others Then
+        Return NULL;
+  End;
+
+/* Takes a yyyymmdd string and an optional fallback date argument and produces a date type
+   2019-01-24 */
+Function date_parse(str In varchar2, dt In date)
+  Return date Is
+  -- Declarations
+  dt_out date;
+  -- Parsed from string
+  y varchar2(4);
+  m varchar2(2);
+  d varchar2(2);
+  -- Parsed from fallback date
+  fy varchar2(4);
+  fm varchar2(2);
+  fd varchar2(2);
+  
+  Begin
+    -- Try returning str as-is (y-m-d) as a date
+    dt_out := to_date2(str);
+    If dt_out Is Not Null Then
+      Return(dt_out);
+    End If;
+    
+    -- Extract ymd
+    y    := substr(str, 1, 4);
+    m    := substr(str, 5, 2);
+    d    := substr(str, 7, 2);
+    fy   := lpad(extract(year from dt), 4, '0');
+    fm   := lpad(extract(month from dt), 2, '0');
+    fd   := lpad(extract(day from dt), 2, '0');
+    
+    -- Try returning y-m-01
+    dt_out := to_date2(y || m || '01');
+    If dt_out Is Not Null Then
+      Return(dt_out);
+    End If;
+    -- Try returning y-fm-fd
+    dt_out := to_date2(y || fm || fd);
+    If dt_out Is Not Null Then
+      Return(dt_out);
+    End If;
+    -- Try returning fy-m-d
+    dt_out := to_date2(fy || m || d);
+    If dt_out Is Not Null Then
+      Return(dt_out);
+    End If;
+    -- Try returning fy-m-01
+    dt_out := to_date2(fy || m || '01');
+    If dt_out Is Not Null Then
+      Return(dt_out);
+    End If;
+    -- If all else fails return the fallback date
+    Return(trunc(dt));
+    
+  End;
+
+
 /* Fiscal year to date indicator: Takes as an argument any date object and returns Y/N
    2017-02-08 */
 Function fytd_indicator(dt In date, day_offset In number)
@@ -2509,7 +2589,7 @@ Function get_quarter(dt In date, fisc_or_perf In varchar2 Default 'fiscal')
     End If;
     -- Return appropriate quarter corresponding to month; 3 months per quarter
     Return ceil(chron_month / 3);
-End;
+  End;
 
 /* Compute fiscal year from date parameter
    2017-03-15 */
