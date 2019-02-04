@@ -14,7 +14,10 @@ nu_dates As (
   Union 
   Select '0000299349', 'KSM Dean', to_date('20100701', 'yyyymmdd'), to_date('20180831', 'yyyymmdd') From DUAL -- SB
   Union
-  Select '0000246649', 'KSM Dean', to_date('20180901', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL -- KH
+  Select '0000246649', 'KSM Dean', to_date('20180901', 'yyyymmdd'), to_date('20190731', 'yyyymmdd') From DUAL -- KH
+  Union
+  -- ID needs to be filled in after start date
+  Select '', 'KSM Dean', to_date('20190801', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL -- FC
 )
 
 Select
@@ -26,4 +29,9 @@ Select
 From nu_dates
 Inner Join entity On entity.id_number = nu_dates.id_number
 Order By entity.report_name Asc
+;
+
+-- Check results
+Select *
+From mv_nu_vips
 ;
