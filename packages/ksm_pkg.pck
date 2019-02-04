@@ -110,6 +110,7 @@ Type household Is Record (
   , fmr_spouse_name entity.report_name%type
   , fmr_marital_status tms_marital_status.short_desc%type
   , household_id entity.id_number%type
+  , household_primary varchar2(1)
   , household_record entity.record_type_code%type
   , person_or_org entity.person_or_org%type
   , household_name entity.pref_mail_name%type
@@ -1373,6 +1374,8 @@ With
     , fmr_spouse.spouse_name As fmr_spouse_name
     , fmr_spouse.marital_status As fmr_marital_status
     , household.household_id
+    , Case When household.household_id = household.id_number Then 'Y' End
+      As household_primary
     , couples.record_type_code As household_record
     , couples.person_or_org
     , couples.pref_mail_name As household_name
