@@ -45,6 +45,7 @@ adv_dates As (
   Union All Select '0000633474', 'MG', to_date('20120701', 'yyyymmdd'), to_date('20150301', 'yyyymmdd') From DUAL
   Union All Select '0000780506', 'AF', to_date('20180101', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000783777', 'AF', to_date('20171001', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000693538', 'AF', to_date('20181203', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
 )
 
 Select
