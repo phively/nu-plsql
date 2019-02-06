@@ -1562,21 +1562,6 @@ Cursor c_segment_extract (year In integer, month In integer, code In varchar2) I
     And s.segment_month = month
   ;
 
-/* Definition of MG model scores as of the passed year, month, and model */
-Cursor c_segment_from_mv (year In integer, month In integer, code In varchar2) Is
-  Select
-    s.id_number
-    , s.segment_year
-    , s.segment_month
-    , sh.description
-    , s.xcomment As score
-  From tmp_2019_ksm_mg_scores s
-  Inner Join segment_header sh On sh.segment_code = s.segment_code
-  Where s.segment_code Like code
-    And s.segment_year = year
-    And s.segment_month = month
-  ;
-
 /* Definition of historical NU ARD employees */
 Cursor c_nu_ard_staff Is
   With
@@ -3236,9 +3221,9 @@ Function tbl_numeric_capacity_ratings
     score t_modeled_score;
     
     Begin
-      Open c_segment_from_mv(year => model_year, month => model_month, code => seg_mg_id);
-        Fetch c_segment_from_mv Bulk Collect Into score;
-      Close c_segment_from_mv;
+      Open c_segment_extract(year => model_year, month => model_month, code => seg_mg_id);
+        Fetch c_segment_extract Bulk Collect Into score;
+      Close c_segment_extract;
       For i in 1..(score.count) Loop
         Pipe row(score(i));
       End Loop;
@@ -3252,9 +3237,9 @@ Function tbl_numeric_capacity_ratings
     score t_modeled_score;
     
     Begin
-      Open c_segment_from_mv(year => model_year, month => model_month, code => seg_mg_pr);
-        Fetch c_segment_from_mv Bulk Collect Into score;
-      Close c_segment_from_mv;
+      Open c_segment_extract(year => model_year, month => model_month, code => seg_mg_pr);
+        Fetch c_segment_extract Bulk Collect Into score;
+      Close c_segment_extract;
       For i in 1..(score.count) Loop
         Pipe row(score(i));
       End Loop;
