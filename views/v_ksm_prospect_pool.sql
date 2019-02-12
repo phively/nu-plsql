@@ -15,6 +15,10 @@ ksm_deg As (
   Select *
   From v_ksm_model_af_10k
 )
+, mgo_model As (
+  Select *
+  From v_ksm_model_mg
+)
 
 -- Kellogg Top 150/300
 , ksm_150_300 As (
@@ -267,6 +271,10 @@ Select Distinct
   , uor.uor_date
   , af_10k_model.description As af_10k_model
   , af_10k_model.score As af_10k_score
+  , mgo_model.id_segment As mgo_id_model
+  , mgo_model.id_score As mgo_id_score
+  , mgo_model.pr_segment As mgo_pr_model
+  , mgo_model.pr_score As mgo_pr_score
   , prs.prospect_manager_id
   , pm.report_name As prospect_manager
   , prs.team
@@ -338,6 +346,7 @@ Inner Join ksm_prs_ids -- Must be a valid Kellogg entity
 Left Join ksm_prs
   On ksm_prs.id_number = hh.id_number
 Left Join af_10k_model On af_10k_model.id_number = hh.id_number
+Left Join mgo_model On mgo_model.id_number = hh.id_number
 Left Join nu_prs_trp_prospect prs On prs.id_number = hh.id_number
 Left Join rating_bins eval On eval.rating_desc = prs.evaluation_rating
 Left Join rating_bins uor On uor.rating_desc = prs.officer_rating
