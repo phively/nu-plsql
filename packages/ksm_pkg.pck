@@ -685,6 +685,7 @@ Cursor ct_alloc_annual_fund_ksm Is
       , '3203004984101GFT' -- Deloitte Scholarship
       , '3203005137401GFT' -- Expendable Excellence Grant (TMS)
       , '3203005214601GFT' -- Class of 1989 Scholarship
+      , '3203005228501GFT' -- KFN Scholarship
       /************ UPDATE ABOVE HERE ************/
     )
   ;
