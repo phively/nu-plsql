@@ -62,10 +62,13 @@ Select
   identification.id_number
   , identification.segment_year
   , identification.segment_month
-  , identification.description As id_segment
+  , replace(identification.description, 'Kellogg Major Gift Identification Model ', '')
+    As id_segment
   , to_number(identification.score) As id_score
-  , prioritization.description As pr_segment
-  , to_number(prioritization.score) As pr_score
+  , replace(prioritization.description, 'KSM Major Gift Prioritization Model ', '')
+    As pr_segment
+  , to_number(prioritization.score)
+    As pr_score
   , to_number(prioritization.score) / to_number(identification.score) As est_probability
 From identification
 Inner Join prioritization
