@@ -186,14 +186,21 @@ ksm_deg As (
 
 -- UOR
 , uor As (
-  Select
+ Select
     prospect_id
-    , evaluation_date As uor_date
-    , evaluation.rating_code
-    , tms_rating.short_desc As uor
+    -- If multiple active UORs, keep only the most recent (by evaluation date)
+    , max(evaluation_date) keep(dense_rank First Order By evaluation_date Desc NULLS Last, evaluation.rating_code Asc)
+      As uor_date
+    , max(evaluation.rating_code) keep(dense_rank First Order By evaluation_date Desc NULLS Last, evaluation.rating_code Asc)
+      As rating_code
+    , max(tms_rating.short_desc) keep(dense_rank First Order By evaluation_date Desc NULLS Last, evaluation.rating_code Asc)
+      As uor
   From evaluation
   Left Join tms_rating On tms_rating.rating_code = evaluation.rating_code
-  Where evaluation_type = 'UR' And active_ind = 'Y' -- University overall rating
+  Where evaluation_type = 'UR'
+    And active_ind = 'Y' -- University overall rating
+  Group By
+    prospect_id
 )
 
 -- Prospect assignments
