@@ -1,5 +1,5 @@
 -- Events summary from ep_events
-Create Or Replace View v_nu_event As
+Create Or Replace View v_nu_events As
 
 Select Distinct
   event.event_id
@@ -60,29 +60,35 @@ Left Join ep_event master_event
 ;
 
 -- Event participations
---Create Or Replace View v_nu_event_attendees As
+Create Or Replace View v_nu_event_attendees As
 
-Select *
-From ep_participant
-
-/*
 Select
   hh.household_id
-  , event_ids.event_id
-  , event_ids.event_name
-  , event_ids.ksm_event
+  , hh.household_rpt_name
+  , hh.household_primary
+  , hh.id_number
+  , hh.report_name
+  , hh.person_or_org
+  , hh.institutional_suffix
+  , hh.degrees_concat
+  , hh.first_ksm_year
+  , hh.program_group
+  , v_nu_events.event_id
+  , v_nu_events.event_name
+  , v_nu_events.ksm_event
   , tms_et.short_desc As event_type
+  , start_dt
+  , stop_dt
   , start_fy_calc
   , stop_fy_calc
 From ep_participant ppt
-Cross Join params
-Inner Join event_ids
-  On event_ids.event_id = ppt.event_id -- KSM events
-Inner Join hh
+Inner Join v_nu_events
+  On v_nu_events.event_id = ppt.event_id -- KSM events
+Inner Join v_entity_ksm_households hh
   On hh.id_number = ppt.id_number
 Inner Join ep_participation ppn
   On ppn.registration_id = ppt.registration_id
 Left Join tms_event_type tms_et
-  On tms_et.event_type = event_ids.event_type
+  On tms_et.event_type = v_nu_events.event_type
 Where ppn.participation_status_code In (' ', 'P', 'A') -- Blank, Participated, or Accepted
-*/
+;
