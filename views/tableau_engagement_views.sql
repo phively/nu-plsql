@@ -29,6 +29,21 @@ cal As (
   Where v.fiscal_year Between cal.curr_fy - 1 And cal.curr_fy
 )
 
+-- Committees
+--v_nu_committees
+
+-- Events
+--v_nu_event_participants
+
+-- Activities
+--v_nu_activities
+-- KSM only
+
+-- Giving
+--v_ksm_giving_trans_hh
+
+-- Contact reports???
+
 -- Merged pull
 -- Visits
 Select
@@ -59,9 +74,13 @@ Select
     As engagement_fy
 From visits
 -- Committees
+---- GAB, BOT, Other
 -- Events
+---- KSM, NU
 -- Activities
+---- KSM only
 -- Giving
+---- KSM gift/pledge/pay, NU NGC only
 
 -- Final pull
 -- id_number

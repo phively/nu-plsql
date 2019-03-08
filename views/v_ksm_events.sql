@@ -60,7 +60,7 @@ Left Join ep_event master_event
 ;
 
 -- Event participations
-Create Or Replace View v_nu_event_attendees As
+Create Or Replace View v_nu_event_participants As
 
 Select
   hh.household_id
