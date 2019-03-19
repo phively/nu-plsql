@@ -541,6 +541,156 @@ Group By rpt_pbh634.ksm_pkg.get_fiscal_year(acr.ask_or_stop_dt)
 ;
 
 /***********************************************************************************************
+Goals table filled in with 0 for progress
+***********************************************************************************************/
+
+Create Or Replace View v_mgo_goals_placeholder As
+
+With goals As (
+  -- Goal 1
+  Select
+    goal.id_number
+    , entity.report_name
+    , 'MGC' As goal_type
+    , 'MG Closes' As goal_desc
+    , goal.year As cal_year
+    , 1 As cal_month
+    , goal.year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.year As perf_year
+    , 1 As perf_quarter
+    , goal_1 As fy_goal
+    , goal_1 As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+  From entity
+  Inner Join goal
+    On entity.id_number = goal.id_number
+  Union All
+  -- Goal 2
+  Select
+    goal.id_number
+    , entity.report_name
+    , 'MGS' As goal_type
+    , 'MG Sols' As goal_desc
+    , goal.year As cal_year
+    , 1 As cal_month
+    , goal.year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.year As perf_year
+    , 1 As perf_quarter
+    , goal_2 As fy_goal
+    , goal_2 As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+  From entity
+  Inner Join goal
+    On entity.id_number = goal.id_number
+  Union All
+  -- Goal 3
+  Select
+    goal.id_number
+    , entity.report_name
+    , 'MGDR' As goal_type
+    , 'MG Dollars Raised' As goal_desc
+    , goal.year As cal_year
+    , 1 As cal_month
+    , goal.year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.year As perf_year
+    , 1 As perf_quarter
+    , goal_3 As fy_goal
+    , goal_3 As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+  From entity
+  Inner Join goal
+    On entity.id_number = goal.id_number
+  Union All
+  -- Goal 4
+  Select
+    goal.id_number
+    , entity.report_name
+    , 'NOV' as goal_type
+    , 'Visits' As goal_desc
+    , goal.year As cal_year
+    , 1 As cal_month
+    , goal.year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.year As perf_year
+    , 1 As perf_quarter
+    , goal_4 As fy_goal
+    , goal_4 As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+  From entity
+  Inner Join goal
+    On entity.id_number = goal.id_number
+  Union All
+  -- Goal 5
+  Select
+    goal.id_number
+    , entity.report_name
+    , 'NOQV' As goal_type
+    , 'Qual Visits' As goal_desc
+     , goal.year As cal_year
+    , 1 As cal_month
+    , goal.year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.year As perf_year
+    , 1 As perf_quarter
+    , goal_5 As fy_goal
+    , goal_5 As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+  From entity
+  Inner Join goal
+    On entity.id_number = goal.id_number
+  Union All
+  -- Goal 6
+  Select
+    goal.id_number
+    , entity.report_name
+    , 'PA' As goal_type
+    , 'Proposal Assists' As goal_desc
+     , goal.year As cal_year
+    , 1 As cal_month
+    , goal.year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.year As perf_year
+    , 1 As perf_quarter
+    , goal_6 As fy_goal
+    , goal_6 As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+  From entity
+  Inner Join goal
+    On entity.id_number = goal.id_number
+)
+
+Select
+  id_number
+  , report_name
+  , goal_type
+  , goal_desc
+  , cal_year
+  , cal_month
+  , fiscal_year
+  , fiscal_quarter
+  , perf_year
+  , perf_quarter
+  , fy_goal
+  , py_goal
+  , progress
+  , adjusted_progress
+From goals
+Order By
+  report_name Asc
+  , cal_year Asc
+  , cal_month Asc
+;
+
+/***********************************************************************************************
 Goals view -- monthly refactored version of ADVANCE_NU.NU_GFT_V_OFFICER_METRICS
 ***********************************************************************************************/
 
@@ -562,5 +712,21 @@ Select
   , progress
 From v_mgo_activity_monthly v
 Where py_goal Is Not Null
-  And progress > 0
+-- Append placeholder rows so goals with 0 progress still appear
+Union
+Select
+  id_number
+  , report_name
+  , goal_type
+  , goal_desc
+  , cal_year
+  , cal_month
+  , fiscal_year
+  , fiscal_quarter
+  , perf_year
+  , perf_quarter
+  , fy_goal
+  , py_goal
+  , progress
+From v_mgo_goals_placeholder
 ;
