@@ -411,6 +411,10 @@ Type t_special_handling Is Table Of special_handling;
 Public constant declarations
 *************************************************************************/
 
+/* Miscellaneous */
+fy_start_month Constant number := 9; -- fiscal start month, 9 = September
+py_start_month Constant number := 5; -- performance start month, 5 = May
+
 /*************************************************************************
 Public variable declarations
 *************************************************************************/
@@ -442,6 +446,11 @@ Function fytd_indicator(
   dt In date
   , day_offset In number Default -1 -- default offset in days; -1 means up to yesterday is year-to-date, 0 up to today, etc.
 ) Return character; -- Y or N
+
+/* Function to return private numeric constants */
+Function get_numeric_constant(
+  const_name In varchar2 -- Name of constant to retrieve
+) Return number Deterministic;
 
 /* Compute fiscal or performance quarter from date */
 Function get_quarter(
@@ -2431,10 +2440,6 @@ seg_af_10k Constant segment.segment_code%type := 'KMAA_'; -- AF $10K model patte
 seg_mg_id Constant segment.segment_code%type := 'KMID_'; -- MG identification model pattern
 seg_mg_pr Constant segment.segment_code%type := 'KMPR_'; -- MG prioritization model pattern
 
-/* Miscellaneous */
-fy_start_month Constant number := 9; -- fiscal start month, 9 = September
-py_start_month Constant number := 5; -- performance start month, 5 = May
-
 /*************************************************************************
 Private variable declarations
 *************************************************************************/
@@ -2558,6 +2563,29 @@ Function fytd_indicator(dt In date, day_offset In number)
     End If;
     
     Return(output);
+  End;
+
+/* Retrieve one of the named constants from the package 
+   Requires a quoted constant name
+   2019-03-19 */
+Function get_numeric_constant(const_name In varchar2)
+  Return number Deterministic Is
+  -- Declarations
+  val number;
+  var varchar2(100);
+  
+  Begin
+    -- If const_name doesn't include ksm_pkg, prepend it
+    If substr(lower(const_name), 1, 8) <> 'ksm_pkg.'
+      Then var := 'ksm_pkg.' || const_name;
+    Else
+      var := const_name;
+    End If;
+    -- Run command
+    Execute Immediate
+      'Begin :val := ' || var || '; End;'
+      Using Out val;
+      Return val;
   End;
 
 /* Compute fiscal or performance quarter from date
