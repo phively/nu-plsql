@@ -1,3 +1,78 @@
+/*** Proposal pipeline (Tableau edition) ***/
+
+Create Or Replace View vt_ksm_proposal_pipeline As
+
+-- Proposal data
+Select
+  phf.proposal_id
+  , phf.prospect_id
+  -- Open CFY, Open beyond CFY, and Closed CFY flags
+  , Case
+      -- Current FY and in progress
+      When phf.proposal_in_progress = 'Y'
+        And phf.close_fy = cal.curr_fy
+        Then 'Open (CFY)'
+      -- Future FY and in progress
+      When phf.proposal_in_progress = 'Y'
+        And phf.close_fy > cal.curr_fy
+        Then 'Open (Beyond)'
+      -- Current FY and not in progress
+      When phf.proposal_in_progress Is Null
+        And phf.close_fy = cal.curr_fy
+        Then 'Closed (CFY)'
+      End
+    As proposal_group
+  , phf.prospect_name_sort
+  , phf.prospect_name
+  , phf.university_strategy
+  , phf.proposal_manager_id
+  , phf.proposal_manager
+  , phf.proposal_status_code
+  , phf.proposal_status
+  , phf.proposal_active
+  , phf.proposal_in_progress
+  , phf.proposal_active_calc
+  , phf.proposal_title
+  , phf.proposal_description
+  , phf.start_date
+  , phf.ask_date
+  -- , final ask amt
+  , phf.total_ask_amt
+  , phf.ksm_ask
+  , phf.ksm_af_ask
+  , phf.close_date
+  , phf.probability
+  , phf.total_granted_amt
+  -- , final anticipated amt
+  , phf.total_anticipated_amt
+  , phf.ksm_anticipated
+  , phf.ksm_af_anticipated
+  , phf.proposal_type
+  --, split proposal indicator
+From v_proposal_history_fast phf
+Cross Join v_current_calendar cal
+Where
+  -- KSM proposals only
+  phf.ksm_proposal_ind = 'Y'
+
+-- Final query
+-- Add fields, and audit criteria?
+--, id_number - based on primary prospect?
+--, pref_state
+--, prospect programs  
+--, institutional suffix
+--, Kellogg year
+--, Spouse year
+--, Degrees concat
+--, Program group
+--, Spouse ID
+--, Spouse name
+--, Spouse degrees concat
+--, Spouse program group
+;
+
+/*** Portfolio time series view ***/
+
 Create Or Replace View vt_go_portfolio_time_series As
 
 With
@@ -634,3 +709,4 @@ Order By
   asn.assignment_report_name Asc
   , asn.report_name Asc
   , asn.filled_date Asc
+;
