@@ -20,6 +20,7 @@ Select
       When phf.proposal_in_progress Is Null
         And phf.close_fy = cal.curr_fy
         Then 'Closed (CFY)'
+      Else NULL
       End
     As proposal_group
   , phf.prospect_name_sort
@@ -34,6 +35,14 @@ Select
   , phf.proposal_active_calc
   , phf.proposal_title
   , phf.proposal_description
+  , phf.other_programs
+  -- Split proposal indicator for anything besides financial aid
+  , Case
+      When  phf.other_programs Is Not Null
+        And trim(phf.other_programs) <> 'Financial Aid'
+        Then '*'
+      End
+    As split_proposal
   , phf.start_date
   , phf.ask_date
   -- , final ask amt
@@ -48,7 +57,6 @@ Select
   , phf.ksm_anticipated
   , phf.ksm_af_anticipated
   , phf.proposal_type
-  --, split proposal indicator
 From v_proposal_history_fast phf
 Cross Join v_current_calendar cal
 Where
@@ -69,6 +77,14 @@ Where
 --, Spouse name
 --, Spouse degrees concat
 --, Spouse program group
+--, Split proposal audit: split_proposal is not null, and NU ask = KSM ask OR NU antic = KSM antic
+--, Closed proposals audit: proposal_group = closed, close/ask date in future, status is in progress, propsal manager is blank
+--, Open proposals audit: status not in progress, proposal manager blank, ask in past for status approved/submitted,
+--    ask date in the past for anticipated, close date in the past
+
+-- Where proposal_group is not null
+
+-- Order by proposal_group, then total_granted_amt, then by ksm_ask, then status, then close date
 ;
 
 /*** Portfolio time series view ***/
