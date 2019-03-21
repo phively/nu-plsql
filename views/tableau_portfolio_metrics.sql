@@ -31,6 +31,7 @@ proposals As (
     , phf.university_strategy
     , phf.proposal_manager_id
     , phf.proposal_manager
+    , phf.proposal_assist
     , phf.proposal_status_code
     , phf.proposal_status
     , phf.hierarchy_order
@@ -61,6 +62,9 @@ proposals As (
     , phf.ksm_or_univ_anticipated
     , phf.ksm_af_anticipated
     , phf.proposal_type
+    -- Date objects
+    , cal.yesterday
+    , cal.curr_fy
   From v_proposal_history_fast phf
   Cross Join v_current_calendar cal
   Where
@@ -95,6 +99,7 @@ Select
   , university_strategy
   , proposal_manager_id
   , proposal_manager
+  , proposal_assist
   , proposal_status_code
   , proposal_status
   , hierarchy_order
@@ -120,10 +125,79 @@ Select
   , ksm_af_anticipated
   , proposal_type
   -- Audits
---, Split proposal audit: split_proposal is not null, and NU ask = KSM ask OR NU antic = KSM antic
---, Closed proposals audit: proposal_group = closed, close/ask date in future, status is in progress, propsal manager is blank
---, Open proposals audit: status not in progress, proposal manager blank, ask in past for status approved/submitted,
---    ask date in the past for anticipated, close date in the past
+  -- Check whether split proposals have a suitable KSM amount
+  , Case
+      When split_proposal Is Not Null
+        -- KSM ask should be less than overall ask
+        And (
+          ksm_ask = 0
+          Or ksm_or_univ_ask = total_ask_amt
+        )
+        Then 'Split gift: check ask'
+      End
+    As audit_split_ask
+  , Case
+      When split_proposal Is Not Null
+        -- KSM anticipated should be less than overall anticipated
+        And (
+          ksm_anticipated = 0
+          Or ksm_or_univ_anticipated = total_anticipated_amt
+        )
+        Then 'Split gift: check anticipated'
+      End
+    As audit_split_anticipated
+  -- Check whether PM is blank
+  , Case
+      When proposal_manager Is Null
+        Then 'Proposal manager missing'
+      End
+    As audit_pm
+  -- Check ask dates
+  , Case
+      -- No ask date
+      When ask_date Is Null
+        Then 'Ask date missing'
+      -- Submitted through Verbal, ask in the future
+      When hierarchy_order Between 20 And 60
+        And ask_date > yesterday
+        Then 'Ask date in future, check date and stage'
+      -- Anticipated, ask in the past
+      When proposal_status_code = 'A'
+        And ask_date <= yesterday
+        Then 'Ask date in past, check date and stage'
+      -- Closed, ask in future
+      End
+    As audit_ask_dt
+  -- Check close dates
+  , Case
+      -- No close date
+      When close_date Is Null
+        Then 'Close date missing'
+      -- Closed, close date in future
+      When proposal_active = 'N'
+        And close_date > yesterday
+        Then 'Close date in future, check date and stage'
+      -- Open, close date in past
+      When proposal_active = 'Y'
+        And close_date < yesterday 
+        Then 'Close date in past, check date and stage'
+      End
+    As audit_close_dt
+  -- Check proposal status
+  , Case
+    -- Closed, in progress status
+    When proposal_active = 'N'
+      And proposal_in_progress = 'Y'
+      Then 'Proposal stage does not match active flag'
+    -- Open, not in progress status
+    When proposal_active = 'Y'
+      And proposal_in_progress Is Null
+      Then 'Proposal stage does not match active flag'
+    End
+    As audit_status
+  -- Date objects
+  , yesterday
+  , curr_fy
 From proposals
 Left Join pe
   On pe.prospect_id = proposals.prospect_id
