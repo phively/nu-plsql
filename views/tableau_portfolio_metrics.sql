@@ -81,138 +81,144 @@ proposals As (
 )
 
 -- Final query
-Select
-  pe.id_number
-  , hh.report_name
-  , proposals.prospect_id
-  , prospect_name_sort
-  , prospect_name
-  , hh.institutional_suffix
-  , hh.household_state
-  , hh.degrees_concat
-  , hh.program_group
-  , hh.spouse_id_number
-  , hh.spouse_report_name
-  , hh.spouse_degrees_concat
-  , hh.spouse_program_group
-  , university_strategy
-  , proposal_group
-  , proposal_id
-  , proposal_manager_id
-  , proposal_manager
-  , proposal_assist
-  , proposal_status_code
-  , proposal_status
-  , hierarchy_order
-  , proposal_active
-  , proposal_in_progress
-  , proposal_active_calc
-  , proposal_title
-  , proposal_description
-  , other_programs
-  , split_proposal
-  , start_date
-  , ask_date
-  , total_ask_amt
-  , ksm_ask
-  , ksm_or_univ_ask
-  , ksm_af_ask
-  , close_date
-  , probability
-  , total_granted_amt
-  , total_anticipated_amt
-  , ksm_anticipated
-  , ksm_or_univ_anticipated
-  , ksm_af_anticipated
-  , proposal_type
-  -- Audits
-  -- Check whether split proposals have a suitable KSM amount
-  , Case
-      When split_proposal Is Not Null
-        -- KSM ask should be less than overall ask
-        And (
-          ksm_ask = 0
-          Or ksm_or_univ_ask = total_ask_amt
-        )
-        Then 'Split gift: check ask'
-      End
-    As audit_split_ask
-  , Case
-      When split_proposal Is Not Null
-        -- KSM anticipated should be less than overall anticipated
-        And (
-          ksm_anticipated = 0
-          Or ksm_or_univ_anticipated = total_anticipated_amt
-        )
-        Then 'Split gift: check anticipated'
-      End
-    As audit_split_anticipated
-  -- Check whether PM is blank
-  , Case
-      When proposal_manager Is Null
-        Then 'Proposal manager missing'
-      End
-    As audit_pm
-  -- Check ask dates
-  , Case
-      -- No ask date
-      When ask_date Is Null
-        Then 'Ask date missing'
-      -- Submitted through Verbal, ask in the future
-      When hierarchy_order Between 20 And 60
-        And ask_date > yesterday
-        Then 'Ask date in future, check date and stage'
-      -- Anticipated, ask in the past
-      When proposal_status_code = 'A'
-        And ask_date <= yesterday
-        Then 'Ask date in past, check date and stage'
-      -- Closed, ask in future
-      End
-    As audit_ask_dt
-  -- Check close dates
-  , Case
-      -- No close date
-      When close_date Is Null
-        Then 'Close date missing'
-      -- Closed, close date in future
+, final As (
+  Select
+    pe.id_number
+    , hh.report_name
+    , proposals.prospect_id
+    , prospect_name_sort
+    , prospect_name
+    , hh.institutional_suffix
+    , hh.household_state
+    , hh.degrees_concat
+    , hh.program_group
+    , hh.spouse_id_number
+    , hh.spouse_report_name
+    , hh.spouse_degrees_concat
+    , hh.spouse_program_group
+    , university_strategy
+    , proposal_group
+    , proposal_id
+    , proposal_manager_id
+    , proposal_manager
+    , proposal_assist
+    , proposal_status_code
+    , proposal_status
+    , hierarchy_order
+    , proposal_active
+    , proposal_in_progress
+    , proposal_active_calc
+    , proposal_title
+    , proposal_description
+    , other_programs
+    , split_proposal
+    , start_date
+    , ask_date
+    , total_ask_amt
+    , ksm_ask
+    , ksm_or_univ_ask
+    , ksm_af_ask
+    , close_date
+    , probability
+    , total_granted_amt
+    , total_anticipated_amt
+    , ksm_anticipated
+    , ksm_or_univ_anticipated
+    , ksm_af_anticipated
+    , proposal_type
+    -- Audits
+    -- Check whether split proposals have a suitable KSM amount
+    , Case
+        When split_proposal Is Not Null
+          -- KSM ask should be less than overall ask
+          And (
+            ksm_ask = 0
+            Or ksm_or_univ_ask = total_ask_amt
+          )
+          Then 'Split gift: check ask'
+        End
+      As audit_split_ask
+    , Case
+        When split_proposal Is Not Null
+          -- KSM anticipated should be less than overall anticipated
+          And (
+            ksm_anticipated = 0
+            Or ksm_or_univ_anticipated = total_anticipated_amt
+          )
+          Then 'Split gift: check anticipated'
+        End
+      As audit_split_anticipated
+    -- Check whether PM is blank
+    , Case
+        When proposal_manager Is Null
+          Then 'Proposal manager missing'
+        End
+      As audit_pm
+    -- Check ask dates
+    , Case
+        -- No ask date
+        When ask_date Is Null
+          Then 'Ask date missing'
+        -- Submitted through Verbal, ask in the future
+        When hierarchy_order Between 20 And 60
+          And ask_date > yesterday
+          Then 'Ask date in future, check date and stage'
+        -- Anticipated, ask in the past
+        When proposal_status_code = 'A'
+          And ask_date <= yesterday
+          Then 'Ask date in past, check date and stage'
+        -- Closed, ask in future
+        End
+      As audit_ask_dt
+    -- Check close dates
+    , Case
+        -- No close date
+        When close_date Is Null
+          Then 'Close date missing'
+        -- Closed, close date in future
+        When proposal_active = 'N'
+          And close_date > yesterday
+          Then 'Close date in future, check date and stage'
+        -- Open, close date in past
+        When proposal_active = 'Y'
+          And close_date < yesterday 
+          Then 'Close date in past, check date and stage'
+        End
+      As audit_close_dt
+    -- Check proposal status
+    , Case
+      -- Closed, in progress status
       When proposal_active = 'N'
-        And close_date > yesterday
-        Then 'Close date in future, check date and stage'
-      -- Open, close date in past
+        And proposal_in_progress = 'Y'
+        Then 'Proposal stage does not match active flag'
+      -- Open, not in progress status
       When proposal_active = 'Y'
-        And close_date < yesterday 
-        Then 'Close date in past, check date and stage'
+        And proposal_in_progress Is Null
+        Then 'Proposal stage does not match active flag'
       End
-    As audit_close_dt
-  -- Check proposal status
-  , Case
-    -- Closed, in progress status
-    When proposal_active = 'N'
-      And proposal_in_progress = 'Y'
-      Then 'Proposal stage does not match active flag'
-    -- Open, not in progress status
-    When proposal_active = 'Y'
-      And proposal_in_progress Is Null
-      Then 'Proposal stage does not match active flag'
-    End
-    As audit_status
-  -- Date objects
-  , yesterday
-  , curr_fy
-  -- Row number
+      As audit_status
+    -- Date objects
+    , yesterday
+    , curr_fy
+  From proposals
+  Left Join pe
+    On pe.prospect_id = proposals.prospect_id
+  Left Join v_entity_ksm_households hh
+    On hh.id_number = pe.id_number
+  Order By
+    proposal_group Desc
+    , total_granted_amt Desc
+    , ksm_or_univ_ask Desc
+    , hierarchy_order Desc
+    , close_date Asc
+)
+
+-- With row numbers
+Select 
+  final.*
   , rownum
     As row_number
-From proposals
-Left Join pe
-  On pe.prospect_id = proposals.prospect_id
-Left Join v_entity_ksm_households hh
-  On hh.id_number = pe.id_number
-Order By
-  proposal_group Desc
-  , total_granted_amt Desc
-  , ksm_or_univ_ask Desc
-  , hierarchy_order Desc
-  , close_date Asc
+From final
 ;
 
 /*** Portfolio time series view ***/
