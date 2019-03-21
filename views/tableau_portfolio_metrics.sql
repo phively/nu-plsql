@@ -2,89 +2,139 @@
 
 Create Or Replace View vt_ksm_proposal_pipeline As
 
+With
+
 -- Proposal data
-Select
-  phf.proposal_id
-  , phf.prospect_id
-  -- Open CFY, Open beyond CFY, and Closed CFY flags
-  , Case
-      -- Current FY and in progress
-      When phf.proposal_in_progress = 'Y'
-        And phf.close_fy = cal.curr_fy
-        Then 'Open (CFY)'
-      -- Future FY and in progress
-      When phf.proposal_in_progress = 'Y'
-        And phf.close_fy > cal.curr_fy
-        Then 'Open (Beyond)'
-      -- Current FY and not in progress
-      When phf.proposal_in_progress Is Null
-        And phf.close_fy = cal.curr_fy
-        Then 'Closed (CFY)'
-      Else NULL
-      End
-    As proposal_group
-  , phf.prospect_name_sort
-  , phf.prospect_name
-  , phf.university_strategy
-  , phf.proposal_manager_id
-  , phf.proposal_manager
-  , phf.proposal_status_code
-  , phf.proposal_status
-  , phf.proposal_active
-  , phf.proposal_in_progress
-  , phf.proposal_active_calc
-  , phf.proposal_title
-  , phf.proposal_description
-  , phf.other_programs
-  -- Split proposal indicator for anything besides financial aid
-  , Case
-      When  phf.other_programs Is Not Null
-        And trim(phf.other_programs) <> 'Financial Aid'
-        Then '*'
-      End
-    As split_proposal
-  , phf.start_date
-  , phf.ask_date
-  -- , final ask amt
-  , phf.total_ask_amt
-  , phf.ksm_ask
-  , phf.ksm_af_ask
-  , phf.close_date
-  , phf.probability
-  , phf.total_granted_amt
-  -- , final anticipated amt
-  , phf.total_anticipated_amt
-  , phf.ksm_anticipated
-  , phf.ksm_af_anticipated
-  , phf.proposal_type
-From v_proposal_history_fast phf
-Cross Join v_current_calendar cal
-Where
-  -- KSM proposals only
-  phf.ksm_proposal_ind = 'Y'
+proposals As (
+  Select
+    phf.proposal_id
+    , phf.prospect_id
+    -- Open CFY, Open beyond CFY, and Closed CFY flags
+    , Case
+        -- Current FY and in progress
+        When phf.proposal_in_progress = 'Y'
+          And phf.close_fy = cal.curr_fy
+          Then 'Open (CFY)'
+        -- Future FY and in progress
+        When phf.proposal_in_progress = 'Y'
+          And phf.close_fy > cal.curr_fy
+          Then 'Open (Beyond)'
+        -- Current FY and not in progress
+        When phf.proposal_in_progress Is Null
+          And phf.close_fy = cal.curr_fy
+          Then 'Closed (CFY)'
+        Else NULL
+        End
+      As proposal_group
+    , phf.prospect_name_sort
+    , phf.prospect_name
+    , phf.university_strategy
+    , phf.proposal_manager_id
+    , phf.proposal_manager
+    , phf.proposal_status_code
+    , phf.proposal_status
+    , phf.hierarchy_order
+    , phf.proposal_active
+    , phf.proposal_in_progress
+    , phf.proposal_active_calc
+    , phf.proposal_title
+    , phf.proposal_description
+    , phf.other_programs
+    -- Split proposal indicator for anything besides financial aid
+    , Case
+        When  phf.other_programs Is Not Null
+          And trim(phf.other_programs) <> 'Financial Aid'
+          Then '*'
+        End
+      As split_proposal
+    , phf.start_date
+    , phf.ask_date
+    , phf.total_ask_amt
+    , phf.ksm_ask
+    , phf.ksm_or_univ_ask
+    , phf.ksm_af_ask
+    , phf.close_date
+    , phf.probability
+    , phf.total_granted_amt
+    , phf.total_anticipated_amt
+    , phf.ksm_anticipated
+    , phf.ksm_or_univ_anticipated
+    , phf.ksm_af_anticipated
+    , phf.proposal_type
+  From v_proposal_history_fast phf
+  Cross Join v_current_calendar cal
+  Where
+    -- KSM proposals only
+    phf.ksm_proposal_ind = 'Y'
+)
+
+, pe As (
+  Select
+    prospect_id
+    , id_number
+  From prospect_entity
+  Where primary_ind = 'Y'
+)
 
 -- Final query
--- Add fields, and audit criteria?
---, id_number - based on primary prospect?
---, pref_state
---, prospect programs  
---, institutional suffix
---, Kellogg year
---, Spouse year
---, Degrees concat
---, Program group
---, Spouse ID
---, Spouse name
---, Spouse degrees concat
---, Spouse program group
+Select
+  pe.id_number
+  , hh.report_name
+  , proposals.prospect_id
+  , proposal_group
+  , prospect_name_sort
+  , prospect_name
+  , hh.institutional_suffix
+  , hh.household_state
+  , hh.degrees_concat
+  , hh.program_group
+  , hh.spouse_id_number
+  , hh.spouse_report_name
+  , hh.spouse_degrees_concat
+  , hh.spouse_program_group
+  , university_strategy
+  , proposal_manager_id
+  , proposal_manager
+  , proposal_status_code
+  , proposal_status
+  , hierarchy_order
+  , proposal_active
+  , proposal_in_progress
+  , proposal_active_calc
+  , proposal_title
+  , proposal_description
+  , other_programs
+  , split_proposal
+  , start_date
+  , ask_date
+  , total_ask_amt
+  , ksm_ask
+  , ksm_or_univ_ask
+  , ksm_af_ask
+  , close_date
+  , probability
+  , total_granted_amt
+  , total_anticipated_amt
+  , ksm_anticipated
+  , ksm_or_univ_anticipated
+  , ksm_af_anticipated
+  , proposal_type
+  -- Audits
 --, Split proposal audit: split_proposal is not null, and NU ask = KSM ask OR NU antic = KSM antic
 --, Closed proposals audit: proposal_group = closed, close/ask date in future, status is in progress, propsal manager is blank
 --, Open proposals audit: status not in progress, proposal manager blank, ask in past for status approved/submitted,
 --    ask date in the past for anticipated, close date in the past
-
--- Where proposal_group is not null
-
--- Order by proposal_group, then total_granted_amt, then by ksm_ask, then status, then close date
+From proposals
+Left Join pe
+  On pe.prospect_id = proposals.prospect_id
+Left Join v_entity_ksm_households hh
+  On hh.id_number = pe.id_number
+Order By
+  proposal_group Desc
+  , total_granted_amt Desc
+  , ksm_or_univ_ask Desc
+  , hierarchy_order Desc
+  , close_date Asc
 ;
 
 /*** Portfolio time series view ***/
