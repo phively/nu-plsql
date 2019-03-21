@@ -199,6 +199,9 @@ Select
   -- Date objects
   , yesterday
   , curr_fy
+  -- Row number
+  , rownum
+    As row_number
 From proposals
 Left Join pe
   On pe.prospect_id = proposals.prospect_id
