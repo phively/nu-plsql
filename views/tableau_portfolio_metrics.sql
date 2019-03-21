@@ -85,7 +85,6 @@ Select
   pe.id_number
   , hh.report_name
   , proposals.prospect_id
-  , proposal_group
   , prospect_name_sort
   , prospect_name
   , hh.institutional_suffix
@@ -97,6 +96,8 @@ Select
   , hh.spouse_degrees_concat
   , hh.spouse_program_group
   , university_strategy
+  , proposal_group
+  , proposal_id
   , proposal_manager_id
   , proposal_manager
   , proposal_assist
