@@ -13,6 +13,7 @@ Select
   , hh.first_ksm_year
   , hh.program_group
   , activity.activity_code
+  , activity.xsequence
   , tms_at.short_desc
     As activity_desc
   , Case When tms_at.short_desc Like '%KSM%' Then 'Y' End

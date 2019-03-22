@@ -53,14 +53,37 @@ cal As (
 )
 
 -- Events
---v_nu_event_participants
+, events As (
+  Select ep.*
+  From v_nu_event_participants ep
+  Cross Join cal
+  Where ep.start_fy_calc Between cal.curr_fy - 1 And cal.curr_fy
+    Or ep.stop_fy_calc Between cal.curr_fy - 1 And cal.curr_fy
+)
 
 -- Activities
---v_nu_activities
--- KSM only
+, activities As (
+  Select *
+  From v_nu_activities
+  Cross Join cal
+  Where
+    -- Kellogg only
+    ksm_activity = 'Y'
+    -- Must be in suitable time range
+    And (
+      start_fy_calc Between cal.curr_fy - 1 And cal.curr_fy
+      Or stop_fy_calc Between cal.curr_fy - 1 And cal.curr_fy
+    )
+)
 
 -- Giving
---v_ksm_giving_trans_hh
+, giving As (
+  Select
+    gthh.*
+  From v_ksm_giving_trans_hh gthh
+  Cross Join cal
+  Where gthh.fiscal_year Between cal.curr_fy - 1 And cal.curr_fy
+)
 
 -- Contact reports???
 
@@ -87,6 +110,8 @@ cal As (
       As engagement_responsible
     , description
       As engagement_detail
+    , NULL
+      As engagement_dollars
     , to_char(report_id)
       As engagement_id
     , contact_date
@@ -120,7 +145,9 @@ Union (
       As engagement_responsible
     , committee_desc
       As engagement_detail
-    , id_number || '-' || xsequence
+    , NULL
+      As engagement_dollars
+    , to_char(xsequence)
       As engagement_id
     -- Dates based on stop_dt_calc, or current FY if that is in the future
     , Case
@@ -139,11 +166,90 @@ Union (
   Where alumni_club Is Null -- Exclude the alumni clubs
 )
 -- Events
----- KSM, NU
+Union (
+  Select
+    events.id_number
+    , 'Event'
+      As engagement_type
+    , Case
+        When ksm_event = 'Y'
+          Then 'KSM Event'
+        Else 'Other Event'
+        End
+      As engagement_type_detail
+    , event_type
+      As type_detail
+    , NULL
+      As engagement_responsible
+    , event_name
+      As engagement_detail
+    , NULL
+      As engagement_dollars
+    , to_char(event_id)
+      As engagement_id
+    , start_dt
+      As engagement_date
+    , start_fy_calc
+      As engagement_fy
+  From events
+)
 -- Activities
----- KSM only
+Union (
+  Select
+    activities.id_number
+    , 'Activity'
+      As engagement_type
+    , 'All'
+      As engagement_type_detail
+    , activity_desc
+      As type_detail
+    , NULL
+      As engagement_responsible
+    , xcomment
+      As engagement_detail
+    , NULL
+      As engagement_dollars
+    , to_char(xsequence)
+      As engagement_id
+    , start_dt
+      As engagement_date
+    , start_fy_calc
+      As engagement_fy
+  From activities
+)
 -- Giving
----- KSM gift/pledge/pay, NU NGC only
+Union (
+ Select
+    giving.id_number
+    , 'Giving'
+      As engagement_type
+    , Case
+        When tx_gypm_ind = 'G'
+          Then 'Gift'
+        When tx_gypm_ind = 'Y'
+          Then 'Payment'
+        When tx_gypm_ind = 'P'
+          Then 'Pledge'
+        When tx_gypm_ind = 'M'
+          Then 'Match'
+        End
+      As engagement_type_detail
+    , transaction_type
+      As type_detail
+    , NULL
+      As engagement_responsible
+    , alloc_short_name
+      As engagement_detail
+    , recognition_credit
+      As engagement_dollars
+    , tx_number || '-' || tx_sequence
+      As engagement_id
+    , date_of_record
+      As engagement_date
+    , fiscal_year
+      As engagement_fy
+  From giving
+)
 
 -- Final pull
 -- id_number
