@@ -1,5 +1,8 @@
-/* Current and previous fiscal year engagement details */
--- Create Or Replace View vt_engagement_detail As
+/*********************************************************
+Current and previous fiscal year engagement details
+*********************************************************/
+
+Create Or Replace View vt_engagement_detail As
 
 With
 
@@ -250,10 +253,42 @@ Union (
       As engagement_fy
   From giving
 )
+;
 
--- Final pull
--- id_number
--- , report_name
--- , degrees_concat
--- , inst_suffix
--- , PM
+/*********************************************************
+Summarized engagement details
+*********************************************************/
+/* Create Or Replace View vt_engagement_summary As
+
+With
+
+agg As (
+  Select
+  From vt_engagement_detail
+  Group By
+)
+
+Select
+  prs.id_number
+  , prs.report_name
+  , prs.institutional_suffix
+  , prs.degrees_concat
+  , prs.program_group
+  , prs.business_title
+  , prs.employer_name
+  , prs.prospect_id
+  , prs.prospect_manager_id
+  , prs.prospect_manager
+  , prs.managers
+  , prs.curr_ksm_manager
+  , prs.prospect_stage
+  , prs.evaluation_rating
+  , prs.evaluation_date
+  , prs.uor
+  , prs.uor_date
+  , prs.mgo_id_model
+  , prs.mgo_id_score
+  , prs.mgo_pr_model
+  , prs.mgo_pr_score
+From v_ksm_prospect_pool prs
+*/
