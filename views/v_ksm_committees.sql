@@ -1,3 +1,7 @@
+/************************
+Non-householded committees
+************************/
+
 Create Or Replace View v_nu_committees As
 
 /* Historical NU committee membership */
@@ -59,4 +63,19 @@ Left Join tms_committee_role tms_cr
   On tms_cr.committee_role_code = committee.committee_role_code
 Left Join tms_committee_status tms_cs
   On tms_cs.committee_status_code = committee.committee_status_code
+;
+
+/************************
+Householded committees
+************************/
+
+Create Or Replace View v_nu_committees_hh As
+
+Select
+  hh.household_id
+  , hh.report_name
+  , nuc.*
+From v_entity_ksm_households hh
+Inner Join v_nu_committees nuc
+  On nuc.id_number = hh.id_number
 ;

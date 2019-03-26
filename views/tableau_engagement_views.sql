@@ -258,14 +258,24 @@ Union (
 /*********************************************************
 Summarized engagement details
 *********************************************************/
-/* Create Or Replace View vt_engagement_summary As
+Create Or Replace View vt_engagement_summary As
 
 With
 
 agg As (
   Select
-  From vt_engagement_detail
+    ed.id_number
+    , ed.engagement_type
+    , ed.engagement_type_detail
+    , ed.engagement_fy
+    , count(engagement_id)
+      As touchpoints
+  From vt_engagement_detail ed
   Group By
+    ed.id_number
+    , ed.engagement_type
+    , ed.engagement_type_detail
+    , ed.engagement_fy
 )
 
 Select
@@ -290,5 +300,11 @@ Select
   , prs.mgo_id_score
   , prs.mgo_pr_model
   , prs.mgo_pr_score
+  , agg.engagement_type
+  , agg.engagement_type_detail
+  , agg.engagement_fy
+  , agg.touchpoints
 From v_ksm_prospect_pool prs
-*/
+Left Join agg
+  On agg.id_number = prs.id_number
+;
