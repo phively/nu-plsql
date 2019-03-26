@@ -279,27 +279,7 @@ agg As (
 )
 
 Select
-  prs.id_number
-  , prs.report_name
-  , prs.institutional_suffix
-  , prs.degrees_concat
-  , prs.program_group
-  , prs.business_title
-  , prs.employer_name
-  , prs.prospect_id
-  , prs.prospect_manager_id
-  , prs.prospect_manager
-  , prs.managers
-  , prs.curr_ksm_manager
-  , prs.prospect_stage
-  , prs.evaluation_rating
-  , prs.evaluation_date
-  , prs.uor
-  , prs.uor_date
-  , prs.mgo_id_model
-  , prs.mgo_id_score
-  , prs.mgo_pr_model
-  , prs.mgo_pr_score
+  prs.*
   , agg.engagement_type
   , agg.engagement_type_detail
   , agg.engagement_fy
