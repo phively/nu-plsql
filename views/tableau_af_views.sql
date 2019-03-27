@@ -524,6 +524,13 @@ cal As (
     , sum(Case When fiscal_year = (curr_fy - 3) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As cru_prev_fy3_match
     , sum(Case When fiscal_year = (curr_fy - 4) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As cru_prev_fy4_match
     , sum(Case When fiscal_year = (curr_fy - 5) And tx_gypm_ind = 'M' Then legal_amount Else 0 End) As cru_prev_fy5_match
+    -- Aggregated current use, no match
+    , sum(Case When fiscal_year = (curr_fy - 0) And tx_gypm_ind <> 'M' Then legal_amount Else 0 End) As cru_curr_fy_nomatch
+    , sum(Case When fiscal_year = (curr_fy - 1) And tx_gypm_ind <> 'M' Then legal_amount Else 0 End) As cru_prev_fy1_nomatch
+    , sum(Case When fiscal_year = (curr_fy - 2) And tx_gypm_ind <> 'M' Then legal_amount Else 0 End) As cru_prev_fy2_nomatch
+    , sum(Case When fiscal_year = (curr_fy - 3) And tx_gypm_ind <> 'M' Then legal_amount Else 0 End) As cru_prev_fy3_nomatch
+    , sum(Case When fiscal_year = (curr_fy - 4) And tx_gypm_ind <> 'M' Then legal_amount Else 0 End) As cru_prev_fy4_nomatch
+    , sum(Case When fiscal_year = (curr_fy - 5) And tx_gypm_ind <> 'M' Then legal_amount Else 0 End) As cru_prev_fy5_nomatch
   From af_gifts
   Group By id_hh_src_dnr
 )
@@ -626,6 +633,12 @@ Select Distinct
   , cru_prev_fy3_match
   , cru_prev_fy4_match
   , cru_prev_fy5_match
+  , cru_curr_fy_nomatch
+  , cru_prev_fy1_nomatch
+  , cru_prev_fy2_nomatch
+  , cru_prev_fy3_nomatch
+  , cru_prev_fy4_nomatch
+  , cru_prev_fy5_nomatch
 From af_gifts
 Inner Join totals On totals.id_hh_src_dnr = af_gifts.id_hh_src_dnr
 Left Join prs On prs.id_number = af_gifts.id_hh_src_dnr
