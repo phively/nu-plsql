@@ -8,7 +8,9 @@ Select
   id_number
   , segment_year
   , segment_month
-  , description
+  , segment_code
+  , replace(description, 'KSM $10k Model ', '')
+    As description
   , to_number(score) As score
 From table(
   rpt_pbh634.ksm_pkg.tbl_model_af_10k(
@@ -62,9 +64,13 @@ Select
   identification.id_number
   , identification.segment_year
   , identification.segment_month
+  , identification.segment_code
+    As id_code
   , replace(identification.description, 'Kellogg Major Gift Identification Model ', '')
     As id_segment
   , to_number(identification.score) As id_score
+  , prioritization.segment_code
+    As pr_code
   , replace(prioritization.description, 'KSM Major Gift Prioritization Model ', '')
     As pr_segment
   , to_number(prioritization.score)

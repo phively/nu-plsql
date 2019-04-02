@@ -164,6 +164,7 @@ Type modeled_score Is Record (
   id_number segment.id_number%type
   , segment_year segment.segment_year%type
   , segment_month segment.segment_month%type
+  , segment_code segment.segment_code%type
   , description segment_header.description%type
   , score segment.xcomment%type
 );
@@ -1563,6 +1564,7 @@ Cursor c_segment_extract (year In integer, month In integer, code In varchar2) I
     s.id_number
     , s.segment_year
     , s.segment_month
+    , s.segment_code
     , sh.description
     , s.xcomment As score
   From segment s
