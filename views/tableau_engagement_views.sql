@@ -92,167 +92,176 @@ cal As (
 
 -- Merged pull
 -- Visits
-(
-  Select
-    visits.id_number
-    , 'Visit'
-      As engagement_type
-    , Case
-        When president_visit = 'Y'
-          Then 'President Visit'
-        When ksm_dean_visit = 'Y'
-          Then 'Dean Visit'
-        When pm_visit = 'Y'
-          Then 'PM Visit'
-        Else 'Other Visit'
-        End
-      As engagement_type_detail
-    , visit_type
-      As type_detail
-    , credited_name
-      As engagement_responsible
-    , description
-      As engagement_detail
-    , NULL
-      As engagement_dollars
-    , to_char(report_id)
-      As engagement_id
-    , contact_date
-      As engagement_date
-    , fiscal_year
-      As engagement_fy
-  From visits
+, merged As (
+  (
+    Select
+      visits.id_number
+      , 'Visit'
+        As engagement_type
+      , Case
+          When president_visit = 'Y'
+            Then 'President Visit'
+          When ksm_dean_visit = 'Y'
+            Then 'Dean Visit'
+          When pm_visit = 'Y'
+            Then 'PM Visit'
+          Else 'Other Visit'
+          End
+        As engagement_type_detail
+      , visit_type
+        As type_detail
+      , credited_name
+        As engagement_responsible
+      , description
+        As engagement_detail
+      , NULL
+        As engagement_dollars
+      , to_char(report_id)
+        As engagement_id
+      , contact_date
+        As engagement_date
+      , fiscal_year
+        As engagement_fy
+    From visits
+  )
+  -- Committees
+  Union (
+    Select  
+      committees.id_number
+      , 'Committee'
+        As engagement_type
+      , Case
+          When trustee = 'Y'
+            Then 'Trustee'
+          When gab = 'Y'
+            Then 'KSM GAB'
+          When alumni_club = 'Y'
+            Then 'Alumni Clubs'
+          Else 'Other Committee'
+          End
+        As engagement_type_detail
+      , committee_type
+        As type_detail
+      , Case
+          When ksm_committee = 'Y'
+            Then 'Kellogg committee'
+          End
+        As engagement_responsible
+      , committee_desc
+        As engagement_detail
+      , NULL
+        As engagement_dollars
+      , to_char(xsequence)
+        As engagement_id
+      -- Dates based on stop_dt_calc, or current FY if that is in the future
+      , Case
+          When stop_dt_calc > cfy_end
+            Then cfy_end
+          Else stop_dt_calc
+          End
+        As engagement_date
+      , Case
+          When stop_dt_calc > cfy_end
+            Then ksm_pkg.get_fiscal_year(cfy_end)
+          Else ksm_pkg.get_fiscal_year(stop_dt_calc)
+          End
+        As engagement_fy
+    From committees
+    Where alumni_club Is Null -- Exclude the alumni clubs
+  )
+  -- Events
+  Union (
+    Select
+      events.id_number
+      , 'Event'
+        As engagement_type
+      , Case
+          When ksm_event = 'Y'
+            Then 'KSM Event'
+          Else 'Other Event'
+          End
+        As engagement_type_detail
+      , event_type
+        As type_detail
+      , NULL
+        As engagement_responsible
+      , event_name
+        As engagement_detail
+      , NULL
+        As engagement_dollars
+      , to_char(event_id)
+        As engagement_id
+      , start_dt
+        As engagement_date
+      , start_fy_calc
+        As engagement_fy
+    From events
+  )
+  -- Activities
+  Union (
+    Select
+      activities.id_number
+      , 'Activity'
+        As engagement_type
+      , 'All'
+        As engagement_type_detail
+      , activity_desc
+        As type_detail
+      , NULL
+        As engagement_responsible
+      , xcomment
+        As engagement_detail
+      , NULL
+        As engagement_dollars
+      , to_char(xsequence)
+        As engagement_id
+      , start_dt
+        As engagement_date
+      , start_fy_calc
+        As engagement_fy
+    From activities
+  )
+  -- Giving
+  Union (
+   Select
+      giving.id_number
+      , 'Giving'
+        As engagement_type
+      , Case
+          When tx_gypm_ind = 'G'
+            Then 'Gift'
+          When tx_gypm_ind = 'Y'
+            Then 'Payment'
+          When tx_gypm_ind = 'P'
+            Then 'Pledge'
+          When tx_gypm_ind = 'M'
+            Then 'Match'
+          End
+        As engagement_type_detail
+      , transaction_type
+        As type_detail
+      , NULL
+        As engagement_responsible
+      , alloc_short_name
+        As engagement_detail
+      , recognition_credit
+        As engagement_dollars
+      , tx_number || '-' || tx_sequence
+        As engagement_id
+      , date_of_record
+        As engagement_date
+      , fiscal_year
+        As engagement_fy
+    From giving
+  )
 )
--- Committees
-Union (
-  Select  
-    committees.id_number
-    , 'Committee'
-      As engagement_type
-    , Case
-        When trustee = 'Y'
-          Then 'Trustee'
-        When gab = 'Y'
-          Then 'KSM GAB'
-        When alumni_club = 'Y'
-          Then 'Alumni Clubs'
-        Else 'Other Committee'
-        End
-      As engagement_type_detail
-    , committee_type
-      As type_detail
-    , Case
-        When ksm_committee = 'Y'
-          Then 'Kellogg committee'
-        End
-      As engagement_responsible
-    , committee_desc
-      As engagement_detail
-    , NULL
-      As engagement_dollars
-    , to_char(xsequence)
-      As engagement_id
-    -- Dates based on stop_dt_calc, or current FY if that is in the future
-    , Case
-        When stop_dt_calc > cfy_end
-          Then cfy_end
-        Else stop_dt_calc
-        End
-      As engagement_date
-    , Case
-        When stop_dt_calc > cfy_end
-          Then ksm_pkg.get_fiscal_year(cfy_end)
-        Else ksm_pkg.get_fiscal_year(stop_dt_calc)
-        End
-      As engagement_fy
-  From committees
-  Where alumni_club Is Null -- Exclude the alumni clubs
-)
--- Events
-Union (
-  Select
-    events.id_number
-    , 'Event'
-      As engagement_type
-    , Case
-        When ksm_event = 'Y'
-          Then 'KSM Event'
-        Else 'Other Event'
-        End
-      As engagement_type_detail
-    , event_type
-      As type_detail
-    , NULL
-      As engagement_responsible
-    , event_name
-      As engagement_detail
-    , NULL
-      As engagement_dollars
-    , to_char(event_id)
-      As engagement_id
-    , start_dt
-      As engagement_date
-    , start_fy_calc
-      As engagement_fy
-  From events
-)
--- Activities
-Union (
-  Select
-    activities.id_number
-    , 'Activity'
-      As engagement_type
-    , 'All'
-      As engagement_type_detail
-    , activity_desc
-      As type_detail
-    , NULL
-      As engagement_responsible
-    , xcomment
-      As engagement_detail
-    , NULL
-      As engagement_dollars
-    , to_char(xsequence)
-      As engagement_id
-    , start_dt
-      As engagement_date
-    , start_fy_calc
-      As engagement_fy
-  From activities
-)
--- Giving
-Union (
- Select
-    giving.id_number
-    , 'Giving'
-      As engagement_type
-    , Case
-        When tx_gypm_ind = 'G'
-          Then 'Gift'
-        When tx_gypm_ind = 'Y'
-          Then 'Payment'
-        When tx_gypm_ind = 'P'
-          Then 'Pledge'
-        When tx_gypm_ind = 'M'
-          Then 'Match'
-        End
-      As engagement_type_detail
-    , transaction_type
-      As type_detail
-    , NULL
-      As engagement_responsible
-    , alloc_short_name
-      As engagement_detail
-    , recognition_credit
-      As engagement_dollars
-    , tx_number || '-' || tx_sequence
-      As engagement_id
-    , date_of_record
-      As engagement_date
-    , fiscal_year
-      As engagement_fy
-  From giving
-)
+
+Select
+  entity.report_name
+  , merged.*
+From merged
+Inner Join entity
+  On entity.id_number = merged.id_number
 ;
 
 /*********************************************************
