@@ -23,7 +23,6 @@ rep_end_alloc As (
     From allocation_stewardee als
     Inner Join rep_end_alloc rea
       On als.allocation_code = rea.allocation_code
-    Where als.id_number In (Select Distinct id_number From table(rpt_pbh634.ksm_pkg.tbl_entity_households_ksm))    
     Group By als.id_number
 )
 
@@ -143,8 +142,22 @@ rep_end_alloc As (
     , pet.id_number
 )
 
-SELECT DISTINCT
-  e.id_number As "Household ID"
+Select Distinct
+  -- First (no special handling) or second (special handling restrictions) tab
+  Case
+    -- This returns people who do not have special handling restrictions
+    When e.record_status_code = 'A'
+      And sph.no_contact Is Null
+      And sph.no_mail_ind Is Null
+      Then 'Mailable'
+    When e.record_status_code != 'A'
+      And (sph.no_contact = 'Y'
+        Or sph.no_mail_ind = 'Y')
+      Then 'Special_Handling'
+    Else 'Remove'
+    End
+    As stewardee_tab
+  , e.id_number As "Household ID"
   , e.report_name As "P Report Name"
   , e.first_name As "P First Name"
   , psal.latest_sal As "P Sally Salut"
@@ -163,12 +176,7 @@ SELECT DISTINCT
   , hh.stewardee_alloc_code
   , hh.stewardee_alloc_short_name
   , hh.stewardee_alloc_long_name
---  ,Don.Total_To_End
---  ,Case
---     When e.first_Name IS NOT Null AND s.spouse_first_name IS NOT Null
---       Then E.first_name ||' and '||S.spouse_first_name
---         Else 'Friends'
---           End Joint_First_Name
+  -- Seasonal address chooser
   , Case
       When sa.address_type = 'Seasonal'
         Then 'Seasonal'
@@ -286,15 +294,3 @@ Left Join prospect_manager pm
   On e.id_number = pm.id_number
 Left Join prog_prospect_manager pp
   On e.id_number = pp.id_number
-Where e.record_status_code = 'A'
--- This returns people who do not have special handling restrictions
-  And sph.no_contact Is Null
-  And sph.no_mail_ind Is Null
-
--- Put this in for the second tab with special handling restrictions
-/* For the people that have been removed from Mailing  
-   WHERE E.RECORD_STATUS_CODE != 'A'
-   AND (SPH.NO_CONTACT = 'Y'
-   OR SPH.NO_MAIL_IND = 'Y')
-
- */  
