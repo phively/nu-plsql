@@ -150,11 +150,12 @@ Select Distinct
       And sph.no_contact Is Null
       And sph.no_mail_ind Is Null
       Then 'Mailable'
-    When e.record_status_code != 'A'
+    -- People who are No Contact status, or Active and not mailable
+    When e.record_status_code In ('A', 'C')
       And (sph.no_contact = 'Y'
         Or sph.no_mail_ind = 'Y')
-      Then 'Special_Handling'
-    Else 'Remove'
+      Then 'Special Handling'
+    Else 'Removed'
     End
     As stewardee_tab
   , e.id_number As "Household ID"
