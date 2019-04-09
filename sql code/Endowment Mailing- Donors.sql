@@ -27,11 +27,11 @@ rep_end_alloc As (
 , spouse As (
   Select 
     e.id_number
-    ,e.spouse_id_number
-    ,se.record_status_code
-    ,se.pref_mail_name
-    ,se.first_name
-    ,se.last_name
+    , e.spouse_id_number
+    , se.record_status_code
+    , se.pref_mail_name
+    , se.first_name
+    , se.last_name
   From entity e
   Left Join entity se
     On e.spouse_id_number = se.id_number
