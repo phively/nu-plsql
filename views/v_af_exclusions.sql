@@ -268,6 +268,20 @@ Select
   , trustee.trustee
   , dex.degrees_concat
   , dex.degree_program
+  -- Degree exclusion only when every other field is null
+  , Case
+      When dex.degree_program Is Not Null
+        And me.id_number Is Null
+        And deceased.id_number Is Null
+        And sh.id_number Is Null
+        And shs.spouse_id_number Is Null
+        And gab.id_number Is Null
+        And trustee.id_number Is Null
+        And pc.id_number Is Null
+        And propc.id_number Is Null
+        Then 'Y'
+      End
+    As degree_exclusion_only
   , pc.active_pledges
   , propc.proposals_sub_appr
 From ids
