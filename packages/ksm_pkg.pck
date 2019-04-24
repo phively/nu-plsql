@@ -72,6 +72,7 @@ Type degreed_alumni Is Record (
   , program tms_dept_code.short_desc%type
   , program_group varchar2(20)
   , program_group_rank number
+  , class_section varchar2(80)
 );
 
 /* Committee member list, for committee results */
@@ -975,6 +976,11 @@ Cursor c_entity_degrees_concat_ksm Is
             ' ' || class_section)
           , '; '
         ) Within Group (Order By degree_year) As degrees_concat
+      -- Class sections
+      , Listagg(
+          trim(Case When trim(class_section) Is Not Null Then dept_short_desc End || ' ' || class_section)
+          , '; '
+        ) Within Group (Order By degree_year) As class_section
       -- First Kellogg year; exclude non-grad years
       , min(trim(Case When non_grad_code = 'N' Then NULL Else degree_year End))
         As first_ksm_year
@@ -1145,6 +1151,7 @@ Cursor c_entity_degrees_concat_ksm Is
           When program Like 'EXEC%' Or program Like 'CERT%' Then 100
           Else 9999999999
         End As program_group_rank
+      , class_section
     From concat
     Inner Join entity On entity.id_number = concat.id_number
     Inner Join prg On concat.id_number = prg.id_number
