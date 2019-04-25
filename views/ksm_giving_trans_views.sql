@@ -413,8 +413,12 @@ Select Distinct
   , hh.degrees_concat
   , cgft.household_id
   , hh.household_rpt_name
+  , hh.person_or_org
   , hh.household_spouse_id
   , hh.household_spouse
+  , hh.household_state
+  , hh.household_country
+  , hh.household_continent
   -- Legal giving is for the individual
   , legal.campaign_legal_giving
   -- All other giving is for the household
@@ -473,8 +477,12 @@ Group By
   , hh.degrees_concat
   , cgft.household_id
   , hh.household_rpt_name
+  , hh.person_or_org
   , hh.household_spouse_id
   , hh.household_spouse
+  , hh.household_state
+  , hh.household_country
+  , hh.household_continent
   , legal.campaign_legal_giving
 ;
 
