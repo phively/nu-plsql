@@ -1554,7 +1554,7 @@ Cursor c_university_strategy Is
         Else uos.university_strategy
       End As university_strategy
     , Case
-        When prs.strategy_description Is Not Null Then to_date(prs.strategy_date, 'mm/dd/yyyy')
+        When prs.strategy_description Is Not Null Then to_date2(prs.strategy_date, 'mm/dd/yyyy')
         Else uos.strategy_sched_date
       End As strategy_sched_date
     , Case
@@ -1650,7 +1650,7 @@ Cursor c_nu_ard_staff Is
 /* Definition of a KLC member */
 Cursor c_klc_history (fy_start_month In integer) Is
   Select
-    extract(year from to_date(gift_club_end_date, 'yyyymmdd')) As fiscal_year
+    extract(year from to_date2(gift_club_end_date, 'yyyymmdd')) As fiscal_year
     , tms_lvl.short_desc As level_desc
     , hh.id_number
     , hh.household_id
@@ -1664,9 +1664,9 @@ Cursor c_klc_history (fy_start_month In integer) Is
     , hh.household_program_group
     -- FYTD indicator
     , Case
-        When extract(year from to_date(gift_club_start_date, 'yyyymmdd')) < extract(year from to_date(gift_club_end_date, 'yyyymmdd'))
-          And extract(month from to_date(gift_club_start_date, 'yyyymmdd')) < fy_start_month Then 'Y'
-        Else fytd_indicator(to_date(gift_club_start_date, 'yyyymmdd'))
+        When extract(year from to_date2(gift_club_start_date, 'yyyymmdd')) < extract(year from to_date2(gift_club_end_date, 'yyyymmdd'))
+          And extract(month from to_date2(gift_club_start_date, 'yyyymmdd')) < fy_start_month Then 'Y'
+        Else fytd_indicator(to_date2(gift_club_start_date, 'yyyymmdd'))
       End As klc_fytd
   From gift_clubs
   Inner Join table(tbl_entity_households_ksm) hh On hh.id_number = gift_clubs.gift_club_id_number
