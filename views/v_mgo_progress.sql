@@ -19,7 +19,7 @@ SELECT Distinct
        E.Pref_Mail_Name
        , MGM."ID_NUMBER",MGM."REPORT_NAME",MGM."GOAL_TYPE",MGM."GOAL_DESC",MGM."CAL_YEAR",MGM."CAL_MONTH",MGM."FISCAL_YEAR",MGM."FISCAL_QUARTER",MGM."PERF_YEAR",MGM."PERF_QUARTER",MGM."FY_GOAL",MGM."PY_GOAL",MGM."PROGRESS",MGM."ADJUSTED_PROGRESS"
        , cal."TODAY",cal."YESTERDAY",cal."NINETY_DAYS_AGO",cal."CURR_FY",cal."PREV_FY_START",cal."CURR_FY_START",cal."NEXT_FY_START",cal."CURR_PY",cal."PREV_PY_START",cal."CURR_PY_START",cal."NEXT_PY_START",cal."PREV_FY_TODAY",cal."NEXT_FY_TODAY",cal."PREV_WEEK_START",cal."CURR_WEEK_START",cal."NEXT_WEEK_START",cal."PREV_MONTH_START",cal."CURR_MONTH_START",cal."NEXT_MONTH_START"
-       , CASE WHEN MGM.perf_year = '2019'
+       , CASE WHEN MGM.perf_year = cal.curr_py
               THEN cal.yesterday - cal.curr_py_start
               ELSE 365
         END PY_Prog_Days
