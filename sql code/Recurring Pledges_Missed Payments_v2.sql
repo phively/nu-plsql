@@ -331,9 +331,10 @@ From entity e
 Left Join rpt_pbh634.v_entity_ksm_degrees ekd
   On e.id_number = ekd.id_number
 Inner Join pledge p
-  on e.id_number = p.pledge_donor_id
+  On e.id_number = p.pledge_donor_id
 Inner Join pledge p2
   On p2.pledge_pledge_number = p.pledge_pledge_number
+  And p2.pledge_allocation_name = p.pledge_allocation_name
   And p2.pledge_associated_code In ('P', 'S')
   And p2.pledge_alloc_school = 'KM'
 Left Join rpt_pbh634.v_entity_ksm_households hh
@@ -381,8 +382,8 @@ Left Join recent_ksm_reminders remindk
   On remindk.id_number = p.pledge_donor_id
 -- Counts
 Inner Join count_pledges cp 
- On e.id_number = cp.id
- And p.pledge_pledge_number = cp.plg
+  On e.id_number = cp.id
+  And p.pledge_pledge_number = cp.plg
 Left Join address a
   On e.id_number = a.id_number
   And a.addr_pref_ind = 'Y'
