@@ -17,7 +17,7 @@ nu_dates As (
   Select '0000246649', 'KSM Dean', to_date('20180901', 'yyyymmdd'), to_date('20190731', 'yyyymmdd') From DUAL -- KH
   Union
   -- ID needs to be filled in after start date
-  Select '', 'KSM Dean', to_date('20190801', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL -- FC
+  Select '0000804796', 'KSM Dean', to_date('20190801', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL -- FC
 )
 
 Select
