@@ -5,8 +5,8 @@ With
 -- Update dates before running
 dts As (
   Select
-      to_date('20171215', 'yyyymmdd') As start_dt
-    , to_date('20180102', 'yyyymmdd') As stop_dt
+      to_date('20190510', 'yyyymmdd') As start_dt
+    , to_date('20190517', 'yyyymmdd') As stop_dt
   From DUAL
 )
 
@@ -19,6 +19,7 @@ Select
   , gft.date_of_record
   , gft.allocation_code
   , gft.alloc_short_name
+  , NULL As empty_column
   , gft.legal_amount
   , prp.proposal_manager
 From v_ksm_giving_trans gft
