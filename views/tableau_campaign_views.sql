@@ -189,3 +189,33 @@ From goals
 Cross Join v_current_calendar cal
 )
 ;
+
+/*******************************
+Campaign donors list
+********************************/
+
+Create Or Replace View vt_ksm_campaign_donors As
+
+Select
+  gc.id_number
+  , gc.report_name
+  , entity.record_status_code
+  , entity.person_or_org
+  , entity.institutional_suffix
+  , gc.degrees_concat
+  , gc.household_id
+  , gc.household_rpt_name
+  , gc.household_state
+  , gc.household_country
+  , prs.prospect_manager
+  , gc.campaign_giving
+  , gc.campaign_legal_giving
+  , gc.campaign_steward_giving
+  , gc.campaign_nonanonymous
+  , gc.campaign_discounted_bequests
+From v_ksm_giving_campaign gc
+Inner Join entity
+  On entity.id_number = gc.id_number
+Left Join nu_prs_trp_prospect prs
+  On prs.id_number = gc.id_number
+;
