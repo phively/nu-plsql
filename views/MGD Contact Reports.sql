@@ -1,4 +1,4 @@
-CREATE or REPLACE VIEW MGD_Contact_Reports AS
+CREATE or REPLACE VIEW rpt_dgz654.MGD_Contact_Reports AS
 
 With
 /*
@@ -44,12 +44,15 @@ select CR.*
 , PP.prospect_manager_id
 , PP.prospect_manager
 , E.Institutional_Suffix
-, KD.DEGREES_CONCAT
+, hh.degrees_concat
+, hh.household_city
+, hh.household_state
+, hh.household_country
 , rpt_pbh634.ksm_pkg.get_performance_year(contact_date) AS PY_Contact
 From rpt_pbh634.v_contact_reports_fast CR
+Inner Join rpt_pbh634.v_entity_ksm_households hh
+  On hh.id_number = CR.id_number
 Left Join Prospect_manager PP
 ON PP.ID_NUMBER = CR.id_number
-Left Join rpt_pbh634.v_entity_ksm_degrees KD
-ON KD.ID_NUMBER = CR.id_number
 Inner join entity e
 ON E.Id_number = CR.Id_number
