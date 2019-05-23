@@ -192,7 +192,7 @@ Type ksm_staff Is Record (
   id_number entity.id_number%type
   , report_name entity.report_name%type
   , last_name entity.last_name%type
-  , team varchar2(2)
+  , team varchar2(5)
   , former_staff varchar2(1)
   , job_title employment.job_title%type
   , employer employment.employer_unit%type
@@ -712,10 +712,6 @@ Cursor ct_frontline_ksm_staff Is
       , team
       , Case When stop_dt Is Not Null Then 'Y' End As former_staff
     From mv_past_ksm_gos
-    /************ MANUAL ADDITIONS -- UPDATE BELOW HERE ************/
-    Union All Select '0000760399', NULL, NULL From DUAL -- Guynn
-    Union All Select '0000292130', NULL, NULL From DUAL -- Chiang
-    /************ MANUAL ADDITIONS -- UPDATE ABOVE HERE ************/
   )
   -- Job title information
   , employ As (

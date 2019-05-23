@@ -26,3 +26,10 @@ Create Or Replace View v_entity_ksm_households As
   Select hh.*
   From table(ksm_pkg.tbl_entity_households_ksm) hh
 ;
+
+Create Or Replace View v_frontline_ksm_staff As
+-- View for pulling current and past frontline KSM staff from ksm_pkg
+-- New staff and start/stop dates need to be added to mv_past_ksm_gos to be reflected in this view
+  Select fs.*
+  From table(ksm_pkg.tbl_frontline_ksm_staff) fs
+;
