@@ -210,6 +210,19 @@ tms_trans As (
       As paid_pfy1
     , sum(plg.prop * Case When sc.pay_sch_fy = cal.curr_fy - 1 Then sc.payment_schedule_balance Else 0 End)
       As balance_pfy1
+    , min(ksm_pkg.to_date2(sc.payment_schedule_date))
+      As first_sched_dt
+    , max(ksm_pkg.to_date2(sc.payment_schedule_date))
+      As last_sched_dt
+    , min(ksm_pkg.to_date2(
+        -- Only unpaid status
+        Case When payment_schedule_status = 'U' Then sc.payment_schedule_date End
+      ))
+      As next_unpaid_sched_dt
+    , count(sc.payment_schedule_status)
+      As total_sched_payments
+    , count(Case When payment_schedule_status = 'U' Then sc.payment_schedule_status End)
+      As unpaid_sched_payments
   From pay_sch sc
   Cross Join v_current_calendar cal
   Inner Join plg
@@ -242,6 +255,11 @@ Select
   , cp.scheduled_payments_nfy1
   , cp.paid_nfy1
   , cp.balance_nfy1
+  , cp.first_sched_dt
+  , cp.last_sched_dt
+  , cp.next_unpaid_sched_dt
+  , cp.total_sched_payments
+  , cp.unpaid_sched_payments
   -- Allocation fields
   , p.pledge_allocation_name As allocation_code
   , alloc.short_name As allocation_name
