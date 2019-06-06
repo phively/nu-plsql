@@ -130,6 +130,7 @@ Type household Is Record (
   , xsequence address.xsequence%type
   , household_city address.city%type
   , household_state address.state_code%type
+  , household_geo_codes varchar2(512)
   , household_country tms_country.short_desc%type
   , household_continent varchar2(80)
 );
@@ -1258,16 +1259,46 @@ With
         End As household_last_masters_year
     From couples
   )
+  -- Address info
+  , geo As (
+    Select
+      address.id_number
+      , Listagg(trim(geo_code.description), '; ') Within Group (Order By geo_code.description Asc)
+        As geo_codes
+    From address
+    Inner Join address_geo
+      On address.id_number = address_geo.id_number
+      And address.xsequence = address_geo.xsequence
+    Inner Join geo_code
+      On geo_code.geo_code = address_geo.geo_code
+    Inner Join geo_type
+      On geo_type.geo_type = geo_code.geo_type
+    Where address.addr_pref_ind = 'Y'
+      And address.addr_status_code = 'A'
+      And address_geo.geo_type In (100, 110) -- Tier 1 Region; Club
+      And address_geo.geo_code Not In (
+        'C035' -- Lake Arc 
+        , 'C068' -- SF without SJ
+        , 'C069' -- San Jose
+        , 'C046' -- North Carolina
+        , 'C011' -- Chi city only
+        , 'C074' -- Miami-Ft Laud combined
+      )
+    Group By address.id_number
+  )
+
   , pref_addr As (
     Select
       addr.id_number
       , addr.xsequence
       , addr.city As pref_city
       , addr.state_code As pref_state
+      , geo.geo_codes
       , cont.country As pref_country
       , cont.continent As pref_continent
     From address addr
     Left Join v_addr_continents cont On addr.country_code = cont.country_code
+    Left Join geo On geo.id_number = addr.id_number
     Where addr.addr_pref_ind = 'Y'
       And addr.addr_status_code = 'A'
   )
@@ -1414,6 +1445,7 @@ With
     , pref_addr.xsequence
     , pref_addr.pref_city
     , pref_addr.pref_state
+    , pref_addr.geo_codes
     , pref_addr.pref_country
     , pref_addr.pref_continent
   From household
