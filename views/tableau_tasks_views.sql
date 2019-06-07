@@ -150,6 +150,7 @@ params As (
 -- Main query
 Select Distinct
   pp.id_number
+  , entity.report_name
   , p.prospect_id
   , p.prospect_name
   , pr.program_code
@@ -230,6 +231,8 @@ Select Distinct
 From prospect p
 Inner Join prospect_entity pe
   On p.prospect_id = pe.prospect_id
+Inner Join entity
+  On entity.id_number = pe.id_number
 Inner Join nu_prs_trp_prospect pp
   On pe.id_number = pp.id_number
 Inner Join program_prospect pr
