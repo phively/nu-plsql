@@ -59,6 +59,8 @@ Select
   , contact_report.id_number
   , contact_report.contacted_name
   , contacted_entity.report_name
+  , contact_report.id_number_2
+  , contacted_entity2.report_name As report_name_2
   , contact_report.prospect_id
   , pe.primary_ind
   , prospect.prospect_name
@@ -103,6 +105,7 @@ Inner Join tms_contact_rpt_type tms_ctype On tms_ctype.contact_type = contact_re
 Inner Join nu_prs_trp_prospect prs On prs.id_number = contact_report.id_number
 Inner Join entity contacted_entity On contacted_entity.id_number = contact_report.id_number
 Inner Join entity contacter On contacter.id_number = contact_rpt_credit.id_number
+Left Join entity contacted_entity2 On contacted_entity2.id_number = contact_report.id_number_2
 Left Join tms_contact_rpt_credit_type tms_crc On tms_crc.contact_credit_type = contact_rpt_credit.contact_credit_type
 Left Join rating_bins eval On eval.rating_desc = prs.evaluation_rating
 Left Join rating_bins uor On uor.rating_desc = prs.officer_rating
@@ -146,6 +149,8 @@ Select
   , vcrf.id_number
   , contacted_name
   , vcrf.report_name
+  , vcrf.id_number_2
+  , vcrf.report_name_2
   , hh.household_id
   , prospect_id
   , primary_ind
@@ -195,6 +200,8 @@ Select
   , id_number
   , contacted_name
   , report_name
+  , id_number_2
+  , report_name_2
   , household_id
   , prospect_id
   , primary_ind
@@ -243,6 +250,8 @@ Select
   , id_number
   , contacted_name
   , report_name
+  , id_number_2
+  , report_name_2
   , household_id
   , prospect_id
   , primary_ind
