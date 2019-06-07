@@ -1,9 +1,17 @@
-Create Or Replace View v_Task_Report As
+Create Or Replace View rpt_dgz654.v_task_report As
 
 With
 
+params As (
+  Select
+    -- Only include tasks etc. on or after this date
+    to_date('20170901', 'yyyymmdd')
+      As start_dt
+  From DUAL
+)
+
 -- Task_detail shows people responsible for prospect level tasks, with scheduled or completed dates in the current FY and previous FY
-task_detail As (
+, task_detail As (
   Select
     task.task_id
     , task.prospect_id As prospect_id2
@@ -24,15 +32,15 @@ task_detail As (
     , task.date_modified
     , task.operator_name
   From task
-  Cross Join rpt_pbh634.v_current_calendar cal
+  Cross Join params
   Inner Join task_responsible tr
     On tr.task_id = task.task_id
   Where
     task.proposal_id Is Null
     And task.task_code = 'CO'
     And (
-      sched_date > to_date('08/31/2017', 'MM/DD/YYYY')
-      Or completed_date >= to_date('08/31/2017', 'MM/DD/YYYY')
+      sched_date >= params.start_dt
+      Or completed_date >= params.start_dt
     )
 )
 
@@ -56,6 +64,7 @@ task_detail As (
     , contact_type
     , report_id
     , prospect_id
+    , id_number
     , contact_date
   From rpt_pbh634.v_contact_reports_fast
   -- The v_ksm_visits view filters dates -- only current and previous FY
@@ -100,12 +109,10 @@ task_detail As (
 
 , latest_contact As (
   Select Distinct 
-    p.prospect_id
+    cr.id_number
     , max(cr.contact_date) As latest_contact
-  From prospect p
-  Left Join contact_reports cr
-    On cr.prospect_id = p.prospect_id
-  Group By p.prospect_id
+  From contact_reports cr
+  Group By cr.id_number
 )
 
 , disqualified As (
@@ -116,16 +123,17 @@ task_detail As (
     , p.start_date
     , Count(Distinct
         Case
-          When p.start_date > to_date('08/31/2017', 'MM/DD/YYYY')
+          When p.start_date >= params.start_dt
             And p.stage_code = '7'
             Then p.prospect_id
           End
       ) As total_disqual
     From prospect p
+    Cross Join params
     Inner Join tms_stage tms
     On p.stage_code = tms.stage_code
     Where p.stage_code = '7'
-      And p.start_date > to_date('08/31/2017', 'MM/DD/YYYY')
+      And p.start_date >= params.start_dt
     Group By
       p.prospect_id
       , p.stage_code
@@ -253,7 +261,7 @@ Left Join tms_prospect_category
 Left Join tms_task
   On tms_task.task_code = task_detail.task_code
 Left Join latest_contact lr
-  On lr.prospect_id = p.prospect_id
+  On lr.id_number = pe.id_number
 Left Join contact_counts cc
   On cc.task_responsible_id = task_detail.task_responsible_id
   And cc.task_id = task_detail.task_id
