@@ -5,8 +5,8 @@ With
 -- Update dates before running
 dts As (
   Select
-      to_date('20190510', 'yyyymmdd') As start_dt
-    , to_date('20190517', 'yyyymmdd') As stop_dt
+      to_date('20190531', 'yyyymmdd') As start_dt
+    , to_date('20190607', 'yyyymmdd') As stop_dt
   From DUAL
 )
 
@@ -22,11 +22,11 @@ Select
   , NULL As empty_column
   , gft.legal_amount
   , prp.proposal_manager
-From v_ksm_giving_trans gft
+From rpt_pbh634.v_ksm_giving_trans gft
 Cross Join dts
 Inner Join entity On gft.id_number = entity.id_number
 Inner Join tms_record_type tms_rt On tms_rt.record_type_code = entity.record_type_code
-Left Join v_ksm_proposal_history prp On gft.proposal_id = prp.proposal_id
+Left Join rpt_pbh634.v_ksm_proposal_history prp On gft.proposal_id = prp.proposal_id
 Where
   -- Only in the date range
   gft.date_of_record Between dts.start_dt And dts.stop_dt

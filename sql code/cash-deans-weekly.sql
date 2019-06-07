@@ -6,11 +6,11 @@ cal As (
   Select curr_fy - 1 As prev_fy,
     curr_fy,
     yesterday As prev_day
-  From v_current_calendar
+  From rpt_pbh634.v_current_calendar
 ),
 ytd_dts As (
   Select to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1 As dt,
-    ksm_pkg.fytd_indicator(to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1,
+    rpt_pbh634.ksm_pkg.fytd_indicator(to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1,
       - (trunc(sysdate) - cal.prev_day)) As ytd_ind
   From cal
   Connect By
