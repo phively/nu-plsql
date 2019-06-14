@@ -67,7 +67,6 @@ params As (
     , id_number
     , contact_date
   From rpt_pbh634.v_contact_reports_fast
-  -- The v_ksm_visits view filters dates -- only current and previous FY
 )
 
 , contact_counts As (

@@ -53,7 +53,13 @@ tms_trans As (
 , pledge_counts As (
   Select
     pledge.pledge_pledge_number
-    , max(plgd.prim_pledge_remaining_balance) As pledge_balance
+    , max(
+        Case
+          When pp.prim_pledge_status = 'A'
+            Then pp.prim_pledge_amount - pp.prim_pledge_amount_paid
+          Else 0
+          End
+      ) As pledge_balance
     , sum(pledge.pledge_amount)
       As pledge_total
     , sum(Case When allocation.alloc_school = 'KM' Then pledge.pledge_amount Else 0 End)
@@ -67,8 +73,8 @@ tms_trans As (
     On ksm_pledges.pledge_pledge_number = pledge.pledge_pledge_number
   Inner Join allocation
     On allocation.allocation_code = pledge.pledge_allocation_name
-  Inner Join table(ksm_pkg.plg_discount) plgd
-    On plgd.pledge_number = pledge.pledge_pledge_number
+  Inner Join primary_pledge pp
+    On pp.prim_pledge_number = pledge.pledge_pledge_number
   Group By pledge.pledge_pledge_number
 )
 
