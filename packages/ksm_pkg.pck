@@ -130,6 +130,7 @@ Type household Is Record (
   , xsequence address.xsequence%type
   , household_city address.city%type
   , household_state address.state_code%type
+  , household_zip address.zipcode%type
   , household_geo_codes varchar2(512)
   , household_country tms_country.short_desc%type
   , household_continent varchar2(80)
@@ -1293,6 +1294,7 @@ With
       , addr.xsequence
       , addr.city As pref_city
       , addr.state_code As pref_state
+      , addr.zipcode
       , geo.geo_codes
       , cont.country As pref_country
       , cont.continent As pref_continent
@@ -1445,6 +1447,7 @@ With
     , pref_addr.xsequence
     , pref_addr.pref_city
     , pref_addr.pref_state
+    , pref_addr.zipcode
     , pref_addr.geo_codes
     , pref_addr.pref_country
     , pref_addr.pref_continent
