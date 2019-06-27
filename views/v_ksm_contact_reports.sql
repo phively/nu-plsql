@@ -45,6 +45,8 @@ pe As (
 )
 
 /* Main query */
+(
+-- id_number
 Select
   contact_rpt_credit.id_number As credited
   , contacter.report_name As credited_name
@@ -59,8 +61,6 @@ Select
   , contact_report.id_number
   , contact_report.contacted_name
   , contacted_entity.report_name
-  , contact_report.id_number_2
-  , contacted_entity2.report_name As report_name_2
   , contact_report.prospect_id
   , pe.primary_ind
   , prospect.prospect_name
@@ -105,7 +105,6 @@ Inner Join tms_contact_rpt_type tms_ctype On tms_ctype.contact_type = contact_re
 Inner Join nu_prs_trp_prospect prs On prs.id_number = contact_report.id_number
 Inner Join entity contacted_entity On contacted_entity.id_number = contact_report.id_number
 Inner Join entity contacter On contacter.id_number = contact_rpt_credit.id_number
-Left Join entity contacted_entity2 On contacted_entity2.id_number = contact_report.id_number_2
 Left Join tms_contact_rpt_credit_type tms_crc On tms_crc.contact_credit_type = contact_rpt_credit.contact_credit_type
 Left Join rating_bins eval On eval.rating_desc = prs.evaluation_rating
 Left Join rating_bins uor On uor.rating_desc = prs.officer_rating
@@ -114,6 +113,75 @@ Left Join table(ksm_pkg.tbl_frontline_ksm_staff) ksm_staff On ksm_staff.id_numbe
 Left Join prospect On prospect.prospect_id = prs.prospect_id
 Left Join pe On pe.id_number = prs.id_number
 Left Join table(ksm_pkg.tbl_university_strategy) strat On strat.prospect_id = contact_report.prospect_id
+) Union All (
+-- id_number_2
+Select
+  contact_rpt_credit.id_number As credited
+  , contacter.report_name As credited_name
+  , tms_crc.contact_credit_type
+  , tms_crc.short_desc As contact_credit_desc
+  , ard_staff.job_title
+  , ard_staff.employer_unit
+  , tms_ctype.short_desc As contact_type
+  , tms_cpurp.short_desc As contact_purpose
+  -- Contact report fields
+  , contact_report.report_id
+  , contact_report.id_number_2 As id_number
+  , contacted_entity2.pref_mail_name As contacted_name
+  , contacted_entity2.report_name As report_name
+  , contact_report.prospect_id
+  , pe.primary_ind
+  , prospect.prospect_name
+  , prospect.prospect_name_sort
+  , contact_report.contact_date
+  , rpt_pbh634.ksm_pkg.get_fiscal_year(contact_report.contact_date) As fiscal_year
+  , contact_report.description
+  , dbms_lob.substr(contact_report.summary, 2000, 1) As summary
+  -- Prospect fields
+  , prs.officer_rating
+  , prs.evaluation_rating
+  , strat.university_strategy
+  -- Custom variables
+  , Case When ard_staff.report_name Is Not Null Or ksm_staff.report_name Is Not Null Then 'Y' End
+    As ard_staff
+  , Case When ksm_staff.report_name Is Not Null Then 'Y' End
+    As frontline_ksm_staff
+  , Case
+      When tms_ctype.contact_type In ('A', 'E') Then 'Attempted, E-mail, or Social'
+      Else tms_ctype.short_desc
+    End As contact_type_category
+  , Case When contact_report.contact_type = 'V' Then
+      Case When contact_report.contact_purpose_code = '1' Then 'Qualification' Else 'Visit' End
+      Else Null
+    End As visit_type
+  , Case
+      When officer_rating <> ' ' Then uor.numeric_bin
+      When evaluation_rating <> ' ' Then eval.numeric_bin
+      Else 0
+    End As rating_bin
+  , cal.curr_fy
+  , cal.prev_fy_start
+  , cal.curr_fy_start
+  , cal.next_fy_start
+  , cal.yesterday
+  , cal.ninety_days_ago
+From contact_report
+Cross Join v_current_calendar cal
+Inner Join contact_rpt_credit On contact_rpt_credit.report_id = contact_report.report_id
+Inner Join tms_contact_rpt_purpose tms_cpurp On tms_cpurp.contact_purpose_code = contact_report.contact_purpose_code
+Inner Join tms_contact_rpt_type tms_ctype On tms_ctype.contact_type = contact_report.contact_type
+Inner Join nu_prs_trp_prospect prs On prs.id_number = contact_report.id_number
+Inner Join entity contacter On contacter.id_number = contact_rpt_credit.id_number
+Inner Join entity contacted_entity2 On contacted_entity2.id_number = contact_report.id_number_2
+Left Join tms_contact_rpt_credit_type tms_crc On tms_crc.contact_credit_type = contact_rpt_credit.contact_credit_type
+Left Join rating_bins eval On eval.rating_desc = prs.evaluation_rating
+Left Join rating_bins uor On uor.rating_desc = prs.officer_rating
+Left Join ard_staff On ard_staff.id_number = contact_rpt_credit.id_number
+Left Join table(ksm_pkg.tbl_frontline_ksm_staff) ksm_staff On ksm_staff.id_number = ard_staff.id_number
+Left Join prospect On prospect.prospect_id = prs.prospect_id
+Left Join pe On pe.id_number = prs.id_number
+Left Join table(ksm_pkg.tbl_university_strategy) strat On strat.prospect_id = contact_report.prospect_id
+)
 ;
 
 /****************************
@@ -149,8 +217,6 @@ Select
   , vcrf.id_number
   , contacted_name
   , vcrf.report_name
-  , vcrf.id_number_2
-  , vcrf.report_name_2
   , hh.household_id
   , prospect_id
   , primary_ind
@@ -200,8 +266,6 @@ Select
   , id_number
   , contacted_name
   , report_name
-  , id_number_2
-  , report_name_2
   , household_id
   , prospect_id
   , primary_ind
@@ -250,8 +314,6 @@ Select
   , id_number
   , contacted_name
   , report_name
-  , id_number_2
-  , report_name_2
   , household_id
   , prospect_id
   , primary_ind
