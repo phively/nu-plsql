@@ -1,5 +1,61 @@
+-- Event organizers
+Create Or Replace View v_nu_event_organizers As
+
+Select Distinct
+  -- Use event_organizer if possible, otherwise event_organization
+    Case
+      When entity.report_name Is Not Null
+        Then eo.id_number
+      Else eo.organization_id
+      End
+    As event_organizer_id
+  , Case
+      When entity.report_name Is Not Null
+        Then entity.report_name
+      Else ento.report_name
+      End
+    As event_organizer_name
+  , Case
+      When lower(entity.report_name) Like lower('%Kellogg%')
+        And entity.person_or_org = 'O'
+        Then 'Y'
+      When lower(ento.report_name) Like lower('%Kellogg%')
+        And ento.person_or_org = 'O'
+        Then 'Y'
+      End
+    As kellogg_club
+From ep_event_organizer eo
+Left Join entity
+  On entity.id_number = eo.id_number
+Left Join entity ento
+  On ento.id_number = eo.organization_id
+;
+
 -- Events summary from ep_events
 Create Or Replace View v_nu_events As
+
+With
+
+-- Event IDs with a KSM organizer, OR a KSM organization
+ksm_organizers As (
+  (
+    -- KSM event organizer
+    Select
+      eo.event_id
+    From v_nu_event_organizers neo
+    Left Join ep_event_organizer eo
+      On eo.id_number = neo.event_organizer_id
+    Where neo.kellogg_club = 'Y'
+  ) Union (
+    -- KSM event organization
+    Select
+      eo.event_id
+    From v_nu_event_organizers neo
+    Left Join ep_event_organizer eo
+      On eo.organization_id = neo.event_organizer_id
+    Where neo.kellogg_club = 'Y'
+  )
+)
 
 Select Distinct
   event.event_id
@@ -35,8 +91,7 @@ Select Distinct
   , Case
       When event.event_name Like '%KSM%'
         Or event.event_name Like '%Kellogg%'
-        Or evo.organization_id = '0000697410' -- Kellogg Event Admin ID
-        Or lower(entity.report_name) Like lower('%Kellogg%') -- Kellogg club event organizers
+        Or ksm_org.event_id Is Not Null
         Then 'Y'
       End
     As ksm_event
@@ -51,10 +106,8 @@ Select Distinct
 From ep_event event
 Left Join tms_event_type tms_et
   On event.event_type = tms_et.event_type
-Left Join ep_event_organizer evo
-  On event.event_id = evo.event_id
-Left Join entity
-  On entity.id_number = evo.organization_id
+Left Join ksm_organizers ksm_org
+  On event.event_id = ksm_org.event_id
 Left Join ep_event master_event
   On master_event.event_id = event.master_event_id
 ;
