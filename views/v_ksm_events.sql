@@ -36,28 +36,56 @@ Create Or Replace View v_nu_events As
 
 With
 
--- Event IDs with a KSM organizer, OR a KSM organization
-ksm_organizers As (
-  (
-    -- KSM event organizer
-    Select
-      eo.event_id
-    From v_nu_event_organizers neo
-    Left Join ep_event_organizer eo
-      On eo.id_number = neo.event_organizer_id
-    Where neo.kellogg_club = 'Y'
-  ) Union (
-    -- KSM event organization
-    Select
-      eo.event_id
-    From v_nu_event_organizers neo
-    Left Join ep_event_organizer eo
-      On eo.organization_id = neo.event_organizer_id
-    Where neo.kellogg_club = 'Y'
-  )
+-- All event organizers
+organizers As (
+  Select
+    eo.event_id
+    , Case
+        When neo1.event_organizer_id Is Not Null
+          Then neo1.event_organizer_id
+        Else neo2.event_organizer_id
+      End
+      As event_organizer_id
+    , Case
+        When neo1.event_organizer_id Is Not Null
+          Then neo1.event_organizer_name
+        Else neo2.event_organizer_name
+        End
+      As event_organizer_name
+    , Case
+        When neo1.event_organizer_id Is Not Null
+          Then neo1.kellogg_club
+        Else neo2.kellogg_club
+        End
+      As kellogg_club
+  From ep_event_organizer eo
+  Left Join v_nu_event_organizers neo1
+    On eo.id_number = neo1.event_organizer_id
+  Left Join v_nu_event_organizers neo2
+    On eo.organization_id = neo2.event_organizer_id
 )
 
-Select Distinct
+-- Organizers concatenated
+, organizers_concat As (
+  Select
+    event_id
+    , max(kellogg_club)
+      As kellogg_organizers
+    , Listagg(event_organizer_name, '; ') Within Group (Order By event_organizer_name)
+      As event_organizers
+  From organizers
+  Group By event_id
+)
+
+-- Event IDs with a KSM organizer, OR a KSM organization
+, ksm_organizers As (
+  Select Distinct
+    event_id
+  From organizers
+  Where kellogg_club = 'Y'
+)
+
+Select
   event.event_id
   , event.event_name
   , event.event_type
@@ -95,6 +123,9 @@ Select Distinct
         Then 'Y'
       End
     As ksm_event
+  -- Organizers
+  , organizers_concat.event_organizers
+  , organizers_concat.kellogg_organizers
   -- Master event information
   , event.master_event_id
   , master_event.event_name
@@ -110,6 +141,8 @@ Left Join ksm_organizers ksm_org
   On event.event_id = ksm_org.event_id
 Left Join ep_event master_event
   On master_event.event_id = event.master_event_id
+Left Join organizers_concat
+  On organizers_concat.event_id = event.event_id
 ;
 
 -- Event participations
