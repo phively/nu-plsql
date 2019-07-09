@@ -195,8 +195,13 @@ ksm_deg As (
       As rating_code
     , max(tms_rating.short_desc) keep(dense_rank First Order By evaluation_date Desc NULLS Last, evaluation.rating_code Asc)
       As uor
+    , max(entity.id_number) keep(dense_rank First Order By evaluation_date Desc NULLS Last, evaluation.rating_code Asc)
+      As uor_evaluator_id
+    , max(entity.report_name) keep(dense_rank First Order By evaluation_date Desc NULLS Last, evaluation.rating_code Asc)
+      As uor_evaluator
   From evaluation
   Left Join tms_rating On tms_rating.rating_code = evaluation.rating_code
+  Left Join entity On entity.id_number = evaluation.evaluator_id_number
   Where evaluation_type = 'UR'
     And active_ind = 'Y' -- University overall rating
   Group By
@@ -276,6 +281,8 @@ Select Distinct
   , prs.officer_rating
   , uor.uor
   , uor.uor_date
+  , uor.uor_evaluator_id
+  , uor.uor_evaluator
   , af_10k_model.description As af_10k_model
   , af_10k_model.score As af_10k_score
   , mgo_model.id_segment As mgo_id_model
