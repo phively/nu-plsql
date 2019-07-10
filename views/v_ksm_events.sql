@@ -77,6 +77,20 @@ organizers As (
   Group By event_id
 )
 
+-- Event codes concatenated
+, event_codes_concat As (
+  Select
+    ec.event_id
+    , Listagg(tms_ec.short_desc || ' (' || ec.event_code || ')', '; ') Within Group (Order By ec.date_added)
+      As event_codes_concat
+    , max(Case When tms_ec.short_desc Like '%KSM%' Or tms_ec.short_desc Like '%Kellogg%' Then 'Y' End)
+      As ksm_event_codes
+  From ep_event_codes ec
+  Inner Join tms_event_code tms_ec
+    On tms_ec.event_code = ec.event_code
+  Group By event_id
+)
+
 -- Event IDs with a KSM organizer, OR a KSM organization
 , ksm_organizers As (
   Select Distinct
@@ -120,12 +134,15 @@ Select
       When event.event_name Like '%KSM%'
         Or event.event_name Like '%Kellogg%'
         Or ksm_org.event_id Is Not Null
+        Or event_codes_concat.ksm_event_codes Is Not Null
         Then 'Y'
       End
     As ksm_event
   -- Organizers
   , organizers_concat.event_organizers
   , organizers_concat.kellogg_organizers
+  -- Event codes
+  , event_codes_concat.event_codes_concat
   -- Master event information
   , event.master_event_id
   , master_event.event_name
@@ -143,6 +160,8 @@ Left Join ep_event master_event
   On master_event.event_id = event.master_event_id
 Left Join organizers_concat
   On organizers_concat.event_id = event.event_id
+Left Join event_codes_concat
+  On event_codes_concat.event_id = event.event_id
 ;
 
 -- Event participations
