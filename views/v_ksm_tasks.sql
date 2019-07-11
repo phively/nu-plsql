@@ -31,8 +31,10 @@ cal As (
     , task.source_id_number
     , task.owner_id_number
     , tr.id_number As task_responsible_id
-    , task.date_added
-    , task.date_modified
+    , trunc(task.date_added)
+      As date_added
+    , trunc(task.date_modified)
+      As date_modified
     , task.operator_name
   From task
   Cross Join cal
@@ -91,6 +93,8 @@ Select
       When task_detail.task_status_code = 4 Then trunc(task_detail.date_modified) -- 4 = completed
       Else NULL
     End As stop_dt_calc
+  , task_detail.date_added
+  , task_detail.date_modified
   , Case
       When task_detail.task_status_code = 4 Then 'Inactive'
       When task_detail.completed_date < cal.today Then 'Inactive'
