@@ -54,6 +54,7 @@ Select
   , tms_crc.short_desc As contact_credit_desc
   , ard_staff.job_title
   , ard_staff.employer_unit
+  , tms_ctype.contact_type As contact_type_code
   , tms_ctype.short_desc As contact_type
   , tms_cpurp.short_desc As contact_purpose
   -- Contact report fields
@@ -122,6 +123,7 @@ Select
   , tms_crc.short_desc As contact_credit_desc
   , ard_staff.job_title
   , ard_staff.employer_unit
+  , tms_ctype.contact_type As contact_type_code
   , tms_ctype.short_desc As contact_type
   , tms_cpurp.short_desc As contact_purpose
   -- Contact report fields
@@ -210,6 +212,7 @@ Select
   , contact_credit_desc
   , job_title
   , employer_unit
+  , contact_type_code
   , contact_type
   , contact_purpose
   -- Contact report fields
@@ -260,6 +263,7 @@ Select
   , contact_credit_desc
   , job_title
   , employer_unit
+  , contact_type_code
   , contact_type
   , contact_purpose
   , report_id
