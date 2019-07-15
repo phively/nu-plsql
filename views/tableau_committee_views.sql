@@ -1,4 +1,4 @@
-Create Or Replace View Advisory_Committees_Report As
+Create Or Replace View vt_advisory_committees_report As
 
 With
 
