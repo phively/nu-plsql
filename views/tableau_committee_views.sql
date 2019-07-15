@@ -2,126 +2,7 @@ Create Or Replace View rpt_pbh634.vt_advisory_committees_report As
 
 With
 
-ksm_allocations As (
-  Select allocation_code
-  From allocation
-  Where alloc_school = 'KM'
-)
-
-, af_allocations As (
-  Select allocation_code
-  From table(rpt_pbh634.ksm_pkg.tbl_alloc_annual_fund_ksm)
-)
-
-, ksm_campaign_giving As (
-  Select *
-  From rpt_pbh634.v_ksm_giving_campaign
-)
-
-, af_giving As (
-  Select
-    id_number
-    , sum(legal_amount) As legal_total
-    , sum(credit_amount) As credit_total
-  From nu_gft_trp_gifttrans
-  Inner Join af_allocations
-    On af_allocations.allocation_code = nu_gft_trp_gifttrans.allocation_code
-  Where tx_gypm_ind != 'P'
-    And credit_amount > 0
-    And fiscal_year = (Select curr_fy From rpt_pbh634.v_current_calendar)
-  Group By id_number
-)
-
-, af_giving_fy_2 As (
-  Select
-    id_number
-    , sum(legal_amount) As legal_total
-    , sum(credit_amount) As credit_total
-  From nu_gft_trp_gifttrans
-  Inner Join af_allocations
-    On af_allocations.allocation_code = nu_gft_trp_gifttrans.allocation_code
-  Where tx_gypm_ind != 'P'
-    And credit_amount > 0
-    And fiscal_year = (Select curr_fy From rpt_pbh634.v_current_calendar) - 2
-  Group By id_number
-),
-
-af_giving_fy_1 As (
-  Select
-    id_number
-    , sum(legal_amount) As legal_total
-    , sum(credit_amount) As credit_total
-  From nu_gft_trp_gifttrans
-  Inner Join af_allocations
-    On af_allocations.allocation_code = nu_gft_trp_gifttrans.allocation_code
-  Where tx_gypm_ind != 'P'
-    And credit_amount > 0
-    And fiscal_year = (Select curr_fy From rpt_pbh634.v_current_calendar) - 1
-  Group By id_number
-)
-
-, af_giving_currentfy As (
-  Select
-    id_number
-    , sum(legal_amount) As legal_total
-    , sum(credit_amount) As credit_total
-  From nu_gft_trp_gifttrans
-  Inner Join af_allocations
-    On af_allocations.allocation_code = nu_gft_trp_gifttrans.allocation_code
-  Where tx_gypm_ind != 'P'
-    And credit_amount > 0
-    And fiscal_year = (Select curr_fy From rpt_pbh634.v_current_calendar)
-  Group By id_number
-)
-
-, ksm_lt_giving As (
-  Select *
-  From rpt_pbh634.v_ksm_giving_lifetime
-)
-
-, ksm_giving As (
-  Select
-    id_number
-    , sum(legal_amount) As legal_total
-    , sum(credit_amount) As credit_total
-  From nu_gft_trp_gifttrans nugft
-  Inner Join ksm_allocations
-    On ksm_allocations.allocation_code = nugft.allocation_code
-  Where tx_gypm_ind != 'Y'
-    And credit_amount > 0 
-    And nugft.fiscal_year = (Select curr_fy From rpt_pbh634.v_current_calendar)
-  GROUP BY ID_number
-)
-
-, ksm_giving_fy_1 As (
-  Select
-    id_number
-    , sum(legal_amount) As legal_total
-    , sum(credit_amount) As credit_total
-  From nu_gft_trp_gifttrans
-  Inner Join ksm_allocations
-    On ksm_allocations.allocation_code = nu_gft_trp_gifttrans.allocation_code
-  Where tx_gypm_ind != 'Y'
-    And credit_amount > 0
-    And fiscal_year = (Select curr_fy From rpt_pbh634.v_current_calendar) - 1
-  Group By id_number
-)
-
-, ksm_giving_fy_2 As (
-  Select
-    id_number
-    , sum(legal_amount) As legal_total
-    , sum(credit_amount) As credit_total
-  From nu_gft_trp_gifttrans
-  Inner Join ksm_allocations
-    On ksm_allocations.allocation_code = nu_gft_trp_gifttrans.allocation_code
-  Where tx_gypm_ind != 'Y'
-    And credit_amount > 0
-    And fiscal_year = (Select curr_fy From rpt_pbh634.v_current_calendar) - 2
-  Group By id_number
-)
-
-, AMP As (
+AMP As (
   Select
     id_number
     , short_desc
@@ -279,54 +160,23 @@ af_giving_fy_1 As (
   Select * From GAB
 )
 
-, KSMdegree As (
-  Select
-    id_number
-    , degrees_concat
-  From table(rpt_pbh634.ksm_pkg.tbl_entity_degrees_concat_ksm)
-)
-
-, NU_LT_Giving As (
-  Select
-    prs.id_number
-    , prs.giving_total
-  From nu_prs_trp_prospect prs
-  Inner Join All_Committees
-    On All_Committees.id_number = prs.id_number
-)
-
-, CFY_NULT_Giving As (
+, fy_nu_giving As (
   Select
     nugft.id_number
-    , sum(nugft.credit_amount) As cfy_nult_giving
+    , sum(Case When fiscal_year = cal.curr_fy - 0 Then nugft.credit_amount Else 0 End)
+      As cfy_nult_giving
+    , sum(Case When fiscal_year = cal.curr_fy - 1 Then nugft.credit_amount Else 0 End)
+      As lfy_nult_giving
+    , sum(Case When fiscal_year = cal.curr_fy - 2 Then nugft.credit_amount Else 0 End)
+      As lfy2_nult_giving
   From nu_gft_trp_gifttrans nugft
-  Inner Join All_Committees On All_Committees.id_number = nugft.id_number
-  Where tx_gypm_ind != 'Y'
-    And fiscal_year = (Select curr_fy From rpt_pbh634.v_current_calendar)
+  Cross Join rpt_pbh634.v_current_calendar cal
+  Inner Join all_committees
+    On all_committees.id_number = nugft.id_number
+  Where tx_gypm_ind != 'Y' -- No pledge payments
+    And fiscal_year Between cal.curr_fy - 2 And cal.curr_fy
   Group By nugft.id_number
-)
-
-, LFY_NULT_Giving As (
-  Select
-    nugft.id_number
-    , sum(nugft.credit_amount) As lfy_nult_giving
-  From nu_gft_trp_gifttrans nugft
-  Inner Join All_Committees
-    On All_Committees.id_number = nugft.id_number
-  Where tx_gypm_ind != 'Y'
-    And fiscal_year = (Select curr_fy From rpt_pbh634.v_current_calendar) - 1
-  Group By nugft.id_number
-)
-
-, LFY2_NULT_Giving As (
-  Select
-    nugft.id_number
-    , sum(nugft.credit_amount) As lfy2_nult_giving
-  From nu_gft_trp_gifttrans nugft
-  Inner Join All_Committees
-    On All_Committees.id_number = nugft.id_number
-  Where tx_gypm_ind != 'Y' And fiscal_year = (Select curr_fy From rpt_pbh634.v_current_calendar) - 2
-  Group By nugft.ID_Number
+    
 )
 
 , ksmprop As (
@@ -365,7 +215,7 @@ af_giving_fy_1 As (
 Select Distinct
   prs.id_number
   , prs.pref_mail_name
-  , ksmdegree.degrees_concat
+  , v_entity_ksm_degrees.degrees_concat
   , prs.employer_name1
   , prs.business_title
   , prs.pref_city
@@ -377,18 +227,13 @@ Select Distinct
   , prs.evaluation_rating
   , prs.evaluation_date
   , prs.officer_rating
---      , All_Committee_Data.short_desc
---      , All_Committee_Data.start_dt
---      , All_Committee_Data.stop_dt
---      , All_Committee_Data.status
---      , All_Committee_Data.role
   , Case When gab.short_desc = 'KSM Global Advisory Board' Then 'Y' Else 'N' End
     As gab_ind
   , gab.start_dt As gab_start_date
   , gab.stop_dt As gab_stop_date
   , gab.status As gab_status
   , gab.role As gab_role
-  , Case When KFN.short_desc = 'Kellogg Finance Network' Then 'Y' Else 'N' End
+  , Case When kfn.short_desc = 'Kellogg Finance Network' Then 'Y' Else 'N' End
     As kfn_ind
   , kfn.start_dt As kfn_start_date
   , kfn.stop_dt As kfn_stop_date
@@ -400,12 +245,6 @@ Select Distinct
   , corpgov.stop_dt As corpgov_stop_date
   , corpgov.status As corpgov_status
   , corpgov.role As corpgov_role
---      , Case When WomenSummit.short_desc Like 'KSM Global W%s Summit' Then 'Y' Else 'N' 
---            End WomenSummit_Ind
---      , WomenSummit.Start_dt As "WS_START_DATE"
---      , Womensummit.Stop_dt As "WS_STOP_DATE"
---      , Womensummit.status As "WS_STATUS"
---      , Womensummit.Role As "WS_ROLE"
   , Case When divsummit.short_desc = 'KSM Chief Diversity Officer Summit' Then 'Y' Else 'N' End
     As divsummit_ind
   , divsummit.start_dt As ds_start_date
@@ -424,29 +263,23 @@ Select Distinct
   , amp.stop_dt As amp_stop_date
   , amp.status As amp_status
   , amp.role As amp_role
-  , nvl(nu_lt_giving.giving_total, 0) As nu_lt_giving
-  , nvl(cfy_nult_giving.cfy_nult_giving, 0) As cfy_nult_giving
-  , nvl(lfy_nult_giving.lfy_nult_giving, 0) As lfy_nult_giving
-  , nvl(lfy2_nult_giving.lfy2_nult_giving, 0) As lfy2_nult_giving
-  , nvl(ksm_lt_giving.credit_amount, 0) As ksm_lt_giving
-  , nvl(ksm_campaign_giving.campaign_giving,0) As ksm_campaign_giving
+  , nvl(prs.giving_total, 0) As nu_lt_giving
+  , nvl(fy_nu_giving.cfy_nult_giving, 0) As cfy_nult_giving
+  , nvl(fy_nu_giving.lfy_nult_giving, 0) As lfy_nult_giving
+  , nvl(fy_nu_giving.lfy2_nult_giving, 0) As lfy2_nult_giving
+  , nvl(v_ksm_giving_summary.ngc_lifetime_full_rec, 0) As ksm_lt_giving
+  , nvl(v_ksm_giving_campaign.campaign_giving,0) As ksm_campaign_giving
   , nvl(proposalcount.proposalcount, 0) As proposal_count
-  , nvl(af_giving_currentfy.legal_total, 0) As af_cfy_legal
-  , nvl(af_giving_currentfy.credit_total, 0) As af_cfy_sftcredit
-  , nvl(af_giving_fy_1.legal_total, 0) As af_lyfy_legal
-  , nvl(af_giving_fy_1.credit_total, 0) As af_lyfy_sftcredit
-  , nvl(af_giving_fy_2.legal_total, 0) As af_lyfy2_legal
-  , nvl(af_giving_fy_2.credit_total, 0) As af_lyfy2_sftcredit
-  , nvl(ksm_giving.legal_total, 0) As ksm_cfy_legal
-  , nvl(ksm_giving.credit_total, 0) As ksm_cfy_sftcredit
-  , nvl(ksm_giving_fy_1.legal_total, 0) As ksm_lyfy_legal
-  , nvl(ksm_giving_fy_1.credit_total, 0) As ksm_lyfy_sftcredit
-  , nvl(ksm_giving_fy_2.legal_total, 0) As ksm_lyfy2_legal
-  , nvl(ksm_giving_fy_2.credit_total, 0) As ksm_lyfy2_sftcredit
-  , nvl(ksm_campaign_giving.campaign_cfy, 0) As campaign_cfy
-  , nvl(ksm_campaign_giving.campaign_pfy1, 0) As campaign_pfy1 
-  , nvl(ksm_campaign_giving.campaign_pfy2, 0) As campaign_pfy2
-  , nvl(ksm_campaign_giving.campaign_pfy3, 0) As campaign_pfy3
+  , nvl(v_ksm_giving_summary.af_cfy, 0) As af_cfy_sftcredit
+  , nvl(v_ksm_giving_summary.af_pfy1, 0) As af_lyfy_sftcredit
+  , nvl(v_ksm_giving_summary.af_pfy2, 0) As af_lyfy2_sftcredit
+  , nvl(v_ksm_giving_summary.ngc_cfy, 0) As ksm_cfy_sftcredit
+  , nvl(v_ksm_giving_summary.ngc_pfy1, 0) As ksm_lyfy_sftcredit
+  , nvl(v_ksm_giving_summary.ngc_pfy2, 0) As ksm_lyfy2_sftcredit
+  , nvl(v_ksm_giving_campaign.campaign_cfy, 0) As campaign_cfy
+  , nvl(v_ksm_giving_campaign.campaign_pfy1, 0) As campaign_pfy1 
+  , nvl(v_ksm_giving_campaign.campaign_pfy2, 0) As campaign_pfy2
+  , nvl(v_ksm_giving_campaign.campaign_pfy3, 0) As campaign_pfy3
 From nu_prs_trp_prospect prs
 Inner Join all_committee_data
   On all_committee_data.id_number = prs.id_number
@@ -466,34 +299,14 @@ Left Join kfn
   On kfn.id_number = all_committees.id_number
 Left Join gab
   On gab.id_number = all_committees.id_number
-Left Join ksmdegree
-  On ksmdegree.id_number = prs.id_number
+Left Join rpt_pbh634.v_entity_ksm_degrees
+  On v_entity_ksm_degrees.id_number = prs.id_number
 Left Join proposalcount
   On proposalcount.prospect_id = prs.prospect_id
-Left Join af_giving_currentfy
-  On all_committees.id_number = af_giving_currentfy.id_number
-Left Join af_giving_fy_2
-  On all_committees.id_number = af_giving_fy_2.id_number
-Left Join af_giving_fy_1
-  On all_committees.id_number = af_giving_fy_1.id_number
-Left Join ksm_giving
-  On all_committees.id_number = ksm_giving.id_number
-Left Join ksm_giving_fy_1
-  On all_committees.id_number = ksm_giving_fy_1.id_number
-Left Join ksm_giving_fy_2
-  On all_committees.id_number = ksm_giving_fy_2.id_number
-Left Join ksm_campaign_giving
-  On all_committees.id_number = ksm_campaign_giving.id_number
-Left Join ksm_lt_giving
-  On all_committees.id_number = ksm_lt_giving.id_number
-Left Join nu_lt_giving
-  On all_committees.id_number = nu_lt_giving.id_number
-Left Join ksm_campaign_giving
-  On all_committees.id_number = ksm_campaign_giving.id_number
-Left Join cfy_nult_giving
-  On all_committees.id_number = cfy_nult_giving.id_number
-Left Join lfy_nult_giving
-  On all_committees.id_number = lfy_nult_giving.id_number
-Left Join lfy2_nult_giving
-  On all_committees.id_number = lfy2_nult_giving.id_number
+Left Join rpt_pbh634.v_ksm_giving_summary
+  On v_ksm_giving_summary.id_number = all_committees.id_number
+Left Join v_ksm_giving_campaign
+  On all_committees.id_number = v_ksm_giving_campaign.id_number
+Left Join fy_nu_giving
+  On all_committees.id_number = fy_nu_giving.id_number
 ;
