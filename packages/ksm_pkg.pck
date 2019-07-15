@@ -658,6 +658,12 @@ Function tbl_committee_KFN
 Function tbl_committee_trustee
   Return t_committee_members Pipelined;
 
+Function tbl_committee_healthcare
+  Return t_committee_members Pipelined;
+  
+Function tbl_committee_WomensLeadership
+  Return t_committee_members Pipelined;
+
 /*************************************************************************
 End of package
 *************************************************************************/
@@ -2474,6 +2480,8 @@ committee_DivSummit Constant committee.committee_code%type := 'KCDO'; -- KSM chi
 committee_RealEstCouncil Constant committee.committee_code%type := 'KREAC'; -- Real Estate Advisory Council code
 committee_AMP Constant committee.committee_code%type := 'KAMP'; -- AMP Advisory Council code
 committee_trustee Constant committee.committee_code%type := 'TBOT'; -- NU Board of Trustees code
+committee_healthcare Constant committee.committee_code%type := 'HAK'; -- Healthcare at Kellogg Advisory Council
+committee_WomensLeadership Constant committee.committee_code%type := 'KWLC'; -- Women's Leadership Advisory Council
 
 /* Segments */
 seg_af_10k Constant segment.segment_code%type := 'KMAA_'; -- AF $10K model pattern
@@ -3564,6 +3572,32 @@ Function tbl_special_handling_concat
       End Loop;
       Return;
     End;
+
+    -- Healthcare
+    Function tbl_committee_healthcare
+      Return t_committee_members Pipelined As
+      committees t_committee_members;
+      
+      Begin
+        committees := committee_members (my_committee_cd => committee_healthcare);
+        For i in 1..committees.count Loop
+          Pipe row(committees(i));
+        End Loop;
+        Return;
+      End;
+
+    -- Women's leadership
+    Function tbl_committee_WomensLeadership
+      Return t_committee_members Pipelined As
+      committees t_committee_members;
+      
+      Begin
+        committees := committee_members (my_committee_cd => committee_WomensLeadership);
+        For i in 1..committees.count Loop
+          Pipe row(committees(i));
+        End Loop;
+        Return;
+      End;
 
 End ksm_pkg;
 /
