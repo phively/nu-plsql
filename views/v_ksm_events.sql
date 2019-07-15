@@ -29,6 +29,8 @@ Left Join entity
   On entity.id_number = eo.id_number
 Left Join entity ento
   On ento.id_number = eo.organization_id
+Where entity.person_or_org Is Null
+  Or entity.person_or_org = 'O'
 ;
 
 -- Events summary from ep_events
