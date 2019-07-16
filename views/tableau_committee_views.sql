@@ -2,6 +2,7 @@ Create Or Replace View rpt_pbh634.vt_advisory_committees_report As
 
 With
 
+-- Committees to be included
 AMP As (
   Select
     id_number
@@ -160,6 +161,7 @@ AMP As (
   Select * From GAB
 )
 
+-- NU yearly NGC giving amounts
 , fy_nu_giving As (
   Select
     nugft.id_number
@@ -179,31 +181,25 @@ AMP As (
     
 )
 
-, ksmprop As (
-  Select proposal_ID
-  From proposal_purpose
-  Where program_code = 'KM' 
-)
-
-, ActiveProposals As (
+-- KSM proposal data
+, activeproposals As (
   Select
-    p.proposal_id
-    , p.prospect_id
+    phf.proposal_id
+    , phf.prospect_id
     , Case
-        When p.original_ask_amt >= 100000
-          Or p.ask_amt >= 100000
-          Or p.anticipated_amt >= 100000
+        When phf.total_original_ask_amt >= 100000
+          Or phf.total_ask_amt >= 100000
+          Or phf.total_anticipated_amt >= 100000
           Then 'Y'
         Else 'N'
         End
-      As MajorGift
-  From proposal p
-  Inner Join ksmprop
-    On ksmprop.proposal_id = p.proposal_id
-  Where active_ind = 'Y'
+      As majorgift
+  From v_proposal_history_fast phf
+  Where phf.ksm_proposal_ind = 'Y'
+    And phf.proposal_active_calc = 'Active'
 )
 
-, ProposalCount As (
+, proposalcount As (
   Select
     prospect_id
     , count(proposal_id) As proposalcount
@@ -212,6 +208,7 @@ AMP As (
   Group By prospect_id
 )
 
+-- Main query
 Select Distinct
   prs.id_number
   , prs.pref_mail_name
