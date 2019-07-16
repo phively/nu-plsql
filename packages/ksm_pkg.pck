@@ -78,6 +78,7 @@ Type degreed_alumni Is Record (
 /* Committee member list, for committee results */
 Type committee_member Is Record (
   id_number committee.id_number%type
+  , committee_code committee_header.committee_code%type
   , short_desc committee_header.short_desc%type
   , start_dt committee.start_dt%type
   , stop_dt committee.stop_dt%type
@@ -877,6 +878,7 @@ Cursor c_current_calendar (fy_start_month In integer, py_start_month In integer)
 Cursor c_committee_members (my_committee_cd In varchar2) Is
   Select
     comm.id_number
+    , comm.committee_code
     , hdr.short_desc
     , comm.start_dt
     , comm.stop_dt
