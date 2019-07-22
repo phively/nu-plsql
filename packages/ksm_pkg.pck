@@ -2853,27 +2853,42 @@ Function get_entity_address(id In varchar2, field In varchar2, debug In Boolean 
 Function get_number_from_dollar(str In varchar2) 
   Return number Is
   -- Delcarations
+  trimmed varchar2(32);
+  mult number;
   amt number;
   
   Begin
+    -- Regular expression: extract string starting with $ up to the last digit, period, or comma,
     Select
-      -- Regular expression: extract string starting with $ up to the last digit, period, or comma,
-      -- replace K with 000 and M with 000000, then strip the $ and commas and treat as numeric
-      to_number( -- Convert string to numeric
+      -- Target substring starts with a dollar sign and may contain 0-9,.KMB
+      regexp_substr(upper(str), '\$[0-9,KMB\.]*')
+    Into trimmed
+    From DUAL;
+    
+    -- Look for suffixes K and M and B and calculate the appropriate multiplier
+    Select
+      Case
+        When trimmed Like '%K%' Then 1E3 -- K = thousand = 1,000
+        When trimmed Like '%M%' Then 1E6 -- M = million = 1,000,000
+        When trimmed Like '%B%' Then 1E9 -- B = billion = 1,000,000,000
+        Else 1
+      End As mult
+    Into mult
+    From DUAL;
+    
+    -- Strip the $ and commas and letters and treat as numeric
+    Select
+      -- Convert string to numeric
+      to_number(
         regexp_replace(
-          regexp_replace(
-            regexp_replace(
-              -- Target substring starts with a dollar sign and may contain 0-9,.KM
-              regexp_substr(upper(str), '\$[0-9,KM\.]*')
-              , 'K', '000') -- Replace K with three 0s
-            , 'M', '000000') -- Replace M with six 0s
+          trimmed
           , '[^0-9\.]' -- Remove non-numeric characters
           , '') -- Replace non-numeric characters with null
         )
     Into amt
     From DUAL;
     
-    Return amt;  
+    Return amt * mult;
   End;
 
 /* Convert rating to numeric amount */
