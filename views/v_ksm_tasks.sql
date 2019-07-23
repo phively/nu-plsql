@@ -125,7 +125,7 @@ From prospect p
 Cross Join v_current_calendar cal
 Inner Join prospect_entity pe
   On p.prospect_id = pe.prospect_id
-Inner Join nu_prs_trp_prospect pp
+Left Join nu_prs_trp_prospect pp
   On pe.id_number = pp.id_number
 Inner Join task_detail
   On task_detail.prospect_id = pp.prospect_id

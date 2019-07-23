@@ -84,7 +84,7 @@ CC.Curr_PY_Start
 from rpt_pbh634.v_proposal_history_fast PHF
 Left Join Prospect_Entity PE
 ON PE.prospect_ID = PHF.prospect_id
-Inner join nu_prs_trp_prospect PP
+Left join nu_prs_trp_prospect PP
 ON PP.prospect_id = PHF.prospect_ID
 Cross Join rpt_pbh634.v_current_calendar CC
 Where PE.Primary_Ind = 'Y'

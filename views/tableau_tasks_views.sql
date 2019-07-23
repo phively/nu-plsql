@@ -49,7 +49,7 @@ params As (
     vgc.id_number
     , p_geocode_desc
   From rpt_dgz654.v_geo_code vgc
-  Inner Join nu_prs_trp_prospect p
+  Left Join nu_prs_trp_prospect p
     On p.id_number = vgc.id_number
   Inner Join task_detail td
     On td.prospect_id2 = p.prospect_id
@@ -232,7 +232,7 @@ Inner Join prospect_entity pe
   On p.prospect_id = pe.prospect_id
 Inner Join entity
   On entity.id_number = pe.id_number
-Inner Join nu_prs_trp_prospect pp
+Left Join nu_prs_trp_prospect pp
   On pe.id_number = pp.id_number
 Inner Join program_prospect pr
   On pr.prospect_id = pp.prospect_id

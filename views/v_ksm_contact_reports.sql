@@ -103,9 +103,9 @@ Cross Join v_current_calendar cal
 Inner Join contact_rpt_credit On contact_rpt_credit.report_id = contact_report.report_id
 Inner Join tms_contact_rpt_purpose tms_cpurp On tms_cpurp.contact_purpose_code = contact_report.contact_purpose_code
 Inner Join tms_contact_rpt_type tms_ctype On tms_ctype.contact_type = contact_report.contact_type
-Inner Join nu_prs_trp_prospect prs On prs.id_number = contact_report.id_number
 Inner Join entity contacted_entity On contacted_entity.id_number = contact_report.id_number
 Inner Join entity contacter On contacter.id_number = contact_rpt_credit.id_number
+Left Join nu_prs_trp_prospect prs On prs.id_number = contact_report.id_number
 Left Join tms_contact_rpt_credit_type tms_crc On tms_crc.contact_credit_type = contact_rpt_credit.contact_credit_type
 Left Join rating_bins eval On eval.rating_desc = prs.evaluation_rating
 Left Join rating_bins uor On uor.rating_desc = prs.officer_rating
@@ -172,9 +172,9 @@ Cross Join v_current_calendar cal
 Inner Join contact_rpt_credit On contact_rpt_credit.report_id = contact_report.report_id
 Inner Join tms_contact_rpt_purpose tms_cpurp On tms_cpurp.contact_purpose_code = contact_report.contact_purpose_code
 Inner Join tms_contact_rpt_type tms_ctype On tms_ctype.contact_type = contact_report.contact_type
-Inner Join nu_prs_trp_prospect prs On prs.id_number = contact_report.id_number
 Inner Join entity contacter On contacter.id_number = contact_rpt_credit.id_number
 Inner Join entity contacted_entity2 On contacted_entity2.id_number = contact_report.id_number_2
+Left Join nu_prs_trp_prospect prs On prs.id_number = contact_report.id_number
 Left Join tms_contact_rpt_credit_type tms_crc On tms_crc.contact_credit_type = contact_rpt_credit.contact_credit_type
 Left Join rating_bins eval On eval.rating_desc = prs.evaluation_rating
 Left Join rating_bins uor On uor.rating_desc = prs.officer_rating
