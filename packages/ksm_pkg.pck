@@ -133,6 +133,8 @@ Type household Is Record (
   , household_state address.state_code%type
   , household_zip address.zipcode%type
   , household_geo_codes varchar2(512)
+  , household_geo_primary geo_code.geo_code%type
+  , household_geo_primary_desc geo_code.description%type
   , household_country tms_country.short_desc%type
   , household_continent varchar2(80)
 );
@@ -1274,6 +1276,10 @@ With
       address.id_number
       , Listagg(trim(geo_code.description), '; ') Within Group (Order By geo_code.description Asc)
         As geo_codes
+      , min(geo_code.geo_code) keep(dense_rank First Order By geo_type.hierarchy_order Desc, address_geo.date_added Asc, geo_code.geo_code Asc)
+        As geo_code_primary
+      , min(geo_code.description) keep(dense_rank First Order By geo_type.hierarchy_order Desc, address_geo.date_added Asc, geo_code.geo_code Asc)
+        As geo_code_primary_desc
     From address
     Inner Join address_geo
       On address.id_number = address_geo.id_number
@@ -1304,6 +1310,8 @@ With
       , addr.state_code As pref_state
       , addr.zipcode
       , geo.geo_codes
+      , geo.geo_code_primary
+      , geo.geo_code_primary_desc
       , cont.country As pref_country
       , cont.continent As pref_continent
     From address addr
@@ -1457,6 +1465,8 @@ With
     , pref_addr.pref_state
     , pref_addr.zipcode
     , pref_addr.geo_codes
+    , pref_addr.geo_code_primary
+    , pref_addr.geo_code_primary_desc
     , pref_addr.pref_country
     , pref_addr.pref_continent
   From household
