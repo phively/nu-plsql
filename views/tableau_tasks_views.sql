@@ -44,19 +44,6 @@ params As (
     )
 )
 
-, p_geo_code As (
-  Select Distinct
-    vgc.id_number
-    , p_geocode_desc
-  From rpt_dgz654.v_geo_code vgc
-  Left Join nu_prs_trp_prospect p
-    On p.id_number = vgc.id_number
-  Inner Join task_detail td
-    On td.prospect_id2 = p.prospect_id
-  Where geo_status_code = 'A'
-  And vgc.addr_pref_ind = 'Y'
-)
-
 , contact_reports As (
   Select 
     credited
@@ -179,7 +166,7 @@ Select Distinct
   , pp.pref_zip
   , pp.preferred_country
   , tms_country.short_desc As pref_country_name
-  , gc.p_geocode_desc
+  , hh.household_geo_primary_desc As p_geocode_desc
   , task_detail.task_id
   , task_detail.task_code
   , tms_task.short_desc As task_code_desc
@@ -232,6 +219,8 @@ Inner Join prospect_entity pe
   On p.prospect_id = pe.prospect_id
 Inner Join entity
   On entity.id_number = pe.id_number
+Inner Join rpt_pbh634.v_entity_ksm_households hh
+  On hh.id_number = pe.id_number
 Left Join nu_prs_trp_prospect pp
   On pe.id_number = pp.id_number
 Inner Join program_prospect pr
@@ -267,8 +256,6 @@ Left Join latest_contact lr
 Left Join contact_counts cc
   On cc.task_responsible_id = task_detail.task_responsible_id
   And cc.task_id = task_detail.task_id
-Left Join p_geo_code gc
-On gc.id_number = pp.id_number
 Left Join disqualified d
   On d.prospect_id = p.prospect_id
 Left Join rpt_pbh634.v_ksm_model_mg mgo
