@@ -33,3 +33,10 @@ Create Or Replace View v_frontline_ksm_staff As
   Select fs.*
   From table(ksm_pkg.tbl_frontline_ksm_staff) fs
 ;
+
+Create Or Replace View v_entity_special_handling As
+-- View pulling together active special handling and mailing list codes for all entities with at least one
+-- Use ONLY for Kellogg mailings!
+  Select sh.*
+  From table(ksm_pkg.tbl_special_handling_concat) sh
+;
