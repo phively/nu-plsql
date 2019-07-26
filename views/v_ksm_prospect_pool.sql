@@ -167,7 +167,7 @@ ksm_deg As (
   Where record_status_code Not In ('D', 'X')
   ) Union (
   -- All living donors
-  Select Distinct gft.id_number
+  Select gft.id_number
   From v_ksm_giving_trans gft
   Inner Join entity On entity.id_number = gft.id_number
   Where entity.record_status_code Not In ('D', 'X')

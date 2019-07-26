@@ -76,7 +76,7 @@ geocode As (
   Select
     prospect_id
     , count(proposal_id) As open_proposals
-  From v_proposal_history
+  From v_proposal_history_fast
   Where proposal_active_calc = 'Active'
   Group By prospect_id
 )
@@ -133,7 +133,7 @@ geocode As (
     , min(ksm_or_univ_anticipated)
       keep(dense_rank First Order By close_date Asc, hierarchy_order Desc, date_modified Desc, proposal_id Asc)
       As next_ksm_anticipated
-  From v_ksm_proposal_history
+  From v_proposal_history_fast
   Where proposal_in_progress = 'Y'
     And ksm_proposal_ind = 'Y'
   Group By prospect_id
@@ -633,7 +633,7 @@ cal As (
     , cal.*
   From vt_ard_prospect_timeline tl
   Cross Join cal
-  Inner Join hh On hh.id_number =  tl.id_number
+  Inner Join hh On hh.id_number = tl.id_number
   Where start_date Between cal.bofy_prev And cal.eofy_next
     And primary_ind = 'Y'
 )
@@ -673,9 +673,9 @@ cal As (
     , substr(contact_type_category, 1, 1) As symbol
     -- Uniform calendar dates for axis alignment
     , cal.*
-  From v_ard_contact_reports cr
+  From v_contact_reports_fast cr
   Cross Join cal
-  Inner Join hh On hh.id_number =  cr.id_number
+  Inner Join hh On hh.id_number = cr.id_number
   Where contact_date Between cal.bofy_prev And cal.eofy_next
     And cr.ard_staff = 'Y'
 )
@@ -764,7 +764,7 @@ cal As (
     , cal.*
   From ksm_proposals prp
   Cross Join cal
-  Inner Join hh On hh.id_number =  prp.id_number
+  Inner Join hh On hh.id_number = prp.id_number
   Where start_date Between cal.bofy_prev And cal.eofy_next
 )
 , proposal_asks As (
@@ -869,7 +869,7 @@ cal As (
     , gft.proposal_id
   From v_ksm_giving_trans_hh gft
   Cross Join cal
-  Inner Join hh On hh.id_number =  gft.id_number
+  Inner Join hh On hh.id_number = gft.id_number
   Left Join pe On pe.id_number = gft.id_number
   Inner Join entity On entity.id_number = gft.id_number
   Left Join tms_pledge_status tms_ps On tms_ps.pledge_status_code = gft.pledge_status
