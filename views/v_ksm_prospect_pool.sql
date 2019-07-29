@@ -254,17 +254,46 @@ ksm_deg As (
   Group By id_number
 )
 
+-- Pref address type
+, pref_addr As (
+  Select
+    address.id_number
+    , address.addr_type_code As pref_addr_type
+  From address
+  Where address.addr_pref_ind = 'Y'
+    And address.addr_status_code = 'A'
+)
+
+-- Home addresses
+, home_addr As (
+  Select
+    address.id_number
+    , address.city As home_city
+    , address.state_code As home_state
+    , conts.country As home_country
+  From address
+  Left Join v_addr_continents conts
+    On conts.country_code = address.country_code
+  Where address.addr_status_code = 'A'
+    -- This works because entities may have no more than one address type H
+    And address.addr_type_code = 'H'
+)
+
 -- Main query
 Select Distinct
   hh.*
   , prs.business_title
   , trim(prs.employer_name1 || ' ' || prs.employer_name2) As employer_name
+  , pref_addr.pref_addr_type
   , prs.pref_city
   , prs.pref_state
   , prs.preferred_country
   , prs.business_city
   , prs.business_state
   , prs.business_country
+  , home_addr.home_city
+  , home_addr.home_state
+  , home_addr.home_country
   , prs.prospect_id
   , prs_e.primary_ind
   , prospect.prospect_name
@@ -359,20 +388,42 @@ Inner Join ksm_prs_ids -- Must be a valid Kellogg entity
   On ksm_prs_ids.id_number = hh.id_number
 Left Join ksm_prs
   On ksm_prs.id_number = hh.id_number
-Left Join af_10k_model On af_10k_model.id_number = hh.id_number
-Left Join mgo_model On mgo_model.id_number = hh.id_number
-Left Join nu_prs_trp_prospect prs On prs.id_number = hh.id_number
-Left Join rating_bins eval On eval.rating_desc = prs.evaluation_rating
-Left Join rating_bins uor On uor.rating_desc = prs.officer_rating
-Left Join entity pm On pm.id_number = prs.prospect_manager_id
-Left Join prs_e On prs_e.prospect_id = prs.prospect_id And prs_e.id_number = hh.id_number
-Left Join prospect On prospect.prospect_id = prs.prospect_id
-Left Join ksm_150_300 On ksm_150_300.id_number = hh.id_number
-Left Join entity contact_auth On contact_auth.id_number = prs.contact_author
-Left Join assign_conc On assign_conc.prospect_id = prs.prospect_id
-Left Join assign_conc_entity On assign_conc_entity.id_number = prs.id_number
-Left Join dq On dq.id_number = hh.id_number
-Left Join perm_stew On perm_stew.id_number = hh.id_number
-Left Join spec_hnd On spec_hnd.id_number = hh.id_number
-Left Join uor On uor.prospect_id = prs.prospect_id
-Left Join table(rpt_pbh634.ksm_pkg.tbl_university_strategy) strat On strat.prospect_id = prs.prospect_id
+Left Join pref_addr
+  On pref_addr.id_number = hh.id_number
+Left Join home_addr
+  On home_addr.id_number = hh.id_number
+Left Join af_10k_model
+  On af_10k_model.id_number = hh.id_number
+Left Join mgo_model
+  On mgo_model.id_number = hh.id_number
+Left Join nu_prs_trp_prospect prs
+  On prs.id_number = hh.id_number
+Left Join rating_bins eval
+  On eval.rating_desc = prs.evaluation_rating
+Left Join rating_bins uor
+  On uor.rating_desc = prs.officer_rating
+Left Join entity pm
+  On pm.id_number = prs.prospect_manager_id
+Left Join prs_e
+  On prs_e.prospect_id = prs.prospect_id
+  And prs_e.id_number = hh.id_number
+Left Join prospect
+  On prospect.prospect_id = prs.prospect_id
+Left Join ksm_150_300
+  On ksm_150_300.id_number = hh.id_number
+Left Join entity contact_auth
+  On contact_auth.id_number = prs.contact_author
+Left Join assign_conc
+  On assign_conc.prospect_id = prs.prospect_id
+Left Join assign_conc_entity
+  On assign_conc_entity.id_number = prs.id_number
+Left Join dq
+  On dq.id_number = hh.id_number
+Left Join perm_stew
+  On perm_stew.id_number = hh.id_number
+Left Join spec_hnd
+  On spec_hnd.id_number = hh.id_number
+Left Join uor
+  On uor.prospect_id = prs.prospect_id
+Left Join table(rpt_pbh634.ksm_pkg.tbl_university_strategy) strat
+  On strat.prospect_id = prs.prospect_id
