@@ -442,6 +442,11 @@ Function to_date2(
   , format In varchar2 Default 'yyyymmdd'
 ) Return date;
 
+/* Rewritten to_number to return NULL for invalid strings */
+Function to_number2(
+  str In varchar2
+) Return number;
+
 /* Parse yyyymmdd string into a date after checking for invalid terms */
 Function date_parse(
   str In varchar2
@@ -2527,6 +2532,18 @@ Function to_date2(str In varchar2, format In varchar2)
   
   Begin
     Return to_date(str, format);
+    Exception
+      When Others Then
+        Return NULL;
+  End;
+
+/* Check whether a passed string can be parsed sucessfully as a number
+   2019-08-02 */
+Function to_number2(str In varchar2)
+  Return number Is
+  
+  Begin
+    Return to_number(str);
     Exception
       When Others Then
         Return NULL;
