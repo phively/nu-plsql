@@ -46,7 +46,7 @@ params As (
   From v_ksm_giving_trans_hh
 )
 -- Giving by allocation
-, allocs As (
+/*, allocs As (
   Select
     household_id
     , allocation_code
@@ -70,7 +70,7 @@ params As (
       As top_alloc_amt
   From allocs
   Group By household_id
-)
+)*/
 -- Sum transaction amounts
 , trans As (
   Select Distinct
@@ -190,9 +190,9 @@ params As (
 Select
   trans.*
   -- Top allocations
-  , top_alloc_code
-  , top_alloc
-  , top_alloc_amt
+--  , top_alloc_code
+--  , top_alloc
+--  , top_alloc_amt
   -- AF status categorizer
   , Case
       When af_cfy > 0 Then 'Donor'
@@ -386,8 +386,8 @@ Select
   , Case When anonymous_pfy5 > 0 Then 'Y' End As anonymous_pfy5_flag
 From trans
 Cross Join params
-Inner Join top_allocs
-  On top_allocs.household_id = trans.household_id
+--Inner Join top_allocs
+--  On top_allocs.household_id = trans.household_id
 Left Join table(ksm_pkg.tbl_special_handling_concat) shc
   On shc.id_number = trans.id_number
 ;

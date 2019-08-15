@@ -97,6 +97,10 @@ proposals As (
     , hh.spouse_degrees_concat
     , hh.spouse_program_group
     , university_strategy
+    , mg.id_segment
+    , mg.id_score
+    , mg.pr_segment
+    , mg.pr_score
     , proposal_group
     , proposal_id
     , proposal_manager_id
@@ -205,6 +209,9 @@ proposals As (
     On pe.prospect_id = proposals.prospect_id
   Left Join v_entity_ksm_households hh
     On hh.id_number = pe.id_number
+  -- Model scores
+  Left Join rpt_pbh634.v_ksm_model_mg mg
+    On mg.id_number = pe.id_number
   Order By
     proposal_group Desc
     , total_granted_amt Desc
