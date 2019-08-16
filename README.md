@@ -27,6 +27,7 @@ Contains SQL and PL/SQL code for various Kellogg data definitions and best pract
 ## Prospect views
 
  * [v_assignment_history](https://github.com/phively/nu-plsql/blob/master/views/v_assignment_history.sql) = gift officer current and historical portfolio assignments
+ * [v_assignment_summary](https://github.com/phively/nu-plsql/blob/master/views/v_assignment_summary.sql) = concatenated prospect manager, assist, and LGO assignments per prospect/entity
  * [v_ksm_proposal_history_fast](https://github.com/phively/nu-plsql/blob/master/views/v_ksm_proposal_history.sql) = current and historical proposals
  * [v_contact_reports_fast](https://github.com/phively/nu-plsql/blob/master/views/v_ksm_contact_reports.sql) = historical contact reports, including up to 2000 characters of the text
  * [v_nu_visits](https://github.com/phively/nu-plsql/blob/master/views/v_ksm_visits.sql) = historical visit contact reports, including up to 2000 characters of the text
