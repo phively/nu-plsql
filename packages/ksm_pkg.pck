@@ -304,6 +304,7 @@ Type trans_entity Is Record (
 /* Householdable transaction for credit */
 Type trans_household Is Record (
   household_id entity.id_number%type
+  , household_rpt_name entity.report_name%type
   , id_number entity.id_number%type
   , report_name entity.report_name%type
   , anonymous gift.gift_associated_anonymous%type
@@ -2061,6 +2062,7 @@ Cursor c_gift_credit_hh_ksm Is
   hhid As (
     Select
       hh.household_id
+      , hh.household_rpt_name
       , ksm_trans.*
     From table(tbl_entity_households_ksm) hh
     Inner Join table(tbl_gift_credit_ksm) ksm_trans On ksm_trans.id_number = hh.id_number
@@ -2222,6 +2224,7 @@ Cursor c_gift_credit_hh_campaign_2008 Is
   -- Internal transfer; 344303 is 50%
   Select
     daily.id_number As household_id
+    , entity.report_name As household_rpt_name
     , daily.id_number
     , entity.report_name
     , ' ' As anonymous
