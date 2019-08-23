@@ -10,23 +10,14 @@ From DUAL
 
 -- Current State: Pipeline Development
 -- New leads outcomes by the numbers
-Select
-  NULL
-From DUAL
-;
+/* Pull as crosstab from Kellogg Prospect Task Dashboard in Tableau */
 
 -- Current State: Pipeline Development
 -- Visit conversion rate for new leads
-Select
-  NULL
-From DUAL
-;
+/* Pull as crosstab from Kellogg Prospect Task Dashboard in Tableau */
 
 -- Pipeline patterns and shifts
-Select
-  NULL
-From DUAL
-;
+/* Look for saved pipeline snapshot reports from 1 year ago and today */
 
 -- Current State: Portfolio Calibration
 -- Solicitation dollars versus expectation to close
