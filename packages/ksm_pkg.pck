@@ -1633,8 +1633,8 @@ Cursor c_segment_extract (year In integer, month In integer, code In varchar2) I
   From segment s
   Inner Join segment_header sh On sh.segment_code = s.segment_code
   Where s.segment_code Like code
-    And s.segment_year = year
-    And s.segment_month = month
+    And to_number2(s.segment_year) = year
+    And to_number2(s.segment_month) = month
   ;
 
 /* Definition of historical NU ARD employees */
