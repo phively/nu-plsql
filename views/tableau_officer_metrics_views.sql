@@ -9,6 +9,10 @@ Select Distinct
   , Phf.prospect_name
   , Phf.prospect_name_sort
   , PE.id_number
+  , hh.household_city
+  , hh.household_geo_primary_desc
+  , hh.household_state
+  , hh.household_country
   , PP.prospect_manager_id
   , PP.prospect_manager
   , Phf.proposal_id
@@ -84,8 +88,10 @@ Select Distinct
   , CC.CURR_PY
   , CC.Curr_PY_Start
 From rpt_pbh634.v_proposal_history_fast PHF
-Left Join Prospect_Entity PE
+Inner Join Prospect_Entity PE
   On PE.prospect_ID = PHF.prospect_id
+Inner Join rpt_pbh634.v_entity_ksm_households hh
+  On hh.id_number = pe.id_number
 Left Join nu_prs_trp_prospect PP
   On PP.prospect_id = PHF.prospect_ID
 Cross Join rpt_pbh634.v_current_calendar CC
@@ -128,6 +134,7 @@ Select
   , E.Institutional_Suffix
   , hh.degrees_concat
   , hh.household_city
+  , hh.household_geo_primary_desc
   , hh.household_state
   , hh.household_country
   , rpt_pbh634.ksm_pkg.get_performance_year(contact_date) As PY_Contact
