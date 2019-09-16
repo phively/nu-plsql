@@ -829,6 +829,11 @@ Select Distinct
   , nvl(prp.nu_asks, 0) As nu_asks
   , nvl(prp.nu_anticipated, 0) As nu_anticipated
   , nvl(prp.nu_granted, 0) As nu_granted
+  -- MG model scores
+  , scores.id_score
+  , scores.id_segment
+  , scores.pr_score
+  , scores.pr_segment
 From assn_final asn
 -- Prospect stage history
 Left Join stage_history stg_hist
@@ -861,6 +866,9 @@ Left Join prop_final prp
   On prp.prospect_id = asn.prospect_id
   And prp.assignment_id_number = asn.assignment_id_number
   And prp.assignment_filled_date = asn.filled_date
+-- Latest model scores
+Left Join v_ksm_model_mg scores
+  On scores.id_number = asn.id_number
 -- Sort results
 Order By
   asn.assignment_report_name Asc
