@@ -31,3 +31,4 @@ Contains SQL and PL/SQL code for various Kellogg data definitions and best pract
  * [v_ksm_proposal_history_fast](https://github.com/phively/nu-plsql/blob/master/views/v_ksm_proposal_history.sql) = current and historical proposals
  * [v_contact_reports_fast](https://github.com/phively/nu-plsql/blob/master/views/v_ksm_contact_reports.sql) = historical contact reports, including up to 2000 characters of the text
  * [v_nu_visits](https://github.com/phively/nu-plsql/blob/master/views/v_ksm_visits.sql) = historical visit contact reports, including up to 2000 characters of the text
+ * [v_ksm_high_level_job_titles](https://github.com/phively/nu-plsql/blob/master/views/v_ksm_high_level_job_titles.sql) = standardizes C-suite and similar job titles for all KSM alumni
