@@ -1,8 +1,14 @@
-/* FY18 Kellogg Investor's Report
-    Based on Campaign giving through the entire counting period, FY07 through FY18
+/* FY19 Kellogg Investor's Report
+    Based on Campaign giving through the entire counting period, FY07 through FY19
     See Paul's "Investor's Report" folder on the G drive for criteria and notes
-    See GitHub for the complete version history: https://github.com/phively/nu-plsql/tree/master/sql%20code/IR%20FY18
+    See GitHub for the complete version history: https://github.com/phively/nu-plsql/tree/master/sql%20code/IR%20FY19
     Shouldn't take more than 4 minutes to run to completion
+    
+    Updates for FY19:
+    - Added 1 to all the years, table names, column names, etc. next to an <UPDATE THIS> tag
+    - v_ksm_giving_campaign needed to be updated with campaign_steward_thru, anon_steward_thru, nonanon_steward_thru 
+        for 2019 (https://github.com/phively/nu-plsql/blob/master/views/ksm_giving_trans_views.sql)
+    - Updated comments, where applicable
 */
 
 With
@@ -11,7 +17,7 @@ With
   Also look for <UPDATE THIS> comment */
 params_cfy As (
   Select
-    2018 As params_cfy -- <UPDATE THIS>
+    2019 As params_cfy -- <UPDATE THIS>
   From DUAL
 )
 , params As (
@@ -32,7 +38,7 @@ params_cfy As (
 
 
 /* Degree strings
-  Kellogg stewardship degree years as defined by ksm_pkg. For the FY18 IR these are in the format:
+  Kellogg stewardship degree years as defined by ksm_pkg. For the FY19 IR these are in the format:
   'YY, 'YY
   With years listed in chronological order and de-duped (listagg) */
 , degs As (
@@ -142,11 +148,11 @@ params_cfy As (
   Anonymous special handling indicator; entity should be anonymous for ALL gifts. Overrides the transaction-level anon flag. */
 , anon As (
   Select Distinct
-    hh.household_id
+    hhs.household_id
     , tms.short_desc As anon
   From handling
-  Inner Join hh
-    On hh.id_number = handling.id_number
+  Inner Join hhs
+    On hhs.id_number = handling.id_number
   Inner Join tms_handling_type tms
     On tms.handling_type = handling.hnd_type_code
   Where hnd_type_code = 'AN' -- Anonymous
@@ -175,8 +181,8 @@ params_cfy As (
   Group By id_number
 )
 
-/* Deceased spouse TABLE -- update rpt_pbh634.tbl_ir_fy18_dec_spouse
-  This is the interface used to manually household deceased spouses; could be done on other entities as well */
+/* Manual household TABLE -- update rpt_pbh634.tbl_ir_fy19_manual_household
+  This is the interface used to manually household deceased spouses and other entities */
 , dec_spouse_ids As (
   Select
     -- Personal info
@@ -247,7 +253,7 @@ params_cfy As (
         Else hhd.household_spouse_rpt_name
         End
       As snj
-  From rpt_pbh634.tbl_ir_fy18_dec_spouse ds -- <UPDATE THIS>
+  From rpt_pbh634.tbl_IR_FY19_manual_household ds -- <UPDATE THIS>
   Inner Join hh
     On hh.id_number = ds.id_number
   Inner Join hh hhd
@@ -258,13 +264,13 @@ params_cfy As (
   All active prospect manager and program manager assignments, to be used for manual review by staff */
 , assign As (
   Select Distinct
-    hh.household_id
+    hhs.household_id
     , prospect_id
     , assignment_id_number
     , assignment_report_name
   From v_assignment_history ah
-  Inner Join hh
-    On hh.id_number = ah.id_number
+  Inner Join hhs
+    On hhs.id_number = ah.id_number
   Where assignment_active_calc = 'Active' -- Active assignments only
     And assignment_type In ('PP', 'PM', 'LG') -- Program Manager (PP), Prospect Manager (PM), Leadership Giving Officer (LG)
 )
@@ -290,7 +296,7 @@ params_cfy As (
 , fy_klc As (
   Select Distinct
     household_id
-    , '<KLC18>' As klc -- <UPDATE THIS>
+    , '<KLC19>' As klc -- <UPDATE THIS>
   From young_klc
   Cross Join params
   Where fiscal_year = params_cfy
@@ -355,33 +361,33 @@ params_cfy As (
             End
         -- All others
         When entity.person_or_org = 'O' Then 'Z. Org'
-        When campaign_steward_thru_fy18 >= 10000000 Then 'A. 10M+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy18 >=  5000000 Then 'B. 5M+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy18 >=  2500000 Then 'C. 2.5M+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy18 >=  1000000 Then 'D. 1M+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy18 >=   500000 Then 'E. 500K+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy18 >=   250000 Then 'F. 250K+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy18 >=   100000 Then 'G. 100K+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy18 >=    50000 Then 'H. 50K+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy18 >=    25000 Then 'I. 25K+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy18 >=    10000 Then 'J. 10K+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy18 >=     5000 Then 'K. 5K+' -- <UPDATE THIS>
+        When campaign_steward_thru_fy19 >= 10000000 Then 'A. 10M+' -- <UPDATE THIS>
+        When campaign_steward_thru_fy19 >=  5000000 Then 'B. 5M+' -- <UPDATE THIS>
+        When campaign_steward_thru_fy19 >=  2500000 Then 'C. 2.5M+' -- <UPDATE THIS>
+        When campaign_steward_thru_fy19 >=  1000000 Then 'D. 1M+' -- <UPDATE THIS>
+        When campaign_steward_thru_fy19 >=   500000 Then 'E. 500K+' -- <UPDATE THIS>
+        When campaign_steward_thru_fy19 >=   250000 Then 'F. 250K+' -- <UPDATE THIS>
+        When campaign_steward_thru_fy19 >=   100000 Then 'G. 100K+' -- <UPDATE THIS>
+        When campaign_steward_thru_fy19 >=    50000 Then 'H. 50K+' -- <UPDATE THIS>
+        When campaign_steward_thru_fy19 >=    25000 Then 'I. 25K+' -- <UPDATE THIS>
+        When campaign_steward_thru_fy19 >=    10000 Then 'J. 10K+' -- <UPDATE THIS>
+        When campaign_steward_thru_fy19 >=     5000 Then 'K. 5K+' -- <UPDATE THIS>
         Else 'L. 2.5K+'
         End
       As proposed_giving_level
     , Case
         When entity.person_or_org = 'O' Then 'Z. Org'
-        When nonanon_steward_thru_fy18 >= 10000000 Then 'A. 10M+' -- <UPDATE THIS>
-        When nonanon_steward_thru_fy18 >=  5000000 Then 'B. 5M+' -- <UPDATE THIS>
-        When nonanon_steward_thru_fy18 >=  2500000 Then 'C. 2.5M+' -- <UPDATE THIS>
-        When nonanon_steward_thru_fy18 >=  1000000 Then 'D. 1M+' -- <UPDATE THIS>
-        When nonanon_steward_thru_fy18 >=   500000 Then 'E. 500K+' -- <UPDATE THIS>
-        When nonanon_steward_thru_fy18 >=   250000 Then 'F. 250K+' -- <UPDATE THIS>
-        When nonanon_steward_thru_fy18 >=   100000 Then 'G. 100K+' -- <UPDATE THIS>
-        When nonanon_steward_thru_fy18 >=    50000 Then 'H. 50K+' -- <UPDATE THIS>
-        When nonanon_steward_thru_fy18 >=    25000 Then 'I. 25K+' -- <UPDATE THIS>
-        When nonanon_steward_thru_fy18 >=    10000 Then 'J. 10K+' -- <UPDATE THIS>
-        When nonanon_steward_thru_fy18 >=     5000 Then 'K. 5K+' -- <UPDATE THIS>
+        When nonanon_steward_thru_fy19 >= 10000000 Then 'A. 10M+' -- <UPDATE THIS>
+        When nonanon_steward_thru_fy19 >=  5000000 Then 'B. 5M+' -- <UPDATE THIS>
+        When nonanon_steward_thru_fy19 >=  2500000 Then 'C. 2.5M+' -- <UPDATE THIS>
+        When nonanon_steward_thru_fy19 >=  1000000 Then 'D. 1M+' -- <UPDATE THIS>
+        When nonanon_steward_thru_fy19 >=   500000 Then 'E. 500K+' -- <UPDATE THIS>
+        When nonanon_steward_thru_fy19 >=   250000 Then 'F. 250K+' -- <UPDATE THIS>
+        When nonanon_steward_thru_fy19 >=   100000 Then 'G. 100K+' -- <UPDATE THIS>
+        When nonanon_steward_thru_fy19 >=    50000 Then 'H. 50K+' -- <UPDATE THIS>
+        When nonanon_steward_thru_fy19 >=    25000 Then 'I. 25K+' -- <UPDATE THIS>
+        When nonanon_steward_thru_fy19 >=    10000 Then 'J. 10K+' -- <UPDATE THIS>
+        When nonanon_steward_thru_fy19 >=     5000 Then 'K. 5K+' -- <UPDATE THIS>
         Else 'L. 2.5K+'
         End
       As nonanon_giving_level
@@ -389,7 +395,7 @@ params_cfy As (
   Inner Join entity
     On entity.id_number = gft.id_number
   -- Interface for custom giving levels override; add to the tbl_ir_fy18_custom_level table and they'll show up here
-  Left Join tbl_ir_fy18_custom_level custlvl -- <UPDATE THIS>
+  Left Join tbl_ir_fy19_custom_level custlvl -- <UPDATE THIS>
     On custlvl.id_number = gft.id_number
 )
 
@@ -404,17 +410,17 @@ params_cfy As (
     , hhs.household_spouse
     -- Cash giving for KLC young alumni determination
     , sum(Case When fiscal_year = params_pfy5 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
-      As cash_fy13 -- <UPDATE THIS>
-    , sum(Case When fiscal_year = params_pfy4 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
       As cash_fy14 -- <UPDATE THIS>
-    , sum(Case When fiscal_year = params_pfy3 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
+    , sum(Case When fiscal_year = params_pfy4 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
       As cash_fy15 -- <UPDATE THIS>
-    , sum(Case When fiscal_year = params_pfy2 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
+    , sum(Case When fiscal_year = params_pfy3 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
       As cash_fy16 -- <UPDATE THIS>
-    , sum(Case When fiscal_year = params_pfy1 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
+    , sum(Case When fiscal_year = params_pfy2 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
       As cash_fy17 -- <UPDATE THIS>
-    , sum(Case When fiscal_year = params_cfy And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
+    , sum(Case When fiscal_year = params_pfy1 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
       As cash_fy18 -- <UPDATE THIS>
+    , sum(Case When fiscal_year = params_cfy And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
+      As cash_fy19 -- <UPDATE THIS>
   From hhs
   Cross Join params
   Inner Join v_ksm_giving_trans_hh gfts
@@ -435,14 +441,14 @@ params_cfy As (
   Select
     cgft.*, hh.deceased_past_year, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix
     , hh.household_masters_year, hh.primary_name, hh.gender, hh.primary_name_spouse, hh.gender_spouse
-    , hh.person_or_org, hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status
+    , hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status
     , hh.no_joint_gifts_flag
   From cgft
   Inner Join hh
     On hh.id_number = cgft.id_number
   Where hh.person_or_org = 'P' -- People
     And (
-      cgft.campaign_steward_thru_fy18 >= 2500 -- <UPDATE THIS>
+      cgft.campaign_steward_thru_fy19 >= 2500 -- <UPDATE THIS>
       Or manual_giving_level = 'Y' -- Always include custom level override even if below $2500
     )
   ) Union All (
@@ -450,14 +456,14 @@ params_cfy As (
   Select
     cgft.*, hh.deceased_past_year, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix
     , hh.household_masters_year, hh.primary_name, hh.gender, hh.primary_name_spouse, hh.gender_spouse
-    , hh.person_or_org, hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status
+    , hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status
     , hh.no_joint_gifts_flag
   From cgft
   Inner Join hh
     On hh.id_number = cgft.id_number
   Where hh.person_or_org = 'O' -- Orgs
     And (
-      cgft.campaign_steward_thru_fy18 >= 100000 -- <UPDATE THIS>
+      cgft.campaign_steward_thru_fy19 >= 100000 -- <UPDATE THIS>
       Or manual_giving_level = 'Y' -- Always include custom level override even if below $2500
     )
   ) Union All (
@@ -465,7 +471,7 @@ params_cfy As (
   Select
     cgft.*, hh.deceased_past_year, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix
     , hh.household_masters_year, hh.primary_name, hh.gender, hh.primary_name_spouse, hh.gender_spouse
-    , hh.person_or_org, hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status
+    , hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status
     , hh.no_joint_gifts_flag
   From cgft
   Cross Join params
@@ -479,32 +485,32 @@ params_cfy As (
       (
         (hh.last_noncert_year Between params_pfy10 And params_pfy5
           Or hh.spouse_last_noncert_year Between params_pfy10 And params_pfy5)
-        And (campaign_fy13 >= 1000 Or cash_fy13 >= 1000) -- <UPDATE THIS>
+        And (campaign_fy14 >= 1000 Or cash_fy14 >= 1000) -- <UPDATE THIS>
       )
       Or (
         (hh.last_noncert_year Between params_pfy9 And params_pfy4
           Or hh.spouse_last_noncert_year Between params_pfy9 And params_pfy4)
-        And (campaign_fy14 >= 1000 Or cash_fy14 >= 1000) -- <UPDATE THIS>
+        And (campaign_fy15 >= 1000 Or cash_fy15 >= 1000) -- <UPDATE THIS>
       )
       Or (
         (hh.last_noncert_year Between params_pfy8 And params_pfy3
           Or hh.spouse_last_noncert_year Between params_pfy8 And params_pfy3)
-        And (campaign_fy15 >= 1000 Or cash_fy15 >= 1000) -- <UPDATE THIS>
+        And (campaign_fy16 >= 1000 Or cash_fy16 >= 1000) -- <UPDATE THIS>
       )
       Or (
         (hh.last_noncert_year Between params_pfy7 And params_pfy2
           Or hh.spouse_last_noncert_year Between params_pfy7 And params_pfy2)
-        And (campaign_fy16 >= 1000 Or cash_fy16 >= 1000) -- <UPDATE THIS>
+        And (campaign_fy17 >= 1000 Or cash_fy17 >= 1000) -- <UPDATE THIS>
       )
       Or (
         (hh.last_noncert_year Between params_pfy6 And params_pfy1
           Or hh.spouse_last_noncert_year Between params_pfy6 And params_pfy1)
-        And (campaign_fy17 >= 1000 Or cash_fy17 >= 1000) -- <UPDATE THIS>
+        And (campaign_fy18 >= 1000 Or cash_fy18 >= 1000) -- <UPDATE THIS>
       )
       Or (
         (hh.last_noncert_year Between params_pfy5 And params_cfy
           Or hh.spouse_last_noncert_year Between params_pfy5 And params_cfy)
-        And (campaign_fy18 >= 1000 Or cash_fy18 >= 1000) -- <UPDATE THIS>
+        And (campaign_fy19 >= 1000 Or cash_fy19 >= 1000) -- <UPDATE THIS>
       )
     )
   )
@@ -577,9 +583,9 @@ params_cfy As (
     On dec_spouse_ids.id_number = donorlist.id_number
   Left Join anon
     On anon.household_id = donorlist.household_id
-  Left Join tbl_IR_FY18_custom_name cust_name -- <UPDATE THIS>
+  Left Join tbl_IR_FY19_custom_name cust_name -- <UPDATE THIS>
     On cust_name.id_number = donorlist.id_number
-  Left Join Tbl_IR_FY18_custom_level custlvl -- <UPDATE THIS>
+  Left Join Tbl_IR_FY19_custom_level custlvl -- <UPDATE THIS>
     On custlvl.id_number = donorlist.id_number
 )
 , rec_name As (
@@ -735,11 +741,11 @@ params_cfy As (
     On loyal.household_id = rn.household_id
   Left Join anon
     On anon.household_id = rn.household_id
-  Left Join tbl_IR_FY18_custom_name cust_name -- <UPDATE THIS>
+  Left Join tbl_IR_FY19_custom_name cust_name -- <UPDATE THIS>
     On cust_name.id_number = rn.id_number
-  Left Join tbl_IR_FY18_cornerstone cornerstone -- <UPDATE THIS>
+  Left Join tbl_IR_FY19_cornerstone cornerstone -- <UPDATE THIS>
     On cornerstone.id_number = rn.household_id
-  Left Join tbl_IR_FY18_cornerstone cornerstone_s -- <UPDATE THIS>
+  Left Join tbl_IR_FY19_cornerstone cornerstone_s -- <UPDATE THIS>
     On cornerstone_s.id_number = rn.household_spouse_id
 )
 
@@ -772,10 +778,10 @@ Select Distinct
       End
     As different_nonanon_level
   , rec_name.anon
-  , anon_steward_thru_fy18 -- <UPDATE THIS>
-  , nonanon_steward_thru_fy18 -- <UPDATE THIS>
+  , anon_steward_thru_fy19 -- <UPDATE THIS>
+  , nonanon_steward_thru_fy19 -- <UPDATE THIS>
   -- Fields
-  , campaign_steward_thru_fy18 -- <UPDATE THIS>
+  , campaign_steward_thru_fy19 -- <UPDATE THIS>
   , deceased_past_year
   , manual_giving_level
   , Case
@@ -849,7 +855,8 @@ Select Distinct
   , campaign_fy16
   , campaign_fy17
   , campaign_fy18
-  , campaign_fy19 -- <UPDATE THIS>
+  , campaign_fy19
+  , campaign_fy20 -- <UPDATE THIS>
 From donorlist
 Inner Join rec_name
   On rec_name.id_number = donorlist.id_number

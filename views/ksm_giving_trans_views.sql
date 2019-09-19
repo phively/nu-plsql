@@ -530,6 +530,12 @@ hh As (
       As anon_steward_thru_fy18
     , sum(Case When fiscal_year <= 2018 And cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
       As nonanon_steward_thru_fy18
+    , sum(Case When fiscal_year <= 2019 Then hh_recognition_credit Else 0 End)
+      As campaign_steward_thru_fy19
+    , sum(Case When fiscal_year <= 2019 And cgft.anonymous In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
+      As anon_steward_thru_fy19
+    , sum(Case When fiscal_year <= 2019 And cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
+      As nonanon_steward_thru_fy19
   From hh
   Cross Join v_current_calendar cal
   Inner Join cgft On cgft.household_id = hh.household_id
