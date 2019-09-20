@@ -2,13 +2,16 @@
     Based on Campaign giving through the entire counting period, FY07 through FY19
     See Paul's "Investor's Report" folder on the G drive for criteria and notes
     See GitHub for the complete version history: https://github.com/phively/nu-plsql/tree/master/sql%20code/IR%20FY19
-    Shouldn't take more than 4 minutes to run to completion
+    Shouldn't take more than 8 minutes to run to completion
     
     Updates for FY19:
     - Added 1 to all the years, table names, column names, etc. next to an <UPDATE THIS> tag
     - v_ksm_giving_campaign needed to be updated with campaign_steward_thru, anon_steward_thru, nonanon_steward_thru 
         for 2019 (https://github.com/phively/nu-plsql/blob/master/views/ksm_giving_trans_views.sql)
     - Updated comments, where applicable
+    - BIG CHANGE: tbl_ir_fy19_approved_names will store all the final IR names from FY18, which will be used as the
+        starting point for this year's names. The previous format appears as a "constructed_name" column. If there's
+        a difference from the constructed name I'll still toggle one of the "manually check" flags.
 */
 
 With
@@ -35,7 +38,6 @@ params_cfy As (
     , params_cfy - 10 As params_pfy10
   From params_cfy
 )
-
 
 /* Degree strings
   Kellogg stewardship degree years as defined by ksm_pkg. For the FY19 IR these are in the format:
@@ -67,6 +69,25 @@ params_cfy As (
   Where name_type_code = 'HR'
 )
 
+/* IR names
+  FY18 IR names, if available */
+, ir_names As (
+  Select
+    id_number
+    , ir18_name
+    , first_name
+    , middle_name
+    , last_name
+    , suffix
+    -- Check whether suffix is a class year
+    , Case
+        When regexp_like(suffix, '''[0-9]+') -- valid examples: '00 '92 '11 '31
+          Then 'Y'
+        End
+      As replace_year_flag
+  From tbl_ir_fy19_approved_names ian
+)
+
 /* Household data
   Household IDs and definitions as defined by ksm_pkg. Names are based on primary name and personal suffix. */
 , hhs As (
@@ -80,24 +101,62 @@ params_cfy As (
     , entity.record_status_code
     , entity.jnt_gifts_ind
     -- First Middle Last Suffix 'YY
+    -- Primary name
     , trim(
         trim(
           trim(
-            -- Choose honor roll name or constructed name
+            -- Choose last year's name or honor roll name
             Case
-              When hr_names.honor_roll_name_no_prefix Is Not Null
-                Then hr_names.honor_roll_name_no_prefix
-              Else
-                trim(
+              When ir_names.first_name Is Not Null
+                Then
                   trim(
-                    trim(entity.first_name) || ' ' || trim(entity.middle_name)
-                  ) || ' ' || trim(entity.last_name)
-                ) || ' ' || entity.pers_suffix
+                    trim(
+                      trim(ir_names.first_name) || ' ' || trim(ir_names.middle_name)
+                    ) || ' ' || trim(ir_names.last_name)
+                  ) || ' ' || ir_names.suffix
+              Else
+              -- Choose honor roll name or constructed name
+              Case
+                When hr_names.honor_roll_name_no_prefix Is Not Null
+                  Then hr_names.honor_roll_name_no_prefix
+                Else
+                  trim(
+                    trim(
+                      trim(entity.first_name) || ' ' || trim(entity.middle_name)
+                    ) || ' ' || trim(entity.last_name)
+                  ) || ' ' || entity.pers_suffix
+                End
               End
-          ) || ' ' || degs.yrs
+          )
+          -- Add class year if replace_year_flag is null
+          || ' ' || (Case When ir_names.replace_year_flag Is Null Then degs.yrs End)
+        -- Check for deceased status
         ) || (Case When entity.record_status_code = 'D' Then '<DECEASED>' End)
       )
       As primary_name
+    -- How was the primary_name constructed?
+    , Case
+        When ir_names.first_name Is Not Null
+          Then 'PFY IR'
+        When hr_names.honor_roll_name_no_prefix Is Not Null
+          Then 'NU HR name'
+        Else 'Constructed'
+        End
+      As primary_name_source
+    -- Constructed name
+    , trim(
+        trim(
+          trim(
+            trim(
+              trim(
+                trim(entity.first_name) || ' ' || trim(entity.middle_name)
+              ) || ' ' || trim(entity.last_name)
+            ) || ' ' || entity.pers_suffix
+          ) || ' ' || degs.yrs
+        ) || (Case When entity.record_status_code = 'D' Then '<DECEASED>' End)
+      )
+      As constructed_name
+    , ir_names.ir18_name
     , degs.yrs
     , Case
         When entity.record_status_code = 'D'
@@ -113,6 +172,8 @@ params_cfy As (
     On degs.id_number = hhs.id_number
   Left Join hr_names
     On hr_names.id_number = hhs.id_number
+  Left Join ir_names
+    On ir_names.id_number = hhs.id_number
 )
 , hh As (
   Select
@@ -131,7 +192,11 @@ params_cfy As (
       As no_joint_gifts_flag
     -- First Middle Last Suffix 'YY
     , hh_name.primary_name
+    , hh_name.constructed_name
+    , hh_name.primary_name_source
     , hh_name_s.primary_name As primary_name_spouse
+    , hh_name_s.constructed_name As constructed_name_spouse
+    , hh_name_s.primary_name_source As primary_name_source_spouse
     , hh_name.yrs
     , hh_name_s.yrs As yrs_spouse
   From hhs hhs
@@ -440,9 +505,9 @@ params_cfy As (
   -- $2500+ cumulative campaign giving for people
   Select
     cgft.*, hh.deceased_past_year, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix
-    , hh.household_masters_year, hh.primary_name, hh.gender, hh.primary_name_spouse, hh.gender_spouse
-    , hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status
-    , hh.no_joint_gifts_flag
+    , hh.household_masters_year, hh.primary_name, hh.primary_name_source, hh.constructed_name, hh.gender
+    , hh.primary_name_spouse, hh.constructed_name_spouse, hh.primary_name_source_spouse
+    , hh.gender_spouse, hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status, hh.no_joint_gifts_flag
   From cgft
   Inner Join hh
     On hh.id_number = cgft.id_number
@@ -455,9 +520,9 @@ params_cfy As (
   -- $100K+ cumulative campaign giving for orgs
   Select
     cgft.*, hh.deceased_past_year, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix
-    , hh.household_masters_year, hh.primary_name, hh.gender, hh.primary_name_spouse, hh.gender_spouse
-    , hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status
-    , hh.no_joint_gifts_flag
+    , hh.household_masters_year, hh.primary_name, hh.primary_name_source, hh.constructed_name, hh.gender
+    , hh.primary_name_spouse, hh.constructed_name_spouse, hh.primary_name_source_spouse
+    , hh.gender_spouse, hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status, hh.no_joint_gifts_flag
   From cgft
   Inner Join hh
     On hh.id_number = cgft.id_number
@@ -470,9 +535,9 @@ params_cfy As (
   -- Young alumni giving $1000+ from FY12 on
   Select
     cgft.*, hh.deceased_past_year, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix
-    , hh.household_masters_year, hh.primary_name, hh.gender, hh.primary_name_spouse, hh.gender_spouse
-    , hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status
-    , hh.no_joint_gifts_flag
+    , hh.household_masters_year, hh.primary_name, hh.primary_name_source, hh.constructed_name, hh.gender
+    , hh.primary_name_spouse, hh.constructed_name_spouse, hh.primary_name_source_spouse
+    , hh.gender_spouse, hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status, hh.no_joint_gifts_flag
   From cgft
   Cross Join params
   Inner Join hh
@@ -656,11 +721,11 @@ params_cfy As (
                Or cornerstone_s.id_number Is Not Null
                  Then '<CORNERSTONE>'
              End
-      As proposed_recognition_name
+      As proposed_recognition_name --<EDIT>
     -- Proposed sort name within groups
     , Case
         When rn.name_order = 'Anon'
-          Then ' ' -- Single space sorts before double space, 0-9, A-z, etc.
+          Then '*Anonymous' -- Special characters sort before double space, 0-9, A-z, etc.
         When rn.name_order = 'Org'
           And person_or_org = 'P'
             Then -- For people categorized as orgs: use the custom name, dropping any The for alpha
@@ -700,7 +765,7 @@ params_cfy As (
         When rn.name_order = 'Spouse Self'
           Then household_spouse_rpt_name || '; ' || household_rpt_name
         End
-      As proposed_sort_name
+      As proposed_sort_name --<EDIT>
     -- Concatenated IDs for deduping
     , Case
         When rn.name_order = 'Anon'
@@ -825,6 +890,13 @@ Select Distinct
   , household_rpt_name
   , household_suffix
   , primary_name
+  , constructed_name
+  , primary_name_source
+  , Case
+      When primary_name <> constructed_name
+        Then 'Y'
+      End
+    As constructed_name_difference
   , yrs
   , gender
   , hr_names.honor_roll_name
@@ -833,9 +905,16 @@ Select Distinct
   , household_spouse_rpt_name
   , household_spouse_suffix
   , primary_name_spouse
+  , constructed_name_spouse
+  , primary_name_source_spouse
+  , Case
+      When primary_name_spouse <> constructed_name_spouse
+        Then 'Y'
+      End
+    As constructed_spouse_difference
   , yrs_spouse
   , gender_spouse
-  , hr_names_s.honor_roll_name
+  , hr_names_s.honor_roll_name As honor_roll_name_spouse
   , loyal.stewardship_cfy
   , loyal.stewardship_pfy1
   , loyal.stewardship_pfy2
