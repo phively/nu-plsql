@@ -210,9 +210,11 @@ params_cfy As (
 )
 
 /* Anonymous
-  Anonymous special handling indicator; entity should be anonymous for ALL gifts. Overrides the transaction-level anon flag. */
-, anon As (
-  Select Distinct
+  Anonymous special handling indicator; entity should be anonymous for ALL gifts. Overrides the transaction-level anon flag.
+  Also mark as anonymous people whose names last year were Anonymous. */
+, anon_dat As (
+  (
+  Select
     hhs.household_id
     , tms.short_desc As anon
   From handling
@@ -222,6 +224,22 @@ params_cfy As (
     On tms.handling_type = handling.hnd_type_code
   Where hnd_type_code = 'AN' -- Anonymous
     And hnd_status_code = 'A' -- Active only
+  ) Union (
+  Select
+    hhs.household_id
+    , 'Anonymous IR Name' As anon
+  From hhs
+  Inner Join ir_names
+    On ir_names.id_number = hhs.id_number
+  Where ir_names.first_name = 'Anonymous'
+  )
+)
+, anon As (
+  Select
+    household_id
+    , min(anon) As anon -- min() results in the order Anonymous, Anonymous Donor, Anonymous IR Name
+  From anon_dat
+  Group By household_id
 )
 
 /* Deceased spouses
@@ -820,13 +838,13 @@ Select Distinct
   ids_for_deduping
   , dense_rank() Over(
       Partition By ids_for_deduping
-      Order By proposed_giving_level Asc, lower(proposed_sort_name) Asc, proposed_recognition_name Desc, donorlist.id_number Asc
+      Order By proposed_giving_level Asc, lower(proposed_sort_name) Asc, proposed_recognition_name Desc, household_rpt_name Asc, donorlist.id_number Asc
     )
     As name_rank
   , Case
       When dense_rank() Over(
         Partition By ids_for_deduping
-        Order By proposed_giving_level Asc, lower(proposed_sort_name) Asc, proposed_recognition_name Desc, donorlist.id_number Asc
+        Order By proposed_giving_level Asc, lower(proposed_sort_name) Asc, proposed_recognition_name Desc, household_rpt_name Asc, donorlist.id_number Asc
       ) = 1 Then 'Y'
       End
     As print_in_report
@@ -953,4 +971,5 @@ Order By
   proposed_giving_level Asc
   , lower(proposed_sort_name) Asc
   , proposed_recognition_name Desc
+  , household_rpt_name
   , donorlist.id_number Asc
