@@ -1,13 +1,21 @@
 With
 
 KLC AS (
-      Select *
-      From rpt_dgz654.KLC_17_18
+      Select
+        klc.*
+        , 'Y' As klc
+      -- For final version get list of IDs from AB
+      From table(rpt_pbh634.ksm_pkg.tbl_klc_history) klc
+      Where fiscal_year Between 2018 And 2019
 ),
 
 Campaign_Donors AS(
-      Select *
-      From rpt_dgz654.IR_100K_Campaign
+      Select
+        gc.*
+        , 'Y' As Campaign_$100K_Donors
+      -- For final version get list of IDs from PH
+      From rpt_pbh634.v_ksm_giving_campaign gc
+      Where gc.campaign_steward_thru_fy19 >= 100E3 -- $100K
 ),
 
 BE_Donors AS (
@@ -98,6 +106,7 @@ Spouse AS(
       SE.RECORD_STATUS_CODE = 'A'
 ),
 
+-- Needs to be updated for FY19
 P_Sally_Salut AS(
     Select
       ID_Number
@@ -110,6 +119,7 @@ P_Sally_Salut AS(
       Order by ID_number
 ),
 
+-- Needs to be updated for FY19
 NAMES AS(
   Select Distinct
     aseg.id_number
@@ -316,7 +326,7 @@ SELECT DISTINCT
   ,SPH.No_contact
   ,SPH.NO_Mail_IND
   ,SPH.NO_EMail_IND
-  ,KLC.KLC_17_18
+  ,KLC.KLC
   ,CD.Campaign_$100K_Donors
   ,BE.BE_donors
   ,GAB.GAB
