@@ -100,6 +100,8 @@ params_cfy As (
     , entity.gender_code
     , entity.record_status_code
     , entity.jnt_gifts_ind
+    , trim(entity.last_name)
+      As entity_last_name
     -- First Middle Last Suffix 'YY
     -- Primary name
     , trim(
@@ -199,6 +201,19 @@ params_cfy As (
     , hh_name_s.primary_name_source As primary_name_source_spouse
     , hh_name.yrs
     , hh_name_s.yrs As yrs_spouse
+    -- Check for entity last name
+    , Case
+        When hh_name.primary_name Not Like '%' || hh_name.entity_last_name || '%'
+          And hh_name.primary_name Not Like '%Anonymous%'
+          Then 'Y'
+        End
+      As check_primary_lastname
+    , Case
+        When hh_name_s.primary_name Not Like '%' || hh_name_s.entity_last_name || '%'
+          And hh_name_s.primary_name Not Like '%Anonymous%'
+          Then 'Y'
+        End
+      As check_primary_lastname_spouse  
   From hhs hhs
   -- Names and strings for formatting
   Inner Join hh_name
@@ -526,6 +541,7 @@ params_cfy As (
     , hh.household_masters_year, hh.primary_name, hh.primary_name_source, hh.constructed_name, hh.gender
     , hh.primary_name_spouse, hh.constructed_name_spouse, hh.primary_name_source_spouse
     , hh.gender_spouse, hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status, hh.no_joint_gifts_flag
+    , hh.check_primary_lastname, hh.check_primary_lastname_spouse
   From cgft
   Inner Join hh
     On hh.id_number = cgft.id_number
@@ -541,6 +557,7 @@ params_cfy As (
     , hh.household_masters_year, hh.primary_name, hh.primary_name_source, hh.constructed_name, hh.gender
     , hh.primary_name_spouse, hh.constructed_name_spouse, hh.primary_name_source_spouse
     , hh.gender_spouse, hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status, hh.no_joint_gifts_flag
+    , hh.check_primary_lastname, hh.check_primary_lastname_spouse
   From cgft
   Inner Join hh
     On hh.id_number = cgft.id_number
@@ -556,6 +573,7 @@ params_cfy As (
     , hh.household_masters_year, hh.primary_name, hh.primary_name_source, hh.constructed_name, hh.gender
     , hh.primary_name_spouse, hh.constructed_name_spouse, hh.primary_name_source_spouse
     , hh.gender_spouse, hh.yrs, hh.yrs_spouse, hh.fmr_spouse_id, hh.fmr_spouse_name, hh.fmr_marital_status, hh.no_joint_gifts_flag
+    , hh.check_primary_lastname, hh.check_primary_lastname_spouse
   From cgft
   Cross Join params
   Inner Join hh
@@ -563,6 +581,8 @@ params_cfy As (
   Left Join cash
     On cash.id_number = cgft.id_number
   -- Graduated within "past" 5 years and gave at least $1000 "this" year
+  -- After 5 years people are no longer young alums and will "fall" off if they
+  -- haven't given at least $2500 cumulative by then; this is intentional!
   Where cgft.household_id In (Select Distinct household_id From young_klc)
     And (
       (
@@ -915,6 +935,13 @@ Select Distinct
         Then 'Y'
       End
     As constructed_name_difference
+  , Case
+      When primary_name_spouse <> constructed_name_spouse
+        Then 'Y'
+      End
+    As constructed_spouse_difference
+  , check_primary_lastname
+  , check_primary_lastname_spouse
   , yrs
   , gender
   , hr_names.honor_roll_name
@@ -925,11 +952,6 @@ Select Distinct
   , primary_name_spouse
   , constructed_name_spouse
   , primary_name_source_spouse
-  , Case
-      When primary_name_spouse <> constructed_name_spouse
-        Then 'Y'
-      End
-    As constructed_spouse_difference
   , yrs_spouse
   , gender_spouse
   , hr_names_s.honor_roll_name As honor_roll_name_spouse
