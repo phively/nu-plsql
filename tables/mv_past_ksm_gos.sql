@@ -23,7 +23,7 @@ adv_dates As (
   Union All Select '0000532713', 'MG', to_date('20120201', 'yyyymmdd'), to_date('20140701', 'yyyymmdd') From DUAL
   Union All Select '0000740856', 'AF', to_date('20171001', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000737745', 'MG', to_date('20151101', 'yyyymmdd'), to_date('20170401', 'yyyymmdd') From DUAL
-  Union All Select '0000642888', 'MG', to_date('20160901', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000642888', 'MG', to_date('20160901', 'yyyymmdd'), to_date('20190927', 'yyyymmdd') From DUAL
   Union All Select '0000784241', 'AF', to_date('20170901', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000779347', 'MG', to_date('20170701', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000664033', 'MG', to_date('20131101', 'yyyymmdd'), to_date('20160401', 'yyyymmdd') From DUAL
@@ -43,11 +43,12 @@ adv_dates As (
   Union All Select '0000425673', 'MG', to_date('20070701', 'yyyymmdd'), to_date('20141001', 'yyyymmdd') From DUAL
   Union All Select '0000686713', 'MG', to_date('20140401', 'yyyymmdd'), to_date('20170108', 'yyyymmdd') From DUAL
   Union All Select '0000633474', 'MG', to_date('20120701', 'yyyymmdd'), to_date('20150301', 'yyyymmdd') From DUAL
-  Union All Select '0000780506', 'AF', to_date('20180101', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000780506', 'AF', to_date('20180101', 'yyyymmdd'), to_date('20190927', 'yyyymmdd') From DUAL
   Union All Select '0000783777', 'AF', to_date('20171001', 'yyyymmdd'), to_date('20190724', 'yyyymmdd') From DUAL
   Union All Select '0000693538', 'AF', to_date('20181203', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000292130', 'ADV', to_date('20170206', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000760399', 'ADV', to_date('20160815', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000818901', 'AF', to_date('20190903', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
 )
 
 Select
