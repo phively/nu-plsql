@@ -10,6 +10,7 @@ assign As (
     , ah.id_number
     , ah.assignment_id_number
     , ah.assignment_report_name
+    , ah.assignment_type
     , Case When gos.id_number Is Not Null Then 'Y' End
       As curr_ksm_assignment
   From v_assignment_history ah
@@ -22,12 +23,31 @@ assign As (
     And ah.assignment_report_name Is Not Null -- Real managers only
 )
 
+-- Prospect manager
+, pm As (
+  Select Distinct
+    prospect_id
+    , Listagg(assignment_id_number, ';  ') Within Group (Order By assignment_report_name) As prospect_manager_id
+    , Listagg(assignment_report_name, ';  ') Within Group (Order By assignment_report_name) As prospect_manager
+  From ( -- Dedupe prospect IDs with multiple associated entities
+    Select Distinct
+      prospect_id
+      , assignment_id_number
+      , assignment_report_name
+      , assignment_type
+    From assign
+  )
+  Where prospect_id Is Not Null
+    And assignment_type = 'PM'
+  Group By prospect_id
+)
+
 -- Concatenate by prospect ID
 , assign_conc As (
   Select Distinct
     prospect_id
-    , Listagg(assignment_report_name, ';  ') Within Group (Order By assignment_report_name) As managers
     , Listagg(assignment_id_number, ';  ') Within Group (Order By assignment_report_name) As manager_ids
+    , Listagg(assignment_report_name, ';  ') Within Group (Order By assignment_report_name) As managers
     , max(curr_ksm_assignment) As curr_ksm_manager
   From ( -- Dedupe prospect IDs with multiple associated entities
     Select Distinct
@@ -58,6 +78,8 @@ Select Distinct
   assign.prospect_id
   , assign.id_number
   -- Concatenated managers on prospect or entity ID as appropriate
+  , pm.prospect_manager_id
+  , pm.prospect_manager
   , Case
       When assign_conc.manager_ids Is Not Null
         Then assign_conc.manager_ids
@@ -77,6 +99,8 @@ Select Distinct
       End
     As curr_ksm_manager
 From assign
+Left Join pm
+  On pm.prospect_id = assign.prospect_id
 Left Join assign_conc
   On assign_conc.prospect_id = assign.prospect_id
 Left Join assign_conc_entity
