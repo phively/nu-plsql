@@ -673,6 +673,9 @@ Function tbl_committee_healthcare
 Function tbl_committee_WomensLeadership
   Return t_committee_members Pipelined;
 
+Function tbl_committee_KALC
+  Return t_committee_members Pipelined;
+
 /*************************************************************************
 End of package
 *************************************************************************/
@@ -2503,6 +2506,7 @@ committee_AMP Constant committee.committee_code%type := 'KAMP'; -- AMP Advisory 
 committee_trustee Constant committee.committee_code%type := 'TBOT'; -- NU Board of Trustees code
 committee_healthcare Constant committee.committee_code%type := 'HAK'; -- Healthcare at Kellogg Advisory Council
 committee_WomensLeadership Constant committee.committee_code%type := 'KWLC'; -- Women's Leadership Advisory Council
+committee_KALC Constant committee.committee_code%type := 'KALC'; -- Kellogg Admissions Leadership Council
 
 /* Segments */
 seg_af_10k Constant segment.segment_code%type := 'KMAA_'; -- AF $10K model pattern
@@ -3641,6 +3645,19 @@ Function tbl_special_handling_concat
       
       Begin
         committees := committee_members (my_committee_cd => committee_WomensLeadership);
+        For i in 1..committees.count Loop
+          Pipe row(committees(i));
+        End Loop;
+        Return;
+      End;
+      
+    -- Kellogg Admissions Leadership Council
+    Function tbl_committee_KALC
+      Return t_committee_members Pipelined As
+      committees t_committee_members;
+      
+      Begin
+        committees := committee_members (my_committee_cd => committee_KALC);
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;
