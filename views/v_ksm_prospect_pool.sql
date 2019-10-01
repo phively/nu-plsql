@@ -312,7 +312,7 @@ Select Distinct
         Then 'B. Top 300'
       -- Assigned; exclude managed by Kellogg Donor Relations
       When assign.manager_ids Is Not Null
-        And prospect_manager_id Not In ('0000292130')
+        And assign.prospect_manager_id Not In ('0000292130')
         Then 'C. Assigned'
       -- Leads
       When assign.manager_ids Is Null -- Unmanaged
