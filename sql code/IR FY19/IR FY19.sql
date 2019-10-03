@@ -640,8 +640,11 @@ params_cfy As (
           Or lower(primary_name) Like '%anonymous%donor%'
           Or lower(cust_name.custom_name) Like '%anonymous%'
           )
-          -- Make sure they're not on the manual name override list
-          And cust_name.id_number Is Null
+          -- Make sure they're not on the manual name override list, unless it's as anonymous
+          And (
+            cust_name.id_number Is Null
+            Or lower(cust_name.custom_name) Like '%anonymous%'
+          )
             Then 'Anon'
         -- If on deceased spouse list, override
         When dec_spouse_ids.id_number Is Not Null
