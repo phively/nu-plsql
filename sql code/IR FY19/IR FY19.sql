@@ -311,10 +311,10 @@ params_cfy As (
       As yrs
     , Case
         When hhd.household_spouse_rpt_name Is Null
-          Then hh.household_rpt_name
+          Then regexp_replace(hh.household_rpt_name, ' ,', ',')
         When ds.id_number = hh.household_id
-          Then hh.household_rpt_name
-        Else hhd.household_spouse_rpt_name
+          Then regexp_replace(hh.household_rpt_name, ' ,', ',')
+        Else regexp_replace(hhd.household_spouse_rpt_name, ' ,', ',')
         End
       As sn
     -- Spouse info
@@ -345,10 +345,10 @@ params_cfy As (
       As yrs_join
     , Case
         When hhd.household_spouse_rpt_name Is Null
-          Then hhd.household_rpt_name
+          Then regexp_replace(hhd.household_rpt_name, ' ,', ',')
         When ds.id_join = hh.household_id
-          Then hhd.household_rpt_name
-        Else hhd.household_spouse_rpt_name
+          Then regexp_replace(hhd.household_rpt_name, ' ,', ',')
+        Else regexp_replace(hhd.household_spouse_rpt_name, ' ,', ',')
         End
       As snj
   From rpt_pbh634.tbl_IR_FY19_manual_household ds -- <UPDATE THIS>
@@ -635,9 +635,13 @@ params_cfy As (
     -- Name ordering based on rules we had discussed: alum first, if both or neither are alums then female first
     , Case
         -- Anonymous donors take precedence
-        When anon.anon Is Not Null
+        When (
+          anon.anon Is Not Null
           Or lower(primary_name) Like '%anonymous%donor%'
           Or lower(cust_name.custom_name) Like '%anonymous%'
+          )
+          -- Make sure they're not on the manual name override list
+          And cust_name.id_number Is Null
             Then 'Anon'
         -- If on deceased spouse list, override
         When dec_spouse_ids.id_number Is Not Null
@@ -795,13 +799,14 @@ params_cfy As (
             Else trim(sn || '; ' || snj)
             End
         When rn.name_order = 'No Joint'
-          Then report_name
+          -- Remove trailing spaces, if any, from last name to fix alphabetization issues
+          Then regexp_replace(report_name, ' ,', ',')
         When rn.name_order = 'Self'
-          Then household_rpt_name
+          Then regexp_replace(household_rpt_name, ' ,', ',')
         When rn.name_order = 'Self Spouse'
-          Then household_rpt_name || '; ' || household_spouse_rpt_name
+          Then regexp_replace(household_rpt_name, ' ,', ',') || '; ' || regexp_replace(household_spouse_rpt_name, ' ,', ',')
         When rn.name_order = 'Spouse Self'
-          Then household_spouse_rpt_name || '; ' || household_rpt_name
+          Then regexp_replace(household_spouse_rpt_name, ' ,', ',') || '; ' || regexp_replace(household_rpt_name, ' ,', ',')
         End
       As proposed_sort_name --<EDIT>
     -- Concatenated IDs for deduping
