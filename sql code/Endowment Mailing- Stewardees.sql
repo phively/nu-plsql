@@ -5,7 +5,10 @@ rep_end_alloc As (
     a.allocation_code
     , a.short_name
     , a.long_name
+    , tp.short_desc As alloc_purpose
   From allocation a
+  Left Join tms_purpose tp
+    On tp.purpose_code = a.alloc_purpose
   Where steward_reporting_code = 'RP'
     And alloc_school = 'KM'
     And agency = 'END'
@@ -20,9 +23,15 @@ rep_end_alloc As (
       As stewardee_alloc_short_name
     , listagg(rea.long_name, ', ') Within Group (Order By als.allocation_code)
       As stewardee_alloc_long_name
+    , listagg(rea.alloc_purpose, ', ') Within Group (Order By als.allocation_code)
+      As stewardee_alloc_purpose
+    , listagg(tss.short_desc, ', ') Within Group (Order By als.allocation_code)
+      As stewardee_status
     From allocation_stewardee als
     Inner Join rep_end_alloc rea
       On als.allocation_code = rea.allocation_code
+    Left Join tms_stewardee_status tss
+      On tss.stewardee_status = als.stewardee_status_code
     Group By als.id_number
 )
 
@@ -177,6 +186,8 @@ Select Distinct
   , hh.stewardee_alloc_code
   , hh.stewardee_alloc_short_name
   , hh.stewardee_alloc_long_name
+  , hh.stewardee_alloc_purpose
+  , hh.stewardee_status
   -- Seasonal address chooser
   , Case
       When sa.address_type = 'Seasonal'
