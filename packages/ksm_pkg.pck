@@ -87,6 +87,7 @@ Type committee_member Is Record (
   , xcomment committee.xcomment%type
   , date_modified committee.date_modified%type
   , operator_name committee.operator_name%type
+  , spouse_id_number entity.spouse_id_number%type
 );
 
 /* Household, for entity_households */
@@ -899,7 +900,10 @@ Cursor c_committee_members (my_committee_cd In varchar2) Is
     , comm.xcomment
     , comm.date_modified
     , comm.operator_name
+    , trim(entity.spouse_id_number) As spouse_id_number
   From committee comm
+  Inner Join entity
+    On entity.id_number = comm.id_number
   Left Join tms_committee_status tms_status On comm.committee_status_code = tms_status.committee_status_code
   Left Join tms_committee_role tms_role On comm.committee_role_code = tms_role.committee_role_code
   Left Join committee_header hdr On comm.committee_code = hdr.committee_code
