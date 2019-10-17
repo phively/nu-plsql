@@ -420,9 +420,24 @@ Type t_special_handling Is Table Of special_handling;
 Public constant declarations
 *************************************************************************/
 
-/* Miscellaneous */
+/* Start months */
 fy_start_month Constant number := 9; -- fiscal start month, 9 = September
 py_start_month Constant number := 5; -- performance start month, 5 = May
+
+/* Committees */
+committee_gab Constant committee.committee_code%type := 'U'; -- Kellogg Global Advisory Board committee code
+committee_kac Constant committee.committee_code%type := 'KACNA'; -- Kellogg Alumni Council committee code
+committee_phs Constant committee.committee_code%type := 'KPH'; -- KSM Pete Henderson Society
+committee_KFN Constant committee.committee_code%type := 'KFN'; -- Kellogg Finance Network code
+committee_CorpGov Constant committee.committee_code%type := 'KCGN'; -- KSM Corporate Governance Network code
+committee_WomenSummit Constant committee.committee_code%type := 'KGWS'; -- KSM Global Women's Summit code
+committee_DivSummit Constant committee.committee_code%type := 'KCDO'; -- KSM chief Diversity Officer Summit code
+committee_RealEstCouncil Constant committee.committee_code%type := 'KREAC'; -- Real Estate Advisory Council code
+committee_AMP Constant committee.committee_code%type := 'KAMP'; -- AMP Advisory Council code
+committee_trustee Constant committee.committee_code%type := 'TBOT'; -- NU Board of Trustees code
+committee_healthcare Constant committee.committee_code%type := 'HAK'; -- Healthcare at Kellogg Advisory Council
+committee_WomensLeadership Constant committee.committee_code%type := 'KWLC'; -- Women's Leadership Advisory Council
+committee_KALC Constant committee.committee_code%type := 'KALC'; -- Kellogg Admissions Leadership Council
 
 /*************************************************************************
 Public variable declarations
@@ -2496,21 +2511,6 @@ Private table declarations
 /*************************************************************************
 Private constant declarations
 *************************************************************************/
-
-/* Committees */
-committee_gab Constant committee.committee_code%type := 'U'; -- Kellogg Global Advisory Board committee code
-committee_kac Constant committee.committee_code%type := 'KACNA'; -- Kellogg Alumni Council committee code
-committee_phs Constant committee.committee_code%type := 'KPH'; -- KSM Pete Henderson Society
-committee_KFN Constant committee.committee_code%type := 'KFN'; -- Kellogg Finance Network code
-committee_CorpGov Constant committee.committee_code%type := 'KCGN'; -- KSM Corporate Governance Network code
-committee_WomenSummit Constant committee.committee_code%type := 'KGWS'; -- KSM Global Women's Summit code
-committee_DivSummit Constant committee.committee_code%type := 'KCDO'; -- KSM chief Diversity Officer Summit code
-committee_RealEstCouncil Constant committee.committee_code%type := 'KREAC'; -- Real Estate Advisory Council code
-committee_AMP Constant committee.committee_code%type := 'KAMP'; -- AMP Advisory Council code
-committee_trustee Constant committee.committee_code%type := 'TBOT'; -- NU Board of Trustees code
-committee_healthcare Constant committee.committee_code%type := 'HAK'; -- Healthcare at Kellogg Advisory Council
-committee_WomensLeadership Constant committee.committee_code%type := 'KWLC'; -- Women's Leadership Advisory Council
-committee_KALC Constant committee.committee_code%type := 'KALC'; -- Kellogg Admissions Leadership Council
 
 /* Segments */
 seg_af_10k Constant segment.segment_code%type := 'KMAA_'; -- AF $10K model pattern
