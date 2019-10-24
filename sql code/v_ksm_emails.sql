@@ -4,15 +4,15 @@ Create Or Replace View v_nu_emails As
 Select
   ems.im_msg_id
   , ems.msg_id
+  , ems.im_gid
   , email_msg_name
   , email_from_name
   , email_from_address
   , Case
-      -- Any email with Kellogg (not case sensitive) in the from address, though NOT necessarily the domain
-      When lower(email_from_address) Like '%kellogg%'
+      When ems.im_gid = 5
         Then 'Y'
       End
-    As kellogg_sender
+    As kellogg_email
   , email_subject
   , email_pre_header
   , email_category_name
@@ -80,7 +80,7 @@ Select
     As constituent_or_member_id
   , er.report_name
   , vne.email_msg_name
-  , vne.kellogg_sender
+  , vne.kellogg_email
   , eml.email_link_url
   , eml.email_link_name
   , Case
@@ -151,7 +151,7 @@ Select
   , vne.email_msg_name
   , vne.email_from_name
   , vne.email_from_address
-  , vne.kellogg_sender
+  , vne.kellogg_email
   , vne.email_subject
   , vne.email_pre_header
   , vne.email_category_name
@@ -162,6 +162,8 @@ Select
   , vne.email_send_weekday
   , vne.email_sent_count
   , bounces.email_bounces
+  , vne.email_sent_count - bounces.email_bounces
+    As emails_delivered
   , opens.email_opens
   , opens.email_unique_opens
   , opens.email_unique_opens / email_sent_count
