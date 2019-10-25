@@ -1987,46 +1987,52 @@ Cursor c_gift_credit_ksm Is
   ) Union All (
   -- Outright gifts and payments
     Select
-      gft.id_number
+      gift.gift_donor_id As id_number
       , entity.report_name
       , gift.gift_associated_anonymous As anon
-      , tx_number
-      , tx_sequence
+      , gift.gift_receipt_number As tx_number
+      , gift.gift_sequence As tx_sequence
       , tms_trans.transaction_type
-      , tx_gypm_ind
-      , gft.pmt_on_pledge_number As pledge_number
+      , Case
+          When gift.pledge_payment_ind = 'Y'
+            Then 'Y' -- Y = pledge payment
+          Else 'G' -- G = outright gift
+          End
+        As tx_gypm_ind
+      , primary_gift.prim_gift_pledge_number As pledge_number
       , NULL As matched_tx_number
       , NULL As matched_fiscal_year
       , tms_pmt_type.payment_type
-      , gft.allocation_code
-      , gft.alloc_short_name
+      , gift.gift_associated_allocation As allocation_code
+      , allocation.short_name As alloc_short_name
       , af_flag
       , cru_flag
       , primary_gift.prim_gift_comment As gift_comment
       , Case When primary_gift.proposal_id <> 0 Then primary_gift.proposal_id End As proposal_id
       , NULL As pledge_status
-      , date_of_record
-      , to_number(fiscal_year) As fiscal_year
-      , legal_amount
-      , credit_amount
+      , gift.gift_date_of_record As date_of_record
+      , get_fiscal_year(gift.gift_date_of_record) As fiscal_year
+      , gift.gift_associated_amount As legal_amount
+      , gift.gift_associated_credit_amt As credit_amount
       -- Recognition credit; for $0 internal transfers, extract dollar amount stated in comment
       , Case
-          When tms_pmt_type.payment_type = 'Internal Transfer' And credit_amount = 0
+          When tms_pmt_type.payment_type = 'Internal Transfer'
+            And gift.gift_associated_credit_amt = 0
             Then get_number_from_dollar(primary_gift.prim_gift_comment)
-          Else credit_amount
+          Else gift.gift_associated_credit_amt
         End As recognition_credit
-    From nu_gft_trp_gifttrans gft
-    Inner Join entity On entity.id_number = gft.id_number
+    From gift
+    Inner Join entity On entity.id_number = gift.gift_donor_id
+    -- Allocation
+    Inner Join allocation On allocation.allocation_code = gift.gift_associated_allocation
     -- Anonymous association and linked proposal
-    Inner Join gift On gift.gift_receipt_number = gft.tx_number And gift.gift_sequence = gft.tx_sequence
-    Inner Join primary_gift On primary_gift.prim_gift_receipt_number = gft.tx_number
+    Inner Join primary_gift On primary_gift.prim_gift_receipt_number = gift.gift_receipt_number
     -- Trans type descriptions
-    Left Join tms_trans On tms_trans.transaction_type_code = gft.transaction_type
-    Left Join tms_pmt_type On tms_pmt_type.payment_type_code = gft.payment_type
+    Left Join tms_trans On tms_trans.transaction_type_code = gift.gift_transaction_type
+    Left Join tms_pmt_type On tms_pmt_type.payment_type_code = gift.gift_payment_type
     -- KSM Annual Fund indicator
-    Left Join ksm_allocs On ksm_allocs.allocation_code = gft.allocation_code
+    Left Join ksm_allocs On ksm_allocs.allocation_code = gift.gift_associated_allocation
     Where alloc_school = 'KM'
-      And tx_gypm_ind In ('G', 'Y')
   ) Union All (
   -- Pledges, including BE and LE program credit
     Select
