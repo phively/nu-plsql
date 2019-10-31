@@ -5,12 +5,20 @@ rep_end_alloc As (
     a.allocation_code
     , a.short_name
     , a.long_name
+    , a.alloc_school
     , tp.short_desc As alloc_purpose
+    , a.steward_id_number
+    , e.report_name As steward_report_name
   From allocation a
   Left Join tms_purpose tp
     On tp.purpose_code = a.alloc_purpose
+  Left Join entity e
+    On e.id_number = a.steward_id_number
   Where steward_reporting_code = 'RP'
-    And alloc_school = 'KM'
+    And (
+      alloc_school = 'KM' -- Kellogg accounts
+      Or steward_id_number = '0000697410' -- Kellogg steward ID
+    )
     And agency = 'END'
 )
 
@@ -27,6 +35,10 @@ rep_end_alloc As (
       As stewardee_alloc_purpose
     , listagg(tss.short_desc, ', ') Within Group (Order By als.allocation_code)
       As stewardee_status
+    , listagg(steward_id_number, ', ') Within Group (Order By als.allocation_code)
+      As steward_id_number
+    , listagg(steward_report_name, ', ') Within Group (Order By als.allocation_code)
+      As steward_report_name
     From allocation_stewardee als
     Inner Join rep_end_alloc rea
       On als.allocation_code = rea.allocation_code
@@ -186,6 +198,8 @@ Select Distinct
   , hh.stewardee_alloc_code
   , hh.stewardee_alloc_short_name
   , hh.stewardee_alloc_long_name
+  , hh.steward_id_number
+  , hh.steward_report_name
   , hh.stewardee_alloc_purpose
   , hh.stewardee_status
   -- Seasonal address chooser
