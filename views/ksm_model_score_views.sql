@@ -29,12 +29,25 @@ Create Or Replace View v_ksm_model_mg As
 
 With
 
--- Model function inputs
-params As (
+-- Determine maximum year to be used for the models
+seg_yr As (
   Select
-    2019 As model_year
-    , 01 As model_month
-  From DUAL
+    max(segment_year) As segment_year
+  From segment
+  Where segment_code Like 'KMID_'
+    Or segment_code Like 'KMPR_'
+)
+
+-- Determine maximum month to be used for the models
+, seg_mo As (
+  Select
+    max(segment_month) As segment_month
+  From segment
+  Where segment_year = (Select segment_year From seg_yr)
+    And (
+      segment_code Like 'KMID_'
+      Or segment_code Like 'KMPR_'
+    )
 )
 
 -- Model scores
@@ -43,8 +56,8 @@ params As (
   From table(
     rpt_pbh634.ksm_pkg.tbl_model_mg_identification(
       -- Replace these with the most up-to-date modeled score month/year
-      model_year => (Select model_year From params)
-      , model_month => (Select model_month From params)
+      model_year => (Select segment_year From seg_yr)
+      , model_month => (Select segment_month From seg_mo)
     )
   )
 )
@@ -53,8 +66,8 @@ params As (
   From table(
     rpt_pbh634.ksm_pkg.tbl_model_mg_prioritization(
       -- Replace these with the most up-to-date modeled score month/year
-      model_year => (Select model_year From params)
-      , model_month => (Select model_month From params)
+      model_year => (Select segment_year From seg_yr)
+      , model_month => (Select segment_month From seg_mo)
     )
   )
 )
