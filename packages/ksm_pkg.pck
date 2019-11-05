@@ -90,6 +90,16 @@ Type committee_member Is Record (
   , spouse_id_number entity.spouse_id_number%type
 );
 
+/* Geo code primary, for addresses */
+Type geo_code_primary Is Record (
+  id_number address.id_number%type
+  , xsequence address.xsequence%type
+  , addr_pref_ind address.addr_pref_ind%type
+  , geo_codes varchar2(1024)
+  , geo_code_primary geo_code.geo_code%type
+  , geo_code_primary_desc geo_code.description%type
+);
+
 /* Household, for entity_households */
 Type household Is Record (
   id_number entity.id_number%type
@@ -403,6 +413,7 @@ Type t_allocation Is Table Of allocation_info;
 Type t_calendar Is Table Of calendar;
 Type t_degreed_alumni Is Table Of degreed_alumni;
 Type t_committee_members Is Table Of committee_member;
+Type t_geo_code_primary Is Table Of geo_code_primary;
 Type t_households Is Table Of household;
 Type t_src_donors Is Table Of src_donor;
 Type t_university_strategy Is Table Of university_strategy;
@@ -581,6 +592,10 @@ Function tbl_current_calendar
 /* Return pipelined table of entity_degrees_concat_ksm */
 Function tbl_entity_degrees_concat_ksm
   Return t_degreed_alumni Pipelined;
+
+/* Return pipelined table of primary geo codes per address */
+Function tbl_geo_code_primary
+  Return t_geo_code_primary Pipelined;
 
 /* Return pipelined table of entity_households_ksm */
 Function tbl_entity_households_ksm
@@ -1222,6 +1237,44 @@ Cursor c_source_donor_ksm (receipt In varchar2) Is
     , id_number Asc
   ;
 
+/* Definition of primary geo code
+   2019-11-05 */
+Cursor c_geo_code_primary Is 
+  Select
+    address.id_number
+    , address.xsequence
+    , address.addr_pref_ind
+    , Listagg(trim(geo_code.description), '; ') Within Group (Order By geo_code.description Asc)
+      As geo_codes
+    , min(geo_code.geo_code) keep(dense_rank First Order By geo_type.hierarchy_order Desc, address_geo.date_added Asc, geo_code.geo_code Asc)
+      As geo_code_primary
+    , min(geo_code.description) keep(dense_rank First Order By geo_type.hierarchy_order Desc, address_geo.date_added Asc, geo_code.geo_code Asc)
+      As geo_code_primary_desc
+  From address
+  Inner Join address_geo
+    On address.id_number = address_geo.id_number
+    And address.xsequence = address_geo.xsequence
+  Inner Join geo_code
+    On geo_code.geo_code = address_geo.geo_code
+  Inner Join geo_type
+    On geo_type.geo_type = geo_code.geo_type
+  Where 
+    address.addr_status_code = 'A' -- Active addresses only
+    And address_geo.geo_type In (100, 110) -- Tier 1 Region; Club
+    And address_geo.geo_code Not In (
+      'C035' -- Lake Arc 
+      , 'C068' -- SF without SJ
+      , 'C069' -- San Jose
+      , 'C046' -- North Carolina
+      , 'C011' -- Chi city only
+      , 'C074' -- Miami-Ft Laud combined
+    )
+  Group By
+    address.id_number
+    , address.xsequence
+    , address.addr_pref_ind
+;
+
 /* Definition of Kellogg householding
    2017-02-21 */
 Cursor c_entity_households_ksm Is
@@ -1308,34 +1361,9 @@ With
   )
   -- Address info
   , geo As (
-    Select
-      address.id_number
-      , Listagg(trim(geo_code.description), '; ') Within Group (Order By geo_code.description Asc)
-        As geo_codes
-      , min(geo_code.geo_code) keep(dense_rank First Order By geo_type.hierarchy_order Desc, address_geo.date_added Asc, geo_code.geo_code Asc)
-        As geo_code_primary
-      , min(geo_code.description) keep(dense_rank First Order By geo_type.hierarchy_order Desc, address_geo.date_added Asc, geo_code.geo_code Asc)
-        As geo_code_primary_desc
-    From address
-    Inner Join address_geo
-      On address.id_number = address_geo.id_number
-      And address.xsequence = address_geo.xsequence
-    Inner Join geo_code
-      On geo_code.geo_code = address_geo.geo_code
-    Inner Join geo_type
-      On geo_type.geo_type = geo_code.geo_type
-    Where address.addr_pref_ind = 'Y'
-      And address.addr_status_code = 'A'
-      And address_geo.geo_type In (100, 110) -- Tier 1 Region; Club
-      And address_geo.geo_code Not In (
-        'C035' -- Lake Arc 
-        , 'C068' -- SF without SJ
-        , 'C069' -- San Jose
-        , 'C046' -- North Carolina
-        , 'C011' -- Chi city only
-        , 'C074' -- Miami-Ft Laud combined
-      )
-    Group By address.id_number
+    Select *
+    From table(tbl_geo_code_primary)
+    Where addr_pref_ind = 'Y'
   )
 
   , pref_addr As (
@@ -3428,6 +3456,23 @@ Function tbl_entity_degrees_concat_ksm
     Close c_entity_degrees_concat_ksm;
     For i in 1..(degrees.count) Loop
       Pipe row(degrees(i));
+    End Loop;
+    Return;
+  End;
+
+/* Pipelined function returning concatenated geo codes for all addresses
+   2019-11-05 */
+Function tbl_geo_code_primary
+  Return t_geo_code_primary Pipelined As
+  -- Declarations
+  geo t_geo_code_primary;
+  
+  Begin
+    Open c_geo_code_primary;
+      Fetch c_geo_code_primary Bulk Collect Into geo;
+    Close c_geo_code_primary;
+    For i in 1..(geo.count) Loop
+      Pipe row(geo(i));
     End Loop;
     Return;
   End;

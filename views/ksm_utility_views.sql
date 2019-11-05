@@ -40,3 +40,10 @@ Create Or Replace View v_entity_special_handling As
   Select sh.*
   From table(ksm_pkg.tbl_special_handling_concat) sh
 ;
+
+Create Or Replace View v_geo_code_primary As
+-- View defining primary geo code for each active address
+-- Primary key is id_number + xsequence
+  Select *
+  From table(ksm_pkg.tbl_geo_code_primary)
+;
