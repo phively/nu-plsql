@@ -1,0 +1,121 @@
+Create or Replace View v_ksm_data_mart As
+
+--- Created 4 Queries: Interest, IDs, Employment, Address (Home and Business)  
+
+
+--- TMS INTEREST (Alumni List) 
+
+Select Interest.Id_Number AS catracks_ID,
+       TMS_INTEREST.short_desc AS interest_Desc,
+       Interest.Interest_Code As interest_code_desc,
+       rpt_pbh634.ksm_pkg.to_date2(start_dt) As interest_start_dt,
+       Interest.Stop_Dt As interest_stop_dt,
+       Interest.Date_Added,
+       Interest.Date_Modified
+From Interest 
+Inner JOIN TMS_INTEREST ON TMS_Interest.interest_code = interest.interest_code --- Produce TMS Codes
+Inner Join rpt_pbh634.v_entity_ksm_degrees deg on deg.ID_NUMBER = interest.id_number --- Only Kellogg Alumni
+Where TMS_INTEREST.interest_code LIKE 'L%' --- Any Linkedin Industry Code
+or TMS_Interest.interest_code = '16'  --- KIS also wants the "16" Research Code 
+Order By interest_code_desc ASC;
+
+--- KSM IDS: Obtaining EMPLID, SF ID's and NET IDs for a given alumni 
+
+With KSM_IDS AS (select ids_base.id_number,
+
+       ids_base.ids_type_code,
+
+       ids_base.other_id
+
+From rpt_pbh634.v_entity_ksm_degrees deg --- Kellogg Alumni Only
+
+Left Join Ids_Base on Ids_Base.Id_Number = deg.ID_NUMBER
+
+Where Ids_base.Ids_Type_Code IN('SES', 'KSF','NET')) 
+
+--- SES = EMPLID
+--- KSF = Salesforce ID
+--- NET = NetID
+
+Select Distinct
+KSM_IDS.id_number As catracks_id
+, ses.other_id As emplid
+, ksf.other_id As salesforce_id
+, net.other_id As netid
+From KSM_IDS
+Inner Join rpt_pbh634.v_entity_ksm_degrees deg
+     On deg.id_number = ksm_ids.id_number
+Left Join KSM_IDS ses
+     On ses.id_number = ksm_ids.id_number
+     And ses.ids_type_code = 'SES'
+Left Join KSM_IDS KSF
+     On ksf.id_number = ksm_ids.id_number
+     And ksf.ids_type_code = 'KSF'
+Left Join KSM_IDS net
+     On net.id_number = ksm_ids.id_number
+     And net.ids_type_code = 'NET'; --- Selects IDs for each row
+
+--- Employment Past and Present
+Select Employment.Id_Number AS catracks_id,
+       Employment.start_dt As start_date,
+       rpt_pbh634.ksm_pkg.to_date2 (Employment.start_dt) As employment_start_date,
+       Employment.Stop_Dt As stop_date,
+       rpt_pbh634.ksm_pkg.to_date2 (Employment.Stop_Dt) As employment_stop_date,
+       Employment.Job_Status_Code As job_status,
+       Employment.Primary_Emp_Ind AS primary_employer_indicator,
+       Employment.Self_Employ_Ind As self_employed_indicator,
+       Employment.Employer_Id_Number,
+       Employment.Employer_Name1 As employer_name,
+       Employment.Job_Title,
+       Employment.Fld_Of_Work_Code As fld_of_work_code_desc,
+       fow.short_desc,
+       Employment.Date_Added,
+       Employment.Date_Modified,
+       Employment.Operator_Name
+       
+From Employment
+Inner Join rpt_pbh634.v_entity_ksm_degrees deg on deg.ID_NUMBER = employment.id_number
+Inner Join tms_fld_of_work fow on employment.fld_of_work_code = fow.fld_of_work_code
+Where Employment.Job_Status_Code IN ('C','P','Q','R', ' ', 'L');
+--- Employment Key: C = Current, P = Past, Q = Semi Retired R = Retired L = On Leave 
+
+
+--- Selecting Business and Home Address + Geocodes to both. 
+
+--- Subquery for Business Address
+
+With Business_Address As (
+
+Select Distinct 
+Address.Id_Number,
+Address.City,
+Address.State_Code,
+Address.Country_Code,
+Address.Addr_Type_Code,
+Address.Addr_Status_Code,
+rpt_pbh634.v_geo_code_primary.GEO_CODES,
+rpt_pbh634.v_geo_code_primary.GEO_CODE_PRIMARY,
+rpt_pbh634.v_geo_code_primary.GEO_CODE_PRIMARY_DESC
+
+From Address
+Left Join rpt_pbh634.v_geo_code_primary on rpt_pbh634.v_geo_code_primary.ID_NUMBER = address.ID_NUMBER
+And rpt_pbh634.v_geo_code_primary.XSEQUENCE = address.XSEQUENCE --- Joining Paul's New Geocode Table to get Business Address Geocodes 
+Where Address.addr_type_code = 'B'
+and Address.Addr_Status_Code = 'A')
+
+Select deg.ID_NUMBER As Catracks_ID,
+       house.HOUSEHOLD_CITY AS Home_City, --- KIS Wants Homes
+       house.HOUSEHOLD_STATE AS Home_State,
+       house.HOUSEHOLD_COUNTRY AS Home_Country,
+       house.HOUSEHOLD_GEO_CODES AS Home_Geo_Code,
+       house.HOUSEHOLD_GEO_PRIMARY_DESC AS Home_Geo_Code_Desc, --- KIS Wants Geocodes Home Address
+       Business_Address.City AS Business_City,
+       Business_Address.State_Code AS Business_State,
+       Business_Address.Country_Code AS Business_Country,
+       Business_Address.GEO_CODES AS Business_Geo_Code, --- Kis Wants Geocodes for Business Address
+       Business_Address.GEO_CODE_PRIMARY_DESC AS Business_Geo_Desc
+From rpt_pbh634.v_entity_ksm_degrees deg 
+--- Degrees Table Base to only get KSM Alumni
+Left Join rpt_pbh634.v_entity_ksm_households house ON deg.ID_NUMBER = house.ID_NUMBER
+--- Joining Address Table to get Business Address
+Left Join Business_Address ON Business_Address.Id_Number = house.ID_NUMBER;
