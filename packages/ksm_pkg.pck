@@ -73,6 +73,7 @@ Type degreed_alumni Is Record (
   , program_group varchar2(20)
   , program_group_rank number
   , class_section varchar2(80)
+  , majors_concat varchar2(512)
 );
 
 /* Committee member list, for committee results */
@@ -984,7 +985,7 @@ Cursor c_entity_degrees_concat_ksm Is
       , tms_degree_level.short_desc As degree_level
       , degrees.degree_code
       , tms_degrees.short_desc As degree_desc
-      , school_code
+      , degrees.school_code
       , degrees.dept_code
       , tms_dept_code.short_desc As dept_desc
       , degrees.division_code
@@ -1003,6 +1004,15 @@ Cursor c_entity_degrees_concat_ksm Is
         End As dept_short_desc
       , class_section
       , tms_class_section.short_desc As class_section_desc
+      -- Concatenated majors; separate by , within a single degree
+      , trim(
+          trim(
+            m1.short_desc ||
+            Case When m2.short_desc Is Not Null Then ', ' End ||
+            m2.short_desc
+          ) || Case When m3.short_desc Is Not Null Then ', ' End ||
+          m3.short_desc
+        ) As majors
     -- Table joins, etc.
     From degrees
     Left Join tms_class_section -- For class section short_desc
@@ -1015,8 +1025,15 @@ Cursor c_entity_degrees_concat_ksm Is
       On degrees.degree_level_code = tms_degree_level.degree_level_code
     Left Join tms_degrees -- For degreee short_desc (to replace degree_code)
       On degrees.degree_code = tms_degrees.degree_code
+    -- Major codes
+    Left Join tms_majors m1
+      On m1.major_code = degrees.major_code1
+    Left Join tms_majors m2
+      On m2.major_code = degrees.major_code2
+    Left Join tms_majors m3
+      On m3.major_code = degrees.major_code3
     Where institution_code = '31173' -- Northwestern institution code
-      And school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
+      And degrees.school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
   )
   -- Listagg all degrees, including incomplete
   , concat As (
@@ -1040,6 +1057,11 @@ Cursor c_entity_degrees_concat_ksm Is
           trim(Case When trim(class_section) Is Not Null Then dept_short_desc End || ' ' || class_section)
           , '; '
         ) Within Group (Order By degree_year) As class_section
+      -- Majors
+      , Listagg(
+        trim(majors)  
+        , '; '
+      ) Within Group (Order By degree_year) As majors_concat
       -- First Kellogg year; exclude non-grad years
       , min(trim(Case When non_grad_code = 'N' Then NULL Else degree_year End))
         As first_ksm_year
@@ -1211,6 +1233,7 @@ Cursor c_entity_degrees_concat_ksm Is
           Else 9999999999
         End As program_group_rank
       , class_section
+      , majors_concat
     From concat
     Inner Join entity On entity.id_number = concat.id_number
     Inner Join prg On concat.id_number = prg.id_number
