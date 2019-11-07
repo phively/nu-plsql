@@ -62,6 +62,7 @@ Left Join tms_majors m3
   On m3.major_code = degrees.major_code3
 ;
 
+Create Or Replace View v_datamart_entities
 -- KSM entity view
 -- Core alumni table which includes summary information and current fields from the other views
 -- Aggregated to return one unique alum per line
@@ -71,7 +72,7 @@ Select
   , deg.degrees_verbose
   , deg.program
   , deg.program_group
-  -- Concatenated majors
+  , deg.majors_concat
   , deg.record_status_code
   , tms_rs.short_desc As record_status_desc
   -- Current home address info
