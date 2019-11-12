@@ -139,7 +139,7 @@ Select
   , home_address.city As home_city
   , home_address.state_code As home_state
   , home_address.country_code As home_country_code
-  , tms_home.short_desc As home_country_desc
+  , tms_home.country As home_country_desc
   , home_address.geo_codes As home_geo_codes
   , home_address.geo_code_primary As home_geo_primary_code
   , home_address.geo_code_primary_desc As home_geo_primary_desc
@@ -150,7 +150,7 @@ Select
   , business_address.city As business_city
   , business_address.state_code As business_state
   , business_address.country_code As business_country_code
-  , tms_bus.short_desc As business_country_desc
+  , tms_bus.country As business_country_desc
   , business_address.geo_codes As business_geo_codes --- KIS Wants Geocodes for Business Address
   , business_address.geo_code_primary As business_geo_primary_code
   , business_address.geo_code_primary_desc As business_geo_primary_desc
@@ -161,9 +161,9 @@ Left Join business_address
   On business_address.id_number = deg.id_number --- Join Subquery for Business Address
 Left Join home_address
   On home_address.id_number = deg.id_number --- Join Subquery for Home Address
-Left Join tms_country tms_bus
+Left Join rpt_pbh634.v_addr_continents tms_bus
   On business_address.country_code = tms_bus.country_code --- Join to get Home Country Description
-Left Join tms_country tms_home
+Left Join rpt_pbh634.v_addr_continents tms_home
   On home_address.country_code = tms_home.country_code
 Order By deg.id_number Asc
 ;
