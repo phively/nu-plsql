@@ -36,7 +36,9 @@ Order By interest_code Asc
 
 Create Or Replace View v_datamart_ids As
 -- View of KSM alumni with least a EMPLID, SES, or NETID along with a Catracks ID: v_datamart_ids
-With ksm_ids As (
+With
+
+ksm_ids As (
   Select ids_base.id_number
     , ids_base.ids_type_code
     , ids_base.other_id
@@ -67,7 +69,8 @@ Left Join ksm_ids net
 
 Create Or Replace View v_datamart_address As
 -- View for Address (Business + Home) v_data_mart_address
-With business_address As (
+With
+business_address As (
   Select
     address.id_number
     , address.city
@@ -124,7 +127,7 @@ Select
   , business_address.state_code As business_state
   , business_address.country_code As business_country_code
   , tms_bus.short_desc As business_country_desc
-  , business_address.geo_codes As business_geo_code --- Kis Wants Geocodes for Business Address
+  , business_address.geo_codes As business_geo_codes --- KIS Wants Geocodes for Business Address
   , business_address.geo_code_primary As business_geo_primary_code
   , business_address.geo_code_primary_desc As business_geo_primary_desc
   , business_address.start_dt As business_start_dt
@@ -143,7 +146,8 @@ Order By deg.id_number Asc
 
 Create or Replace View v_datamart_employment AS
 --- View for Employer: v_data_mart_employer
-With org_employer As (
+With
+org_employer As (
   --- Using subquery to Get Employer Names from Employee ID #'s 
   Select id_number, report_name
   From entity 
@@ -242,6 +246,27 @@ Create Or Replace View v_datamart_entities As
 -- KSM entity view
 -- Core alumni table which includes summary information and current fields from the other views
 -- Aggregated to return one unique alum per line
+With
+emp As (
+  Select
+    empl.catracks_id
+    , empl.employment_start_date
+    , empl.job_title As primary_job_title
+    , empl.employer As primary_employer
+  From v_datamart_employment empl
+  Where empl.job_status_code = 'C' -- current only
+    And empl.primary_employer_indicator = 'Y' -- primary employer only
+)
+
+, intr As (
+  Select
+    intr.catracks_id
+    , Listagg(intr.interest_desc, '; ') Within Group (Order By interest_start_date Asc, interest_desc Asc)
+      As interests_concat
+  From v_datamart_interests intr
+  Group By intr.catracks_id
+)
+
 Select
   deg.id_number As catracks_id
   , deg.degrees_concat
@@ -251,12 +276,29 @@ Select
   , deg.majors_concat
   , deg.record_status_code
   , tms_rs.short_desc As record_status_desc
-  -- Current home address info
-  -- Current business address info
-  -- Current employment info
-  -- Concatenated interests
+  , addr.home_city
+  , addr.home_state
+  , addr.home_country_desc
+  , addr.home_geo_codes
+  , addr.home_geo_primary_desc
+  , addr.home_start_date
+  , emp.primary_job_title
+  , emp.primary_employer
+  , addr.business_city
+  , addr.business_state
+  , addr.business_country_desc
+  , addr.business_geo_codes
+  , addr.business_geo_primary_desc
+  , addr.business_start_date
+  , intr.interests_concat
 From rpt_pbh634.v_entity_ksm_degrees deg
 Left Join tms_record_status tms_rs
   On tms_rs.record_status_code = deg.record_status_code
+Left Join v_datamart_address addr
+  On addr.catracks_id = deg.id_number
+Left join emp
+  On emp.catracks_id = deg.id_number
+Left Join intr
+  On intr.catracks_id = deg.id_number
 Where deg.record_status_code In ('A', 'C', 'L', 'D')
 ;
