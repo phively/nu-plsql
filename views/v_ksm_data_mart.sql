@@ -11,6 +11,11 @@ Conventions:
 - Always include date added and modified in the disaggregated data views
 ************************************************************************/
 
+/************************************************************************
+Disaggregated interests view for data mart
+
+Includes only career-related interests
+************************************************************************/
 Create Or Replace View v_datamart_interests As
 -- View of INTEREST (Alumni List) v-datamart_interests
 Select
@@ -34,6 +39,9 @@ Where tms_interest.interest_code Like 'L%' --- Any Linkedin Industry Code
 Order By interest_code Asc
 ;
 
+/************************************************************************
+Aggregated IDs view for data mart
+************************************************************************/
 Create Or Replace View v_datamart_ids As
 -- View of KSM alumni with least a EMPLID, SES, or NETID along with a Catracks ID: v_datamart_ids
 With
@@ -67,12 +75,22 @@ Left Join ksm_ids net
   And net.ids_type_code = 'NET' --- Selects IDs for each row
 ;
 
+/************************************************************************
+Aggregated address view for data mart
+
+Includes only current home and business addresses, as well as
+the job title/company associated with each business address (if any)
+************************************************************************/
 Create Or Replace View v_datamart_address As
 -- View for Address (Business + Home) v_data_mart_address
 With
 business_address As (
   Select
     address.id_number
+    , trim(address.business_title) As business_job_title
+    , trim(
+        trim(address.company_name_1) || ' ' || trim(address.company_name_2)
+      ) As business_company_name
     , address.city
     , address.state_code
     , address.country_code
@@ -123,6 +141,8 @@ Select
   , home_address.geo_code_primary_desc As home_geo_primary_desc
   , home_address.start_dt As home_start_dt
   , home_address.start_date As home_start_date
+  , business_address.business_job_title
+  , business_address.business_company_name
   , business_address.city As business_city
   , business_address.state_code As business_state
   , business_address.country_code As business_country_code
@@ -144,7 +164,12 @@ Left Join tms_country tms_home
 Order By deg.id_number Asc
 ;
 
-Create or Replace View v_datamart_employment AS
+/************************************************************************
+Disaggregated employment view for data mart
+
+Includes both current and past job information
+************************************************************************/
+Create or Replace View v_datamart_employment As
 --- View for Employer: v_data_mart_employer
 With
 org_employer As (
@@ -185,10 +210,16 @@ Left  Join tms_job_status
   On tms_job_status.job_status_code = employ.job_status_code --- To get job description
 Left Join org_employer
   On org_employer.id_number = employ.employer_id_number --- To get the name of those with employee ID
-Where employ.job_status_code In ('C','P','Q','R', ' ', 'L')
+Where employ.job_status_code In ('C', 'P', 'Q', 'R', ' ', 'L')
 --- Employment Key: C = Current, P = Past, Q = Semi Retired R = Retired L = On Leave 
 Order By employ.id_Number Asc
 ;
+
+/************************************************************************
+Disaggregated degree view for data mart
+
+Includes all degrees, not just KSM or NU ones
+************************************************************************/
 
 Create Or Replace View v_datamart_degrees As
 -- KSM degrees view
@@ -242,6 +273,16 @@ Left Join tms_majors m3
   On m3.major_code = degrees.major_code3
 ;
 
+/************************************************************************
+Entity view for data mart aggregating current data together
+
+Includes Active, Current, Lost, Deceased record types
+
+Primary job title and employer are defined as the title/company associated
+with the current business address if they are filled in; otherwise
+the current primary employer defined in v_datamart_employment
+************************************************************************/
+
 Create Or Replace View v_datamart_entities As
 -- KSM entity view
 -- Core alumni table which includes summary information and current fields from the other views
@@ -251,8 +292,8 @@ emp As (
   Select
     empl.catracks_id
     , empl.employment_start_date
-    , empl.job_title As primary_job_title
-    , empl.employer As primary_employer
+    , empl.job_title
+    , empl.employer
   From v_datamart_employment empl
   Where empl.job_status_code = 'C' -- current only
     And empl.primary_employer_indicator = 'Y' -- primary employer only
@@ -282,8 +323,18 @@ Select
   , addr.home_geo_codes
   , addr.home_geo_primary_desc
   , addr.home_start_date
-  , emp.primary_job_title
-  , emp.primary_employer
+  , Case
+      When addr.business_job_title Is Not Null
+        Then addr.business_job_title
+      Else emp.job_title
+      End
+    As primary_job_title
+  , Case
+      When addr.business_company_name Is Not Null
+        Then addr.business_company_name
+      Else emp.employer
+      End
+    As primary_employer
   , addr.business_city
   , addr.business_state
   , addr.business_country_desc
