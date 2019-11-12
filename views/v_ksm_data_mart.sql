@@ -7,6 +7,7 @@ Conventions:
 - Translated values of the code fields end in _desc for description
 - Include both string and converted date versions of e.g. start/stop date
   E.g. interest_start_dt
+- Fields ending in _dt are strings and those ending in _date are dates
 - Always include date added and modified in the disaggregated data views
 ************************************************************************/
 
@@ -14,14 +15,15 @@ Create Or Replace View v_datamart_interests As
 -- View of INTEREST (Alumni List) v-datamart_interests
 Select
   interest.id_number As catracks_id
-  , tms_interest.short_desc AS interest_desc
   , interest.interest_code As interest_code
+  , tms_interest.short_desc As interest_desc
   , interest.start_dt
   , rpt_pbh634.ksm_pkg.to_date2(start_dt) As interest_start_date
   , interest.stop_dt
   , rpt_pbh634.ksm_pkg.to_date2(stop_dt) As interest_stop_date
   , interest.date_added
   , interest.date_modified
+  , interest.operator_name
 From interest 
 Inner Join tms_interest
   On tms_interest.interest_code = interest.interest_code --- Produce TMS Codes
@@ -66,17 +68,19 @@ Left Join ksm_ids net
 Create Or Replace View v_datamart_address As
 -- View for Address (Business + Home) v_data_mart_address
 With business_address As (
-  Select Distinct
+  Select
     address.id_number
     , address.city
     , address.state_code
     , address.country_code
     , address.addr_type_code
     , address.addr_status_code
+    , address.start_dt
+    , rpt_pbh634.ksm_pkg.to_date2(address.start_dt) As start_date
     , rpt_pbh634.v_geo_code_primary.geo_codes
     , rpt_pbh634.v_geo_code_primary.geo_code_primary
     , rpt_pbh634.v_geo_code_primary.geo_code_primary_desc
-  From Address
+  From address
   Left Join rpt_pbh634.v_geo_code_primary
     On rpt_pbh634.v_geo_code_primary.id_number = address.id_number
     And rpt_pbh634.v_geo_code_primary.xsequence = address.xsequence --- Joining Paul's New Geocode Table to get Business Address Geocodes 
@@ -85,17 +89,19 @@ With business_address As (
 )
 
 , home_address As (
-  Select Distinct
+  Select
     address.id_number
     , address.city --- KIS Wants Homes
     , address.state_code
     , address.country_code
     , address.addr_type_code
     , address.addr_status_code
+    , address.start_dt
+    , rpt_pbh634.ksm_pkg.to_date2(address.start_dt) As start_date
     , rpt_pbh634.v_geo_code_primary.geo_codes --- KIS Wants Geocodes Home Address
     , rpt_pbh634.v_geo_code_primary.geo_code_primary
     , rpt_pbh634.v_geo_code_primary.geo_code_primary_desc
-  From Address
+  From address
   Left Join rpt_pbh634.v_geo_code_primary
     On rpt_pbh634.v_geo_code_primary.id_number = address.id_number
     And rpt_pbh634.v_geo_code_primary.xsequence = address.xsequence --- Joining Paul's New Geocode Table to get Business Address Geocodes
@@ -103,33 +109,36 @@ With business_address As (
     and address.addr_status_code = 'A'
 )
 
-Select Distinct 
-  address.id_number As catracks_id
+Select 
+  deg.id_number As catracks_id
   , home_address.city As home_city
   , home_address.state_code As home_state
-  , home_address.country_code As home_country
+  , home_address.country_code As home_country_code
+  , tms_home.short_desc As home_country_desc
   , home_address.geo_codes As home_geo_codes
   , home_address.geo_code_primary As home_geo_primary_code
   , home_address.geo_code_primary_desc As home_geo_primary_desc
+  , home_address.start_dt As home_start_dt
+  , home_address.start_date As home_start_date
   , business_address.city As business_city
   , business_address.state_code As business_state
   , business_address.country_code As business_country_code
-  , tms_country.short_desc As business_country
+  , tms_bus.short_desc As business_country_desc
   , business_address.geo_codes As business_geo_code --- Kis Wants Geocodes for Business Address
   , business_address.geo_code_primary As business_geo_primary_code
   , business_address.geo_code_primary_desc As business_geo_primary_desc
-From address 
-Inner Join rpt_pbh634.v_entity_ksm_degrees deg
-  On deg.id_number = address.id_number --- Degrees Table Base to only get KSM Alumni
-Left Join address
-  On deg.id_number = address.id_number --- Joining Address Table to get Business Address
+  , business_address.start_dt As business_start_dt
+  , business_address.start_date As business_start_date
+From rpt_pbh634.v_entity_ksm_degrees deg
 Left Join business_address
   On business_address.id_number = deg.id_number --- Join Subquery for Business Address
 Left Join home_address
   On home_address.id_number = deg.id_number --- Join Subquery for Home Address
-Left Join tms_country 
-  On business_address.country_code = tms_country.country_code --- Join to get Home Country Description
-Order By address.id_number Asc
+Left Join tms_country tms_bus
+  On business_address.country_code = tms_bus.country_code --- Join to get Home Country Description
+Left Join tms_country tms_home
+  On home_address.country_code = tms_home.country_code
+Order By deg.id_number Asc
 ;
 
 Create or Replace View v_datamart_employment AS
@@ -143,9 +152,9 @@ With org_employer As (
 
 Select
   employ.id_Number As catracks_id
-  , employ.start_dt As start_date
+  , employ.start_dt
   , rpt_pbh634.ksm_pkg.to_date2(employ.start_dt) As employment_start_date
-  , employ.Stop_Dt As stop_date
+  , employ.stop_dt
   , rpt_pbh634.ksm_pkg.to_date2(employ.stop_dt) As employment_stop_date
   , employ.job_status_code As job_status_code
   , tms_job_status.short_desc As job_status_desc
