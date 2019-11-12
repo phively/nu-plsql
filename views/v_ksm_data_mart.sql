@@ -14,9 +14,10 @@ Conventions:
 /************************************************************************
 Disaggregated interests view for data mart
 
+Updated 2019-11-12
 Includes only career-related interests
 ************************************************************************/
-Create Or Replace View v_datamart_interests As
+Create Or Replace View v_datamart_career_interests As
 -- View of INTEREST (Alumni List) v-datamart_interests
 Select
   interest.id_number As catracks_id
@@ -41,6 +42,8 @@ Order By interest_code Asc
 
 /************************************************************************
 Aggregated IDs view for data mart
+
+Updated 2019-11-12
 ************************************************************************/
 Create Or Replace View v_datamart_ids As
 -- View of KSM alumni with least a EMPLID, SES, or NETID along with a Catracks ID: v_datamart_ids
@@ -53,7 +56,7 @@ ksm_ids As (
   From rpt_pbh634.v_entity_ksm_degrees deg --- Kellogg Alumni Only
   Left Join ids_base
     On ids_base.id_number = deg.id_number
-  Where ids_base.ids_type_code In ('SES', 'KSF','NET') --- SES = EMPLID + KSF = Salesforce ID + NET = NetID
+  Where ids_base.ids_type_code In ('SES', 'KSF', 'NET') --- SES = EMPLID + KSF = Salesforce ID + NET = NetID
 ) 
 
 Select Distinct
@@ -78,6 +81,7 @@ Left Join ksm_ids net
 /************************************************************************
 Aggregated address view for data mart
 
+Updated 2019-11-12
 Includes only current home and business addresses, as well as
 the job title/company associated with each business address (if any)
 ************************************************************************/
@@ -167,7 +171,10 @@ Order By deg.id_number Asc
 /************************************************************************
 Disaggregated employment view for data mart
 
+Updated 2019-11-12
 Includes both current and past job information
+N.B. people may not have a row on the employment table but have text
+entered under company or job_title on the address table
 ************************************************************************/
 Create or Replace View v_datamart_employment As
 --- View for Employer: v_data_mart_employer
@@ -218,6 +225,7 @@ Order By employ.id_Number Asc
 /************************************************************************
 Disaggregated degree view for data mart
 
+Updated 2019-11-12
 Includes all degrees, not just KSM or NU ones
 ************************************************************************/
 
@@ -278,6 +286,7 @@ Entity view for data mart aggregating current data together
 
 Includes Active, Current, Lost, Deceased record types
 
+Updated 2019-11-12
 Primary job title and employer are defined as the title/company associated
 with the current business address if they are filled in; otherwise
 the current primary employer defined in v_datamart_employment
@@ -304,7 +313,7 @@ emp As (
     intr.catracks_id
     , Listagg(intr.interest_desc, '; ') Within Group (Order By interest_start_date Asc, interest_desc Asc)
       As interests_concat
-  From v_datamart_interests intr
+  From v_datamart_career_interests intr
   Group By intr.catracks_id
 )
 
