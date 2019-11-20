@@ -56,7 +56,7 @@ ksm_ids As (
   From rpt_pbh634.v_entity_ksm_degrees deg --- Kellogg Alumni Only
   Left Join ids_base
     On ids_base.id_number = deg.id_number
-  Where ids_base.ids_type_code In ('SES', 'KSF', 'NET') --- SES = EMPLID + KSF = Salesforce ID + NET = NetID
+  Where ids_base.ids_type_code In ('SES', 'KSF', 'NET', 'KEX') --- SES = EMPLID + KSF = Salesforce ID + NET = NetID + KEX = KSM EXED ID
 ) 
 
 Select Distinct
@@ -64,6 +64,7 @@ Select Distinct
   , ses.other_id As emplid
   , ksf.other_id As salesforce_id
   , net.other_id As netid
+  , kex.other_id AS ksm_exed_id
 From ksm_ids
 Inner Join rpt_pbh634.v_entity_ksm_degrees deg
   On deg.id_number = ksm_ids.id_number
@@ -75,8 +76,12 @@ Left Join ksm_ids KSF
   And ksf.ids_type_code = 'KSF'
 Left Join ksm_ids net
   On net.id_number = ksm_ids.id_number
-  And net.ids_type_code = 'NET' --- Selects IDs for each row
-;
+  And net.ids_type_code = 'NET'
+Left Join ksm_ids kex
+  On kex.id_number = ksm_ids.id_number
+  And kex.ids_type_code = 'KEX'
+  --- Selects IDs for each row
+  ;
 
 /************************************************************************
 Aggregated address view for data mart
