@@ -14,21 +14,18 @@ With alternate_region As (Select comm.id_number,
        comm.geo_code,
        comm.xcomment
 FROM  committee comm
-Inner Join rpt_pbh634.v_entity_ksm_degrees deg on deg.ID_NUMBER = comm.id_number
+Left Join Entity on Entity.Id_Number = comm.id_number
 Left Join TMS_COMMITTEE_TABLE tms on tms.committee_code = comm.committee_code
 where  comm.committee_status_code = 'C'  
-and comm.xcomment = 'KARP'
+and comm.xcomment LIKE '%KARP%'
 Order by tms.short_desc ASC)
 
-Select deg.ID_NUMBER,
-       deg.REPORT_NAME,
-       deg.RECORD_STATUS_CODE,
-       deg.DEGREES_VERBOSE,
-       deg.FIRST_KSM_YEAR,
-       deg.LAST_MASTERS_YEAR,
-       deg.PROGRAM,
-       deg.CLASS_SECTION,
-       prospect.INSTITUTIONAL_SUFFIX,
+Select alternate_region.id_number,
+       entity.person_or_org,
+       entity.record_type_code,
+       entity.first_name,
+       entity.last_name,
+       entity.institutional_suffix,
        house.HOUSEHOLD_CITY,
        house.HOUSEHOLD_STATE,
        house.HOUSEHOLD_ZIP,
@@ -40,8 +37,7 @@ Select deg.ID_NUMBER,
        alternate_region.start_dt,
        alternate_region.committee_status_code,
        alternate_region.xcomment
-From rpt_pbh634.v_entity_ksm_degrees deg
-Left Join rpt_pbh634.v_ksm_prospect_pool prospect on prospect.ID_NUMBER = deg.ID_NUMBER
-Left Join rpt_pbh634.v_entity_ksm_households house on house.ID_NUMBER = deg.ID_NUMBER
-Inner Join alternate_region on alternate_region.id_number = deg.id_number
-Order By deg.REPORT_NAME ASC
+From entity
+Inner Join rpt_pbh634.v_entity_ksm_households house on house.ID_NUMBER = entity.ID_NUMBER
+Inner Join alternate_region on alternate_region.id_number = entity.id_number
+Order By entity.last_name ASC
