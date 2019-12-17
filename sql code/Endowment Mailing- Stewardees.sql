@@ -100,6 +100,7 @@ rep_end_alloc As (
     , a.addr_pref_ind
     , a.company_name_1
     , a.company_name_2
+    , a.care_of
     , a.street1
     , a.street2
     , a.street3
@@ -227,6 +228,14 @@ Select Distinct
       Else Null
       End
     As company_name_2
+  , Case
+      When sa.address_type = 'Seasonal'
+        Then sa.care_of
+      When pa.address_type Is Not Null
+        Then pa.care_of
+      Else Null
+      End
+    As care_of
   , Case
       When sa.address_type = 'Seasonal'
         Then sa.street1
