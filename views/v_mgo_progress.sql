@@ -1,13 +1,15 @@
-CREATE OR REPLACE VIEW RPT_DGZ654.V_MGO_PROGRESS AS
-WITH
+Create Or Replace View rpt_dgz654.v_mgo_progress As
 
-Prospect_Manager AS (
-     SELECT
-     Assignment_ID_number
-     , count(prospect_ID) AS Portfolio_count
-     FROM assignment
-     WHERE Assignment_type = 'PM' AND Active_IND = 'Y'
-     GROUP BY Assignment_ID_Number
+With
+
+prospect_manager As (
+  Select
+    assignment_id_number
+    , count(prospect_id) AS portfolio_count
+  From assignment
+  Where assignment_type = 'PM'
+    And active_ind = 'Y'
+  Group By assignment_id_number
 )
 
 , all_activity As (
@@ -15,29 +17,68 @@ Prospect_Manager AS (
   From rpt_pbh634.v_mgo_goals_monthly
 )
 
-SELECT Distinct
-       E.Pref_Mail_Name
-       , MGM."ID_NUMBER",MGM."REPORT_NAME",MGM."GOAL_TYPE",MGM."GOAL_DESC",MGM."CAL_YEAR",MGM."CAL_MONTH",MGM."FISCAL_YEAR",MGM."FISCAL_QUARTER",MGM."PERF_YEAR",MGM."PERF_QUARTER",MGM."FY_GOAL",MGM."PY_GOAL",MGM."PROGRESS",MGM."ADJUSTED_PROGRESS"
-       , cal."TODAY",cal."YESTERDAY",cal."NINETY_DAYS_AGO",cal."CURR_FY",cal."PREV_FY_START",cal."CURR_FY_START",cal."NEXT_FY_START",cal."CURR_PY",cal."PREV_PY_START",cal."CURR_PY_START",cal."NEXT_PY_START",cal."PREV_FY_TODAY",cal."NEXT_FY_TODAY",cal."PREV_WEEK_START",cal."CURR_WEEK_START",cal."NEXT_WEEK_START",cal."PREV_MONTH_START",cal."CURR_MONTH_START",cal."NEXT_MONTH_START"
-       , CASE WHEN MGM.perf_year = cal.curr_py
-              THEN cal.yesterday - cal.curr_py_start
-              ELSE 365
-        END PY_Prog_Days
---       , to_date(lpad(cal_month, 2, '0') || '/01/' || cal_year, 'mm/dd/yyyy')
---         AS calendar_date
-       , CASE
-            WHEN MGM.id_number IN ('0000549376', '0000562459', '0000776709') THEN 'Midwest'
-            WHEN MGM.id_number IN ('0000642888', '0000561243') THEN 'East'
-            WHEN MGM.id_number IN ('0000565742', '0000220843', '0000779347') THEN 'West'
-            WHEN MGM.id_number = '0000772028' THEN 'All'
-              ELSE 'Non-KSM'
-                END KSM_Region
-        , PM.portfolio_count
-FROM all_activity MGM
-LEFT JOIN entity E
-ON E.id_number = MGM.id_number
-LEFT JOIN prospect_manager PM
-ON PM.assignment_id_number = MGM.id_number
-CROSS JOIN rpt_pbh634.v_current_calendar cal
-ORDER BY MGM.Report_name, MGM.CAL_YEAR, MGM.cal_month
+Select Distinct
+  e.pref_mail_name
+  , mgm.id_number
+  , mgm.report_name
+  , mgm.goal_type
+  , mgm.goal_desc
+  , mgm.cal_year
+  , mgm.cal_month
+  , mgm.fiscal_year
+  , mgm.fiscal_quarter
+  , mgm.perf_year
+  , mgm.perf_quarter
+  , mgm.fy_goal
+  , mgm.py_goal
+  , mgm.progress
+  , mgm.adjusted_progress
+  , cal.today
+  , cal.yesterday
+  , cal.ninety_days_ago
+  , cal.curr_fy
+  , cal.prev_fy_start
+  , cal.curr_fy_start
+  , cal.next_fy_start
+  , cal.curr_py
+  , cal.prev_py_start
+  , cal.curr_py_start
+  , cal.next_py_start
+  , cal.prev_fy_today
+  , cal.next_fy_today
+  , cal.prev_week_start
+  , cal.curr_week_start
+  , cal.next_week_start
+  , cal.prev_month_start
+  , cal.curr_month_start
+  , cal.next_month_start
+  , Case
+      When mgm.perf_year = cal.curr_py
+      Then cal.yesterday - cal.curr_py_start
+        Else 365
+    End
+    As py_prog_days
+  , Case
+      When mgm.id_number In ('0000549376', '0000562459', '0000776709')
+        Then 'Midwest'
+      When mgm.id_number In ('0000642888', '0000561243')
+        Then 'East'
+      When mgm.id_number In ('0000565742', '0000220843', '0000779347')
+        Then 'West'
+      When mgm.id_number = '0000772028'
+        Then 'All'
+      Else 'Non-KSM'
+    End
+    As ksm_region
+  , pm.portfolio_count
+From all_activity mgm
+Left Join entity e
+  On e.id_number = mgm.id_number
+Left Join prospect_manager pm
+  On pm.assignment_id_number = mgm.id_number
+Cross Join rpt_pbh634.v_current_calendar cal
+Order By
+  mgm.report_name
+  , mgm.cal_year
+  , mgm.cal_month
 ;
