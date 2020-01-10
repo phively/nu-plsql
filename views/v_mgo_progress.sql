@@ -21,7 +21,11 @@ prospect_manager As (
     , staff.name
     , staff.active_ind
     , staff.senior_staff
-    , senior_entity.report_name As senior_staff_name
+    , senior.report_name As senior_staff_name
+    , sys_connect_by_path(staff.senior_staff, ';')
+      As senior_staff_hierarchy_ids
+    , sys_connect_by_path(trim(senior.report_name), '; ')
+      As senior_staff_hierarchy
     , staff.office_code
     , tmso.short_desc As office_desc
     , staff.staff_type_code
@@ -37,8 +41,10 @@ prospect_manager As (
     On tmso.office_code = staff.office_code
   Left Join tms_staff_type tst
     On tst.staff_type_code = staff.staff_type_code
-  Left Join entity senior_entity
-    On senior_entity.id_number = staff.senior_staff
+  Left Join entity senior
+    On senior.id_number = staff.senior_staff
+  Start With trim(senior_staff) Is Null
+  Connect By Prior staff.id_number = staff.senior_staff
 )
 
 -- MGO activity over time
@@ -54,6 +60,7 @@ Select Distinct
   , s.office_desc
   , s.staff_type_desc
   , s.senior_staff_name
+  , s.senior_staff_hierarchy
   , s.active_ind
   , s.start_date
   , s.stop_date
