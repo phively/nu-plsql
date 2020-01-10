@@ -2,6 +2,7 @@ Create Or Replace View rpt_dgz654.v_mgo_progress As
 
 With
 
+-- Prospect manager portfolio counts (today)
 prospect_manager As (
   Select
     assignment_id_number
@@ -12,6 +13,35 @@ prospect_manager As (
   Group By assignment_id_number
 )
 
+-- Staff table with descriptions
+, ard_staff As (
+  Select
+    staff.id_number
+    , entity.report_name
+    , staff.name
+    , staff.active_ind
+    , staff.senior_staff
+    , senior_entity.report_name As senior_staff_name
+    , staff.office_code
+    , tmso.short_desc As office_desc
+    , staff.staff_type_code
+    , tst.short_desc As staff_type_desc
+    , staff.start_date
+    , staff.stop_date
+    , staff.date_added
+    , staff.date_modified
+  From staff
+  Inner Join entity
+    On entity.id_number = staff.id_number
+  Left Join tms_office tmso
+    On tmso.office_code = staff.office_code
+  Left Join tms_staff_type tst
+    On tst.staff_type_code = staff.staff_type_code
+  Left Join entity senior_entity
+    On senior_entity.id_number = staff.senior_staff
+)
+
+-- MGO activity over time
 , all_activity As (
   Select *
   From rpt_pbh634.v_mgo_goals_monthly
@@ -21,6 +51,12 @@ Select Distinct
   e.pref_mail_name
   , mgm.id_number
   , mgm.report_name
+  , s.office_desc
+  , s.staff_type_desc
+  , s.senior_staff_name
+  , s.active_ind
+  , s.start_date
+  , s.stop_date
   , mgm.goal_type
   , mgm.goal_desc
   , mgm.cal_year
@@ -72,11 +108,13 @@ Select Distinct
     As ksm_region
   , pm.portfolio_count
 From all_activity mgm
+Cross Join rpt_pbh634.v_current_calendar cal
 Left Join entity e
   On e.id_number = mgm.id_number
 Left Join prospect_manager pm
   On pm.assignment_id_number = mgm.id_number
-Cross Join rpt_pbh634.v_current_calendar cal
+Left Join ard_staff s
+  On s.id_number = mgm.id_number
 Order By
   mgm.report_name
   , mgm.cal_year
