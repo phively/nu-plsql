@@ -27,6 +27,60 @@ Cross Join table(ksm_pkg.tbl_current_calendar) cal
 ;
 
 /*************************************************
+Householded top giving allocations
+*************************************************/
+
+Create Or Replace View v_ksm_giving_top_allocs As
+-- View showing top Kellogg allocations for each donor household
+With
+
+-- HH giving trans
+hh_giving As (
+  Select *
+  From v_ksm_giving_trans_hh
+)
+-- Giving by allocation
+, allocs As (
+  Select
+    household_id
+    , id_number
+    , allocation_code
+    , alloc_short_name
+    , sum(hh_credit) As alloc_giving
+  From hh_giving
+  Where tx_gypm_ind <> 'Y'
+  Group By
+    household_id
+    , id_number
+    , allocation_code
+    , alloc_short_name
+)
+, top_allocs As (
+  Select
+    household_id
+    , id_number
+    , max(allocs.allocation_code) keep(dense_rank First Order By alloc_giving Desc, allocs.alloc_short_name Asc)
+      As top_alloc_code
+    , max(allocs.alloc_short_name) keep(dense_rank First Order By alloc_giving Desc, allocs.alloc_short_name Asc)
+      As top_alloc
+    , max(allocs.alloc_giving) keep(dense_rank First Order By alloc_giving Desc, allocs.alloc_short_name Asc)
+      As top_alloc_amt
+  From allocs
+  Group By
+    household_id
+    , id_number
+)
+
+Select
+  household_id
+  , id_number
+  , top_alloc_code
+  , top_alloc
+  , top_alloc_amt
+From top_allocs
+;
+
+/*************************************************
 Householded entity giving summaries
 *************************************************/
 Create Or Replace View v_ksm_giving_summary As
@@ -45,32 +99,6 @@ params As (
   Select *
   From v_ksm_giving_trans_hh
 )
--- Giving by allocation
-/*, allocs As (
-  Select
-    household_id
-    , allocation_code
-    , alloc_short_name
-    , sum(hh_credit) As alloc_giving
-  From hh_giving
-  Where tx_gypm_ind <> 'Y'
-  Group By
-    household_id
-    , allocation_code
-    , alloc_short_name
-)
-, top_allocs As (
-  Select
-    household_id
-    , max(allocs.allocation_code) keep(dense_rank First Order By alloc_giving Desc, allocs.alloc_short_name Asc)
-      As top_alloc_code
-    , max(allocs.alloc_short_name) keep(dense_rank First Order By alloc_giving Desc, allocs.alloc_short_name Asc)
-      As top_alloc
-    , max(allocs.alloc_giving) keep(dense_rank First Order By alloc_giving Desc, allocs.alloc_short_name Asc)
-      As top_alloc_amt
-  From allocs
-  Group By household_id
-)*/
 -- Sum transaction amounts
 , trans As (
   Select Distinct
@@ -189,10 +217,6 @@ params As (
 -- Main query
 Select
   trans.*
-  -- Top allocations
---  , top_alloc_code
---  , top_alloc
---  , top_alloc_amt
   -- AF status categorizer
   , Case
       When af_cfy > 0 Then 'Donor'
@@ -386,8 +410,6 @@ Select
   , Case When anonymous_pfy5 > 0 Then 'Y' End As anonymous_pfy5_flag
 From trans
 Cross Join params
---Inner Join top_allocs
---  On top_allocs.household_id = trans.household_id
 Left Join table(ksm_pkg.tbl_special_handling_concat) shc
   On shc.id_number = trans.id_number
 ;
