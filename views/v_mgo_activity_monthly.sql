@@ -62,12 +62,19 @@ custom_params As (
 )
 -- Gift credit for funded proposal goal 3
 , proposals_funded_cr As (
-  -- Must be proposal manager, funded status, and above the ask & granted amount thresholds
-  Select *
-  From universal_proposals_data
+  Select
+    upd.*
+    -- Must be proposal manager, funded status, and above the ask & granted amount thresholds
+    , Case
+        When ask_amt >= (Select param_ask_amt From custom_params)
+          And granted_amt >= (Select param_granted_amt From custom_params)
+          Then 'Y'
+        Else 'N'
+      End
+      As funded_credit_flag
+  From universal_proposals_data upd
   Where assignment_type = 'PA' -- Proposal Manager
-    And ask_amt >= (Select param_ask_amt From custom_params)
-    And granted_amt >= (Select param_granted_amt From custom_params)
+    And granted_amt >= 0
     And proposal_status_code = '7' -- Only funded
 )
 -- Count for proposal assists goal 6
@@ -241,6 +248,7 @@ custom_params As (
     Select proposal_id
       , assignment_id_number
       , granted_amt
+      , funded_credit_flag
       , 1 As info_rank
     From proposals_funded_cr
     Where proposalManagerCount = 1 ----- only one proposal manager/ credit that PA
@@ -249,6 +257,7 @@ custom_params As (
     Select proposal_id
        , assignment_id_number
        , granted_amt
+       , funded_credit_flag
        , 2 As info_rank
     From proposals_funded_cr
     Where assignment_active_ind = 'Y'
@@ -257,6 +266,7 @@ custom_params As (
     Select proposal_id
        , assignment_id_number
        , granted_amt
+       , funded_credit_flag
        , 3 As info_rank
     From proposals_funded_cr
     Where proposal_active_ind = 'N' -- Inactives on the proposal.
@@ -266,6 +276,8 @@ custom_params As (
 , funded_ranked As (
   Select proposal_id
     , assignment_id_number
+    , max(funded_credit_flag)
+      As funded_credit_flag
     , max(granted_amt) keep(dense_rank First Order By info_rank Asc)
       As granted_amt
   From funded_credit
@@ -323,6 +335,7 @@ Select fcd.assignment_id_number As id_number
   , pyg.goal_1 As py_goal
   , Count(Distinct fcd.proposal_id) As progress
   , Count(Distinct fcd.proposal_id) As adjusted_progress
+  , NULL As addl_progress_detail
 From funded_count_distinct fcd
 Inner Join entity e On e.id_number = fcd.assignment_id_number
 Inner Join proposal_dates pd
@@ -364,6 +377,7 @@ Select acr.assignment_id_number As id_number
     As progress
   -- Alternate definition: count if either ask date or stop date is filled in
   , Count(Distinct acr.proposal_id) As adjusted_progress
+  , NULL As addl_progress_detail
 From asked_count_ranked acr
 Inner Join entity e On e.id_number = acr.assignment_id_number
 -- Fiscal year goals
@@ -398,8 +412,9 @@ Select fr.assignment_id_number As id_number
   , rpt_pbh634.ksm_pkg.get_quarter(pd.date_of_record, 'perf') As perf_quarter
   , g.goal_3 As fy_goal
   , pyg.goal_3 As py_goal
-  , sum(fr.granted_amt) As progress
-  , sum(fr.granted_amt) As adjusted_progress
+  , sum(Case When funded_credit_flag = 'Y' Then fr.granted_amt End) As progress
+  , sum(Case When funded_credit_flag = 'Y' Then fr.granted_amt End) As adjusted_progress
+  , sum(fr.granted_amt) As addl_progress_detail
 From funded_ranked fr
 Inner Join entity e On e.id_number = fr.assignment_id_number
 Inner Join proposal_dates pd
@@ -438,6 +453,7 @@ Select Distinct cr.id_number As id_number
   , pyg.goal_4 As py_goal
   , count(Distinct c.report_id) As progress
   , count(Distinct c.report_id) As adjusted_progress
+  , NULL As addl_progress_detail
 From cr_credit cr
 Inner Join entity e On e.id_number = cr.id_number
 Inner Join contact_reports c
@@ -476,6 +492,7 @@ Select Distinct cr.id_number As id_number
   , pyg.goal_5 As py_goal
   , count(Distinct c.report_id) As progress
   , count(Distinct c.report_id) As adjusted_progress
+  , NULL As addl_progress_detail
 From cr_credit cr
 Inner Join entity e On e.id_number = cr.id_number
 Inner Join contact_reports c
@@ -518,6 +535,7 @@ Select acr.assignment_id_number As id_number
     As progress
   -- Alternate definition: count if either ask date or stop date is filled in
   , Count(Distinct acr.proposal_id) As adjusted_progress
+  , NULL As addl_progress_detail
 From assist_count_ranked acr
 Inner Join entity e On e.id_number = acr.assignment_id_number
 -- Fiscal year goals
@@ -563,6 +581,7 @@ With goals As (
     , goal_1 As py_goal
     , 0 As progress
     , 0 As adjusted_progress
+    , NULL As addl_progress_detail
   From entity
   Inner Join goal
     On entity.id_number = goal.id_number
@@ -583,6 +602,7 @@ With goals As (
     , goal_2 As py_goal
     , 0 As progress
     , 0 As adjusted_progress
+    , NULL As addl_progress_detail
   From entity
   Inner Join goal
     On entity.id_number = goal.id_number
@@ -603,6 +623,7 @@ With goals As (
     , goal_3 As py_goal
     , 0 As progress
     , 0 As adjusted_progress
+    , NULL As addl_progress_detail
   From entity
   Inner Join goal
     On entity.id_number = goal.id_number
@@ -623,6 +644,7 @@ With goals As (
     , goal_4 As py_goal
     , 0 As progress
     , 0 As adjusted_progress
+    , NULL As addl_progress_detail
   From entity
   Inner Join goal
     On entity.id_number = goal.id_number
@@ -643,6 +665,7 @@ With goals As (
     , goal_5 As py_goal
     , 0 As progress
     , 0 As adjusted_progress
+    , NULL As addl_progress_detail
   From entity
   Inner Join goal
     On entity.id_number = goal.id_number
@@ -663,6 +686,7 @@ With goals As (
     , goal_6 As py_goal
     , 0 As progress
     , 0 As adjusted_progress
+    , NULL As addl_progress_detail
   From entity
   Inner Join goal
     On entity.id_number = goal.id_number
@@ -683,6 +707,7 @@ Select
   , py_goal
   , progress
   , adjusted_progress
+  , addl_progress_detail
 From goals
 Order By
   report_name Asc
@@ -710,6 +735,8 @@ Select
   , fy_goal
   , py_goal
   , progress
+  , adjusted_progress
+  , addl_progress_detail
 From v_mgo_activity_monthly v
 Where py_goal Is Not Null
 -- Append placeholder rows so goals with 0 progress still appear
@@ -728,5 +755,7 @@ Select
   , fy_goal
   , py_goal
   , progress
+  , adjusted_progress
+  , addl_progress_detail
 From v_mgo_goals_placeholder
 ;

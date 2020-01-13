@@ -76,6 +76,7 @@ Select Distinct
   , mgm.py_goal
   , mgm.progress
   , mgm.adjusted_progress
+  , mgm.addl_progress_detail
   , cal.today
   , cal.yesterday
   , cal.ninety_days_ago
