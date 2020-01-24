@@ -62,14 +62,14 @@ Select Distinct
   , Case
       When ksm_or_univ_ask >= 100000 
         And total_granted_amt >= 98000
-        And proposal_Status = 'Funded'
+        And proposal_Status_code = '7'
         Then rpt_pbh634.ksm_pkg.get_performance_year(close_date)
       Else NULL
       End
     As MG_Commitments
   , Case
       When ksm_or_univ_ask >= 100000 
-        And proposal_status In ('Verbal', 'Submitted', 'Declined', 'Funded')
+        And proposal_status_code In ('5', 'C', 'B', '8', '7')
         Then rpt_pbh634.ksm_pkg.get_performance_year(ask_date)
       Else NULL
       End
@@ -77,7 +77,7 @@ Select Distinct
   , Case
       When ksm_or_univ_ask >= 100000 
         And total_granted_amt >= 48000
-        And proposal_status = 'Funded'
+        And proposal_status_code = '7'
         Then rpt_pbh634.ksm_pkg.get_performance_year(close_date)
       Else NULL
       End

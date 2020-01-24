@@ -440,14 +440,14 @@ Select Distinct
       As total_open_ksm_asks
   , Case When pool.primary_ind = 'Y' Then mgo.total_cfy_ksm_ant_ask End
       As total_cfy_ksm_ant_ask
-  , Case When pool.primary_ind = 'Y' Then mgo.total_cfy_ksm_verbal End
-      As total_cfy_ksm_verbal
+  , Case When pool.primary_ind = 'Y' Then mgo.total_cfy_ksm_approved End
+      As total_cfy_ksm_approved
   , Case When pool.primary_ind = 'Y' Then mgo.total_cfy_ksm_funded End
       As total_cfy_ksm_funded
   , Case When pool.primary_ind = 'Y' Then mgo.total_cpy_ant_ask End
       As total_cpy_ant_ask
-  , Case When pool.primary_ind = 'Y' Then mgo.total_cpy_verbal End
-      As total_cpy_verbal
+  , Case When pool.primary_ind = 'Y' Then mgo.total_cpy_approved End
+      As total_cpy_approved
   , Case When pool.primary_ind = 'Y' Then mgo.total_cpy_funded End
       As total_cpy_funded
   , Case When pool.primary_ind = 'Y' Then tasks.own_open_tasks End

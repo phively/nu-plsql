@@ -163,7 +163,7 @@ proposals As (
         -- No ask date
         When ask_date Is Null
           Then 'Ask date missing'
-        -- Submitted through Verbal, ask in the future
+        -- Submitted through Approved, ask in the future
         When hierarchy_order Between 20 And 60
           And ask_date > yesterday
           Then 'Ask date in future, check date and stage'
