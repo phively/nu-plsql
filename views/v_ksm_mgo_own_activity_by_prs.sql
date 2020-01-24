@@ -79,7 +79,7 @@ ksm_staff As (
         As total_cfy_ksm_ant_ask
     , sum(Case When close_fy = cal.curr_fy And ksm_proposal_ind = 'Y' And p.proposal_status_code = '5' -- Approved by Donor
         Then final_anticipated_or_ask_amt Else 0 End)
-        As total_cfy_ksm_verbal
+        As total_cfy_ksm_approved
     , sum(Case When close_fy = cal.curr_fy And ksm_proposal_ind = 'Y' And p.ksm_linked_amounts > 0 Then p.ksm_linked_amounts Else 0 End)
         As total_cfy_ksm_funded
     -- Current performance year amounts
@@ -88,7 +88,7 @@ ksm_staff As (
         As total_cpy_ant_ask
     , sum(Case When close_date Between cal.curr_py_start And cal.next_py_start - 1 And proposal_status_code = '5'
         Then total_anticipated_amt Else 0 End)
-        As total_cpy_verbal
+        As total_cpy_approved
     , sum(Case When close_date Between cal.curr_py_start And cal.next_py_start - 1 And p.nu_linked_amounts > 0 Then p.nu_linked_amounts Else 0 End)
         As total_cpy_funded
   From ksm_staff
@@ -149,10 +149,10 @@ Select
   , sol.total_open_asks
   , sol.total_open_ksm_asks
   , sol.total_cfy_ksm_ant_ask
-  , sol.total_cfy_ksm_verbal
+  , sol.total_cfy_ksm_approved
   , sol.total_cfy_ksm_funded
   , sol.total_cpy_ant_ask
-  , sol.total_cpy_verbal
+  , sol.total_cpy_approved
   , sol.total_cpy_funded
 From prs
 Left Join ksm_visits vs On prs.prospect_id = vs.prospect_id And prs.last_name = vs.last_name

@@ -138,7 +138,7 @@ Select Distinct
   , tms_ps.hierarchy_order
   , Case
       When proposal.proposal_status_code = 'B' Then 'Submitted' -- Letter of Inquiry Submitted
-      When proposal.proposal_status_code = '5' Then 'Verbal' -- Approved by Donor
+      When proposal.proposal_status_code = '5' Then 'Approved' -- Approved by Donor
       Else tms_ps.short_desc
     End As proposal_status
   , proposal.active_ind As proposal_active
@@ -185,14 +185,14 @@ Select Distinct
   , ksm_amts.ksm_or_univ_anticipated
   -- Anticipated or ask amount depending on stage and data quality
   , Case
-      -- Verbal uses anticipated amount if available
+      -- Approved uses anticipated amount if available
       When proposal.proposal_status_code = '5' And ksm_amts.ksm_or_univ_anticipated > 0 Then ksm_amts.ksm_or_univ_anticipated
       -- Otherwise use ask amount
       Else ksm_amts.ksm_or_univ_ask
     End As final_anticipated_or_ask_amt
   -- Anticipated bin: use anticipated amount if available, otherwise fall back to ask amount
   , Case
-      -- Verbal uses anticipated amount if available
+      -- Approved uses anticipated amount if available
       When proposal.proposal_status_code = '5' And ksm_or_univ_anticipated > 0 Then
         Case
           When ksm_or_univ_anticipated >= 10000000 Then 10
