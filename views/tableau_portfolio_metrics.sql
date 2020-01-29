@@ -32,6 +32,7 @@ proposals As (
     , phf.proposal_manager_id
     , phf.proposal_manager
     , phf.curr_ksm_proposal_manager
+    , phf.curr_ksm_team
     , phf.proposal_assist
     , phf.proposal_status_code
     , phf.proposal_status
@@ -119,6 +120,7 @@ proposals As (
     , proposal_manager_id
     , proposal_manager
     , curr_ksm_proposal_manager
+    , curr_ksm_team
     , proposal_assist
     , proposal_status_code
     , proposal_status

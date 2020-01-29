@@ -133,6 +133,8 @@ Select Distinct
   , assn.proposal_manager
   , Case When gos.id_number Is Not Null Then 'Y' End
     As curr_ksm_proposal_manager
+  , gos.team
+    As curr_ksm_team
   , asst.proposal_assist
   , assn.historical_managers
   , proposal.proposal_status_code
@@ -301,6 +303,7 @@ Select Distinct
   , proposal_manager_id
   , proposal_manager
   , curr_ksm_proposal_manager
+  , curr_ksm_team
   , proposal_assist
   , historical_managers
   , proposal_status_code
@@ -419,6 +422,7 @@ Select
   , proposal_manager_id
   , proposal_manager
   , curr_ksm_proposal_manager
+  , curr_ksm_team
   , proposal_assist
   , proposal_status_code
   , probability
