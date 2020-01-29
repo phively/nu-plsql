@@ -131,6 +131,8 @@ Select Distinct
   , tms_pt.short_desc As proposal_type
   , assn.proposal_manager_id
   , assn.proposal_manager
+  , Case When gos.id_number Is Not Null Then 'Y' End
+    As curr_ksm_proposal_manager
   , asst.proposal_assist
   , assn.historical_managers
   , proposal.proposal_status_code
@@ -224,6 +226,9 @@ Left Join tms_proposal_type tms_pt On tms_pt.proposal_type = proposal.proposal_t
 Left Join other_purp On other_purp.proposal_id = proposal.proposal_id
 Left Join assn On assn.proposal_id = proposal.proposal_id
 Left Join asst On asst.proposal_id = proposal.proposal_id
+Left Join table(ksm_pkg.tbl_frontline_ksm_staff) gos
+  On gos.id_number = assn.proposal_manager_id
+  And gos.former_staff Is Null
 -- Prospect info
 Left Join (Select prospect_id, prospect_name, prospect_name_sort From prospect) prs
   On prs.prospect_id = proposal.prospect_id
@@ -295,6 +300,7 @@ Select Distinct
   , proposal_type
   , proposal_manager_id
   , proposal_manager
+  , curr_ksm_proposal_manager
   , proposal_assist
   , historical_managers
   , proposal_status_code
@@ -412,6 +418,7 @@ Select
   , proposal_type
   , proposal_manager_id
   , proposal_manager
+  , curr_ksm_proposal_manager
   , proposal_assist
   , proposal_status_code
   , probability

@@ -31,6 +31,7 @@ proposals As (
     , phf.university_strategy
     , phf.proposal_manager_id
     , phf.proposal_manager
+    , phf.curr_ksm_proposal_manager
     , phf.proposal_assist
     , phf.proposal_status_code
     , phf.proposal_status
@@ -80,6 +81,14 @@ proposals As (
   Where primary_ind = 'Y'
 )
 
+, prs As (
+  Select Distinct
+    id_number
+    , p.prospect_id
+    , p.contact_date As last_visit_date
+  From nu_prs_trp_prospect p
+)
+
 -- Final query
 , final As (
   Select
@@ -101,10 +110,15 @@ proposals As (
     , mg.id_score
     , mg.pr_segment
     , mg.pr_score
+    , vas.prospect_manager_id
+    , vas.prospect_manager
+    , vas.managers
+    , prs.last_visit_date
     , proposal_group
     , proposal_id
     , proposal_manager_id
     , proposal_manager
+    , curr_ksm_proposal_manager
     , proposal_assist
     , proposal_status_code
     , proposal_status
@@ -171,7 +185,9 @@ proposals As (
         When proposal_status_code = 'A'
           And ask_date <= yesterday
           Then 'Ask date in past, check date and stage'
-        -- Closed, ask in future
+        -- Ask date after close date
+        When ask_date > close_date
+          Then 'Ask date after close date, check date and stage'
         End
       As audit_ask_dt
     -- Check close dates
@@ -209,6 +225,10 @@ proposals As (
     On pe.prospect_id = proposals.prospect_id
   Left Join v_entity_ksm_households hh
     On hh.id_number = pe.id_number
+  Left Join v_assignment_summary vas
+    On vas.id_number = pe.id_number
+  Left Join prs
+    On prs.id_number = pe.id_number
   -- Model scores
   Left Join rpt_pbh634.v_ksm_model_mg mg
     On mg.id_number = pe.id_number
