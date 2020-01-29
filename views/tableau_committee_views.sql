@@ -225,28 +225,6 @@ AMP As (
   Select id_number From KAC
 )
 
-, all_committee_data As (
-  Select * From AMP
-  Union
-  Select * From RealEstCouncil
-  Union
-  Select * From DivSummit
-  Union
-  Select * From WomenSummit
-  Union
-  Select * From CorpGov
-  Union
-  Select * From KFN
-  Union
-  Select * From GAB
-  Union
-  Select * From healthcare
-  Union
-  Select * From WomensLeadership
-  Union
-  Select * From KAC
-)
-
 -- NU yearly NGC giving amounts
 , fy_nu_giving As (
   Select
@@ -264,7 +242,33 @@ AMP As (
   Where tx_gypm_ind != 'Y' -- No pledge payments
     And fiscal_year Between cal.curr_fy - 2 And cal.curr_fy
   Group By nugft.id_number
+)
 
+, all_committees_giving As (
+  Select
+    all_committees.id_number
+    , nvl(fy_nu_giving.cfy_nult_giving, 0) As cfy_nult_giving
+    , nvl(fy_nu_giving.lfy_nult_giving, 0) As lfy_nult_giving
+    , nvl(fy_nu_giving.lfy2_nult_giving, 0) As lfy2_nult_giving
+    , nvl(v_ksm_giving_summary.ngc_lifetime_full_rec, 0) As ksm_lt_giving
+    , nvl(v_ksm_giving_campaign.campaign_giving,0) As ksm_campaign_giving
+    , nvl(v_ksm_giving_summary.af_cfy, 0) As af_cfy_sftcredit
+    , nvl(v_ksm_giving_summary.af_pfy1, 0) As af_lyfy_sftcredit
+    , nvl(v_ksm_giving_summary.af_pfy2, 0) As af_lyfy2_sftcredit
+    , nvl(v_ksm_giving_summary.ngc_cfy, 0) As ksm_cfy_sftcredit
+    , nvl(v_ksm_giving_summary.ngc_pfy1, 0) As ksm_lyfy_sftcredit
+    , nvl(v_ksm_giving_summary.ngc_pfy2, 0) As ksm_lyfy2_sftcredit
+    , nvl(v_ksm_giving_campaign.campaign_cfy, 0) As campaign_cfy
+    , nvl(v_ksm_giving_campaign.campaign_pfy1, 0) As campaign_pfy1
+    , nvl(v_ksm_giving_campaign.campaign_pfy2, 0) As campaign_pfy2
+    , nvl(v_ksm_giving_campaign.campaign_pfy3, 0) As campaign_pfy3
+  From all_committees
+  Left Join rpt_pbh634.v_ksm_giving_summary
+    On v_ksm_giving_summary.id_number = all_committees.id_number
+  Left Join fy_nu_giving
+    On all_committees.id_number = fy_nu_giving.id_number
+  Left Join rpt_pbh634.v_ksm_giving_campaign
+    On all_committees.id_number = v_ksm_giving_campaign.id_number
 )
 
 -- KSM proposal data
@@ -295,7 +299,7 @@ AMP As (
 )
 
 -- Main query
-Select Distinct
+Select
   prs.id_number
   , prs.pref_mail_name
   , v_entity_ksm_degrees.degrees_concat
@@ -365,55 +369,47 @@ Select Distinct
   , kac.status As kac_status
   , kac.role As kac_role
   , nvl(prs.giving_total, 0) As nu_lt_giving
-  , nvl(fy_nu_giving.cfy_nult_giving, 0) As cfy_nult_giving
-  , nvl(fy_nu_giving.lfy_nult_giving, 0) As lfy_nult_giving
-  , nvl(fy_nu_giving.lfy2_nult_giving, 0) As lfy2_nult_giving
-  , nvl(v_ksm_giving_summary.ngc_lifetime_full_rec, 0) As ksm_lt_giving
-  , nvl(v_ksm_giving_campaign.campaign_giving,0) As ksm_campaign_giving
+  , acg.cfy_nult_giving
+  , acg.lfy_nult_giving
+  , acg.lfy2_nult_giving
+  , acg.ksm_lt_giving
+  , acg.ksm_campaign_giving
   , nvl(proposalcount.proposalcount, 0) As proposal_count
-  , nvl(v_ksm_giving_summary.af_cfy, 0) As af_cfy_sftcredit
-  , nvl(v_ksm_giving_summary.af_pfy1, 0) As af_lyfy_sftcredit
-  , nvl(v_ksm_giving_summary.af_pfy2, 0) As af_lyfy2_sftcredit
-  , nvl(v_ksm_giving_summary.ngc_cfy, 0) As ksm_cfy_sftcredit
-  , nvl(v_ksm_giving_summary.ngc_pfy1, 0) As ksm_lyfy_sftcredit
-  , nvl(v_ksm_giving_summary.ngc_pfy2, 0) As ksm_lyfy2_sftcredit
-  , nvl(v_ksm_giving_campaign.campaign_cfy, 0) As campaign_cfy
-  , nvl(v_ksm_giving_campaign.campaign_pfy1, 0) As campaign_pfy1
-  , nvl(v_ksm_giving_campaign.campaign_pfy2, 0) As campaign_pfy2
-  , nvl(v_ksm_giving_campaign.campaign_pfy3, 0) As campaign_pfy3
-From nu_prs_trp_prospect prs
-Inner Join all_committee_data
-  On all_committee_data.id_number = prs.id_number
-Inner Join all_committees
-  On all_committees.id_number = prs.id_number
-Left Join amp
-  On amp.id_number = all_committees.id_number
-Left Join realestcouncil
-  On realestcouncil.id_number = all_committees.id_number
-Left Join divsummit
-  On divsummit.id_number = all_committees.id_number
-Left Join womensummit
-  On womensummit.id_number = all_committees.id_number
-Left Join corpgov
-  On corpgov.id_number = all_committees.id_number
-Left Join kfn
-  On kfn.id_number = all_committees.id_number
-Left Join gab
-  On gab.id_number = all_committees.id_number
-Left Join healthcare
-  On healthcare.id_number = all_committees.id_number
-Left Join WomensLeadership
-  On WomensLeadership.id_number = all_committees.id_number
-Left Join KAC
-  On KAC.id_number = all_committees.id_number
+  , acg.af_cfy_sftcredit
+  , acg.af_lyfy_sftcredit
+  , acg.af_lyfy2_sftcredit
+  , acg.ksm_cfy_sftcredit
+  , acg.ksm_lyfy_sftcredit
+  , acg.ksm_lyfy2_sftcredit
+  , acg.campaign_cfy
+  , acg.campaign_pfy1
+  , acg.campaign_pfy2
+  , acg.campaign_pfy3
+From all_committees_giving acg
+Inner Join nu_prs_trp_prospect prs
+  On prs.id_number = acg.id_number
 Left Join rpt_pbh634.v_entity_ksm_degrees
-  On v_entity_ksm_degrees.id_number = prs.id_number
+  On v_entity_ksm_degrees.id_number = acg.id_number
+Left Join amp
+  On amp.id_number = acg.id_number
+Left Join realestcouncil
+  On realestcouncil.id_number = acg.id_number
+Left Join divsummit
+  On divsummit.id_number = acg.id_number
+Left Join womensummit
+  On womensummit.id_number = acg.id_number
+Left Join corpgov
+  On corpgov.id_number = acg.id_number
+Left Join kfn
+  On kfn.id_number = acg.id_number
+Left Join gab
+  On gab.id_number = acg.id_number
+Left Join healthcare
+  On healthcare.id_number = acg.id_number
+Left Join WomensLeadership
+  On WomensLeadership.id_number = acg.id_number
+Left Join KAC
+  On KAC.id_number = acg.id_number
 Left Join proposalcount
   On proposalcount.prospect_id = prs.prospect_id
-Left Join rpt_pbh634.v_ksm_giving_summary
-  On v_ksm_giving_summary.id_number = all_committees.id_number
-Left Join v_ksm_giving_campaign
-  On all_committees.id_number = v_ksm_giving_campaign.id_number
-Left Join fy_nu_giving
-  On all_committees.id_number = fy_nu_giving.id_number
 ;
