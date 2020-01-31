@@ -284,32 +284,84 @@ geocode As (
     prospect_id
 )
 
+-- Intermediate joins
+
+, pp As (
+  Select *
+  From v_ksm_prospect_pool
+)
+
+, prs As (
+  Select
+    pp.*
+    -- Campaign giving fields
+    , cmp.campaign_giving
+    , cmp.campaign_steward_giving As campaign_giving_recognition
+    -- Giving summary fields
+    , gft.ngc_lifetime_full_rec As ksm_lifetime_recognition
+    , gft.af_status
+    , gft.af_cfy
+    , gft.af_pfy1
+    , gft.af_pfy2
+    , gft.af_pfy3
+    , gft.af_pfy4
+    , gft.ngc_cfy
+    , gft.ngc_pfy1
+    , gft.ngc_pfy2
+    , gft.ngc_pfy3
+    , gft.ngc_pfy4
+    , gft.last_gift_tx_number
+    , gft.last_gift_date
+    , gft.last_gift_type
+    , gft.last_gift_recognition_credit
+  From pp
+  Left Join v_ksm_giving_summary gft On gft.id_number = pp.id_number
+  Left Join v_ksm_giving_campaign cmp On cmp.id_number = pp.id_number
+)
+
+, visits As (
+  Select
+    pp.id_number
+    -- Recent contact data
+    , recent_visit.ard_visit_last_365_days
+    , recent_contact.ard_contact_last_365_days
+    , recent_visit.last_visit_credited_name
+    , recent_visit.last_visit_credited_unit
+    , recent_visit.last_visit_credited_ksm
+    , recent_visit.last_visit_contact_type
+    , recent_visit.last_visit_category
+    , recent_visit.last_visit_date
+    , recent_visit.last_visit_purpose
+    , recent_visit.last_visit_type
+    , recent_visit.last_visit_desc
+    , recent_contact.last_credited_name
+    , recent_contact.last_credited_unit
+    , recent_contact.last_credited_ksm
+    , recent_contact.last_contact_type
+    , recent_contact.last_contact_category
+    , recent_contact.last_contact_date
+    , recent_contact.last_contact_purpose
+    , recent_contact.last_contact_desc
+    , recent_assn_contacts.last_assigned_credited_name
+    , recent_assn_contacts.last_assigned_credited_unit
+    , recent_assn_contacts.last_assigned_credited_ksm
+    , recent_assn_contacts.last_assigned_contact_type
+    , recent_assn_contacts.last_assigned_contact_category
+    , recent_assn_contacts.last_assigned_contact_date
+    , recent_assn_contacts.last_assigned_contact_purpose
+    , recent_assn_contacts.last_assigned_contact_desc
+  From pp
+  Left Join recent_contact On recent_contact.id_number = pp.id_number
+  Left Join recent_assn_contacts On recent_assn_contacts.id_number = pp.id_number
+  Left Join recent_visit On recent_visit.id_number = pp.id_number
+)
+
 /* Main query */
 Select Distinct
   prs.*
   -- Latitude/longitude
   , geocode.latitude
   , geocode.longitude
-  -- Campaign giving fields
-  , cmp.campaign_giving
-  , cmp.campaign_steward_giving As campaign_giving_recognition
-  -- Giving summary fields
-  , gft.ngc_lifetime_full_rec As ksm_lifetime_recognition
-  , gft.af_status
-  , gft.af_cfy
-  , gft.af_pfy1
-  , gft.af_pfy2
-  , gft.af_pfy3
-  , gft.af_pfy4
-  , gft.ngc_cfy
-  , gft.ngc_pfy1
-  , gft.ngc_pfy2
-  , gft.ngc_pfy3
-  , gft.ngc_pfy4
-  , gft.last_gift_tx_number
-  , gft.last_gift_date
-  , gft.last_gift_type
-  , gft.last_gift_recognition_credit
   -- Proposal history fields
   , nu_proposal.open_proposals
   , ksm_proposal.open_ksm_proposals
@@ -333,33 +385,33 @@ Select Distinct
   , ksm_proposal.next_ksm_ask
   , ksm_proposal.next_ksm_anticipated
   -- Recent contact data
-  , recent_visit.ard_visit_last_365_days
-  , recent_contact.ard_contact_last_365_days
-  , recent_visit.last_visit_credited_name
-  , recent_visit.last_visit_credited_unit
-  , recent_visit.last_visit_credited_ksm
-  , recent_visit.last_visit_contact_type
-  , recent_visit.last_visit_category
-  , recent_visit.last_visit_date
-  , recent_visit.last_visit_purpose
-  , recent_visit.last_visit_type
-  , recent_visit.last_visit_desc
-  , recent_contact.last_credited_name
-  , recent_contact.last_credited_unit
-  , recent_contact.last_credited_ksm
-  , recent_contact.last_contact_type
-  , recent_contact.last_contact_category
-  , recent_contact.last_contact_date
-  , recent_contact.last_contact_purpose
-  , recent_contact.last_contact_desc
-  , recent_assn_contacts.last_assigned_credited_name
-  , recent_assn_contacts.last_assigned_credited_unit
-  , recent_assn_contacts.last_assigned_credited_ksm
-  , recent_assn_contacts.last_assigned_contact_type
-  , recent_assn_contacts.last_assigned_contact_category
-  , recent_assn_contacts.last_assigned_contact_date
-  , recent_assn_contacts.last_assigned_contact_purpose
-  , recent_assn_contacts.last_assigned_contact_desc
+  , visits.ard_visit_last_365_days
+  , visits.ard_contact_last_365_days
+  , visits.last_visit_credited_name
+  , visits.last_visit_credited_unit
+  , visits.last_visit_credited_ksm
+  , visits.last_visit_contact_type
+  , visits.last_visit_category
+  , visits.last_visit_date
+  , visits.last_visit_purpose
+  , visits.last_visit_type
+  , visits.last_visit_desc
+  , visits.last_credited_name
+  , visits.last_credited_unit
+  , visits.last_credited_ksm
+  , visits.last_contact_type
+  , visits.last_contact_category
+  , visits.last_contact_date
+  , visits.last_contact_purpose
+  , visits.last_contact_desc
+  , visits.last_assigned_credited_name
+  , visits.last_assigned_credited_unit
+  , visits.last_assigned_credited_ksm
+  , visits.last_assigned_contact_type
+  , visits.last_assigned_contact_category
+  , visits.last_assigned_contact_date
+  , visits.last_assigned_contact_purpose
+  , visits.last_assigned_contact_desc
   -- Tasks data
   , tasks.tasks_open
   , tasks.tasks_open_ksm
@@ -371,17 +423,13 @@ Select Distinct
   -- Current calendar
   , cal.yesterday
   , cal.curr_fy
-From v_ksm_prospect_pool prs
+From prs
 Cross Join v_current_calendar cal
+Inner Join visits On visits.id_number = prs.id_number
 Left Join geocode On geocode.id_number = prs.id_number
   And geocode.xsequence = prs.xsequence
-Left Join v_ksm_giving_summary gft On gft.id_number = prs.id_number
-Left Join v_ksm_giving_campaign cmp On cmp.id_number = prs.id_number
 Left Join nu_proposal On nu_proposal.prospect_id = prs.prospect_id
 Left Join ksm_proposal On ksm_proposal.prospect_id = prs.prospect_id
-Left Join recent_contact On recent_contact.id_number = prs.id_number
-Left Join recent_assn_contacts On recent_assn_contacts.id_number = prs.id_number
-Left Join recent_visit On recent_visit.id_number = prs.id_number
 Left Join tasks On tasks.prospect_id = prs.prospect_id
 Left Join next_outreach_task On next_outreach_task.prospect_id = prs.prospect_id
 ;
