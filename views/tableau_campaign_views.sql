@@ -113,6 +113,7 @@ Select
   , hh.household_city
   , hh.household_state
   , hh.household_country
+  , hh.household_geo_primary_desc
   -- Record type
   , Case
       When household_record = 'ST' Then '3 Students'

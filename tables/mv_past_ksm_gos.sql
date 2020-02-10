@@ -51,6 +51,7 @@ adv_dates As (
   Union All Select '0000818901', 'AF', to_date('20190903', 'yyyymmdd'), to_date('20200103', 'yyyymmdd') From DUAL
   Union All Select '0000752673', 'AF', to_date('20191021', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000752085', 'AF', to_date('20200106', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000436760', 'ADV', to_date('20011101', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
 )
 
 Select

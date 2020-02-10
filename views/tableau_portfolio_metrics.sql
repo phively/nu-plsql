@@ -87,6 +87,8 @@ proposals As (
     id_number
     , p.prospect_id
     , p.contact_date As last_visit_date
+    , p.evaluation_date
+    , p.evaluation_rating
   From nu_prs_trp_prospect p
 )
 
@@ -104,6 +106,7 @@ proposals As (
     , hh.program_group
     , hh.spouse_id_number
     , hh.spouse_report_name
+    , hh.spouse_suffix
     , hh.spouse_degrees_concat
     , hh.spouse_program_group
     , university_strategy
@@ -115,6 +118,8 @@ proposals As (
     , vas.prospect_manager
     , vas.managers
     , prs.last_visit_date
+    , prs.evaluation_date
+    , prs.evaluation_rating
     , proposal_group
     , proposal_id
     , proposal_manager_id
