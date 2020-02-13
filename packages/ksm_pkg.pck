@@ -57,6 +57,11 @@ Type calendar Is Record (
   , next_month_start date
 );
 
+Type random_id Is Record (
+  id_number entity.id_number%type
+  , random_id entity.id_number%type
+);
+
 /* Degreed alumi, for entity_degrees_concat */
 Type degreed_alumni Is Record (
   id_number entity.id_number%type
@@ -412,6 +417,7 @@ Public table declarations
 Type t_varchar2_long Is Table Of varchar2(512);
 Type t_allocation Is Table Of allocation_info;
 Type t_calendar Is Table Of calendar;
+Type t_random_id Is Table Of random_id;
 Type t_degreed_alumni Is Table Of degreed_alumni;
 Type t_committee_members Is Table Of committee_member;
 Type t_geo_code_primary Is Table Of geo_code_primary;
@@ -589,6 +595,10 @@ Function tbl_alloc_curr_use_ksm
 /* Return current calendar object */
 Function tbl_current_calendar
   Return t_calendar Pipelined;
+
+/* Return random IDs */
+Function tbl_random_id
+  Return t_random_id Pipelined;
 
 /* Return pipelined table of entity_degrees_concat_ksm */
 Function tbl_entity_degrees_concat_ksm
@@ -922,6 +932,27 @@ Cursor c_current_calendar (fy_start_month In integer, py_start_month In integer)
     , add_months(trunc(sysdate, 'Month'), 0) As curr_month_start
     , add_months(trunc(sysdate, 'Month'), 1) As next_month_start
   From curr_date
+  ;
+
+/* Random ID generator using dbms_random
+   2020-02-11 */
+Cursor c_random_id Is
+  With
+
+  -- Random sort of entity table
+  random_seed As (
+    Select
+      id_number
+      , dbms_random.value rv
+    From entity
+    Order By dbms_random.value
+  )
+
+  -- Relabel id_number with row number from random sort
+  Select
+    id_number
+    , rownum As random_id
+  From random_seed
   ;
 
 /* Definition of current Kellogg committee members
@@ -3462,6 +3493,23 @@ Function tbl_current_calendar
     Close c_current_calendar;
     For i in 1..(cal.count) Loop
       Pipe row(cal(i));
+    End Loop;
+    Return;
+  End;
+
+/* Pipelined function returning a randomly generated ID conversion table
+   2020-02-11 */
+Function tbl_random_id
+  Return t_random_id Pipelined As
+  -- Declarations
+  rid t_random_id;
+  
+  Begin
+    Open c_random_id;
+      Fetch c_random_id Bulk Collect Into rid;
+    Close c_random_id;
+    For i in 1..(rid.count) Loop
+      Pipe row(rid(i));
     End Loop;
     Return;
   End;

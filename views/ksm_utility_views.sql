@@ -8,6 +8,12 @@ Create Or Replace View v_current_calendar As
   From table(ksm_pkg.tbl_current_calendar) cal
 ;
 
+Create Or Replace View v_random_id As
+-- View converting from entity ID to a random row number for use in masked data sets
+  Select rid.*
+  From table(ksm_pkg.tbl_random_id) rid
+;
+
 Create Or Replace View v_alloc_curr_use As
 -- View implementing KSM Current Use allocations (including AF flag) from ksm_pkg
   Select cru.*
