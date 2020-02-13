@@ -6,7 +6,8 @@ Created : 2/13/2020 11:19:42 AM
 Purpose : Consolidated gift officer metrics definitions to allow audit
 information to be easily pulled.
 
-Adapted from rpt_pbh634.v_mgo_activity_monthly and 
+Adapted from rpt_pbh634.v_mgo_activity_monthly and
+advance_nu.nu_gft_v_officer_metrics.
 *************************************************************************/
 
 /*************************************************************************
@@ -37,11 +38,33 @@ Type proposals_data Is Record (
   , proposalmanagercount number
 );
 
+Type funded_credit Is Record (
+  proposal_id proposal.proposal_id%type
+  , assignment_id_number assignment.assignment_id_number%type
+);
+
+Type funded_dollars Is Record (
+  proposal_id proposal.proposal_id%type
+  , assignment_id_number assignment.assignment_id_number%type
+  , funded_credit_flag varchar2(1)
+  , granted_amt number
+);
+
+Type ask_assist_credit Is Record (
+  proposal_id proposal.proposal_id%type
+  , assignment_id_number assignment.assignment_id_number%type
+  , initial_contribution_date date
+  , ask_or_stop_dt date
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
 
 Type t_proposals_data Is Table Of proposals_data;
+Type t_funded_credit Is Table Of funded_credit;
+Type t_funded_dollars Is Table Of funded_dollars;
+Type t_ask_assist_credit Is Table of ask_assist_credit;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -68,8 +91,22 @@ Select cal.*
 From table(rpt_pbh634.ksm_pkg.tbl_current_calendar) cal;
 *************************************************************************/
 
+-- Standardized proposal data table function
 Function tbl_universal_proposals_data
   Return t_proposals_data Pipelined;
+
+-- Table functions for each of the MGO metrics
+Function tbl_funded_count
+  Return t_funded_credit Pipelined;
+
+Function tbl_funded_dollars
+  Return t_funded_dollars Pipelined;
+
+Function tbl_asked_count
+  Return t_ask_assist_credit Pipelined;
+
+Function tbl_assist_count
+  Return t_ask_assist_credit Pipelined;
 
 End metrics_pkg;
 /
@@ -78,6 +115,8 @@ Create Or Replace Package Body metrics_pkg Is
 /*************************************************************************
 Private cursor tables -- data definitions; update indicated sections as needed
 *************************************************************************/
+
+-- N.B. all line numbers reference the March 2018 version of advance_nu.nu_gft_v_officer_metrics.
 
 -- Universal proposals data, adapted from v_mgo_activity_monthly
 -- All fields needed to recreate proposals subqueries appearing throughout the original file
@@ -104,87 +143,116 @@ Cursor c_universal_proposals_data Is
     And assignment_id_number != ' '
     And p.proposal_status_code In ('C', '5', '7', '8') -- submitted/approved/declined/funded
   ;
-/*  
--- Count for funded proposal goal 1
-Cursor proposals_funded_count Is
-  -- Must be proposal manager, funded status, and above the ask & funded credit thresholds
-  Select *
-  From universal_proposals_data
-  Where assignment_type = 'PA' -- Proposal Manager
-    And ask_amt >= (Select param_ask_amt From custom_params)
-    And granted_amt >= (Select param_funded_count From custom_params)
-    And proposal_status_code = '7' -- Only funded
-  ;
-  
--- Count for asked proposal goal 2
-Cursor proposals_asked_count Is
-  -- Must be proposal manager and above the ask credit threshold
-  Select *
-  From universal_proposals_data
-  Where assignment_type = 'PA' -- Proposal Manager
-    And ask_amt >= (Select param_ask_amt From custom_params)
-  ;
-  
--- Gift credit for funded proposal goal 3
-Cursor proposals_funded_cr Is
-  Select
-    upd.*
-    -- Must be proposal manager, funded status, and above the ask & granted amount thresholds
-    , Case
-        When ask_amt >= (Select param_ask_amt From custom_params)
-          And granted_amt >= (Select param_granted_amt From custom_params)
-          Then 'Y'
-        Else 'N'
-      End
-      As funded_credit_flag
-  From universal_proposals_data upd
-  Where assignment_type = 'PA' -- Proposal Manager
-    And granted_amt >= 0
-    And proposal_status_code = '7' -- Only funded
-  ;
-  
--- Count for proposal assists goal 6
-Cursor proposal_assists_count Is
-  -- Must be proposal assist; no dollar threshold
-  Select *
-  From universal_proposals_data
-  Where assignment_type = 'AS' -- Proposal Assist
-  ;
-  
+
 -- Refactor goal 1 subqueries in lines 11-77
 -- 3 clones, at 138-204, 265-331, 392-458
 -- Credit for asked & funded proposals
-, funded_count As (
-    -- 1st priority - Look across all proposal managers on a proposal (inactive OR active).
-    -- If there is ONE proposal manager only, credit that for that proposal ID.
-    Select proposal_id
-      , assignment_id_number
-      , 1 As info_rank
-    From proposals_funded_count
-    Where proposalManagerCount = 1 ------ only one proposal manager/ credit that PA
-  Union
-    -- 2nd priority - For #2 if there is more than one active proposal managers on a proposal credit BOTH and exit the process.
-    Select proposal_id
-      , assignment_id_number
-      , 2 As info_rank
-    From proposals_funded_count
-    Where assignment_active_ind = 'Y'
-  Union
-    -- 3rd priority - For #3, Credit all inactive proposal managers where proposal stop date and assignment stop date within 24 hours
-    Select proposal_id
-      , assignment_id_number
-      , 3 As info_rank
-    From proposals_funded_count
-    Where proposal_active_ind = 'N' -- Inactives on the proposal.
-      And proposal_stop_date - assignment_stop_date <= 1
-  Order By info_rank
-)
-, funded_count_distinct As (
+-- Count for funded proposal goal 1
+Cursor c_funded_count Is
+  With
+  proposals_funded_count As (
+    -- Must be proposal manager, funded status, and above the ask & funded credit thresholds
+    Select *
+    From table(tbl_universal_proposals_data)
+    Where assignment_type = 'PA' -- Proposal Manager
+      And ask_amt >= metrics_pkg.mg_ask_amt
+      And granted_amt >= metrics_pkg.mg_funded_count
+      And proposal_status_code = '7' -- Only funded
+  )
+  , funded_count As (
+      -- 1st priority - Look across all proposal managers on a proposal (inactive OR active).
+      -- If there is ONE proposal manager only, credit that for that proposal ID.
+      Select proposal_id
+        , assignment_id_number
+        , 1 As info_rank
+      From proposals_funded_count
+      Where proposalManagerCount = 1 ------ only one proposal manager/ credit that PA
+    Union
+      -- 2nd priority - For #2 if there is more than one active proposal managers on a proposal credit BOTH and exit the process.
+      Select proposal_id
+        , assignment_id_number
+        , 2 As info_rank
+      From proposals_funded_count
+      Where assignment_active_ind = 'Y'
+    Union
+      -- 3rd priority - For #3, Credit all inactive proposal managers where proposal stop date and assignment stop date within 24 hours
+      Select proposal_id
+        , assignment_id_number
+        , 3 As info_rank
+      From proposals_funded_count
+      Where proposal_active_ind = 'N' -- Inactives on the proposal.
+        And proposal_stop_date - assignment_stop_date <= 1
+    Order By info_rank
+  )
   Select Distinct proposal_id
     , assignment_id_number
   From funded_count
-)
-
+  ;
+  
+-- Refactor goal 3 subqueries in lines 848-982
+-- 3 clones, at 984-1170, 1120-1254, 1256-1390
+-- Gift credit for funded proposal goal 3
+Cursor c_funded_dollars Is
+  With
+  proposals_funded_cr As (
+    Select
+      upd.*
+      -- Must be proposal manager, funded status, and above the ask & granted amount thresholds
+      , Case
+          When ask_amt >= metrics_pkg.mg_ask_amt
+            And granted_amt >= metrics_pkg.mg_granted_amt
+            Then 'Y'
+          Else 'N'
+        End
+        As funded_credit_flag
+    From table(tbl_universal_proposals_data) upd
+    Where assignment_type = 'PA' -- Proposal Manager
+      And granted_amt >= 0
+      And proposal_status_code = '7' -- Only funded
+  )
+  , funded_credit As (
+      -- 1st priority - Look across all proposal managers on a proposal (inactive OR active).
+      -- If there is ONE proposal manager only, credit that for that proposal ID.
+      Select proposal_id
+        , assignment_id_number
+        , granted_amt
+        , funded_credit_flag
+        , 1 As info_rank
+      From proposals_funded_cr
+      Where proposalManagerCount = 1 ----- only one proposal manager/ credit that PA
+    Union
+      -- 2nd priority - For #2 if there is more than one active proposal managers on a proposal credit BOTH and exit the process.
+      Select proposal_id
+         , assignment_id_number
+         , granted_amt
+         , funded_credit_flag
+         , 2 As info_rank
+      From proposals_funded_cr
+      Where assignment_active_ind = 'Y'
+    Union
+      -- 3rd priority - For #3, Credit all inactive proposal managers where proposal stop date and assignment stop date within 24 hours
+      Select proposal_id
+         , assignment_id_number
+         , granted_amt
+         , funded_credit_flag
+         , 3 As info_rank
+      From proposals_funded_cr
+      Where proposal_active_ind = 'N' -- Inactives on the proposal.
+        And proposal_stop_date - assignment_stop_date <= 1
+    Order By info_rank
+  )
+  Select proposal_id
+    , assignment_id_number
+    , max(funded_credit_flag)
+      As funded_credit_flag
+    , max(granted_amt) keep(dense_rank First Order By info_rank Asc)
+      As granted_amt
+  From funded_credit
+  Group By proposal_id
+    , assignment_id_number
+  ;
+  
+/*
 -- Refactor all subqueries in lines 78-124
 -- 7 clones, at 205-251, 332-378, 459-505, 855-901, 991-1037, 1127-1173, 1263-1309
 , proposal_dates_data As (
@@ -223,41 +291,51 @@ Cursor proposal_assists_count Is
   From proposal_dates_data
   Group By proposal_id
 )
+*/
 
 -- Refactor goal 2 subqueries in lines 518-590
 -- 3 clones, at 602-674, 686-758, 769-841
-, asked_count As (
-    -- 1st priority - Look across all proposal managers on a proposal (inactive OR active).
-    -- If there is ONE proposal manager only, credit that for that proposal ID.
-    Select proposal_id
-      , assignment_id_number
-      , initial_contribution_date
-      , proposal_stop_date
-      , 1 As info_rank
-    From proposals_asked_count
-    Where proposalManagerCount = 1 ----- only one proposal manager/ credit that PA 
-  Union
-    -- 2nd priority - For #2 if there is more than one active proposal managers on a proposal credit BOTH and exit the process.
-    Select proposal_id
-      , assignment_id_number
-      , initial_contribution_date
-      , proposal_stop_date
-      , 2 As info_rank
-    From proposals_asked_count
-    Where assignment_active_ind = 'Y'
-  Union
-    -- 3rd priority - For #3, Credit all inactive proposal managers where proposal stop date and assignment stop date within 24 hours
-    Select proposal_id
-      , assignment_id_number
-      , initial_contribution_date
-      , proposal_stop_date
-      , 3 As info_rank
-    From proposals_asked_count
-    Where proposal_active_ind = 'N' -- Inactives on the proposal.
-      And proposal_stop_date - assignment_stop_date <= 1
-  Order By info_rank
-)
-, asked_count_ranked As (
+-- Count for asked proposal goal 2
+Cursor c_asked_count Is
+  -- Must be proposal manager and above the ask credit threshold
+  With
+  proposals_asked_count As (
+    Select *
+    From table(tbl_universal_proposals_data)
+    Where assignment_type = 'PA' -- Proposal Manager
+      And ask_amt >= metrics_pkg.mg_ask_amt
+  )
+  , asked_count As (
+      -- 1st priority - Look across all proposal managers on a proposal (inactive OR active).
+      -- If there is ONE proposal manager only, credit that for that proposal ID.
+      Select proposal_id
+        , assignment_id_number
+        , initial_contribution_date
+        , proposal_stop_date
+        , 1 As info_rank
+      From proposals_asked_count
+      Where proposalManagerCount = 1 ----- only one proposal manager/ credit that PA 
+    Union
+      -- 2nd priority - For #2 if there is more than one active proposal managers on a proposal credit BOTH and exit the process.
+      Select proposal_id
+        , assignment_id_number
+        , initial_contribution_date
+        , proposal_stop_date
+        , 2 As info_rank
+      From proposals_asked_count
+      Where assignment_active_ind = 'Y'
+    Union
+      -- 3rd priority - For #3, Credit all inactive proposal managers where proposal stop date and assignment stop date within 24 hours
+      Select proposal_id
+        , assignment_id_number
+        , initial_contribution_date
+        , proposal_stop_date
+        , 3 As info_rank
+      From proposals_asked_count
+      Where proposal_active_ind = 'N' -- Inactives on the proposal.
+        And proposal_stop_date - assignment_stop_date <= 1
+    Order By info_rank
+  )
   Select proposal_id
     , assignment_id_number
     , min(initial_contribution_date) keep(dense_rank First Order By info_rank Asc)  -- initial_contribution_date is 'ask_date'
@@ -268,76 +346,39 @@ Cursor proposal_assists_count Is
   From asked_count
   Group By proposal_id
     , assignment_id_number
-)
-
--- Refactor goal 3 subqueries in lines 848-982
--- 3 clones, at 984-1170, 1120-1254, 1256-1390
-, funded_credit As (
-    -- 1st priority - Look across all proposal managers on a proposal (inactive OR active).
-    -- If there is ONE proposal manager only, credit that for that proposal ID.
-    Select proposal_id
-      , assignment_id_number
-      , granted_amt
-      , funded_credit_flag
-      , 1 As info_rank
-    From proposals_funded_cr
-    Where proposalManagerCount = 1 ----- only one proposal manager/ credit that PA
-  Union
-    -- 2nd priority - For #2 if there is more than one active proposal managers on a proposal credit BOTH and exit the process.
-    Select proposal_id
-       , assignment_id_number
-       , granted_amt
-       , funded_credit_flag
-       , 2 As info_rank
-    From proposals_funded_cr
-    Where assignment_active_ind = 'Y'
-  Union
-    -- 3rd priority - For #3, Credit all inactive proposal managers where proposal stop date and assignment stop date within 24 hours
-    Select proposal_id
-       , assignment_id_number
-       , granted_amt
-       , funded_credit_flag
-       , 3 As info_rank
-    From proposals_funded_cr
-    Where proposal_active_ind = 'N' -- Inactives on the proposal.
-      And proposal_stop_date - assignment_stop_date <= 1
-  Order By info_rank
-)
-, funded_ranked As (
-  Select proposal_id
-    , assignment_id_number
-    , max(funded_credit_flag)
-      As funded_credit_flag
-    , max(granted_amt) keep(dense_rank First Order By info_rank Asc)
-      As granted_amt
-  From funded_credit
-  Group By proposal_id
-    , assignment_id_number
-)
+  ;
 
 -- Refactor goal 6 subqueries in lines 1456-1489
 -- 3 clones, at 1501-1534, 1546-1579, 1591-1624
-, assist_count As (
-  -- Any active proposals (1st priority)
-    Select proposal_id
-      , assignment_id_number
-      , initial_contribution_date
-      , proposal_stop_date
-      , 1 As info_rank
-    From proposal_assists_count
-    Where assignment_active_ind = 'Y'
-  Union
-    Select proposal_id
-      , assignment_id_number
-      , initial_contribution_date
-      , proposal_stop_date
-      , 2 As info_rank
-    From proposal_assists_count
-    Where assignment_active_ind = 'N'
-      And proposal_stop_date - assignment_stop_date <= 1
-  Order By info_rank
-)
-, assist_count_ranked As (
+Cursor c_assist_count Is
+  With
+  -- Count for proposal assists goal 6
+  proposal_assists_count As (
+    -- Must be proposal assist; no dollar threshold
+    Select *
+    From table(tbl_universal_proposals_data)
+    Where assignment_type = 'AS' -- Proposal Assist
+  )
+  , assist_count As (
+      -- Any active proposals (1st priority)
+        Select proposal_id
+          , assignment_id_number
+          , initial_contribution_date
+          , proposal_stop_date
+          , 1 As info_rank
+        From proposal_assists_count
+        Where assignment_active_ind = 'Y'
+      Union
+        Select proposal_id
+          , assignment_id_number
+          , initial_contribution_date
+          , proposal_stop_date
+          , 2 As info_rank
+        From proposal_assists_count
+        Where assignment_active_ind = 'N'
+          And proposal_stop_date - assignment_stop_date <= 1
+      Order By info_rank
+    )
   Select proposal_id
     , assignment_id_number
     , min(initial_contribution_date) keep(dense_rank First Order By info_rank Asc)
@@ -348,8 +389,8 @@ Cursor proposal_assists_count Is
   From assist_count
   Group By proposal_id
     , assignment_id_number
-)
-*/
+  ;
+
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
@@ -364,6 +405,74 @@ Function tbl_universal_proposals_data
     Open c_universal_proposals_data; -- Annual Fund allocations cursor
       Fetch c_universal_proposals_data Bulk Collect Into pd;
     Close c_universal_proposals_data;
+    -- Pipe out the data
+    For i in 1..(pd.count) Loop
+      Pipe row(pd(i));
+    End Loop;
+    Return;
+  End;
+
+-- Pipelined function returning proposal funded data
+Function tbl_funded_count
+  Return t_funded_credit Pipelined As
+    -- Declarations
+    pd t_funded_credit;
+
+  Begin
+    Open c_funded_count; -- Annual Fund allocations cursor
+      Fetch c_funded_count Bulk Collect Into pd;
+    Close c_funded_count;
+    -- Pipe out the data
+    For i in 1..(pd.count) Loop
+      Pipe row(pd(i));
+    End Loop;
+    Return;
+  End;
+
+-- Pipelined function returning proposal funded amounts data
+Function tbl_funded_dollars
+  Return t_funded_dollars Pipelined As
+    -- Declarations
+    pd t_funded_dollars;
+
+  Begin
+    Open c_funded_dollars; -- Annual Fund allocations cursor
+      Fetch c_funded_dollars Bulk Collect Into pd;
+    Close c_funded_dollars;
+    -- Pipe out the data
+    For i in 1..(pd.count) Loop
+      Pipe row(pd(i));
+    End Loop;
+    Return;
+  End;
+
+-- Pipelined function returning proposal asked data
+Function tbl_asked_count
+  Return t_ask_assist_credit Pipelined As
+    -- Declarations
+    pd t_ask_assist_credit;
+
+  Begin
+    Open c_asked_count; -- Annual Fund allocations cursor
+      Fetch c_asked_count Bulk Collect Into pd;
+    Close c_asked_count;
+    -- Pipe out the data
+    For i in 1..(pd.count) Loop
+      Pipe row(pd(i));
+    End Loop;
+    Return;
+  End;
+
+-- Pipelined function returning proposal assists data
+Function tbl_assist_count
+  Return t_ask_assist_credit Pipelined As
+    -- Declarations
+    pd t_ask_assist_credit;
+
+  Begin
+    Open c_assist_count; -- Annual Fund allocations cursor
+      Fetch c_assist_count Bulk Collect Into pd;
+    Close c_assist_count;
     -- Pipe out the data
     For i in 1..(pd.count) Loop
       Pipe row(pd(i));
