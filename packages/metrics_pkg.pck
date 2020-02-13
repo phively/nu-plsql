@@ -38,6 +38,11 @@ Type proposals_data Is Record (
   , proposalmanagercount number
 );
 
+Type proposal_dates Is Record (
+  proposal_id proposal.proposal_id%type
+  , date_of_record date
+);
+
 Type funded_credit Is Record (
   proposal_id proposal.proposal_id%type
   , assignment_id_number assignment.assignment_id_number%type
@@ -48,6 +53,23 @@ Type funded_dollars Is Record (
   , assignment_id_number assignment.assignment_id_number%type
   , funded_credit_flag varchar2(1)
   , granted_amt number
+);
+
+Type contact_report Is Record (
+  author_id_number contact_rpt_credit.id_number%type
+  , report_id contact_rpt_credit.report_id%type
+  , contact_purpose_code char(1)
+  , cal_year number
+  , fiscal_year number
+  , cal_month number
+  , fiscal_qtr number
+  , perf_quarter number
+  , perf_year number
+);
+
+Type contact_count Is Record (
+  id_number contact_rpt_credit.id_number%type
+  , report_id contact_rpt_credit.report_id%type
 );
 
 Type ask_assist_credit Is Record (
@@ -62,9 +84,12 @@ Public table declarations
 *************************************************************************/
 
 Type t_proposals_data Is Table Of proposals_data;
+Type t_proposal_dates Is Table Of proposal_dates;
 Type t_funded_credit Is Table Of funded_credit;
 Type t_funded_dollars Is Table Of funded_dollars;
-Type t_ask_assist_credit Is Table of ask_assist_credit;
+Type t_contact_report Is Table Of contact_report;
+Type t_contact_count Is Table Of contact_count;
+Type t_ask_assist_credit Is Table Of ask_assist_credit;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -94,7 +119,10 @@ From table(rpt_pbh634.ksm_pkg.tbl_current_calendar) cal;
 -- Standardized proposal data table function
 Function tbl_universal_proposals_data
   Return t_proposals_data Pipelined;
-
+  
+Function tbl_proposal_dates
+  Return t_proposal_dates Pipelined;
+  
 -- Table functions for each of the MGO metrics
 Function tbl_funded_count
   Return t_funded_credit Pipelined;
@@ -104,6 +132,12 @@ Function tbl_funded_dollars
 
 Function tbl_asked_count
   Return t_ask_assist_credit Pipelined;
+
+Function tbl_contact_reports
+  Return t_contact_report Pipelined;
+
+Function tbl_contact_count
+  Return t_contact_count Pipelined;
 
 Function tbl_assist_count
   Return t_ask_assist_credit Pipelined;
@@ -144,6 +178,47 @@ Cursor c_universal_proposals_data Is
     And p.proposal_status_code In ('C', '5', '7', '8') -- submitted/approved/declined/funded
   ;
 
+-- Choose a proposal date based on date of record
+-- Refactor all subqueries in lines 78-124
+-- 7 clones, at 205-251, 332-378, 459-505, 855-901, 991-1037, 1127-1173, 1263-1309
+Cursor c_proposal_dates Is
+  With
+  proposal_dates_data As (
+    -- In determining which date to use, evaluate outright gifts and pledges first and then if necessary
+    -- use the date from a pledge payment.
+      Select proposal_id
+        , 1 As rank
+        , min(prim_gift_date_of_record) As date_of_record -- gifts
+      From primary_gift
+      Where proposal_id Is Not Null
+        And proposal_id != 0
+        And pledge_payment_ind = 'N'
+      Group By proposal_id
+    Union
+      Select proposal_id
+        , 2 As rank
+        , min(prim_gift_date_of_record) As date_of_record -- pledge payments
+      From primary_gift
+      Where proposal_id Is Not Null
+        And proposal_id != 0
+        And pledge_payment_ind = 'Y'
+      Group By proposal_id
+    Union
+      Select proposal_id
+          , 1 As rank
+          , min(prim_pledge_date_of_record) As date_of_record -- pledges
+        From primary_pledge
+        Where proposal_id Is Not Null
+          And proposal_id != 0
+        Group By proposal_id
+  )
+  Select proposal_id
+    , min(date_of_record) keep(dense_rank First Order By rank Asc)
+      As date_of_record
+  From proposal_dates_data
+  Group By proposal_id
+  ;
+
 -- Refactor goal 1 subqueries in lines 11-77
 -- 3 clones, at 138-204, 265-331, 392-458
 -- Credit for asked & funded proposals
@@ -166,7 +241,7 @@ Cursor c_funded_count Is
         , assignment_id_number
         , 1 As info_rank
       From proposals_funded_count
-      Where proposalManagerCount = 1 ------ only one proposal manager/ credit that PA
+      Where proposalManagerCount = 1 -- only one proposal manager/ credit that PA
     Union
       -- 2nd priority - For #2 if there is more than one active proposal managers on a proposal credit BOTH and exit the process.
       Select proposal_id
@@ -219,7 +294,7 @@ Cursor c_funded_dollars Is
         , funded_credit_flag
         , 1 As info_rank
       From proposals_funded_cr
-      Where proposalManagerCount = 1 ----- only one proposal manager/ credit that PA
+      Where proposalManagerCount = 1 -- only one proposal manager/ credit that PA
     Union
       -- 2nd priority - For #2 if there is more than one active proposal managers on a proposal credit BOTH and exit the process.
       Select proposal_id
@@ -252,47 +327,6 @@ Cursor c_funded_dollars Is
     , assignment_id_number
   ;
   
-/*
--- Refactor all subqueries in lines 78-124
--- 7 clones, at 205-251, 332-378, 459-505, 855-901, 991-1037, 1127-1173, 1263-1309
-, proposal_dates_data As (
-  -- In determining which date to use, evaluate outright gifts and pledges first and then if necessary
-  -- use the date from a pledge payment.
-    Select proposal_id
-      , 1 As rank
-      , min(prim_gift_date_of_record) As date_of_record --- gifts
-    From primary_gift
-    Where proposal_id Is Not Null
-      And proposal_id != 0
-      And pledge_payment_ind = 'N'
-    Group By proposal_id
-  Union
-    Select proposal_id
-      , 2 As rank
-      , min(prim_gift_date_of_record) As date_of_record --- pledge payments
-    From primary_gift
-    Where proposal_id Is Not Null
-      And proposal_id != 0
-      And pledge_payment_ind = 'Y'
-    Group By proposal_id
-  Union
-    Select proposal_id
-        , 1 As rank
-        , min(prim_pledge_date_of_record) As date_of_record --- pledges
-      From primary_pledge
-      Where proposal_id Is Not Null
-        And proposal_id != 0
-      Group By proposal_id
-)
-, proposal_dates As (
-  Select proposal_id
-    , min(date_of_record) keep(dense_rank First Order By rank Asc)
-      As date_of_record
-  From proposal_dates_data
-  Group By proposal_id
-)
-*/
-
 -- Refactor goal 2 subqueries in lines 518-590
 -- 3 clones, at 602-674, 686-758, 769-841
 -- Count for asked proposal goal 2
@@ -314,7 +348,7 @@ Cursor c_asked_count Is
         , proposal_stop_date
         , 1 As info_rank
       From proposals_asked_count
-      Where proposalManagerCount = 1 ----- only one proposal manager/ credit that PA 
+      Where proposalManagerCount = 1 -- only one proposal manager/ credit that PA 
     Union
       -- 2nd priority - For #2 if there is more than one active proposal managers on a proposal credit BOTH and exit the process.
       Select proposal_id
@@ -346,6 +380,43 @@ Cursor c_asked_count Is
   From asked_count
   Group By proposal_id
     , assignment_id_number
+  ;
+
+-- Contact report data
+-- Fields to recreate contact report calculations used in goals 4 and 5
+-- Corresponds to subqueries in lines 1392-1448
+Cursor c_contact_reports Is
+  Select Distinct author_id_number
+    , report_id
+    , contact_purpose_code
+    , extract(year From contact_date)
+      As cal_year
+    , rpt_pbh634.ksm_pkg.get_fiscal_year(contact_date)
+      As fiscal_year
+    , extract(month From contact_date)
+      As cal_month
+    , rpt_pbh634.ksm_pkg.get_quarter(contact_date, 'fisc')
+      As fiscal_qtr
+    , rpt_pbh634.ksm_pkg.get_quarter(contact_date, 'perf')
+      As perf_quarter
+    , rpt_pbh634.ksm_pkg.get_performance_year(contact_date)
+      As perf_year -- performance year
+  From contact_report
+  Where contact_type = 'V' -- Only count visits
+  ;
+  
+-- Deduped contact report credit and author IDs
+Cursor c_contact_count Is
+    Select
+      id_number
+      , report_id
+    From contact_rpt_credit
+    Where contact_credit_type = '1' -- Primary credit only
+  Union
+    Select
+      author_id_number
+      , report_id
+    From table(tbl_contact_reports)
   ;
 
 -- Refactor goal 6 subqueries in lines 1456-1489
@@ -411,6 +482,23 @@ Function tbl_universal_proposals_data
     End Loop;
     Return;
   End;
+  
+-- Pipelined function determining proposal date
+Function tbl_proposal_dates
+  Return t_proposal_dates Pipelined As
+    -- Declarations
+    pd t_proposal_dates;
+
+  Begin
+    Open c_proposal_dates; -- Annual Fund allocations cursor
+      Fetch c_proposal_dates Bulk Collect Into pd;
+    Close c_proposal_dates;
+    -- Pipe out the data
+    For i in 1..(pd.count) Loop
+      Pipe row(pd(i));
+    End Loop;
+    Return;
+  End;
 
 -- Pipelined function returning proposal funded data
 Function tbl_funded_count
@@ -459,6 +547,40 @@ Function tbl_asked_count
     -- Pipe out the data
     For i in 1..(pd.count) Loop
       Pipe row(pd(i));
+    End Loop;
+    Return;
+  End;
+
+-- Pipelined function returning visits data
+Function tbl_contact_reports
+  Return t_contact_report Pipelined As
+    -- Declarations
+    cd t_contact_report;
+
+  Begin
+    Open c_contact_reports; -- Annual Fund allocations cursor
+      Fetch c_contact_reports Bulk Collect Into cd;
+    Close c_contact_reports;
+    -- Pipe out the data
+    For i in 1..(cd.count) Loop
+      Pipe row(cd(i));
+    End Loop;
+    Return;
+  End;
+
+-- Pipelined function returning visits data
+Function tbl_contact_count
+  Return t_contact_count Pipelined As
+    -- Declarations
+    cd t_contact_count;
+
+  Begin
+    Open c_contact_count; -- Annual Fund allocations cursor
+      Fetch c_contact_count Bulk Collect Into cd;
+    Close c_contact_count;
+    -- Pipe out the data
+    For i in 1..(cd.count) Loop
+      Pipe row(cd(i));
     End Loop;
     Return;
   End;
