@@ -24,6 +24,8 @@ Select Distinct
   , Phf.proposal_manager
   , Phf.proposal_assist
   , Phf.historical_managers
+  , Phf.metrics_credit_ids
+  , Phf.metrics_credit_names
   , Phf.proposal_status_code
   , Phf.probability
   , Phf.hierarchy_order

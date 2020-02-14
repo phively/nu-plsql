@@ -88,6 +88,33 @@ cal As (
   Group By assignment.proposal_id
 )
 
+-- Additional proposal credit (CAT 190 report definition)
+, consolidated_proposal_credit As (
+  Select proposal_id, assignment_id_number
+  From table(rpt_pbh634.metrics_pkg.tbl_funded_count)
+  Union
+  Select proposal_id, assignment_id_number
+  From table(rpt_pbh634.metrics_pkg.tbl_funded_dollars)
+  Union
+  Select proposal_id, assignment_id_number
+  From table(rpt_pbh634.metrics_pkg.tbl_asked_count)
+  Union
+  Select proposal_id, assignment_id_number
+  From table(rpt_pbh634.metrics_pkg.tbl_assist_count)
+)
+, proposal_credit_concat As (
+  Select
+    proposal_id
+    , Listagg(assignment_id_number, '; ') Within Group (Order By entity.report_name)
+      As metrics_credit_ids
+    , Listagg(entity.report_name, '; ') Within Group (Order By entity.report_name)
+      As metrics_credit_names
+  From consolidated_proposal_credit cpc
+  Inner Join entity
+    On entity.id_number = cpc.assignment_id_number
+  Group By proposal_id
+)
+
 -- Code to pull university strategy from the task table; BI method plus a cancelled/completed exclusion
 , strat As (
   Select *
@@ -137,6 +164,8 @@ Select Distinct
     As curr_ksm_team
   , asst.proposal_assist
   , assn.historical_managers
+  , pcc.metrics_credit_ids
+  , pcc.metrics_credit_names
   , proposal.proposal_status_code
   , tms_pst.short_desc As probability
   , tms_ps.hierarchy_order
@@ -231,6 +260,8 @@ Left Join asst On asst.proposal_id = proposal.proposal_id
 Left Join table(ksm_pkg.tbl_frontline_ksm_staff) gos
   On gos.id_number = assn.proposal_manager_id
   And gos.former_staff Is Null
+Left Join proposal_credit_concat pcc
+  On pcc.proposal_id = proposal.proposal_id
 -- Prospect info
 Left Join (Select prospect_id, prospect_name, prospect_name_sort From prospect) prs
   On prs.prospect_id = proposal.prospect_id
@@ -306,6 +337,8 @@ Select Distinct
   , curr_ksm_team
   , proposal_assist
   , historical_managers
+  , metrics_credit_ids
+  , metrics_credit_names
   , proposal_status_code
   , probability
   , hierarchy_order
@@ -427,6 +460,8 @@ Select
   , proposal_status_code
   , probability
   , historical_managers
+  , metrics_credit_ids
+  , metrics_credit_names
   , hierarchy_order
   , proposal_status
   , proposal_active
