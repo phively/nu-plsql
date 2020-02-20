@@ -5,7 +5,7 @@ With
 params As (
   Select
     -- Only include tasks etc. on or after this date
-    to_date('20170901', 'yyyymmdd')
+    to_date('20160901', 'yyyymmdd')
       As start_dt
   From DUAL
 )
