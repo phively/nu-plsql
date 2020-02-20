@@ -2660,6 +2660,9 @@ Cursor c_special_handling_concat Is
       -- No release
       , max(Case When h.hnd_type_code = 'DNR' Then 'Y' End)
         As no_release
+      -- Active with restrictions
+      , max(Case When h.hnd_type_code = 'AWR' Then 'Y' End)
+        As active_with_restrictions
       -- Never engaged forever
       , max(Case When h.hnd_type_code = 'NED' Then 'Y' End)
         As never_engaged_forever
@@ -2780,6 +2783,32 @@ Cursor c_special_handling_concat Is
     Select id_number, spouse_id_number
     From mailing_lists
   )
+  -- Universal no contact or no solicit
+  -- Anyone with one of a few select codes should NEVER be contacted or solicited
+  , unc_ids As (
+    Select
+      ids.id_number
+      , ids.spouse_id_number
+      , Case
+          When no_contact = 'Y'
+            Or exc_all_comm = 'Y'
+            Or active_with_restrictions = 'Y'
+            Then 'Y'
+          End
+        As univ_no_contact
+      , Case
+          When no_contact = 'Y'
+            Or exc_all_comm = 'Y'
+            Or active_with_restrictions = 'Y'
+            Or no_solicit = 'Y'
+            Or exc_all_sols = 'Y'
+            Then 'Y'
+          End
+        As univ_no_solicit
+    From ids
+    Left Join spec_hnd On spec_hnd.id_number = ids.id_number
+    Left Join mailing_lists On mailing_lists.id_number = ids.id_number
+  )
   -- Main query
   Select
     ids.id_number
@@ -2792,6 +2821,7 @@ Cursor c_special_handling_concat Is
     , spec_hnd.no_contact
     , spec_hnd.no_solicit
     , spec_hnd.no_release
+    , spec_hnd.active_with_restrictions
     , spec_hnd.never_engaged_forever
     , spec_hnd.never_engaged_reunion
     , spec_hnd.has_opt_ins_opt_outs
@@ -2801,53 +2831,67 @@ Cursor c_special_handling_concat Is
     , exc_all_sols
     -- No phone combined
     , Case
-        When no_contact = 'Y' Or no_phone = 'Y' Then 'Y'
-        When exc_all_comm = 'Y' Then 'Y'
+        When univ_no_contact = 'Y'
+          Or no_phone = 'Y'
+          Then 'Y'
       End As no_phone_ind
     -- No phone solicit combined
     , Case
-        When no_contact = 'Y' Or no_phone = 'Y' Then 'Y'
-        When no_solicit = 'Y' Or no_phone_solicit = 'Y' Then 'Y'
-        When exc_all_comm = 'Y' Then 'Y'
-        When exc_all_sols = 'Y' Then 'Y'
+        When univ_no_contact = 'Y'
+          Or no_phone = 'Y'
+          Or univ_no_solicit = 'Y'
+          Or no_phone_solicit = 'Y'
+          Then 'Y'
       End As no_phone_sol_ind
     -- No email combined
     , Case
-        When no_contact = 'Y' Or no_email = 'Y' Then 'Y'
-        When exc_all_comm = 'Y' Or exc_email_comm = 'Y' Then 'Y'
+        When univ_no_contact = 'Y'
+          Or no_email = 'Y'
+          Or exc_email_comm = 'Y'
+          Then 'Y'
       End As no_email_ind
     -- No email solicit combined
     , Case
-        When no_contact = 'Y' Or no_email = 'Y' Then 'Y'
-        When no_solicit = 'Y' Or no_email_solicit = 'Y' Then 'Y'
-        When exc_all_comm = 'Y' Or exc_email_comm = 'Y' Then 'Y'
-        When exc_all_sols = 'Y' Or exc_email_sols = 'Y' Then 'Y'
+        When univ_no_contact = 'Y'
+          Or no_email = 'Y'
+          Or univ_no_solicit = 'Y'
+          Or no_email_solicit = 'Y'
+          Or exc_email_comm = 'Y'
+          Or exc_email_sols = 'Y'
+          Then 'Y'
       End As no_email_sol_ind
     -- No mail combined
     , Case
-        When no_contact = 'Y' Or no_mail = 'Y' Then 'Y'
-        When exc_all_comm = 'Y' Or exc_mail_comm = 'Y' Then 'Y'
+        When univ_no_contact = 'Y'
+          Or no_mail = 'Y'
+          Or exc_mail_comm = 'Y'
+            Then 'Y'
       End As no_mail_ind
     -- No mail solicit combined
     , Case
-        When no_contact = 'Y' Or no_mail = 'Y' Then 'Y'
-        When no_solicit = 'Y' Or no_mail_solicit = 'Y' Then 'Y'
-        When exc_all_comm = 'Y' Or exc_mail_comm = 'Y' Then 'Y'
-        When exc_all_sols = 'Y' Or exc_mail_sols = 'Y' Then 'Y'
+        When univ_no_contact = 'Y'
+          Or no_mail = 'Y'
+          Or univ_no_solicit = 'Y'
+          Or no_mail_solicit = 'Y'
+          Or exc_mail_comm = 'Y'
+          Or exc_mail_sols = 'Y'
+            Then 'Y'
       End As no_mail_sol_ind
     -- No texts combined
     , Case
-        When no_contact = 'Y' Or no_texts = 'Y' Then 'Y'
-        When exc_all_comm = 'Y' Then 'Y'
+        When univ_no_contact = 'Y'
+          Or no_texts = 'Y'
+          Then 'Y'
       End As no_texts_ind
     -- No texts solicit combined
     , Case
-        When no_contact = 'Y' Or no_texts = 'Y' Then 'Y'
-        When no_solicit = 'Y' Or no_texts_solicit = 'Y' Then 'Y'
-        When exc_all_comm = 'Y' Then 'Y'
-        When exc_all_sols = 'Y' Then 'Y'
+        When univ_no_contact = 'Y'
+          Or no_texts = 'Y'
+          Or univ_no_solicit = 'Y'
+          Or no_texts_solicit = 'Y'
+          Then 'Y'
       End As no_texts_sol_ind
-  From ids
+  From unc_ids ids
   Left Join spec_hnd On spec_hnd.id_number = ids.id_number
   Left Join mailing_lists On mailing_lists.id_number = ids.id_number
   ;
