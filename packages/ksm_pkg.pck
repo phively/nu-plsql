@@ -394,6 +394,7 @@ Type special_handling Is Record (
      , no_contact varchar2(1)
      , no_solicit varchar2(1)
      , no_release varchar2(1)
+     , active_with_restrictions varchar2(1)
      , never_engaged_forever varchar2(1)
      , never_engaged_reunion varchar2(1)
      , has_opt_ins_opt_outs varchar2(1)
