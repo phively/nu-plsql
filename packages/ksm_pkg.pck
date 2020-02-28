@@ -38,6 +38,7 @@ Type allocation_info Is Record (
 Type calendar Is Record (
   today date
   , yesterday date
+  , yesterday_last_year date
   , ninety_days_ago date
   , curr_fy number
   , prev_fy_start date
@@ -901,6 +902,7 @@ Cursor c_current_calendar (fy_start_month In integer, py_start_month In integer)
     curr_date.today As today
     -- Yesterday
     , curr_date.today - 1 As yesterday
+    , add_months(curr_date.today - 1, -12) As yesterday_last_year
     -- 90 days ago (for clearance)
     , curr_date.today - 90 As ninety_days_ago
     -- Current fiscal year
