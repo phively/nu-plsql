@@ -43,6 +43,24 @@ assign As (
   Group By prospect_id
 )
 
+-- LGO
+, lgo As (
+  Select Distinct
+    id_number
+    , Listagg(assignment_id_number, ';  ') Within Group (Order By assignment_report_name) As lgo_ids
+    , Listagg(assignment_report_name, ';  ') Within Group (Order By assignment_report_name) As lgos
+  From ( -- Dedupe prospect IDs with multiple associated entities
+    Select Distinct
+      id_number
+      , assignment_id_number
+      , assignment_report_name
+      , assignment_type
+    From assign
+  )
+  Where assignment_type = 'LG'
+  Group By id_number
+)
+
 -- Concatenate by prospect ID
 , assign_conc As (
   Select Distinct
@@ -81,6 +99,8 @@ Select Distinct
   -- Concatenated managers on prospect or entity ID as appropriate
   , pm.prospect_manager_id
   , pm.prospect_manager
+  , lgo.lgo_ids
+  , lgo.lgos
   , Case
       When assign_conc.manager_ids Is Not Null
         Then assign_conc.manager_ids
@@ -102,6 +122,8 @@ Select Distinct
 From assign
 Left Join pm
   On pm.prospect_id = assign.prospect_id
+Left Join lgo
+  On lgo.id_number = assign.id_number
 Left Join assign_conc
   On assign_conc.prospect_id = assign.prospect_id
 Left Join assign_conc_entity
