@@ -70,6 +70,7 @@ Select
   , rpt_pbh634.ksm_pkg.get_fiscal_year(contact_report.contact_date) As fiscal_year
   , contact_report.description
   , dbms_lob.substr(contact_report.summary, 2000, 1) As summary
+  , contact_report.summary As summary_clob
   -- Prospect fields
   , prs.officer_rating
   , prs.evaluation_rating
@@ -139,6 +140,7 @@ Select
   , rpt_pbh634.ksm_pkg.get_fiscal_year(contact_report.contact_date) As fiscal_year
   , contact_report.description
   , dbms_lob.substr(contact_report.summary, 2000, 1) As summary
+  , contact_report.summary As summary_clob
   -- Prospect fields
   , prs.officer_rating
   , prs.evaluation_rating
@@ -229,6 +231,7 @@ Select
   , fiscal_year
   , description
   , summary
+  , summary_clob
   -- Prospect fields
   , officer_rating
   , evaluation_rating
@@ -279,6 +282,7 @@ Select
   , fiscal_year
   , description
   , summary
+  , summary_clob
   , officer_rating
   , evaluation_rating
   , university_strategy
@@ -327,6 +331,7 @@ Select
   , fiscal_year
   , description
   , summary
+  , summary_clob
   , officer_rating
   , evaluation_rating
   , university_strategy
