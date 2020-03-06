@@ -115,6 +115,7 @@ Type household Is Record (
   , record_status_code entity.record_status_code%type
   , degrees_concat varchar2(512)
   , first_ksm_year degrees.degree_year%type
+  , program varchar2(20)
   , program_group varchar2(20)
   , last_noncert_year degrees.degree_year%type
   , institutional_suffix entity.institutional_suffix%type
@@ -124,6 +125,7 @@ Type household Is Record (
   , spouse_suffix entity.institutional_suffix%type
   , spouse_degrees_concat varchar2(512)
   , spouse_first_ksm_year degrees.degree_year%type
+  , spouse_program varchar2(20)
   , spouse_program_group varchar2(20)
   , spouse_last_noncert_year degrees.degree_year%type
   , fmr_spouse_id entity.id_number%type
@@ -145,6 +147,7 @@ Type household Is Record (
   , household_ksm_year degrees.degree_year%type
   , household_masters_year degrees.degree_year%type
   , household_last_masters_year degrees.degree_year%type
+  , household_program varchar2(20)
   , household_program_group varchar2(20)
   , xsequence address.xsequence%type
   , household_city address.city%type
@@ -1357,6 +1360,7 @@ With
       , edc.first_masters_year
       , edc.last_masters_year
       , edc.last_noncert_year
+      , edc.program
       , edc.program_group
       , edc.program_group_rank
       -- Spouse fields
@@ -1370,6 +1374,7 @@ With
       , sdc.first_masters_year As spouse_first_masters_year
       , sdc.last_masters_year As spouse_last_masters_year
       , sdc.last_noncert_year As spouse_last_noncert_year
+      , sdc.program As spouse_program
       , sdc.program_group As spouse_program_group
       , sdc.program_group_rank As spouse_program_group_rank
     From entity
@@ -1387,6 +1392,7 @@ With
       , degrees_concat
       , first_ksm_year
       , last_noncert_year
+      , program
       , program_group
       , spouse_id_number
       , spouse_report_name
@@ -1394,6 +1400,7 @@ With
       , spouse_suffix
       , spouse_degrees_concat
       , spouse_first_ksm_year
+      , spouse_program
       , spouse_program_group
       , spouse_last_noncert_year
       -- Choose which spouse is primary based on program_group
@@ -1476,11 +1483,11 @@ With
       , tmsd.short_desc As spouse_record_status
       , tms_sms.short_desc As spouse_marital_status
     From entity
-    Left Join tms_record_status tms On tms.record_status_code = entity.record_status_code
+    Inner Join tms_record_status tms On tms.record_status_code = entity.record_status_code
     Left Join deceased_spouse ds On ds.id_number = entity.id_number
     Left Join tms_marital_status tms_ms On tms_ms.marital_status_code = entity.marital_status_code
     Left Join entity spouse On spouse.id_number = ds.spouse_id_number
-    Left Join tms_record_status tmsd On tmsd.record_status_code = spouse.record_status_code
+    Inner Join tms_record_status tmsd On tmsd.record_status_code = spouse.record_status_code
     Left Join tms_marital_status tms_sms On tms_sms.marital_status_code = spouse.marital_status_code
     Inner Join (Select id_number From deceased_spouse Union Select spouse_id_number From deceased_spouse) ds
       On ds.id_number = entity.id_number
@@ -1533,7 +1540,7 @@ With
           End
         As household_list_first
     From household
-    Left Join couples On household.household_id = couples.id_number
+    Inner Join couples On household.household_id = couples.id_number
   )
   -- Main query
   Select
@@ -1543,6 +1550,7 @@ With
     , household.record_status_code
     , household.degrees_concat
     , household.first_ksm_year
+    , household.program
     , household.program_group
     , household.last_noncert_year
     , household.institutional_suffix
@@ -1552,6 +1560,7 @@ With
     , household.spouse_suffix
     , household.spouse_degrees_concat
     , household.spouse_first_ksm_year
+    , household.spouse_program
     , household.spouse_program_group
     , household.spouse_last_noncert_year
     , fmr_spouse.spouse_id_number As fmr_spouse_id
@@ -1580,6 +1589,7 @@ With
     , couples.first_masters_year As household_masters_year
     -- Household last non-certificate year, for (approximate) young alumni designation
     , household.household_last_masters_year
+    , couples.program As household_program
     , couples.program_group As household_program_group
     , pref_addr.xsequence
     , pref_addr.pref_city
@@ -1591,7 +1601,7 @@ With
     , pref_addr.pref_country
     , pref_addr.pref_continent
   From household
-  Left Join couples On household.household_id = couples.id_number
+  Inner Join couples On household.household_id = couples.id_number
   Left Join mailing_order On household.household_id = mailing_order.household_id
   Left Join pref_addr On household.id_number = pref_addr.id_number
   Left Join fmr_spouse On household.id_number = fmr_spouse.id_number
