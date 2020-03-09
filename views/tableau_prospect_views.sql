@@ -156,8 +156,43 @@ geocode As (
 
 /* Contact data */
 , ard_contacts As (
-  Select *
-  From v_contact_reports_fast
+  Select
+    vcrf.credited
+    , vcrf.credited_name
+    , vcrf.contact_credit_type
+    , vcrf.contact_credit_desc
+    , vcrf.job_title
+    , vcrf.employer_unit
+    , vcrf.contact_type_code
+    , vcrf.contact_type
+    , vcrf.contact_purpose
+    , vcrf.report_id
+    , vcrf.id_number
+    , vcrf.contacted_name
+    , vcrf.report_name
+    , vcrf.prospect_id
+    , vcrf.primary_ind
+    , vcrf.prospect_name
+    , vcrf.prospect_name_sort
+    , vcrf.contact_date
+    , vcrf.fiscal_year
+    , vcrf.description
+    , vcrf.summary
+    , vcrf.officer_rating
+    , vcrf.evaluation_rating
+    , vcrf.university_strategy
+    , vcrf.ard_staff
+    , vcrf.frontline_ksm_staff
+    , vcrf.contact_type_category
+    , vcrf.visit_type
+    , vcrf.rating_bin
+    , vcrf.curr_fy
+    , vcrf.prev_fy_start
+    , vcrf.curr_fy_start
+    , vcrf.next_fy_start
+    , vcrf.yesterday
+    , vcrf.ninety_days_ago
+  From v_contact_reports_fast vcrf
   Where ard_staff = 'Y'
 )
 , recent_contact As (
