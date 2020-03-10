@@ -1,17 +1,14 @@
 -- All activities
-Create Or Replace View v_nu_activities As
+Create Or Replace View v_nu_activities_fast As
 
 Select
-  hh.household_id
-  , hh.household_rpt_name
-  , hh.household_primary
-  , hh.id_number
-  , hh.report_name
-  , hh.person_or_org
-  , hh.institutional_suffix
-  , hh.degrees_concat
-  , hh.first_ksm_year
-  , hh.program_group
+  entity.id_number
+  , entity.report_name
+  , entity.person_or_org
+  , entity.institutional_suffix
+  , deg.degrees_concat
+  , deg.first_ksm_year
+  , deg.program_group
   , activity.activity_code
   , activity.xsequence
   , tms_at.short_desc
@@ -42,7 +39,42 @@ Select
     As stop_fy_calc
   , activity.xcomment
 From activity
-Inner Join v_entity_ksm_households hh
-  On hh.id_number = activity.id_number
+Inner Join entity
+  On entity.id_number = activity.id_number
+Left Join v_entity_ksm_degrees deg
+  On deg.id_number = activity.id_number
 Inner Join tms_activity_table tms_at
   On tms_at.activity_code = activity.activity_code
+;
+
+-- All activities householded
+Create Or Replace View v_nu_activities As
+
+Select
+  hh.household_id
+  , hh.household_rpt_name
+  , hh.household_primary
+  , hh.id_number
+  , hh.report_name
+  , hh.person_or_org
+  , hh.institutional_suffix
+  , hh.degrees_concat
+  , hh.first_ksm_year
+  , hh.program_group
+  , naf.activity_code
+  , naf.xsequence
+  , naf.activity_desc
+  , naf.ksm_activity
+  , naf.activity_participation_code
+  , naf.start_dt
+  , naf.stop_dt
+  , naf.date_added
+  , naf.date_modified
+  -- FY is based on start/stop date if available, else date added
+  , naf.start_fy_calc
+  , naf.stop_fy_calc
+  , naf.xcomment
+From v_nu_activities_fast naf
+Inner Join v_entity_ksm_households hh
+  On hh.id_number = naf.id_number
+;
