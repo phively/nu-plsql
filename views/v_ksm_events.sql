@@ -167,6 +167,37 @@ Left Join event_codes_concat
 ;
 
 -- Event participations
+Create Or Replace View v_nu_event_participants_fast As
+Select
+  entity.id_number
+  , entity.report_name
+  , entity.person_or_org
+  , entity.institutional_suffix
+  , deg.degrees_concat
+  , deg.first_ksm_year
+  , deg.program_group
+  , v_nu_events.event_id
+  , v_nu_events.event_name
+  , v_nu_events.ksm_event
+  , tms_et.short_desc As event_type
+  , start_dt
+  , stop_dt
+  , start_fy_calc
+  , stop_fy_calc
+From ep_participant ppt
+Inner Join v_nu_events
+  On v_nu_events.event_id = ppt.event_id -- KSM events
+Inner Join entity
+  On entity.id_number = ppt.id_number
+Left Join v_entity_ksm_degrees deg
+  On deg.id_number = ppt.id_number
+Inner Join ep_participation ppn
+  On ppn.registration_id = ppt.registration_id
+Left Join tms_event_type tms_et
+  On tms_et.event_type = v_nu_events.event_type
+Where ppn.participation_status_code In (' ', 'P', 'A') -- Blank, Participated, or Accepted
+;
+
 Create Or Replace View v_nu_event_participants As
 
 Select
@@ -180,22 +211,15 @@ Select
   , hh.degrees_concat
   , hh.first_ksm_year
   , hh.program_group
-  , v_nu_events.event_id
-  , v_nu_events.event_name
-  , v_nu_events.ksm_event
-  , tms_et.short_desc As event_type
-  , start_dt
-  , stop_dt
-  , start_fy_calc
-  , stop_fy_calc
-From ep_participant ppt
-Inner Join v_nu_events
-  On v_nu_events.event_id = ppt.event_id -- KSM events
+  , epf.event_id
+  , epf.event_name
+  , epf.ksm_event
+  , epf.event_type
+  , epf.start_dt
+  , epf.stop_dt
+  , epf.start_fy_calc
+  , epf.stop_fy_calc
+From v_nu_event_participants_fast epf
 Inner Join v_entity_ksm_households hh
-  On hh.id_number = ppt.id_number
-Inner Join ep_participation ppn
-  On ppn.registration_id = ppt.registration_id
-Left Join tms_event_type tms_et
-  On tms_et.event_type = v_nu_events.event_type
-Where ppn.participation_status_code In (' ', 'P', 'A') -- Blank, Participated, or Accepted
+  On hh.id_number = epf.id_number
 ;
