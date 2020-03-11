@@ -305,6 +305,8 @@ Type trans_entity Is Record (
   , transaction_type_code varchar2(10)
   , transaction_type varchar2(40)
   , tx_gypm_ind varchar2(1)
+  , associated_code tms_association.associated_code%type
+  , associated_desc tms_association.short_desc%type
   , pledge_number pledge.pledge_pledge_number%type
   , matched_tx_number matching_gift.match_gift_matched_receipt%type
   , matched_fiscal_year number
@@ -336,6 +338,8 @@ Type trans_household Is Record (
   , transaction_type_code varchar2(10)
   , transaction_type varchar2(40)
   , tx_gypm_ind varchar2(1)
+  , associated_code tms_association.associated_code%type
+  , associated_desc tms_association.short_desc%type
   , pledge_number pledge.pledge_pledge_number%type
   , matched_tx_number matching_gift.match_gift_matched_receipt%type
   , matched_fiscal_year number
@@ -1988,6 +1992,12 @@ Cursor c_gift_credit Is
       , short_desc As payment_type
     From tms_payment_type
   )
+  , tms_assoc As (
+    Select
+      associated_code
+      , short_desc As associated_desc
+    From tms_association
+  )
   /* Kellogg transactions list */
   (
       -- Matching gift matching company
@@ -2000,6 +2010,8 @@ Cursor c_gift_credit Is
       , NULL As transaction_type_code
       , 'Matching Gift' As transaction_type
       , 'M' As tx_gypm_ind
+      , 'MG' As associated_code
+      , 'Matching Gift' As associated_desc
       , NULL As pledge_number
       , match_gift_matched_receipt As matched_tx_number
       , to_number(gift.gift_year_of_giving) As matched_fiscal_year
@@ -2046,6 +2058,8 @@ Cursor c_gift_credit Is
       , NULL As transaction_type_code
       , 'Matching Gift' As transaction_type
       , 'M' As tx_gypm_ind
+      , 'MG' As associated_code
+      , 'Matching Gift' As associated_desc
       , NULL As pledge_number
       , match_gift_matched_receipt As matched_tx_number
       , to_number(gift.gift_year_of_giving) As matched_fiscal_year
@@ -2105,6 +2119,8 @@ Cursor c_gift_credit Is
           Else 'G' -- G = outright gift
           End
         As tx_gypm_ind
+      , gift.gift_associated_code
+      , tms_assoc.associated_desc
       , primary_gift.prim_gift_pledge_number As pledge_number
       , NULL As matched_tx_number
       , NULL As matched_fiscal_year
@@ -2137,6 +2153,7 @@ Cursor c_gift_credit Is
     -- Trans type descriptions
     Left Join tms_trans On tms_trans.transaction_type_code = gift.gift_transaction_type
     Left Join tms_pmt_type On tms_pmt_type.payment_type_code = gift.gift_payment_type
+    Left Join tms_assoc On tms_assoc.associated_code = gift.gift_associated_code
     -- KSM Annual Fund indicator
     Left Join ksm_allocs On ksm_allocs.allocation_code = gift.gift_associated_allocation
   ) Union All (
@@ -2150,6 +2167,8 @@ Cursor c_gift_credit Is
       , pledge.pledge_pledge_type As transaction_type_code
       , tms_trans.transaction_type
       , 'P' As tx_gypm_ind
+      , pledge.pledge_associated_code
+      , tms_assoc.associated_desc
       , pledge.pledge_pledge_number As pledge_number
       , NULL As matched_tx_number
       , NULL As matched_fiscal_year
@@ -2181,6 +2200,7 @@ Cursor c_gift_credit Is
     Inner Join entity On entity.id_number = pledge.pledge_donor_id
     -- Trans type descriptions
     Inner Join tms_trans On tms_trans.transaction_type_code = pledge.pledge_pledge_type
+    Left Join tms_assoc On tms_assoc.associated_code = pledge.pledge_associated_code
     -- Allocation name backup
     Inner Join allocation On allocation.allocation_code = pledge.pledge_allocation_name
     -- Discounted pledge amounts where applicable
@@ -2236,6 +2256,12 @@ Cursor c_gift_credit_ksm Is
       , short_desc As payment_type
     From tms_payment_type
   )
+  , tms_assoc As (
+    Select
+      associated_code
+      , short_desc As associated_desc
+    From tms_association
+  )
   /* Kellogg transactions list */
   (
       -- Matching gift matching company
@@ -2248,6 +2274,8 @@ Cursor c_gift_credit_ksm Is
       , NULL As transaction_type_code
       , 'Matching Gift' As transaction_type
       , 'M' As tx_gypm_ind
+      , 'MG' As associated_code
+      , 'Matching Gift' As associated_desc
       , NULL As pledge_number
       , match_gift_matched_receipt As matched_tx_number
       , to_number(gift.gift_year_of_giving) As matched_fiscal_year
@@ -2294,6 +2322,8 @@ Cursor c_gift_credit_ksm Is
       , NULL As transaction_type_code
       , 'Matching Gift' As transaction_type
       , 'M' As tx_gypm_ind
+      , 'MG' As associated_code
+      , 'Matching Gift' As associated_desc
       , NULL As pledge_number
       , match_gift_matched_receipt As matched_tx_number
       , to_number(gift.gift_year_of_giving) As matched_fiscal_year
@@ -2353,6 +2383,8 @@ Cursor c_gift_credit_ksm Is
           Else 'G' -- G = outright gift
           End
         As tx_gypm_ind
+      , tms_assoc.associated_code
+      , tms_assoc.associated_desc
       , primary_gift.prim_gift_pledge_number As pledge_number
       , NULL As matched_tx_number
       , NULL As matched_fiscal_year
@@ -2385,6 +2417,7 @@ Cursor c_gift_credit_ksm Is
     -- Trans type descriptions
     Left Join tms_trans On tms_trans.transaction_type_code = gift.gift_transaction_type
     Left Join tms_pmt_type On tms_pmt_type.payment_type_code = gift.gift_payment_type
+    Left Join tms_assoc On tms_assoc.associated_code = gift.gift_associated_code
     -- KSM Annual Fund indicator
     Left Join ksm_allocs On ksm_allocs.allocation_code = gift.gift_associated_allocation
     Where alloc_school = 'KM'
@@ -2399,6 +2432,8 @@ Cursor c_gift_credit_ksm Is
       , pledge.pledge_pledge_type As transaction_type_code
       , tms_trans.transaction_type
       , 'P' As tx_gypm_ind
+      , tms_assoc.associated_code
+      , tms_assoc.associated_desc
       , pledge.pledge_pledge_number As pledge_number
       , NULL As matched_tx_number
       , NULL As matched_fiscal_year
@@ -2423,6 +2458,7 @@ Cursor c_gift_credit_ksm Is
     Inner Join entity On entity.id_number = pledge.pledge_donor_id
     -- Trans type descriptions
     Inner Join tms_trans On tms_trans.transaction_type_code = pledge.pledge_pledge_type
+    Inner Join tms_assoc On tms_assoc.associated_code = pledge.pledge_associated_code
     -- Allocation name backup
     Inner Join allocation On allocation.allocation_code = pledge.pledge_allocation_name
     -- Discounted pledge amounts where applicable
@@ -2601,7 +2637,38 @@ Cursor c_gift_credit_campaign_2008 Is
 /* Definition of householded KSM campaign transactions for summable credit */
 Cursor c_gift_credit_hh_campaign_2008 Is
   (
-  Select hh_cred.*
+  Select
+    hh_cred.household_id
+    , hh_cred.household_rpt_name
+    , hh_cred.id_number
+    , hh_cred.report_name
+    , hh_cred.anonymous
+    , hh_cred.tx_number
+    , hh_cred.tx_sequence
+    , transaction_type_code
+    , transaction_type
+    , tx_gypm_ind
+    , associated_code
+    , associated_desc
+    , pledge_number
+    , matched_tx_number
+    , matched_fiscal_year
+    , payment_type
+    , allocation_code
+    , alloc_short_name
+    , ksm_flag
+    , af_flag
+    , cru_flag
+    , gift_comment
+    , proposal_id
+    , pledge_status
+    , date_of_record
+    , fiscal_year
+    , legal_amount
+    , credit_amount
+    , recognition_credit
+    , hh_credit
+    , hh_recognition_credit
   From table(tbl_gift_credit_hh_ksm) hh_cred
   Inner Join (Select Distinct rcpt_or_plg_number From nu_rpt_t_cmmt_dtl_daily) daily
     On hh_cred.tx_number = daily.rcpt_or_plg_number
@@ -2618,6 +2685,8 @@ Cursor c_gift_credit_hh_campaign_2008 Is
     , NULL As transaction_type_code
     , 'Internal Transfer' As transaction_type
     , daily.gift_pledge_or_match
+    , 'IT' As associated_code
+    , 'Internal Transfer' As associated_desc
     , NULL As pledge_number
     , NULL As matched_tx_number
     , NULL As matched_fiscal_year
