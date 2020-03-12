@@ -70,7 +70,6 @@ Select
   , rpt_pbh634.ksm_pkg.get_fiscal_year(contact_report.contact_date) As fiscal_year
   , contact_report.description
   , dbms_lob.substr(contact_report.summary, 2000, 1) As summary
-  , contact_report.summary As summary_clob
   -- Prospect fields
   , prs.officer_rating
   , prs.evaluation_rating
@@ -140,7 +139,6 @@ Select
   , rpt_pbh634.ksm_pkg.get_fiscal_year(contact_report.contact_date) As fiscal_year
   , contact_report.description
   , dbms_lob.substr(contact_report.summary, 2000, 1) As summary
-  , contact_report.summary As summary_clob
   -- Prospect fields
   , prs.officer_rating
   , prs.evaluation_rating
@@ -208,48 +206,49 @@ hh As (
 
 /* Main query */
 Select
-  credited
-  , credited_name
-  , contact_credit_type
-  , contact_credit_desc
-  , job_title
-  , employer_unit
-  , contact_type_code
-  , contact_type
-  , contact_purpose
+  vcrf.credited
+  , vcrf.credited_name
+  , vcrf.contact_credit_type
+  , vcrf.contact_credit_desc
+  , vcrf.job_title
+  , vcrf.employer_unit
+  , vcrf.contact_type_code
+  , vcrf.contact_type
+  , vcrf.contact_purpose
   -- Contact report fields
-  , report_id
+  , vcrf.report_id
   , vcrf.id_number
-  , contacted_name
+  , vcrf.contacted_name
   , vcrf.report_name
   , hh.household_id
-  , prospect_id
-  , primary_ind
-  , prospect_name
-  , prospect_name_sort
-  , contact_date
-  , fiscal_year
-  , description
-  , summary
-  , summary_clob
+  , vcrf.prospect_id
+  , vcrf.primary_ind
+  , vcrf.prospect_name
+  , vcrf.prospect_name_sort
+  , vcrf.contact_date
+  , vcrf.fiscal_year
+  , vcrf.description
+  , vcrf.summary
+  , contact_report.summary As summary_clob
   -- Prospect fields
-  , officer_rating
-  , evaluation_rating
-  , university_strategy
+  , vcrf.officer_rating
+  , vcrf.evaluation_rating
+  , vcrf.university_strategy
   -- Custom variables
-  , ard_staff
-  , frontline_ksm_staff
-  , contact_type_category
-  , visit_type
-  , rating_bin
-  , curr_fy
-  , prev_fy_start
-  , curr_fy_start
-  , next_fy_start
-  , yesterday
-  , ninety_days_ago
+  , vcrf.ard_staff
+  , vcrf.frontline_ksm_staff
+  , vcrf.contact_type_category
+  , vcrf.visit_type
+  , vcrf.rating_bin
+  , vcrf.curr_fy
+  , vcrf.prev_fy_start
+  , vcrf.curr_fy_start
+  , vcrf.next_fy_start
+  , vcrf.yesterday
+  , vcrf.ninety_days_ago
 From v_contact_reports_fast vcrf
 Inner Join hh On hh.id_number = vcrf.id_number
+Inner Join contact_report On contact_report.report_id = vcrf.report_id
 ;
 
 /****************************
@@ -282,7 +281,6 @@ Select
   , fiscal_year
   , description
   , summary
-  , summary_clob
   , officer_rating
   , evaluation_rating
   , university_strategy
@@ -331,7 +329,6 @@ Select
   , fiscal_year
   , description
   , summary
-  , summary_clob
   , officer_rating
   , evaluation_rating
   , university_strategy
