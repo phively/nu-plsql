@@ -113,6 +113,22 @@ Select
     As stop_dt
   -- Assume events are one day, so if stop or start date is missing, use the other 
   -- If both are missing could fall back to date added (noisy) or omit
+  , Case
+      When event.event_start_datetime Is Not Null
+        Then trunc(event.event_start_datetime)
+      When event.event_stop_datetime Is Not Null
+        Then trunc(event.event_stop_datetime)
+      Else trunc(event.date_added)
+      End
+    As start_dt_calc
+  , Case
+      When event.event_stop_datetime Is Not Null
+        Then trunc(event.event_stop_datetime)
+      When event.event_start_datetime Is Not Null
+        Then trunc(event.event_start_datetime)
+      Else trunc(event.date_added)
+      End
+    As stop_dt_calc
   , ksm_pkg.get_fiscal_year(
       Case
         When event.event_start_datetime Is Not Null
@@ -182,6 +198,8 @@ Select
   , tms_et.short_desc As event_type
   , start_dt
   , stop_dt
+  , start_dt_calc
+  , stop_dt_calc
   , start_fy_calc
   , stop_fy_calc
 From ep_participant ppt
@@ -217,6 +235,8 @@ Select
   , epf.event_type
   , epf.start_dt
   , epf.stop_dt
+  , epf.start_dt_calc
+  , epf.stop_dt_calc
   , epf.start_fy_calc
   , epf.stop_fy_calc
 From v_nu_event_participants_fast epf
