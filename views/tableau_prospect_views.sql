@@ -149,8 +149,9 @@ geocode As (
   From v_assignment_history ah
   Where ah.assignment_active_calc = 'Active' -- Active assignments only
     And assignment_type In
-      -- Program Manager (PP), Prospect Manager (PM), Annual Fund Officer (AF), Leadership Giving Officer (LG)
-      ('PP', 'PM', 'AF', 'LG')
+      -- Program Manager (PP), Prospect Manager (PM), Leadership Giving Officer (LG)
+      -- Annual Fund Officer (AF) is defunct as of 2020-04-14; removed
+      ('PP', 'PM', 'LG')
     And ah.assignment_report_name Is Not Null -- Real managers only
 )
 
@@ -576,6 +577,7 @@ assignments As (
   From v_assignment_history
   Where assignment_type In
     -- Program Manager (PP), Prospect Manager (PM), Annual Fund Officer (AF), Leadership Giving Officer (LG)
+    -- Keep AF here since this is a historical assignment table
     ('PP', 'PM', 'AF', 'LG')
 )
 

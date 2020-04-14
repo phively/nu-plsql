@@ -115,8 +115,9 @@ ksm_staff As (
   Inner Join prospect On prospect.prospect_id = ah.prospect_id
   Where ah.assignment_active_ind = 'Y' -- Active assignments only
     And ah.assignment_type In
-      -- Program Manager (PP), Prospect Manager (PM), Annual Fund Officer (AF), Leadership Giving Officer (LG)
-      ('PP', 'PM', 'AF', 'LG')
+      -- Program Manager (PP), Prospect Manager (PM), Leadership Giving Officer (LG)
+      -- Annual Fund Officer (AF) is defunct as of 2020-04-14; removed
+      ('PP', 'PM', 'LG')
     And prospect.active_ind = 'Y' -- Active prospects only
 )
 
