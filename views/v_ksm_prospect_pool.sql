@@ -299,6 +299,9 @@ Select Distinct
       When evaluation_rating <> ' ' Then eval.numeric_bin
       Else 0
     End As rating_bin
+  , Case
+      When evaluation_rating <> ' ' Then eval.numeric_bin
+    End As eval_rating_bin
   -- Lifetime giving
   , prs.giving_total As nu_lifetime_recognition
   -- Which group?
