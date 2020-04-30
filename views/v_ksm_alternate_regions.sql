@@ -14,7 +14,6 @@ With alternate_region As (Select comm.id_number,
        comm.geo_code,
        comm.xcomment
 FROM  committee comm
-Left Join Entity on Entity.Id_Number = comm.id_number
 Left Join TMS_COMMITTEE_TABLE tms on tms.committee_code = comm.committee_code
 where  comm.committee_status_code = 'C'  
 and comm.xcomment LIKE '%KARP%'
@@ -23,8 +22,7 @@ Order by tms.short_desc ASC)
 Select alternate_region.id_number,
        entity.person_or_org,
        entity.record_type_code,
-       entity.first_name,
-       entity.last_name,
+       entity.report_name,
        entity.institutional_suffix,
        house.HOUSEHOLD_CITY,
        house.HOUSEHOLD_STATE,
@@ -40,4 +38,4 @@ Select alternate_region.id_number,
 From entity
 Inner Join rpt_pbh634.v_entity_ksm_households house on house.ID_NUMBER = entity.ID_NUMBER
 Inner Join alternate_region on alternate_region.id_number = entity.id_number
-Order By entity.last_name ASC
+Order By entity.report_name ASC

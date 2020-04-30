@@ -76,7 +76,7 @@ geocode As (
   Select
     prospect_id
     , count(proposal_id) As open_proposals
-  From v_proposal_history
+  From v_proposal_history_fast
   Where proposal_active_calc = 'Active'
   Group By prospect_id
 )
@@ -133,7 +133,7 @@ geocode As (
     , min(ksm_or_univ_anticipated)
       keep(dense_rank First Order By close_date Asc, hierarchy_order Desc, date_modified Desc, proposal_id Asc)
       As next_ksm_anticipated
-  From v_ksm_proposal_history
+  From v_proposal_history_fast
   Where proposal_in_progress = 'Y'
     And ksm_proposal_ind = 'Y'
   Group By prospect_id
@@ -149,15 +149,51 @@ geocode As (
   From v_assignment_history ah
   Where ah.assignment_active_calc = 'Active' -- Active assignments only
     And assignment_type In
-      -- Program Manager (PP), Prospect Manager (PM), Annual Fund Officer (AF), Leadership Giving Officer (LG)
-      ('PP', 'PM', 'AF', 'LG')
+      -- Program Manager (PP), Prospect Manager (PM), Leadership Giving Officer (LG)
+      -- Annual Fund Officer (AF) is defunct as of 2020-04-14; removed
+      ('PP', 'PM', 'LG')
     And ah.assignment_report_name Is Not Null -- Real managers only
 )
 
 /* Contact data */
 , ard_contacts As (
-  Select *
-  From v_contact_reports_fast
+  Select
+    vcrf.credited
+    , vcrf.credited_name
+    , vcrf.contact_credit_type
+    , vcrf.contact_credit_desc
+    , vcrf.job_title
+    , vcrf.employer_unit
+    , vcrf.contact_type_code
+    , vcrf.contact_type
+    , vcrf.contact_purpose
+    , vcrf.report_id
+    , vcrf.id_number
+    , vcrf.contacted_name
+    , vcrf.report_name
+    , vcrf.prospect_id
+    , vcrf.primary_ind
+    , vcrf.prospect_name
+    , vcrf.prospect_name_sort
+    , vcrf.contact_date
+    , vcrf.fiscal_year
+    , vcrf.description
+    , vcrf.summary
+    , vcrf.officer_rating
+    , vcrf.evaluation_rating
+    , vcrf.university_strategy
+    , vcrf.ard_staff
+    , vcrf.frontline_ksm_staff
+    , vcrf.contact_type_category
+    , vcrf.visit_type
+    , vcrf.rating_bin
+    , vcrf.curr_fy
+    , vcrf.prev_fy_start
+    , vcrf.curr_fy_start
+    , vcrf.next_fy_start
+    , vcrf.yesterday
+    , vcrf.ninety_days_ago
+  From v_contact_reports_fast vcrf
   Where ard_staff = 'Y'
 )
 , recent_contact As (
@@ -284,32 +320,84 @@ geocode As (
     prospect_id
 )
 
+-- Intermediate joins
+
+, pp As (
+  Select *
+  From v_ksm_prospect_pool
+)
+
+, prs As (
+  Select
+    pp.*
+    -- Campaign giving fields
+    , cmp.campaign_giving
+    , cmp.campaign_steward_giving As campaign_giving_recognition
+    -- Giving summary fields
+    , gft.ngc_lifetime_full_rec As ksm_lifetime_recognition
+    , gft.af_status
+    , gft.af_cfy
+    , gft.af_pfy1
+    , gft.af_pfy2
+    , gft.af_pfy3
+    , gft.af_pfy4
+    , gft.ngc_cfy
+    , gft.ngc_pfy1
+    , gft.ngc_pfy2
+    , gft.ngc_pfy3
+    , gft.ngc_pfy4
+    , gft.last_gift_tx_number
+    , gft.last_gift_date
+    , gft.last_gift_type
+    , gft.last_gift_recognition_credit
+  From pp
+  Left Join v_ksm_giving_summary gft On gft.id_number = pp.id_number
+  Left Join v_ksm_giving_campaign cmp On cmp.id_number = pp.id_number
+)
+
+, visits As (
+  Select
+    pp.id_number
+    -- Recent contact data
+    , recent_visit.ard_visit_last_365_days
+    , recent_contact.ard_contact_last_365_days
+    , recent_visit.last_visit_credited_name
+    , recent_visit.last_visit_credited_unit
+    , recent_visit.last_visit_credited_ksm
+    , recent_visit.last_visit_contact_type
+    , recent_visit.last_visit_category
+    , recent_visit.last_visit_date
+    , recent_visit.last_visit_purpose
+    , recent_visit.last_visit_type
+    , recent_visit.last_visit_desc
+    , recent_contact.last_credited_name
+    , recent_contact.last_credited_unit
+    , recent_contact.last_credited_ksm
+    , recent_contact.last_contact_type
+    , recent_contact.last_contact_category
+    , recent_contact.last_contact_date
+    , recent_contact.last_contact_purpose
+    , recent_contact.last_contact_desc
+    , recent_assn_contacts.last_assigned_credited_name
+    , recent_assn_contacts.last_assigned_credited_unit
+    , recent_assn_contacts.last_assigned_credited_ksm
+    , recent_assn_contacts.last_assigned_contact_type
+    , recent_assn_contacts.last_assigned_contact_category
+    , recent_assn_contacts.last_assigned_contact_date
+    , recent_assn_contacts.last_assigned_contact_purpose
+    , recent_assn_contacts.last_assigned_contact_desc
+  From pp
+  Left Join recent_contact On recent_contact.id_number = pp.id_number
+  Left Join recent_assn_contacts On recent_assn_contacts.id_number = pp.id_number
+  Left Join recent_visit On recent_visit.id_number = pp.id_number
+)
+
 /* Main query */
 Select Distinct
   prs.*
   -- Latitude/longitude
   , geocode.latitude
   , geocode.longitude
-  -- Campaign giving fields
-  , cmp.campaign_giving
-  , cmp.campaign_steward_giving As campaign_giving_recognition
-  -- Giving summary fields
-  , gft.ngc_lifetime_full_rec As ksm_lifetime_recognition
-  , gft.af_status
-  , gft.af_cfy
-  , gft.af_pfy1
-  , gft.af_pfy2
-  , gft.af_pfy3
-  , gft.af_pfy4
-  , gft.ngc_cfy
-  , gft.ngc_pfy1
-  , gft.ngc_pfy2
-  , gft.ngc_pfy3
-  , gft.ngc_pfy4
-  , gft.last_gift_tx_number
-  , gft.last_gift_date
-  , gft.last_gift_type
-  , gft.last_gift_recognition_credit
   -- Proposal history fields
   , nu_proposal.open_proposals
   , ksm_proposal.open_ksm_proposals
@@ -333,33 +421,33 @@ Select Distinct
   , ksm_proposal.next_ksm_ask
   , ksm_proposal.next_ksm_anticipated
   -- Recent contact data
-  , recent_visit.ard_visit_last_365_days
-  , recent_contact.ard_contact_last_365_days
-  , recent_visit.last_visit_credited_name
-  , recent_visit.last_visit_credited_unit
-  , recent_visit.last_visit_credited_ksm
-  , recent_visit.last_visit_contact_type
-  , recent_visit.last_visit_category
-  , recent_visit.last_visit_date
-  , recent_visit.last_visit_purpose
-  , recent_visit.last_visit_type
-  , recent_visit.last_visit_desc
-  , recent_contact.last_credited_name
-  , recent_contact.last_credited_unit
-  , recent_contact.last_credited_ksm
-  , recent_contact.last_contact_type
-  , recent_contact.last_contact_category
-  , recent_contact.last_contact_date
-  , recent_contact.last_contact_purpose
-  , recent_contact.last_contact_desc
-  , recent_assn_contacts.last_assigned_credited_name
-  , recent_assn_contacts.last_assigned_credited_unit
-  , recent_assn_contacts.last_assigned_credited_ksm
-  , recent_assn_contacts.last_assigned_contact_type
-  , recent_assn_contacts.last_assigned_contact_category
-  , recent_assn_contacts.last_assigned_contact_date
-  , recent_assn_contacts.last_assigned_contact_purpose
-  , recent_assn_contacts.last_assigned_contact_desc
+  , visits.ard_visit_last_365_days
+  , visits.ard_contact_last_365_days
+  , visits.last_visit_credited_name
+  , visits.last_visit_credited_unit
+  , visits.last_visit_credited_ksm
+  , visits.last_visit_contact_type
+  , visits.last_visit_category
+  , visits.last_visit_date
+  , visits.last_visit_purpose
+  , visits.last_visit_type
+  , visits.last_visit_desc
+  , visits.last_credited_name
+  , visits.last_credited_unit
+  , visits.last_credited_ksm
+  , visits.last_contact_type
+  , visits.last_contact_category
+  , visits.last_contact_date
+  , visits.last_contact_purpose
+  , visits.last_contact_desc
+  , visits.last_assigned_credited_name
+  , visits.last_assigned_credited_unit
+  , visits.last_assigned_credited_ksm
+  , visits.last_assigned_contact_type
+  , visits.last_assigned_contact_category
+  , visits.last_assigned_contact_date
+  , visits.last_assigned_contact_purpose
+  , visits.last_assigned_contact_desc
   -- Tasks data
   , tasks.tasks_open
   , tasks.tasks_open_ksm
@@ -371,17 +459,13 @@ Select Distinct
   -- Current calendar
   , cal.yesterday
   , cal.curr_fy
-From v_ksm_prospect_pool prs
+From prs
 Cross Join v_current_calendar cal
+Inner Join visits On visits.id_number = prs.id_number
 Left Join geocode On geocode.id_number = prs.id_number
   And geocode.xsequence = prs.xsequence
-Left Join v_ksm_giving_summary gft On gft.id_number = prs.id_number
-Left Join v_ksm_giving_campaign cmp On cmp.id_number = prs.id_number
 Left Join nu_proposal On nu_proposal.prospect_id = prs.prospect_id
 Left Join ksm_proposal On ksm_proposal.prospect_id = prs.prospect_id
-Left Join recent_contact On recent_contact.id_number = prs.id_number
-Left Join recent_assn_contacts On recent_assn_contacts.id_number = prs.id_number
-Left Join recent_visit On recent_visit.id_number = prs.id_number
 Left Join tasks On tasks.prospect_id = prs.prospect_id
 Left Join next_outreach_task On next_outreach_task.prospect_id = prs.prospect_id
 ;
@@ -440,14 +524,14 @@ Select Distinct
       As total_open_ksm_asks
   , Case When pool.primary_ind = 'Y' Then mgo.total_cfy_ksm_ant_ask End
       As total_cfy_ksm_ant_ask
-  , Case When pool.primary_ind = 'Y' Then mgo.total_cfy_ksm_verbal End
-      As total_cfy_ksm_verbal
+  , Case When pool.primary_ind = 'Y' Then mgo.total_cfy_ksm_approved End
+      As total_cfy_ksm_approved
   , Case When pool.primary_ind = 'Y' Then mgo.total_cfy_ksm_funded End
       As total_cfy_ksm_funded
   , Case When pool.primary_ind = 'Y' Then mgo.total_cpy_ant_ask End
       As total_cpy_ant_ask
-  , Case When pool.primary_ind = 'Y' Then mgo.total_cpy_verbal End
-      As total_cpy_verbal
+  , Case When pool.primary_ind = 'Y' Then mgo.total_cpy_approved End
+      As total_cpy_approved
   , Case When pool.primary_ind = 'Y' Then mgo.total_cpy_funded End
       As total_cpy_funded
   , Case When pool.primary_ind = 'Y' Then tasks.own_open_tasks End
@@ -493,6 +577,7 @@ assignments As (
   From v_assignment_history
   Where assignment_type In
     -- Program Manager (PP), Prospect Manager (PM), Annual Fund Officer (AF), Leadership Giving Officer (LG)
+    -- Keep AF here since this is a historical assignment table
     ('PP', 'PM', 'AF', 'LG')
 )
 
@@ -633,7 +718,7 @@ cal As (
     , cal.*
   From vt_ard_prospect_timeline tl
   Cross Join cal
-  Inner Join hh On hh.id_number =  tl.id_number
+  Inner Join hh On hh.id_number = tl.id_number
   Where start_date Between cal.bofy_prev And cal.eofy_next
     And primary_ind = 'Y'
 )
@@ -673,9 +758,9 @@ cal As (
     , substr(contact_type_category, 1, 1) As symbol
     -- Uniform calendar dates for axis alignment
     , cal.*
-  From v_ard_contact_reports cr
+  From v_contact_reports_fast cr
   Cross Join cal
-  Inner Join hh On hh.id_number =  cr.id_number
+  Inner Join hh On hh.id_number = cr.id_number
   Where contact_date Between cal.bofy_prev And cal.eofy_next
     And cr.ard_staff = 'Y'
 )
@@ -764,7 +849,7 @@ cal As (
     , cal.*
   From ksm_proposals prp
   Cross Join cal
-  Inner Join hh On hh.id_number =  prp.id_number
+  Inner Join hh On hh.id_number = prp.id_number
   Where start_date Between cal.bofy_prev And cal.eofy_next
 )
 , proposal_asks As (
@@ -869,7 +954,7 @@ cal As (
     , gft.proposal_id
   From v_ksm_giving_trans_hh gft
   Cross Join cal
-  Inner Join hh On hh.id_number =  gft.id_number
+  Inner Join hh On hh.id_number = gft.id_number
   Left Join pe On pe.id_number = gft.id_number
   Inner Join entity On entity.id_number = gft.id_number
   Left Join tms_pledge_status tms_ps On tms_ps.pledge_status_code = gft.pledge_status

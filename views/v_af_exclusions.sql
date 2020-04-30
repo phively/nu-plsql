@@ -14,6 +14,7 @@ manual_exclusions_pre As (
     , '0000299349' -- DSB
     , '0000225195' -- DDJ
     , '0000499489' -- DDJ spouse
+    , '0000804796' -- DFC
 ------ ADD ID NUMBERS ABOVE HERE ------
   )
 )

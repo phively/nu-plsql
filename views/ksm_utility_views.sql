@@ -8,6 +8,12 @@ Create Or Replace View v_current_calendar As
   From table(ksm_pkg.tbl_current_calendar) cal
 ;
 
+Create Or Replace View v_random_id As
+-- View converting from entity ID to a random row number for use in masked data sets
+  Select rid.*
+  From table(ksm_pkg.tbl_random_id) rid
+;
+
 Create Or Replace View v_alloc_curr_use As
 -- View implementing KSM Current Use allocations (including AF flag) from ksm_pkg
   Select cru.*
@@ -32,4 +38,18 @@ Create Or Replace View v_frontline_ksm_staff As
 -- New staff and start/stop dates need to be added to mv_past_ksm_gos to be reflected in this view
   Select fs.*
   From table(ksm_pkg.tbl_frontline_ksm_staff) fs
+;
+
+Create Or Replace View v_entity_special_handling As
+-- View pulling together active special handling and mailing list codes for all entities with at least one
+-- Use ONLY for Kellogg mailings!
+  Select sh.*
+  From table(ksm_pkg.tbl_special_handling_concat) sh
+;
+
+Create Or Replace View v_geo_code_primary As
+-- View defining primary geo code for each active address
+-- Primary key is id_number + xsequence
+  Select *
+  From table(ksm_pkg.tbl_geo_code_primary)
 ;

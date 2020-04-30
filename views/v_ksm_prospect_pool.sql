@@ -167,7 +167,7 @@ ksm_deg As (
   Where record_status_code Not In ('D', 'X')
   ) Union (
   -- All living donors
-  Select Distinct gft.id_number
+  Select gft.id_number
   From v_ksm_giving_trans gft
   Inner Join entity On entity.id_number = gft.id_number
   Where entity.record_status_code Not In ('D', 'X')
@@ -195,58 +195,42 @@ ksm_deg As (
       As rating_code
     , max(tms_rating.short_desc) keep(dense_rank First Order By evaluation_date Desc NULLS Last, evaluation.rating_code Asc)
       As uor
+    , max(entity.id_number) keep(dense_rank First Order By evaluation_date Desc NULLS Last, evaluation.rating_code Asc)
+      As uor_evaluator_id
+    , max(entity.report_name) keep(dense_rank First Order By evaluation_date Desc NULLS Last, evaluation.rating_code Asc)
+      As uor_evaluator
   From evaluation
   Left Join tms_rating On tms_rating.rating_code = evaluation.rating_code
+  Left Join entity On entity.id_number = evaluation.evaluator_id_number
   Where evaluation_type = 'UR'
     And active_ind = 'Y' -- University overall rating
   Group By
     prospect_id
 )
 
--- Prospect assignments
-, assign As (
-  Select Distinct
-    ah.prospect_id
-    , ah.id_number
-    , ah.assignment_id_number
-    , ah.assignment_report_name
-    , Case When gos.id_number Is Not Null Then 'Y' End
-      As curr_ksm_assignment
-  From v_assignment_history ah
-  Left Join table(ksm_pkg.tbl_frontline_ksm_staff) gos On gos.id_number = ah.assignment_id_number
-    And gos.former_staff Is Null
-  Where ah.assignment_active_calc = 'Active' -- Active assignments only
-    And assignment_type In
-      -- Program Manager (PP), Prospect Manager (PM), Annual Fund Officer (AF), Leadership Giving Officer (LG)
-      ('PP', 'PM', 'AF', 'LG')
-    And ah.assignment_report_name Is Not Null -- Real managers only
+-- Pref address type
+, pref_addr As (
+  Select
+    address.id_number
+    , address.addr_type_code As pref_addr_type
+  From address
+  Where address.addr_pref_ind = 'Y'
+    And address.addr_status_code = 'A'
 )
-, assign_conc As (
-  Select Distinct
-    prospect_id
-    , Listagg(assignment_report_name, ';  ') Within Group (Order By assignment_report_name) As managers
-    , Listagg(assignment_id_number, ';  ') Within Group (Order By assignment_report_name) As manager_ids
-    , max(curr_ksm_assignment) As curr_ksm_manager
-  From ( -- Dedupe prospect IDs with multiple associated entities
-    Select Distinct
-      prospect_id
-      , assignment_id_number
-      , assignment_report_name
-      , curr_ksm_assignment
-    From assign
-  )
-  Where prospect_id Is Not Null
-  Group By prospect_id
-)
-, assign_conc_entity As (
-  Select Distinct
-    id_number
-    , Listagg(assignment_report_name, ';  ') Within Group (Order By assignment_report_name) As managers
-    , Listagg(assignment_id_number, ';  ') Within Group (Order By assignment_report_name) As manager_ids
-    , max(curr_ksm_assignment) As curr_ksm_manager
-  From assign
-  Where prospect_id Is Null
-  Group By id_number
+
+-- Home addresses
+, home_addr As (
+  Select
+    address.id_number
+    , address.city As home_city
+    , address.state_code As home_state
+    , conts.country As home_country
+  From address
+  Left Join v_addr_continents conts
+    On conts.country_code = address.country_code
+  Where address.addr_status_code = 'A'
+    -- This works because entities may have no more than one address type H
+    And address.addr_type_code = 'H'
 )
 
 -- Main query
@@ -254,12 +238,16 @@ Select Distinct
   hh.*
   , prs.business_title
   , trim(prs.employer_name1 || ' ' || prs.employer_name2) As employer_name
+  , pref_addr.pref_addr_type
   , prs.pref_city
   , prs.pref_state
   , prs.preferred_country
   , prs.business_city
   , prs.business_state
   , prs.business_country
+  , home_addr.home_city
+  , home_addr.home_state
+  , home_addr.home_country
   , prs.prospect_id
   , prs_e.primary_ind
   , prospect.prospect_name
@@ -276,6 +264,8 @@ Select Distinct
   , prs.officer_rating
   , uor.uor
   , uor.uor_date
+  , uor.uor_evaluator_id
+  , uor.uor_evaluator
   , af_10k_model.description As af_10k_model
   , af_10k_model.score As af_10k_score
   , mgo_model.id_segment As mgo_id_model
@@ -289,18 +279,9 @@ Select Distinct
   , prs.contact_date
   , contact_auth.report_name As contact_author
   -- Concatenated managers on prospect or entity ID as appropriate
-  , Case When assign_conc.manager_ids Is Not Null
-      Then assign_conc.manager_ids
-      Else assign_conc_entity.manager_ids
-    End As manager_ids
-  , Case When assign_conc.manager_ids Is Not Null
-      Then assign_conc.managers
-      Else assign_conc_entity.managers
-    End As managers
-  , Case When assign_conc.manager_ids Is Not Null
-      Then assign_conc.curr_ksm_manager
-      Else assign_conc_entity.curr_ksm_manager
-    End As curr_ksm_manager
+  , assign.manager_ids
+  , assign.managers
+  , assign.curr_ksm_manager
   -- Primary prospect for 150/300, or primary household member for everyone else
   , Case
       When ksm_150_300.primary_ind = 'Y' Then 'Y'
@@ -318,6 +299,9 @@ Select Distinct
       When evaluation_rating <> ' ' Then eval.numeric_bin
       Else 0
     End As rating_bin
+  , Case
+      When evaluation_rating <> ' ' Then eval.numeric_bin
+    End As eval_rating_bin
   -- Lifetime giving
   , prs.giving_total As nu_lifetime_recognition
   -- Which group?
@@ -330,11 +314,11 @@ Select Distinct
       When ksm_150_300.prospect_category_code = 'KT3'
         Then 'B. Top 300'
       -- Assigned; exclude managed by Kellogg Donor Relations
-      When (assign_conc.manager_ids Is Not Null Or assign_conc_entity.manager_ids Is Not Null)
-        And prospect_manager_id Not In ('0000292130')
+      When assign.manager_ids Is Not Null
+        And assign.prospect_manager_id Not In ('0000292130')
         Then 'C. Assigned'
       -- Leads
-      When assign_conc.manager_ids Is Null And assign_conc_entity.manager_ids Is Null -- Unmanaged
+      When assign.manager_ids Is Null -- Unmanaged
         And (officer_rating <> ' ' Or evaluation_rating <> ' ') -- Has a rating
         And officer_rating Not In ('G  $10K - $24K') -- Not officer disqualified
         And dq.dq Is Null -- Not previously disqualified
@@ -352,20 +336,40 @@ Inner Join ksm_prs_ids -- Must be a valid Kellogg entity
   On ksm_prs_ids.id_number = hh.id_number
 Left Join ksm_prs
   On ksm_prs.id_number = hh.id_number
-Left Join af_10k_model On af_10k_model.id_number = hh.id_number
-Left Join mgo_model On mgo_model.id_number = hh.id_number
-Left Join nu_prs_trp_prospect prs On prs.id_number = hh.id_number
-Left Join rating_bins eval On eval.rating_desc = prs.evaluation_rating
-Left Join rating_bins uor On uor.rating_desc = prs.officer_rating
-Left Join entity pm On pm.id_number = prs.prospect_manager_id
-Left Join prs_e On prs_e.prospect_id = prs.prospect_id And prs_e.id_number = hh.id_number
-Left Join prospect On prospect.prospect_id = prs.prospect_id
-Left Join ksm_150_300 On ksm_150_300.id_number = hh.id_number
-Left Join entity contact_auth On contact_auth.id_number = prs.contact_author
-Left Join assign_conc On assign_conc.prospect_id = prs.prospect_id
-Left Join assign_conc_entity On assign_conc_entity.id_number = prs.id_number
-Left Join dq On dq.id_number = hh.id_number
-Left Join perm_stew On perm_stew.id_number = hh.id_number
-Left Join spec_hnd On spec_hnd.id_number = hh.id_number
-Left Join uor On uor.prospect_id = prs.prospect_id
-Left Join table(rpt_pbh634.ksm_pkg.tbl_university_strategy) strat On strat.prospect_id = prs.prospect_id
+Left Join pref_addr
+  On pref_addr.id_number = hh.id_number
+Left Join home_addr
+  On home_addr.id_number = hh.id_number
+Left Join af_10k_model
+  On af_10k_model.id_number = hh.id_number
+Left Join mgo_model
+  On mgo_model.id_number = hh.id_number
+Left Join nu_prs_trp_prospect prs
+  On prs.id_number = hh.id_number
+Left Join rating_bins eval
+  On eval.rating_desc = prs.evaluation_rating
+Left Join rating_bins uor
+  On uor.rating_desc = prs.officer_rating
+Left Join entity pm
+  On pm.id_number = prs.prospect_manager_id
+Left Join prs_e
+  On prs_e.prospect_id = prs.prospect_id
+  And prs_e.id_number = hh.id_number
+Left Join prospect
+  On prospect.prospect_id = prs.prospect_id
+Left Join ksm_150_300
+  On ksm_150_300.id_number = hh.id_number
+Left Join entity contact_auth
+  On contact_auth.id_number = prs.contact_author
+Left Join rpt_pbh634.v_assignment_summary assign
+  On assign.prospect_id = prs.prospect_id
+Left Join dq
+  On dq.id_number = hh.id_number
+Left Join perm_stew
+  On perm_stew.id_number = hh.id_number
+Left Join spec_hnd
+  On spec_hnd.id_number = hh.id_number
+Left Join uor
+  On uor.prospect_id = prs.prospect_id
+Left Join table(rpt_pbh634.ksm_pkg.tbl_university_strategy) strat
+  On strat.prospect_id = prs.prospect_id

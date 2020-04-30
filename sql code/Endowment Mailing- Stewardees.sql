@@ -5,24 +5,45 @@ rep_end_alloc As (
     a.allocation_code
     , a.short_name
     , a.long_name
+    , a.alloc_school
+    , tp.short_desc As alloc_purpose
+    , a.steward_id_number
+    , e.report_name As steward_report_name
   From allocation a
+  Left Join tms_purpose tp
+    On tp.purpose_code = a.alloc_purpose
+  Left Join entity e
+    On e.id_number = a.steward_id_number
   Where steward_reporting_code = 'RP'
-    And alloc_school = 'KM'
+    And (
+      alloc_school = 'KM' -- Kellogg accounts
+      Or steward_id_number = '0000697410' -- Kellogg steward ID
+    )
     And agency = 'END'
 )
 
 , hh_stewardees As (
   Select 
-    als.id_number As household_id
+    als.id_number
     , listagg(rea.allocation_code, ', ') Within Group (Order By als.allocation_code)
       As stewardee_alloc_code
     , listagg(rea.short_name, ', ') Within Group (Order By als.allocation_code)
       As stewardee_alloc_short_name
     , listagg(rea.long_name, ', ') Within Group (Order By als.allocation_code)
       As stewardee_alloc_long_name
+    , listagg(rea.alloc_purpose, ', ') Within Group (Order By als.allocation_code)
+      As stewardee_alloc_purpose
+    , listagg(tss.short_desc, ', ') Within Group (Order By als.allocation_code)
+      As stewardee_status
+    , listagg(steward_id_number, ', ') Within Group (Order By als.allocation_code)
+      As steward_id_number
+    , listagg(steward_report_name, ', ') Within Group (Order By als.allocation_code)
+      As steward_report_name
     From allocation_stewardee als
     Inner Join rep_end_alloc rea
       On als.allocation_code = rea.allocation_code
+    Left Join tms_stewardee_status tss
+      On tss.stewardee_status = als.stewardee_status_code
     Group By als.id_number
 )
 
@@ -79,6 +100,7 @@ rep_end_alloc As (
     , a.addr_pref_ind
     , a.company_name_1
     , a.company_name_2
+    , a.care_of
     , a.street1
     , a.street2
     , a.street3
@@ -142,7 +164,7 @@ rep_end_alloc As (
     , pet.id_number
 )
 
-Select Distinct
+Select
   -- First (no special handling) or second (special handling restrictions) tab
   Case
     -- This returns people who do not have special handling restrictions
@@ -158,13 +180,14 @@ Select Distinct
     Else 'Removed'
     End
     As stewardee_tab
-  , e.id_number As "Household ID"
+  , hh.household_id As "Household ID"
+  , hh.household_rpt_name As "Household Rpt Name"
   , e.report_name As "P Report Name"
   , e.first_name As "P First Name"
   , psal.latest_sal As "P Sally Salut"
   , e.pref_mail_name As "P_Pref_Name"
   , e.record_status_code As "P Record Status" 
-  , d.degrees_concat As p_degrees_concat
+  , hh.degrees_concat As p_degrees_concat
   , e.spouse_id_number As "Spouse ID"
   , s.record_status_code As "Spouse_Status"
   , s.pref_mail_name As "Spouse_Pref_Name"
@@ -174,9 +197,13 @@ Select Distinct
   , e.jnt_salutation As "Joint Salutation"
   , pm.pref_mail_name As "Prospect Manager"
   , pp.ppm_names As "Program Prospect Manager"
-  , hh.stewardee_alloc_code
-  , hh.stewardee_alloc_short_name
-  , hh.stewardee_alloc_long_name
+  , hhs.stewardee_alloc_code
+  , hhs.stewardee_alloc_short_name
+  , hhs.stewardee_alloc_long_name
+  , hhs.steward_id_number
+  , hhs.steward_report_name
+  , hhs.stewardee_alloc_purpose
+  , hhs.stewardee_status
   -- Seasonal address chooser
   , Case
       When sa.address_type = 'Seasonal'
@@ -202,6 +229,14 @@ Select Distinct
       Else Null
       End
     As company_name_2
+  , Case
+      When sa.address_type = 'Seasonal'
+        Then sa.care_of
+      When pa.address_type Is Not Null
+        Then pa.care_of
+      Else Null
+      End
+    As care_of
   , Case
       When sa.address_type = 'Seasonal'
         Then sa.street1
@@ -269,10 +304,10 @@ Select Distinct
   , sph.*
   , e.pref_name_sort
 From entity e
-Inner Join hh_stewardees hh
-  On e.id_number = hh.household_id
-Left Join rpt_pbh634.v_entity_ksm_degrees d
-  On hh.household_id = d.id_number
+Inner Join rpt_pbh634.v_entity_ksm_households hh
+  On hh.id_number = e.id_number
+Inner Join hh_stewardees hhs
+  On e.id_number = hhs.id_number
 Left Join hh_end_donors don
   On hh.household_id = don.household_id
 Left Join prefaddress pa
@@ -295,3 +330,5 @@ Left Join prospect_manager pm
   On e.id_number = pm.id_number
 Left Join prog_prospect_manager pp
   On e.id_number = pp.id_number
+Order By
+  hh.household_rpt_name Asc

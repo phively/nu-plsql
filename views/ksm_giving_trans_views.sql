@@ -27,6 +27,60 @@ Cross Join table(ksm_pkg.tbl_current_calendar) cal
 ;
 
 /*************************************************
+Householded top giving allocations
+*************************************************/
+
+Create Or Replace View v_ksm_giving_top_allocs As
+-- View showing top Kellogg allocations for each donor household
+With
+
+-- HH giving trans
+hh_giving As (
+  Select *
+  From v_ksm_giving_trans_hh
+)
+-- Giving by allocation
+, allocs As (
+  Select
+    household_id
+    , id_number
+    , allocation_code
+    , alloc_short_name
+    , sum(hh_credit) As alloc_giving
+  From hh_giving
+  Where tx_gypm_ind <> 'Y'
+  Group By
+    household_id
+    , id_number
+    , allocation_code
+    , alloc_short_name
+)
+, top_allocs As (
+  Select
+    household_id
+    , id_number
+    , max(allocs.allocation_code) keep(dense_rank First Order By alloc_giving Desc, allocs.alloc_short_name Asc)
+      As top_alloc_code
+    , max(allocs.alloc_short_name) keep(dense_rank First Order By alloc_giving Desc, allocs.alloc_short_name Asc)
+      As top_alloc
+    , max(allocs.alloc_giving) keep(dense_rank First Order By alloc_giving Desc, allocs.alloc_short_name Asc)
+      As top_alloc_amt
+  From allocs
+  Group By
+    household_id
+    , id_number
+)
+
+Select
+  household_id
+  , id_number
+  , top_alloc_code
+  , top_alloc
+  , top_alloc_amt
+From top_allocs
+;
+
+/*************************************************
 Householded entity giving summaries
 *************************************************/
 Create Or Replace View v_ksm_giving_summary As
@@ -39,6 +93,11 @@ params As (
     , 1000 As young_klc_amt -- Edit this
     , 5 As young_klc_yrs
   From DUAL
+)
+-- HH giving trans
+, hh_giving As (
+  Select *
+  From v_ksm_giving_trans_hh
 )
 -- Sum transaction amounts
 , trans As (
@@ -145,7 +204,7 @@ params As (
   From v_entity_ksm_households hh
   Cross Join v_current_calendar cal
   Cross Join params
-  Inner Join v_ksm_giving_trans_hh gfts
+  Inner Join hh_giving gfts
     On gfts.household_id = hh.household_id
   Group By
     hh.id_number
@@ -406,84 +465,128 @@ hh As (
   From cgft
   Group By id_number
 )
+-- Giving by allocation
+, allocs As (
+  Select
+    household_id
+    , allocation_code
+    , alloc_short_name
+    , sum(hh_credit) As alloc_giving
+  From cgft
+  Where tx_gypm_ind <> 'Y'
+  Group By
+    household_id
+    , allocation_code
+    , alloc_short_name
+)
+, top_allocs As (
+  Select
+    household_id
+    , max(allocs.allocation_code) keep(dense_rank First Order By alloc_giving Desc, allocs.alloc_short_name Asc)
+      As top_alloc_code
+    , max(allocs.alloc_short_name) keep(dense_rank First Order By alloc_giving Desc, allocs.alloc_short_name Asc)
+      As top_alloc
+    , max(allocs.alloc_giving) keep(dense_rank First Order By alloc_giving Desc, allocs.alloc_short_name Asc)
+      As top_alloc_amt
+  From allocs
+  Group By household_id
+)
 -- View implementing householded campaign giving based on new gifts & commitments
-Select Distinct
-  hh.id_number
-  , entity.report_name
-  , hh.degrees_concat
-  , cgft.household_id
-  , hh.household_rpt_name
-  , hh.person_or_org
-  , hh.household_spouse_id
-  , hh.household_spouse
-  , hh.household_state
-  , hh.household_country
-  , hh.household_continent
-  -- Legal giving is for the individual
-  , legal.campaign_legal_giving
-  -- All other giving is for the household
-  , sum(cgft.hh_credit) As campaign_giving
-  , sum(Case When cgft.anonymous In (Select Distinct anonymous_code From tms_anonymous) Then hh_credit Else 0 End) As campaign_anonymous
-  , sum(Case When cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_credit Else 0 End) As campaign_nonanonymous
-  , sum(Case When cal.curr_fy = fiscal_year     Then hh_credit Else 0 End) As campaign_cfy
-  , sum(Case When cal.curr_fy = fiscal_year + 1 Then hh_credit Else 0 End) As campaign_pfy1
-  , sum(Case When cal.curr_fy = fiscal_year + 2 Then hh_credit Else 0 End) As campaign_pfy2
-  , sum(Case When cal.curr_fy = fiscal_year + 3 Then hh_credit Else 0 End) As campaign_pfy3
-  , sum(Case When fiscal_year < 2008 Then hh_credit Else 0 End) As campaign_reachbacks
-  , sum(Case When fiscal_year = 2008 Then hh_credit Else 0 End) As campaign_fy08
-  , sum(Case When fiscal_year = 2009 Then hh_credit Else 0 End) As campaign_fy09
-  , sum(Case When fiscal_year = 2010 Then hh_credit Else 0 End) As campaign_fy10
-  , sum(Case When fiscal_year = 2011 Then hh_credit Else 0 End) As campaign_fy11
-  , sum(Case When fiscal_year = 2012 Then hh_credit Else 0 End) As campaign_fy12
-  , sum(Case When fiscal_year = 2013 Then hh_credit Else 0 End) As campaign_fy13
-  , sum(Case When fiscal_year = 2014 Then hh_credit Else 0 End) As campaign_fy14
-  , sum(Case When fiscal_year = 2015 Then hh_credit Else 0 End) As campaign_fy15
-  , sum(Case When fiscal_year = 2016 Then hh_credit Else 0 End) As campaign_fy16
-  , sum(Case When fiscal_year = 2017 Then hh_credit Else 0 End) As campaign_fy17
-  , sum(Case When fiscal_year = 2018 Then hh_credit Else 0 End) As campaign_fy18
-  , sum(Case When fiscal_year = 2019 Then hh_credit Else 0 End) As campaign_fy19
-  , sum(Case When fiscal_year = 2020 Then hh_credit Else 0 End) As campaign_fy20
-  -- Recognition amounts for stewardship purposes; includes face value of bequests and life expectancy intentions
-  , sum(cgft.hh_recognition_credit - cgft.hh_credit) As campaign_discounted_bequests
-  , sum(cgft.hh_recognition_credit) As campaign_steward_giving
-  , sum(Case When fiscal_year <= 2008 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy08
-  , sum(Case When fiscal_year <= 2009 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy09
-  , sum(Case When fiscal_year <= 2010 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy10
-  , sum(Case When fiscal_year <= 2011 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy11
-  , sum(Case When fiscal_year <= 2012 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy12
-  , sum(Case When fiscal_year <= 2013 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy13
-  , sum(Case When fiscal_year <= 2014 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy14
-  , sum(Case When fiscal_year <= 2015 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy15
-  , sum(Case When fiscal_year <= 2016 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy16
-  , sum(Case When fiscal_year <= 2017 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy17
-  , sum(Case When fiscal_year <= 2017 And cgft.anonymous In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
-    As anon_steward_thru_fy17
-  , sum(Case When fiscal_year <= 2017 And cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
-    As nonanon_steward_thru_fy17
-  , sum(Case When fiscal_year <= 2018 Then hh_recognition_credit Else 0 End)
-    As campaign_steward_thru_fy18
-  , sum(Case When fiscal_year <= 2018 And cgft.anonymous In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
-    As anon_steward_thru_fy18
-  , sum(Case When fiscal_year <= 2018 And cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
-    As nonanon_steward_thru_fy18
-From hh
-Cross Join v_current_calendar cal
-Inner Join cgft On cgft.household_id = hh.household_id
-Left Join legal On legal.id_number = hh.id_number
-Inner Join entity On entity.id_number = hh.id_number
-Group By
-  hh.id_number
-  , entity.report_name
-  , hh.degrees_concat
-  , cgft.household_id
-  , hh.household_rpt_name
-  , hh.person_or_org
-  , hh.household_spouse_id
-  , hh.household_spouse
-  , hh.household_state
-  , hh.household_country
-  , hh.household_continent
-  , legal.campaign_legal_giving
+, trans As (
+  Select Distinct
+    hh.id_number
+    , entity.report_name
+    , hh.degrees_concat
+    , cgft.household_id
+    , hh.household_rpt_name
+    , hh.person_or_org
+    , hh.household_spouse_id
+    , hh.household_spouse
+    , hh.household_state
+    , hh.household_country
+    , hh.household_continent
+    -- Legal giving is for the individual
+    , legal.campaign_legal_giving
+    -- All other giving is for the household
+    , sum(cgft.hh_credit) As campaign_giving
+    , sum(Case When cgft.anonymous In (Select Distinct anonymous_code From tms_anonymous) Then hh_credit Else 0 End) As campaign_anonymous
+    , sum(Case When cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_credit Else 0 End) As campaign_nonanonymous
+    , sum(Case When cal.curr_fy = fiscal_year     Then hh_credit Else 0 End) As campaign_cfy
+    , sum(Case When cal.curr_fy = fiscal_year + 1 Then hh_credit Else 0 End) As campaign_pfy1
+    , sum(Case When cal.curr_fy = fiscal_year + 2 Then hh_credit Else 0 End) As campaign_pfy2
+    , sum(Case When cal.curr_fy = fiscal_year + 3 Then hh_credit Else 0 End) As campaign_pfy3
+    , sum(Case When fiscal_year < 2008 Then hh_credit Else 0 End) As campaign_reachbacks
+    , sum(Case When fiscal_year = 2008 Then hh_credit Else 0 End) As campaign_fy08
+    , sum(Case When fiscal_year = 2009 Then hh_credit Else 0 End) As campaign_fy09
+    , sum(Case When fiscal_year = 2010 Then hh_credit Else 0 End) As campaign_fy10
+    , sum(Case When fiscal_year = 2011 Then hh_credit Else 0 End) As campaign_fy11
+    , sum(Case When fiscal_year = 2012 Then hh_credit Else 0 End) As campaign_fy12
+    , sum(Case When fiscal_year = 2013 Then hh_credit Else 0 End) As campaign_fy13
+    , sum(Case When fiscal_year = 2014 Then hh_credit Else 0 End) As campaign_fy14
+    , sum(Case When fiscal_year = 2015 Then hh_credit Else 0 End) As campaign_fy15
+    , sum(Case When fiscal_year = 2016 Then hh_credit Else 0 End) As campaign_fy16
+    , sum(Case When fiscal_year = 2017 Then hh_credit Else 0 End) As campaign_fy17
+    , sum(Case When fiscal_year = 2018 Then hh_credit Else 0 End) As campaign_fy18
+    , sum(Case When fiscal_year = 2019 Then hh_credit Else 0 End) As campaign_fy19
+    , sum(Case When fiscal_year = 2020 Then hh_credit Else 0 End) As campaign_fy20
+    -- Recognition amounts for stewardship purposes; includes face value of bequests and life expectancy intentions
+    , sum(cgft.hh_recognition_credit - cgft.hh_credit) As campaign_discounted_bequests
+    , sum(cgft.hh_recognition_credit) As campaign_steward_giving
+    , sum(Case When fiscal_year <= 2008 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy08
+    , sum(Case When fiscal_year <= 2009 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy09
+    , sum(Case When fiscal_year <= 2010 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy10
+    , sum(Case When fiscal_year <= 2011 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy11
+    , sum(Case When fiscal_year <= 2012 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy12
+    , sum(Case When fiscal_year <= 2013 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy13
+    , sum(Case When fiscal_year <= 2014 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy14
+    , sum(Case When fiscal_year <= 2015 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy15
+    , sum(Case When fiscal_year <= 2016 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy16
+    , sum(Case When fiscal_year <= 2017 Then hh_recognition_credit Else 0 End) As campaign_steward_thru_fy17
+    , sum(Case When fiscal_year <= 2017 And cgft.anonymous In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
+      As anon_steward_thru_fy17
+    , sum(Case When fiscal_year <= 2017 And cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
+      As nonanon_steward_thru_fy17
+    , sum(Case When fiscal_year <= 2018 Then hh_recognition_credit Else 0 End)
+      As campaign_steward_thru_fy18
+    , sum(Case When fiscal_year <= 2018 And cgft.anonymous In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
+      As anon_steward_thru_fy18
+    , sum(Case When fiscal_year <= 2018 And cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
+      As nonanon_steward_thru_fy18
+    , sum(Case When fiscal_year <= 2019 Then hh_recognition_credit Else 0 End)
+      As campaign_steward_thru_fy19
+    , sum(Case When fiscal_year <= 2019 And cgft.anonymous In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
+      As anon_steward_thru_fy19
+    , sum(Case When fiscal_year <= 2019 And cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
+      As nonanon_steward_thru_fy19
+  From hh
+  Cross Join v_current_calendar cal
+  Inner Join cgft On cgft.household_id = hh.household_id
+  Left Join legal On legal.id_number = hh.id_number
+  Inner Join top_allocs On top_allocs.household_id = hh.household_id
+  Inner Join entity On entity.id_number = hh.id_number
+  Group By
+    hh.id_number
+    , entity.report_name
+    , hh.degrees_concat
+    , cgft.household_id
+    , hh.household_rpt_name
+    , hh.person_or_org
+    , hh.household_spouse_id
+    , hh.household_spouse
+    , hh.household_state
+    , hh.household_country
+    , hh.household_continent
+    , legal.campaign_legal_giving
+)
+-- Main query
+Select
+  trans.*
+  -- Top allocations
+  , top_alloc_code
+  , top_alloc
+  , top_alloc_amt
+From trans
+Inner Join top_allocs On top_allocs.household_id = trans.household_id
 ;
 
 /*************************************************

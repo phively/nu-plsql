@@ -25,7 +25,7 @@ ON rc.record_status_code = e.record_status_code
 
 ________________________________________________________________________________________
 */
-Create or replace view v_seasonal_addr AS
+Create or replace view rpt_dgz654.v_seasonal_addr AS
 
 With
 numeric_fun As (
@@ -36,6 +36,7 @@ numeric_fun As (
     , a.addr_pref_ind
     , a.company_name_1
     , a.company_name_2
+    , a.care_of
     , a.street1
     , a.street2
     , a.street3
@@ -115,6 +116,7 @@ Select
   , nf.addr_pref_ind
   , nf.company_name_1
   , nf.company_name_2
+  , nf.care_of
   , nf.street1
   , nf.street2
   , nf.street3

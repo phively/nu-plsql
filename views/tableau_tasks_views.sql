@@ -5,7 +5,7 @@ With
 params As (
   Select
     -- Only include tasks etc. on or after this date
-    to_date('20170901', 'yyyymmdd')
+    to_date('20160901', 'yyyymmdd')
       As start_dt
   From DUAL
 )
@@ -42,19 +42,6 @@ params As (
       sched_date >= params.start_dt
       Or completed_date >= params.start_dt
     )
-)
-
-, p_geo_code As (
-  Select Distinct
-    vgc.id_number
-    , p_geocode_desc
-  From rpt_dgz654.v_geo_code vgc
-  Inner Join nu_prs_trp_prospect p
-    On p.id_number = vgc.id_number
-  Inner Join task_detail td
-    On td.prospect_id2 = p.prospect_id
-  Where geo_status_code = 'A'
-  And vgc.addr_pref_ind = 'Y'
 )
 
 , contact_reports As (
@@ -148,13 +135,13 @@ params As (
 
 -- Main query
 Select Distinct
-  pp.id_number
+  entity.id_number
   , entity.report_name
   , p.prospect_id
   , p.prospect_name
   , pr.program_code
-  , pp.record_status_code
-  , pp.record_type_code
+  , entity.record_status_code
+  , entity.record_type_code
   , pp.employer_name1
   , pp.employer_name2
   , pp.evaluation_rating
@@ -174,12 +161,11 @@ Select Distinct
   , tms_prospect_category.short_desc As prospect_cat
   , pp.interest
   , pp.giving_affiliation
-  , pp.pref_city
-  , pp.pref_state
-  , pp.pref_zip
-  , pp.preferred_country
-  , tms_country.short_desc As pref_country_name
-  , gc.p_geocode_desc
+  , hh.household_city As pref_city
+  , hh.household_state As pref_state
+  , hh.household_zip As pref_zip
+  , hh.household_country As pref_country_name
+  , hh.household_geo_primary_desc As p_geocode_desc
   , task_detail.task_id
   , task_detail.task_code
   , tms_task.short_desc As task_code_desc
@@ -232,16 +218,17 @@ Inner Join prospect_entity pe
   On p.prospect_id = pe.prospect_id
 Inner Join entity
   On entity.id_number = pe.id_number
-Inner Join nu_prs_trp_prospect pp
+Inner Join rpt_pbh634.v_entity_ksm_households hh
+  On hh.id_number = pe.id_number
+Left Join nu_prs_trp_prospect pp
   On pe.id_number = pp.id_number
 Inner Join program_prospect pr
-  On pr.prospect_id = pp.prospect_id
+  On pr.prospect_id = p.prospect_id
 Inner Join task_detail
-  On task_detail.prospect_id2 = pp.prospect_id
-  And p.active_ind = 'Y'
+  On task_detail.prospect_id2 = p.prospect_id
   And pe.primary_ind = 'Y'
 Left Join cat
-  On cat.prospect_id = pp.prospect_id
+  On cat.prospect_id = pp.prospect_id -- Keep as pp.prospect_id, not p.prospect_id; DQed prospects should not be in top 150/300
 Left Join table(rpt_pbh634.ksm_pkg.tbl_frontline_ksm_staff) ksm_staff
   On ksm_staff.id_number = task_detail.task_responsible_id
 Left Join entity e
@@ -250,8 +237,6 @@ Left Join entity e2
   On e2.id_number = task_detail.source_id_number
 Left Join entity e3
   On e3.id_number = task_detail.task_responsible_id
-Left Join tms_country
-  On tms_country.country_code = pp.preferred_country
 Left Join tms_task_priority
   On tms_task_priority.task_priority_code = task_detail.task_priority_code
 Left Join tms_task_purpose
@@ -267,8 +252,6 @@ Left Join latest_contact lr
 Left Join contact_counts cc
   On cc.task_responsible_id = task_detail.task_responsible_id
   And cc.task_id = task_detail.task_id
-Left Join p_geo_code gc
-On gc.id_number = pp.id_number
 Left Join disqualified d
   On d.prospect_id = p.prospect_id
 Left Join rpt_pbh634.v_ksm_model_mg mgo

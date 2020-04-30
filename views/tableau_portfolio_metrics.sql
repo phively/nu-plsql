@@ -31,6 +31,8 @@ proposals As (
     , phf.university_strategy
     , phf.proposal_manager_id
     , phf.proposal_manager
+    , phf.curr_ksm_proposal_manager
+    , phf.curr_ksm_team
     , phf.proposal_assist
     , phf.proposal_status_code
     , phf.proposal_status
@@ -80,6 +82,16 @@ proposals As (
   Where primary_ind = 'Y'
 )
 
+, prs As (
+  Select Distinct
+    id_number
+    , p.prospect_id
+    , p.contact_date As last_visit_date
+    , p.evaluation_date
+    , p.evaluation_rating
+  From nu_prs_trp_prospect p
+)
+
 -- Final query
 , final As (
   Select
@@ -94,13 +106,26 @@ proposals As (
     , hh.program_group
     , hh.spouse_id_number
     , hh.spouse_report_name
+    , hh.spouse_suffix
     , hh.spouse_degrees_concat
     , hh.spouse_program_group
     , university_strategy
+    , mg.id_segment
+    , mg.id_score
+    , mg.pr_segment
+    , mg.pr_score
+    , vas.prospect_manager_id
+    , vas.prospect_manager
+    , vas.managers
+    , prs.last_visit_date
+    , prs.evaluation_date
+    , prs.evaluation_rating
     , proposal_group
     , proposal_id
     , proposal_manager_id
     , proposal_manager
+    , curr_ksm_proposal_manager
+    , curr_ksm_team
     , proposal_assist
     , proposal_status_code
     , proposal_status
@@ -159,7 +184,7 @@ proposals As (
         -- No ask date
         When ask_date Is Null
           Then 'Ask date missing'
-        -- Submitted through Verbal, ask in the future
+        -- Submitted through Approved, ask in the future
         When hierarchy_order Between 20 And 60
           And ask_date > yesterday
           Then 'Ask date in future, check date and stage'
@@ -167,7 +192,9 @@ proposals As (
         When proposal_status_code = 'A'
           And ask_date <= yesterday
           Then 'Ask date in past, check date and stage'
-        -- Closed, ask in future
+        -- Ask date after close date
+        When ask_date > close_date
+          Then 'Ask date after close date, check date and stage'
         End
       As audit_ask_dt
     -- Check close dates
@@ -205,6 +232,13 @@ proposals As (
     On pe.prospect_id = proposals.prospect_id
   Left Join v_entity_ksm_households hh
     On hh.id_number = pe.id_number
+  Left Join v_assignment_summary vas
+    On vas.id_number = pe.id_number
+  Left Join prs
+    On prs.id_number = pe.id_number
+  -- Model scores
+  Left Join rpt_pbh634.v_ksm_model_mg mg
+    On mg.id_number = pe.id_number
   Order By
     proposal_group Desc
     , total_granted_amt Desc
@@ -822,6 +856,11 @@ Select Distinct
   , nvl(prp.nu_asks, 0) As nu_asks
   , nvl(prp.nu_anticipated, 0) As nu_anticipated
   , nvl(prp.nu_granted, 0) As nu_granted
+  -- MG model scores
+  , scores.id_score
+  , scores.id_segment
+  , scores.pr_score
+  , scores.pr_segment
 From assn_final asn
 -- Prospect stage history
 Left Join stage_history stg_hist
@@ -854,6 +893,9 @@ Left Join prop_final prp
   On prp.prospect_id = asn.prospect_id
   And prp.assignment_id_number = asn.assignment_id_number
   And prp.assignment_filled_date = asn.filled_date
+-- Latest model scores
+Left Join v_ksm_model_mg scores
+  On scores.id_number = asn.id_number
 -- Sort results
 Order By
   asn.assignment_report_name Asc
