@@ -19,11 +19,13 @@ dts As (
 -- Pulling all associated donors related to a gift
 
 , ad As (
-SELECT  gt.tx_number
-      , listagg(entity.pref_mail_name, chr(13)) Within Group (order by entity.pref_mail_name) as all_associated_donors
-From gt
-Inner Join entity ON gt.id_number = entity.id_number
-Group By gt.tx_number
+  Select
+    gt.tx_number
+    , listagg(entity.pref_mail_name, chr(13)) Within Group (Order By entity.pref_mail_name) As all_associated_donors
+  From gt
+  Inner Join entity On gt.id_number = entity.id_number
+  Group By
+    gt.tx_number
 )
 
 
