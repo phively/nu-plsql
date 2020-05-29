@@ -453,7 +453,8 @@ Public constant declarations
 
 /* Start months */
 fy_start_month Constant number := 9; -- fiscal start month, 9 = September
-py_start_month Constant number := 5; -- performance start month, 5 = May
+py_start_month Constant number := 6; -- performance start month, 5 = May
+py_start_month_pre_py21 Constant number := 5; -- performance start month was 5 = May until PY2021
 
 /* Committees */
 committee_gab Constant committee.committee_code%type := 'U'; -- Kellogg Global Advisory Board committee code
@@ -885,19 +886,11 @@ Cursor c_current_calendar (fy_start_month In integer, py_start_month In integer)
     Select
       trunc(sysdate) As today
       -- Current fiscal year; uses fy_start_month constant
-      , Case
-        When extract(month from sysdate) >= fy_start_month
-          And fy_start_month != 1
-          Then extract(year from sysdate) + 1 
-        Else extract(year from sysdate)
-      End As yr
+      , get_fiscal_year(sysdate)
+        As yr
       -- Current performance year; uses py_start_month constant
-      , Case
-        When extract(month from sysdate) >= py_start_month
-          And fy_start_month != 1
-          Then extract(year from sysdate) + 1 
-        Else extract(year from sysdate)
-      End As perf_yr
+      , get_performance_year(sysdate)
+        As perf_yr
       -- Correction for starting after January
       , Case
         When fy_start_month != 1 Then 1 Else 0
@@ -925,11 +918,24 @@ Cursor c_current_calendar (fy_start_month In integer, py_start_month In integer)
     -- Current performance year
     , curr_date.perf_yr As curr_py
     -- Start of performance year objects
-    , to_date(py_start_month || '/01/' || (curr_date.perf_yr - yr_dif - 1), 'mm/dd/yyyy')
+    -- Previous PY correction for 2020
+    , Case
+        When perf_yr - 1 <= 2020
+          Then to_date(py_start_month_pre_py21 || '/01/' || (curr_date.perf_yr - yr_dif - 1), 'mm/dd/yyyy')
+        Else to_date(py_start_month || '/01/' || (curr_date.perf_yr - yr_dif - 1), 'mm/dd/yyyy')
+        End
       As prev_py_start
-    , to_date(py_start_month || '/01/' || (curr_date.perf_yr - yr_dif + 0), 'mm/dd/yyyy')
+    , Case
+        When perf_yr <= 2020
+          Then to_date(py_start_month_pre_py21 || '/01/' || (curr_date.perf_yr - yr_dif + 0), 'mm/dd/yyyy')
+        Else to_date(py_start_month || '/01/' || (curr_date.perf_yr - yr_dif + 0), 'mm/dd/yyyy')
+        End
       As curr_py_start
-    , to_date(py_start_month || '/01/' || (curr_date.perf_yr - yr_dif + 1), 'mm/dd/yyyy')
+    , Case
+        When perf_yr + 1 <= 2020
+          Then to_date(py_start_month_pre_py21 || '/01/' || (curr_date.perf_yr - yr_dif + 1), 'mm/dd/yyyy')
+        Else to_date(py_start_month || '/01/' || (curr_date.perf_yr - yr_dif + 1), 'mm/dd/yyyy')
+        End
       As next_py_start
     -- Year-to-date objects
     , add_months(trunc(sysdate), -12) As prev_fy_today
@@ -3222,6 +3228,13 @@ Function get_performance_year(dt In date)
   
   Begin
     this_year := extract(year from dt);
+    -- If year is pre 2020 use the old start month
+    If this_year < 2020 Then
+      If extract(month from dt) < py_start_month_pre_py21 Then
+        Return this_year;
+      End If;
+      Return (this_year + 1);
+    End If;
     -- If month is before fy_start_month, return this_year
     If extract(month from dt) < py_start_month
       Or py_start_month = 1 Then
