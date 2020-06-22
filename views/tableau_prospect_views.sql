@@ -484,7 +484,7 @@ Left Join next_outreach_task On next_outreach_task.prospect_id = prs.prospect_id
 Only vt_ksm_prs_pool rows where a KSM GO has been active
 ****************************************/
 
-Create Or Replace View vt_ksm_prs_pool_gos As
+Create Or Replace VIEW rpt_abm1914.ksm_prs_pool_gos As
 
 With
 
@@ -500,7 +500,7 @@ tasks As (
       As own_open_tasks
     , count(Distinct Case When task_code = 'CO' Then task_id Else NULL End)
       As own_open_tasks_outreach
-  From v_ksm_tasks v
+  From rpt_pbh634.v_ksm_tasks v
   Where task_code <> 'ST' -- Exclude university overall strategy
     And active_task_ind = 'Y'
   Group By
@@ -520,6 +520,9 @@ Select Distinct
   -- Only fill in metrics for the primary prospect
   , Case When pool.primary_ind = 'Y' Then mgo.visits_last_365_days End
       As visits_last_365_days
+  --ADDED BY AMY FOR LAST 3 YRS
+  , CASE WHEN pool.primary_ind = 'Y' THEN mgo.visits_last_3_yrs END
+      AS visits_last_3_yrs
   , Case When pool.primary_ind = 'Y' Then mgo.quals_last_365_days End
       As quals_last_365_days
   , Case When pool.primary_ind = 'Y' Then mgo.visits_this_py End
@@ -548,8 +551,8 @@ Select Distinct
       As own_open_tasks
   , Case When pool.primary_ind = 'Y' Then tasks.own_open_tasks_outreach End
       As own_open_tasks_outreach
-From vt_ksm_prs_pool pool
-Inner Join v_ksm_mgo_own_activity_by_prs mgo On mgo.prospect_id = pool.prospect_id
+From rpt_abm1914.ksm_prs_pool pool
+Inner Join rpt_abm1914.ksm_mgo_own_activity_by_prs mgo On mgo.prospect_id = pool.prospect_id
 Left Join tasks On tasks.prospect_id = mgo.prospect_id
   And tasks.task_responsible_id = mgo.gift_officer_id
 ;
