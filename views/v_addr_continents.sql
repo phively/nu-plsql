@@ -284,63 +284,66 @@ Select tms_country.country_code, tms_country.short_desc As country,
     ) Then 'South America'
     Else 'CHECK'
   End As continent
---- Special Regions: Latin America, South Asia and Middle East
-Case When short_desc IN ('Antigua & Barbuda',
-  'Argentina',
-  'Aruba',
-  'Bahamas',
-  'Barbados',
-  'Belize',
-  'Bolivia',
-  'Brazil',
-  'British Virgin Islands',
-  'Cayman Islands',
-  'Chile',
-  'Colombia',
-  'Costa Rica',
-  'Cuba',
-  'Dominican Republic',
-  'Ecuador',
-  'El Salvador',
-  'Guadeloupe',
-  'Guatemala',
-  'Haiti',
-  'Honduras',
-  'Jamaica',
-  'Mexico',
-  'Netherlands Antilles',
-  'Nicaragua',
-  'Panama',
-  'Paraguay',
-  'Peru',
-  'Puerto Rico',
-  'Trinidad & Tobago',
-  'Uruguay',
-  'Venezuela',
-  'West Indies')
-Then 'Latin_America'
-  When short_desc IN ('Bahrain',
-  'Cyprus',
-  'Egypt',
-  'Iran',
-  'Iraq',
-  'Israel',
-  'Jordan',
-  'Kuwait',
-  'Lebanon',
-  'Oman',
-  'Pakistan',
-  'Palestine',
-  'Qatar',
-  'Saudi Arabia',
-  'Turkey',
-  'United Arab Emirates')
-Then 'Middle_East'
-  When short_desc IN ('Bangladesh',
-  'India',
-  'Sri Lanka')
-  Then 'South_Asia'
-  END AS KSM_Continent
+  -- Special Regions: Latin America, South Asia and Middle East
+  , Case When short_desc In (
+      'Antigua & Barbuda'
+      , 'Argentina'
+      , 'Aruba'
+      , 'Bahamas'
+      , 'Barbados'
+      , 'Belize'
+      , 'Bolivia'
+      , 'Brazil'
+      , 'British Virgin Islands'
+      , 'Cayman Islands'
+      , 'Chile'
+      , 'Colombia'
+      , 'Costa Rica'
+      , 'Cuba'
+      , 'Dominican Republic'
+      , 'Ecuador'
+      , 'El Salvador'
+      , 'Guadeloupe'
+      , 'Guatemala'
+      , 'Haiti'
+      , 'Honduras'
+      , 'Jamaica'
+      , 'Mexico'
+      , 'Netherlands Antilles'
+      , 'Nicaragua'
+      , 'Panama'
+      , 'Paraguay'
+      , 'Peru'
+      , 'Puerto Rico'
+      , 'Trinidad & Tobago'
+      , 'Uruguay'
+      , 'Venezuela'
+      , 'West Indies'
+    ) Then 'Latin America'
+    When short_desc In (
+      'Bahrain'
+      , 'Cyprus'
+      , 'Egypt'
+      , 'Iran'
+      , 'Iraq'
+      , 'Israel'
+      , 'Jordan'
+      , 'Kuwait'
+      , 'Lebanon'
+      , 'Oman'
+      , 'Pakistan'
+      , 'Palestine'
+      , 'Qatar'
+      , 'Saudi Arabia'
+      , 'Turkey'
+      , 'United Arab Emirates'
+    ) Then 'Middle East'
+    When short_desc In (
+      'Bangladesh'
+      , 'India'
+      , 'Sri Lanka'
+    ) Then 'South Asia'
+  End As ksm_continent
 From tms_country
 -- Add a row for USA
 Union All
