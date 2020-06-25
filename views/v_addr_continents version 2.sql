@@ -1,10 +1,13 @@
 Create Or Replace View v_addr_continents As 
 
 -- View linking countries to their continent
-Select tms_country.country_code, tms_country.short_desc As country,
-  Case
-    When short_desc In (
-      'Algeria'
+
+Select 
+
+tms_country.country_code, tms_country.short_desc As country,
+
+  Case 
+    When short_desc In ('Algeria'
       , 'Angola'
       , 'Benin'
       , 'Botswana'
@@ -64,15 +67,11 @@ Select tms_country.country_code, tms_country.short_desc As country,
       , 'Western Sahara'
       , 'Zaire'
       , 'Zambia'
-      , 'Zimbabwe'
-    ) Then 'Africa'
-    When short_desc In (
-      'Antarctica'
+      , 'Zimbabwe') Then 'Africa'
+      When short_desc In ('Antarctica'
       , 'Antartica' -- sic
-      , 'Bouvet Island'
-    ) Then 'Antarctica'
-    When short_desc In (
-      'Afghanistan'
+      , 'Bouvet Island') Then 'Antarctica'
+      When short_desc In ('Afghanistan'
       , 'Bahrain'
       , 'Bangladesh'
       , 'Bhutan'
@@ -126,9 +125,8 @@ Select tms_country.country_code, tms_country.short_desc As country,
       , 'Vietnam'
       , 'Yemen'
       , 'Yemen Peoples Republic' -- sic
-    ) Then 'Asia'
-    When short_desc In (
-      'Albania'
+      ) Then 'Asia'
+      When short_desc In ('Albania'
       , 'Andorra'
       , 'Armenia'
       , 'Austria'
@@ -189,10 +187,8 @@ Select tms_country.country_code, tms_country.short_desc As country,
       , 'United Kingdom'
       , 'Vatican City'
       , 'Wales'
-      , 'Yugoslavia'
-    ) Then 'Europe'
-    When short_desc In (
-      'Anguilla'
+      , 'Yugoslavia') Then 'Europe'
+      When short_desc In ('Anguilla'
       , 'Antigua & Barbuda'
       , 'Bahamas'
       , 'Barbados'
@@ -230,10 +226,8 @@ Select tms_country.country_code, tms_country.short_desc As country,
       , 'United States'
       , 'U.S. Minor Outlying Islands'
       , 'U.S. Virgin Islands'
-      , 'West Indies'
-    ) Then 'North America'
-    When short_desc In (
-      'American Samoa'
+      , 'West Indies') Then 'North America'
+      When short_desc In ('American Samoa'
       , 'Australia'
       , 'Cook Islands'
       , 'Fed. States of Micronesia'
@@ -260,10 +254,8 @@ Select tms_country.country_code, tms_country.short_desc As country,
       , 'Tuvalu'
       , 'Vanuatu'
       , 'Wallis & Futuna Islands'
-      , 'Western Samoa'
-    ) Then 'Oceania'
-    When short_desc In (
-      'Argentina'
+      , 'Western Samoa') Then 'Oceania'
+When short_desc In ('Argentina'
       , 'Aruba'
       , 'Bolivia'
       , 'Brazil'
@@ -280,11 +272,12 @@ Select tms_country.country_code, tms_country.short_desc As country,
       , 'Surinam' -- sic
       , 'Suriname'
       , 'Uruguay'
-      , 'Venezuela'
-    ) Then 'South America'
-    Else 'CHECK'
-  End As continent
+      , 'Venezuela') Then 'South America'
+Else 'CHECK'
+End As continent,
+
 --- Special Regions: Latin America, South Asia and Middle East
+
 Case When short_desc IN ('Antigua & Barbuda',
   'Argentina',
   'Aruba',
@@ -341,15 +334,15 @@ Then 'Middle_East'
   'Sri Lanka')
   Then 'South_Asia'
   END AS KSM_Continent
-From tms_country
--- Add a row for USA
-Union All
--- USA is blank country code
-Select ' ', 'United States', 'North America'
-From DUAL
-/
 
--- Did I miss any countries?
-Select *
-From v_addr_continents
-Where continent = 'CHECK'
+From tms_country
+
+-- Add a row for USA
+
+Union All
+
+-- USA is blank country code
+
+Select ' ', 'United States', 'North America', ' '
+
+From DUAL
