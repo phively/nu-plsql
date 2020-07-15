@@ -400,6 +400,8 @@ Select
       Else 'Never'
       End
     As af_giving_segment
+  -- Stewardship flags
+  , shc.ksm_stewardship_issue
   -- Anonymous flags
   , shc.anonymous_donor
   , Case When anonymous_cfy > 0 Then 'Y' End As anonymous_cfy_flag

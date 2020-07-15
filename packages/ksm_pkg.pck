@@ -417,6 +417,7 @@ Type special_handling Is Record (
      , no_mail_sol_ind varchar2(1)
      , no_texts_ind varchar2(1)
      , no_texts_sol_ind varchar2(1)
+     , ksm_stewardship_issue varchar2(1)
 );
 
 /*************************************************************************
@@ -2864,6 +2865,37 @@ Cursor c_special_handling_concat Is
       ml.id_number
       , e.spouse_id_number
   )
+  -- Alerts
+  , all_alerts As (
+    Select
+      id_number
+      , start_date
+      , stop_date
+      , message
+      -- Kellogg Stewardship Issue indicator
+      , Case
+          When lower(message) Like '%ksm%stewardship%issue%'
+            Or lower(message) Like '%kellogg%stewardship%issue%'
+            Then 'Y'
+          End
+        As ksm_stewardship_issue
+    From zz_alert_message
+  )
+  , alerts As (
+    Select
+      all_alerts.id_number
+      , e.spouse_id_number
+      , start_date
+      , stop_date
+      , message As alert_message
+      , ksm_stewardship_issue
+    From all_alerts
+    Inner Join entity e
+      On e.id_number = all_alerts.id_number
+    Where
+      ksm_stewardship_issue = 'Y'
+      -- Or other indicators, if ever added
+  )
   -- All IDs
   , ids As (
     Select id_number, spouse_id_number
@@ -2871,6 +2903,9 @@ Cursor c_special_handling_concat Is
     Union
     Select id_number, spouse_id_number
     From mailing_lists
+    Union
+    Select id_number, spouse_id_number
+    From alerts
   )
   -- Universal no contact or no solicit
   -- Anyone with one of a few select codes should NEVER be contacted or solicited
@@ -2980,9 +3015,12 @@ Cursor c_special_handling_concat Is
           Or no_texts_solicit = 'Y'
           Then 'Y'
       End As no_texts_sol_ind
+    -- Alerts
+    , alerts.ksm_stewardship_issue
   From unc_ids ids
   Left Join spec_hnd On spec_hnd.id_number = ids.id_number
   Left Join mailing_lists On mailing_lists.id_number = ids.id_number
+  Left Join alerts On alerts.id_number = ids.id_number
   ;
 
 /*************************************************************************
