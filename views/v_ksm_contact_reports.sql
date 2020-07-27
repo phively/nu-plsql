@@ -62,7 +62,7 @@ Select
   , contact_report.id_number
   , contact_report.contacted_name
   , contacted_entity.report_name
-  , contact_report.prospect_id
+  , contact_report.prospect_id -- Intentionally pulled from contact_report, which may be null if not managed at time of visit
   , pe.primary_ind
   , prospect.prospect_name
   , prospect.prospect_name_sort
