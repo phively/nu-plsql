@@ -53,3 +53,16 @@ Create Or Replace View v_geo_code_primary As
   Select *
   From table(ksm_pkg.tbl_geo_code_primary)
 ;
+
+Create Or Replace View v_ksm_committees As 
+-- View combining all committee table functions from ksm_package into a set of indicators
+--  With
+    Select id_number
+    From table(rpt_pbh634.ksm_pkg.tbl_committee_gab)
+-- Union each committee ID set
+-- Find spouses
+-- Union for final IDs
+-- Indicators
+--  Select *
+--  From DUAL
+;

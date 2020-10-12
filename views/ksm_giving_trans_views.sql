@@ -605,7 +605,7 @@ With
 -- View implementing YTD KSM Campaign giving
 -- Year-to-date calculator
 cal As (
-  Select 2007 As prev_fy, 2020 As curr_fy, yesterday -- FY 2007 and 2020 as first and last campaign gift dates
+  Select 2007 As prev_fy, curr_fy As curr_fy, yesterday -- FY 2007 and 2020 as first and last campaign gift dates
   From v_current_calendar
 )
 , ytd_dts As (
