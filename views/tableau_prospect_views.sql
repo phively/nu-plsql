@@ -24,6 +24,7 @@ cal As (
         When amount >=  2000000 Then 2
         When amount >=  1000000 Then 1
         When amount >=   500000 Then 0.5
+        When amount >=   250000 Then 0.25
         When amount >=   100000 Then 0.1
         Else 0
       End As bin
@@ -31,7 +32,7 @@ cal As (
     , 'Campaign Giving' As src
   From v_ksm_giving_campaign_ytd
   Cross Join cal
-  Where year_of_giving Between 2007 And 2020 -- FY 2007 and 2020 as first and last campaign gift dates
+  Where year_of_giving Between 2007 And cal.curr_fy -- FY 2007 and 2020 as first and last campaign gift dates
     And amount > 0
 ) Union All (
   -- Proposal data
