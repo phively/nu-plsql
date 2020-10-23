@@ -176,6 +176,8 @@ Type university_strategy Is Record (
   , university_strategy task.task_description%type
   , strategy_sched_date task.sched_date%type
   , strategy_responsible varchar2(1024)
+  , strategy_modified_date task.sched_date%type
+  , strategy_modified_name entity.report_name%type
 );
 
 /* Numeric capacity */
@@ -1711,18 +1713,39 @@ Cursor c_entity_top_150_300 Is
 /* Definition of university strategy */
 Cursor c_university_strategy Is
   With
-  -- Pull first upcoming University Overall Strategy
-  next_uos As (
+  -- Pull latest upcoming University Overall Strategy
+  uos_ids As (
     Select
       prospect_id
-      , min(task_id) keep(dense_rank First Order By sched_date Asc, task.task_id Asc) As task_id
-      , min(task_description) keep(dense_rank First Order By sched_date Asc, task.task_id Asc) As university_strategy
-      , min(sched_date) keep(dense_rank First Order By sched_date Asc, task.task_id Asc) As strategy_sched_date
+      , min(task_id) keep(dense_rank First Order By sched_date Desc, task.task_id Asc) As task_id
     From task
     Where prospect_id Is Not Null -- Prospect strategies only
       And task_code = 'ST' -- University Overall Strategy
       And task_status_code Not In (4, 5) -- Not Completed (4) or Cancelled (5) status
     Group By prospect_id
+  )
+  , next_uos As (
+    Select
+      task.prospect_id
+      , task.task_id
+      , task.task_description As university_strategy
+      , task.sched_date As strategy_sched_date
+      , trunc(task.date_modified) As strategy_modified_date
+      , task.operator_name As strategy_modified_netid
+    From task
+    Inner Join uos_ids
+      On uos_ids.prospect_id = task.prospect_id
+      And uos_ids.task_id = task.task_id
+  )
+  , netids As (
+    Select
+      ids.other_id
+      , ids.id_number
+      , entity.report_name
+    From ids
+    Inner Join entity
+      On entity.id_number = ids.id_number
+    Where ids_type_code = 'NET'
   )
   -- Append task responsible data to first upcoming UOS
   , next_uos_resp As (
@@ -1730,17 +1753,25 @@ Cursor c_university_strategy Is
       uos.prospect_id
       , uos.university_strategy
       , uos.strategy_sched_date
+      , uos.strategy_modified_date
+      , uos.strategy_modified_netid
+      , netids.report_name As strategy_modified_name
       , Listagg(tr.id_number, ', ') Within Group (Order By tr.date_added Desc)
         As strategy_responsible_id
       , Listagg(entity.pref_mail_name, ', ') Within Group (Order By tr.date_added Desc)
         As strategy_responsible
     From next_uos uos
+    Left Join netids
+      On netids.other_id = uos.strategy_modified_netid
     Left Join task_responsible tr On tr.task_id = uos.task_id
     Left Join entity On entity.id_number = tr.id_number
     Group By
       uos.prospect_id
       , uos.university_strategy
       , uos.strategy_sched_date
+      , uos.strategy_modified_date
+      , uos.strategy_modified_netid
+      , netids.report_name
   )
   -- Main query; uses nu_prs_trp_prospect fields if available
   Select Distinct
@@ -1750,13 +1781,15 @@ Cursor c_university_strategy Is
         Else uos.university_strategy
       End As university_strategy
     , Case
-        When prs.strategy_description Is Not Null Then to_date2(prs.strategy_date, 'mm/dd/yyyy')
+        When prs.strategy_description Is Not Null Then ksm_pkg.to_date2(prs.strategy_date, 'mm/dd/yyyy')
         Else uos.strategy_sched_date
       End As strategy_sched_date
     , Case
         When prs.strategy_description Is Not Null Then task_resp
         Else uos.strategy_responsible
       End As strategy_responsible
+    , uos.strategy_modified_date
+    , uos.strategy_modified_name
   From next_uos_resp uos
   Left Join advance_nu.nu_prs_trp_prospect prs On prs.prospect_id = uos.prospect_id
   ;

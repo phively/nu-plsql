@@ -58,7 +58,7 @@ Kellogg prospect pool definition plus giving,
 proposal, etc. fields
 ****************************************/
 
-Create Or Replace View rpt_abm1914.ksm_prs_pool As
+Create Or Replace View ksm_prs_pool As
 
 With
 
@@ -485,7 +485,7 @@ Left Join next_outreach_task On next_outreach_task.prospect_id = prs.prospect_id
 Only vt_ksm_prs_pool rows where a KSM GO has been active
 ****************************************/
 
-Create Or Replace VIEW rpt_abm1914.ksm_prs_pool_gos As
+Create Or Replace View ksm_prs_pool_gos As
 
 With
 
@@ -552,7 +552,7 @@ Select Distinct
       As own_open_tasks
   , Case When pool.primary_ind = 'Y' Then tasks.own_open_tasks_outreach End
       As own_open_tasks_outreach
-From rpt_abm1914.ksm_prs_pool pool
+From ksm_prs_pool pool
 Inner Join rpt_abm1914.ksm_mgo_own_activity_by_prs mgo On mgo.prospect_id = pool.prospect_id
 Left Join tasks On tasks.prospect_id = mgo.prospect_id
   And tasks.task_responsible_id = mgo.gift_officer_id
