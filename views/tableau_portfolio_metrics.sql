@@ -82,6 +82,13 @@ proposals As (
   Where primary_ind = 'Y'
 )
 
+, numeric_evals As (
+  Select
+    short_desc As rating
+    , rpt_pbh634.ksm_pkg.get_number_from_dollar(short_desc) As rating_numeric
+  From tms_rating
+)
+
 , prs As (
   Select Distinct
     id_number
@@ -89,7 +96,14 @@ proposals As (
     , p.contact_date As last_visit_date
     , p.evaluation_date
     , p.evaluation_rating
+    , evr.rating_numeric As evaluation_numeric
+    , p.officer_rating
+    , ofr.rating_numeric As officer_numeric
   From nu_prs_trp_prospect p
+  Left Join numeric_evals evr
+    On evr.rating = p.evaluation_rating
+  Left Join numeric_evals ofr
+    On ofr.rating = p.officer_rating
 )
 
 -- Final query
@@ -120,6 +134,9 @@ proposals As (
     , prs.last_visit_date
     , prs.evaluation_date
     , prs.evaluation_rating
+    , prs.evaluation_numeric
+    , prs.officer_rating
+    , prs.officer_numeric
     , proposal_group
     , proposal_id
     , proposal_manager_id
