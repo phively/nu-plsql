@@ -785,6 +785,7 @@ Cursor ct_alloc_annual_fund_ksm Is
       , '3203005228501GFT' -- KFN Scholarship
       , '3203005334201GFT' -- KSM 1Y Class of 2019 Scholar
       , '3203005590301GFT' -- KSM Student Assistance Fund
+      , '3203005597901GFT' -- Lakeside Scholars Fund
       /************ UPDATE ABOVE HERE ************/
     )
   ;

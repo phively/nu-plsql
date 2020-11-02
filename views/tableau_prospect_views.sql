@@ -58,7 +58,7 @@ Kellogg prospect pool definition plus giving,
 proposal, etc. fields
 ****************************************/
 
-Create Or Replace View ksm_prs_pool As
+Create Or Replace View rpt_abm1914.ksm_prs_pool As
 
 With
 
@@ -485,7 +485,7 @@ Left Join next_outreach_task On next_outreach_task.prospect_id = prs.prospect_id
 Only vt_ksm_prs_pool rows where a KSM GO has been active
 ****************************************/
 
-Create Or Replace View ksm_prs_pool_gos As
+Create Or Replace View rpt_abm1914.ksm_prs_pool_gos As
 
 With
 
