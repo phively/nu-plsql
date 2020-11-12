@@ -147,7 +147,6 @@ WHERE ANONYMOUS_DONOR = 'Y'
 ,KSM_STAFF AS (
   SELECT * FROM table(rpt_pbh634.ksm_pkg.tbl_frontline_ksm_staff) staff -- Historical Kellogg gift officers
   -- Join credited visit ID to staff ID number
-  WHERE staff.former_staff Is Null
  )
 
 ,ASSIGNED AS(
