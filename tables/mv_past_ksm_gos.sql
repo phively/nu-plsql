@@ -53,7 +53,7 @@ adv_dates As (
   Union All Select '0000752085', 'AF', to_date('20200106', 'yyyymmdd'), to_date('20200831', 'yyyymmdd') From DUAL
   Union All Select '0000436760', 'ADV', to_date('20011101', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000529430', 'MG', to_date('20200106', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
-  Union All Select '0000832722', 'MG', to_date('20200601', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000296692', 'MG', to_date('20200601', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000837709', 'MG', to_date('20201005', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000838308', 'AF', to_date('20201102', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000838571', 'AF', to_date('20201109', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
@@ -63,6 +63,7 @@ adv_dates As (
 Select
   adv_dates.id_number
   , entity.report_name
+  , entity.record_status_code
   , team
   , adv_dates.start_dt
   , adv_dates.stop_dt
