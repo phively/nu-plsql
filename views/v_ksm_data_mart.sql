@@ -335,9 +335,18 @@ emp As (
   Group By intr.catracks_id
 )
 
+, linked as (select distinct ec.id_number,
+max(ec.start_dt) keep(dense_rank First Order By ec.start_dt Desc, ec.econtact asc) As Max_Date,
+max (ec.econtact) keep(dense_rank First Order By ec.start_dt Desc, ec.econtact asc) as linkedin_address
+from econtact ec
+where  ec.econtact_status_code = 'A'
+and  ec.econtact_type_code = 'L'
+Group By ec.id_number)
+
 , emp_chooser As (
   Select
     deg.id_number As catracks_id
+    , deg.REPORT_NAME
     , deg.degrees_concat
     , deg.degrees_verbose
     , deg.program
@@ -385,6 +394,7 @@ emp As (
     , addr.business_geo_primary_desc
     , addr.business_start_date
     , intr.interests_concat
+    , linked.linkedin_address
   From rpt_pbh634.v_entity_ksm_degrees deg
   Left Join tms_record_status tms_rs
     On tms_rs.record_status_code = deg.record_status_code
@@ -394,11 +404,14 @@ emp As (
     On emp.catracks_id = deg.id_number
   Left Join intr
     On intr.catracks_id = deg.id_number
+  Left Join linked
+    On linked.id_number = deg.id_number
   Where deg.record_status_code In ('A', 'C', 'L', 'D')
 )
 
 Select
   catracks_id
+  , report_name
   , degrees_concat
   , degrees_verbose
   , program
@@ -435,5 +448,6 @@ Select
   , primary_job_source
   , business_date_modified
   , employment_date_modified
+  , linkedin_address
 From emp_chooser
 ;
