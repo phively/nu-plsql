@@ -91,6 +91,7 @@ Type committee_member Is Record (
   , stop_dt committee.stop_dt%type
   , status tms_committee_status.short_desc%type
   , role tms_committee_role.short_desc%type
+  , committee_title committee.committee_title%type
   , xcomment committee.xcomment%type
   , date_modified committee.date_modified%type
   , operator_name committee.operator_name%type
@@ -990,6 +991,7 @@ Cursor c_committee_members (my_committee_cd In varchar2) Is
     , comm.stop_dt
     , tms_status.short_desc As status
     , tms_role.short_desc As role
+    , comm.committee_title
     , comm.xcomment
     , comm.date_modified
     , comm.operator_name
