@@ -222,7 +222,7 @@ Select
 From employment employ
 Inner Join rpt_pbh634.v_entity_ksm_degrees deg
   On deg.id_number = employ.id_number --- To get KSM alumni 
-Inner Join tms_fld_of_work fow
+Left Join tms_fld_of_work fow
   On employ.fld_of_work_code = fow.fld_of_work_code --- To get FLD of Work Code
 Left  Join tms_job_status
   On tms_job_status.job_status_code = employ.job_status_code --- To get job description
