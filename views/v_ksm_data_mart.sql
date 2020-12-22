@@ -15,7 +15,7 @@ Conventions:
 Disaggregated interests view for data mart
 
 Updated 2019-11-12
-Includes only career-related interests
+- Includes only career-related interests
 ************************************************************************/
 Create Or Replace View v_datamart_career_interests As
 -- View of INTEREST (Alumni List) v-datamart_interests
@@ -44,9 +44,11 @@ Order By interest_code Asc
 Aggregated IDs view for data mart
 
 Updated 2019-11-12
+Updated 2019-11-20
+- Added KSM Exec Ed ID
 ************************************************************************/
 Create Or Replace View v_datamart_ids As
--- View of KSM alumni with least a EMPLID, SES, or NETID along with a Catracks ID: v_datamart_ids
+-- View of KSM alumni with least a EMPLID, NETID, EXED, Salesforce ID along with a Catracks ID: v_datamart_ids
 With
 
 ksm_ids As (
@@ -56,7 +58,7 @@ ksm_ids As (
   From rpt_pbh634.v_entity_ksm_degrees deg --- Kellogg Alumni Only
   Left Join ids_base
     On ids_base.id_number = deg.id_number
-  Where ids_base.ids_type_code In ('SES', 'KSF', 'NET', 'KEX' ) --- SES = EMPLID + KSF = Salesforce ID + NET = NetID + KEX = KSM EXED ID
+  Where ids_base.ids_type_code In ('SES', 'KSF', 'NET', 'KEX') --- SES = EMPLID + KSF = Salesforce ID + NET = NetID + KEX = KSM EXED ID
 ) 
 
 Select Distinct
@@ -80,15 +82,15 @@ Left Join ksm_ids net
 Left Join ksm_ids kex
   On kex.id_number = ksm_ids.id_number
   And kex.ids_type_code = 'KEX'
-   --- Selects IDs for each row
-;
+  --- Selects IDs for each row
+  ;
 
 /************************************************************************
 Aggregated address view for data mart
 
 Updated 2019-11-12
-Includes only current home and business addresses, as well as
-the job title/company associated with each business address (if any)
+- Includes only current home and business addresses, as well as
+  the job title/company associated with each business address (if any)
 ************************************************************************/
 Create Or Replace View v_datamart_address As
 -- View for Address (Business + Home) v_data_mart_address
@@ -107,6 +109,7 @@ business_address As (
     , address.addr_status_code
     , address.start_dt
     , rpt_pbh634.ksm_pkg.to_date2(address.start_dt) As start_date
+    , address.date_modified
     , rpt_pbh634.v_geo_code_primary.geo_codes
     , rpt_pbh634.v_geo_code_primary.geo_code_primary
     , rpt_pbh634.v_geo_code_primary.geo_code_primary_desc
@@ -128,6 +131,7 @@ business_address As (
     , address.addr_status_code
     , address.start_dt
     , rpt_pbh634.ksm_pkg.to_date2(address.start_dt) As start_date
+    , address.date_modified
     , rpt_pbh634.v_geo_code_primary.geo_codes --- KIS Wants Geocodes Home Address
     , rpt_pbh634.v_geo_code_primary.geo_code_primary
     , rpt_pbh634.v_geo_code_primary.geo_code_primary_desc
@@ -150,6 +154,7 @@ Select
   , home_address.geo_code_primary_desc As home_geo_primary_desc
   , home_address.start_dt As home_start_dt
   , home_address.start_date As home_start_date
+  , home_address.date_modified As home_date_modified
   , business_address.business_job_title
   , business_address.business_company_name
   , business_address.city As business_city
@@ -161,6 +166,7 @@ Select
   , business_address.geo_code_primary_desc As business_geo_primary_desc
   , business_address.start_dt As business_start_dt
   , business_address.start_date As business_start_date
+  , business_address.date_modified As business_date_modified
 From rpt_pbh634.v_entity_ksm_degrees deg
 Left Join business_address
   On business_address.id_number = deg.id_number --- Join Subquery for Business Address
@@ -177,9 +183,9 @@ Order By deg.id_number Asc
 Disaggregated employment view for data mart
 
 Updated 2019-11-12
-Includes both current and past job information
-N.B. people may not have a row on the employment table but have text
-entered under company or job_title on the address table
+- Includes both current and past job information
+- N.B. people may not have a row on the employment table but have text
+  entered under company or job_title on the address table
 ************************************************************************/
 Create or Replace View v_datamart_employment As
 --- View for Employer: v_data_mart_employer
@@ -216,7 +222,7 @@ Select
 From employment employ
 Inner Join rpt_pbh634.v_entity_ksm_degrees deg
   On deg.id_number = employ.id_number --- To get KSM alumni 
-Inner Join tms_fld_of_work fow
+Left Join tms_fld_of_work fow
   On employ.fld_of_work_code = fow.fld_of_work_code --- To get FLD of Work Code
 Left  Join tms_job_status
   On tms_job_status.job_status_code = employ.job_status_code --- To get job description
@@ -231,7 +237,7 @@ Order By employ.id_Number Asc
 Disaggregated degree view for data mart
 
 Updated 2019-11-12
-Includes all degrees, not just KSM or NU ones
+- Includes all degrees, not just KSM or NU ones
 ************************************************************************/
 
 Create Or Replace View v_datamart_degrees As
@@ -292,12 +298,14 @@ Entity view for data mart aggregating current data together
 Includes Active, Current, Lost, Deceased record types
 
 Updated 2019-11-12
-Primary job title and employer are defined as the title/company associated
-with the current business address if they are filled in; otherwise
-the current primary employer defined in v_datamart_employment
-
-Updated 2020-12-18
-Report Name and Linkedin address added for alumni data profile project
+- Primary job title and employer are defined as the title/company associated
+  with the current business address if they are filled in; otherwise
+  the current primary employer defined in v_datamart_employment
+2019-11-20
+- Added current employment field of work
+- Primary job title and employer are now defined as the title/company
+  associated with the most recently updated table, whether employment
+  or address with addr_type_code = 'B'
 ************************************************************************/
 
 Create Or Replace View v_datamart_entities As
@@ -311,7 +319,9 @@ emp As (
     , empl.employment_start_date
     , empl.job_title
     , empl.employer
-  From rpt_pbh634.v_datamart_employment empl
+    , empl.fld_of_work_desc
+    , empl.date_modified
+  From v_datamart_employment empl
   Where empl.job_status_code = 'C' -- current only
     And empl.primary_employer_indicator = 'Y' -- primary employer only
 )
@@ -321,7 +331,7 @@ emp As (
     intr.catracks_id
     , Listagg(intr.interest_desc, '; ') Within Group (Order By interest_start_date Asc, interest_desc Asc)
       As interests_concat
-  From rpt_pbh634.v_datamart_career_interests intr
+  From v_datamart_career_interests intr
   Group By intr.catracks_id
 )
 
@@ -333,52 +343,111 @@ where  ec.econtact_status_code = 'A'
 and  ec.econtact_type_code = 'L'
 Group By ec.id_number)
 
+, emp_chooser As (
+  Select
+    deg.id_number As catracks_id
+    , deg.REPORT_NAME
+    , deg.degrees_concat
+    , deg.degrees_verbose
+    , deg.program
+    , deg.program_group
+    , deg.majors_concat
+    , deg.record_status_code
+    , tms_rs.short_desc As record_status_desc
+    , addr.home_city
+    , addr.home_state
+    , addr.home_country_desc
+    , addr.home_geo_codes
+    , addr.home_geo_primary_desc
+    , addr.home_start_date
+    -- Determine whether to use business job title or employment job title
+    -- The row with a later modified date is assumed to be more recent
+    , addr.business_date_modified
+    , emp.date_modified As employment_date_modified
+    , Case
+        -- No data -> none
+        When addr.business_date_modified Is Null
+          And emp.date_modified Is Null
+          Then 'None'
+        When addr.business_date_modified Is Not Null
+          And emp.date_modified Is Null
+          Then 'Address'
+        When addr.business_date_modified Is Null
+          And emp.date_modified Is Not Null
+          Then 'Employment'
+        When addr.business_date_modified >= emp.date_modified
+          Then 'Address'
+        When addr.business_date_modified <= emp.date_modified
+          Then 'Employment'
+        Else '#ERR'
+        End
+      As primary_job_source
+    , emp.job_title
+    , emp.employer
+    , emp.fld_of_work_desc
+    , addr.business_job_title
+    , addr.business_company_name
+    , addr.business_city
+    , addr.business_state
+    , addr.business_country_desc
+    , addr.business_geo_codes
+    , addr.business_geo_primary_desc
+    , addr.business_start_date
+    , intr.interests_concat
+    , linked.linkedin_address
+  From rpt_pbh634.v_entity_ksm_degrees deg
+  Left Join tms_record_status tms_rs
+    On tms_rs.record_status_code = deg.record_status_code
+  Left Join v_datamart_address addr
+    On addr.catracks_id = deg.id_number
+  Left join emp
+    On emp.catracks_id = deg.id_number
+  Left Join intr
+    On intr.catracks_id = deg.id_number
+  Left Join linked
+    On linked.id_number = deg.id_number
+  Where deg.record_status_code In ('A', 'C', 'L', 'D')
+)
+
 Select
-  deg.id_number As catracks_id
-  , deg.report_name
-  , deg.degrees_concat
-  , deg.degrees_verbose
-  , deg.program
-  , deg.program_group
-  , deg.majors_concat
-  , deg.record_status_code
-  , tms_rs.short_desc As record_status_desc
-  , addr.home_city
-  , addr.home_state
-  , addr.home_country_desc
-  , addr.home_geo_codes
-  , addr.home_geo_primary_desc
-  , addr.home_start_date
+  catracks_id
+  , report_name
+  , degrees_concat
+  , degrees_verbose
+  , program
+  , program_group
+  , majors_concat
+  , record_status_code
+  , record_status_desc
+  , home_city
+  , home_state
+  , home_country_desc
+  , home_geo_codes
+  , home_geo_primary_desc
+  , home_start_date
   , Case
-      When addr.business_job_title Is Not Null
-        Then addr.business_job_title
-      Else emp.job_title
+      When primary_job_source = 'Address'
+        Then business_job_title
+      Else job_title
       End
     As primary_job_title
   , Case
-      When addr.business_company_name Is Not Null
-        Then addr.business_company_name
-      Else emp.employer
+      When primary_job_source = 'Address'
+        Then business_company_name
+      Else employer
       End
     As primary_employer
-  , addr.business_city
-  , addr.business_state
-  , addr.business_country_desc
-  , addr.business_geo_codes
-  , addr.business_geo_primary_desc
-  , addr.business_start_date
-  , intr.interests_concat
-  , linked.linkedin_address
-From rpt_pbh634.v_entity_ksm_degrees deg
-Left Join tms_record_status tms_rs
-  On tms_rs.record_status_code = deg.record_status_code
-Left Join rpt_pbh634.v_datamart_address addr
-  On addr.catracks_id = deg.id_number
-Left join emp
-  On emp.catracks_id = deg.id_number
-Left Join intr
-  On intr.catracks_id = deg.id_number
-Left Join linked
-  On linked.id_number = deg.id_number
-Where deg.record_status_code In ('A', 'C', 'L', 'D')
+  , business_city
+  , business_state
+  , business_country_desc
+  , business_geo_codes
+  , business_geo_primary_desc
+  , business_start_date
+  , fld_of_work_desc
+  , interests_concat
+  , primary_job_source
+  , business_date_modified
+  , employment_date_modified
+  , linkedin_address
+From emp_chooser
 ;
