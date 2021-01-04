@@ -14,31 +14,30 @@ cal As (
 (
   -- Gift data
   Select
-    amount
+    ytd.rcpt_or_plg_number As tx_or_proposal_number
+    , sum(amount) As amount
     , to_number(year_of_giving) As fiscal_year
     , cal.curr_fy
     , ytd_ind
-    , Case
-        When amount >= 10000000 Then 10
-        When amount >=  5000000 Then 5
-        When amount >=  2000000 Then 2
-        When amount >=  1000000 Then 1
-        When amount >=   500000 Then 0.5
-        When amount >=   250000 Then 0.25
-        When amount >=   100000 Then 0.1
-        Else 0
-      End As bin
+    , gift_bin As bin
     , 'Booked' As cat
     , 'Campaign Giving' As src
-  From v_ksm_giving_campaign_ytd
+  From v_ksm_giving_campaign_ytd ytd
   Cross Join cal
   Where year_of_giving Between 2007 And cal.curr_fy -- FY 2007 and 2020 as first and last campaign gift dates
     And amount > 0
+  Group By
+    ytd.rcpt_or_plg_number
+    , year_of_giving
+    , cal.curr_fy
+    , ytd_ind
+    , gift_bin
 ) Union All (
   -- Proposal data
   -- Includes proposals expected to close in current and previous fiscal year as current fiscal year
   Select
-    final_anticipated_or_ask_amt
+    to_char(v_ksm_proposal_history.proposal_id)
+    , final_anticipated_or_ask_amt
     , cal.curr_fy As fiscal_year
     , cal.curr_fy
     , 'Y'

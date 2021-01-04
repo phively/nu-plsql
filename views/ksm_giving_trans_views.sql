@@ -630,6 +630,16 @@ Select
   , deg.degrees_concat
   , prs.prospect_manager
   , allocation.short_name As allocation_name
+  , Case
+      When unsplit_amount >= 10E6 Then 10
+      When unsplit_amount >= 5E6 Then 5
+      When unsplit_amount >= 2E6 Then 2
+      When unsplit_amount >= 1E6 Then 1
+      When unsplit_amount >= 500E3 Then .5
+      When unsplit_amount >= 250E3 Then .25
+      When unsplit_amount >= 100E3 Then .1
+      Else 0
+    End As gift_bin
 From v_ksm_giving_campaign_trans gft
 Cross Join v_current_calendar cal
 Inner Join ytd_dts On ytd_dts.dt = trunc(gft.date_of_record)

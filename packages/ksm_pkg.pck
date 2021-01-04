@@ -2611,6 +2611,15 @@ Cursor c_gift_credit_campaign_2008 Is
       From tms_pledge_type
     )
   )
+  -- Unsplit definition - summing legal amounts across the KSM portion of each gift
+  , unsplit As (
+    Select
+      rcpt_or_plg_number
+      , sum(amount) As unsplit_amount
+    From nu_rpt_t_cmmt_dtl_daily daily
+    Where daily.alloc_school = 'KM'
+    Group By rcpt_or_plg_number
+  )
   -- Main query
   (
   Select
@@ -2618,12 +2627,12 @@ Cursor c_gift_credit_campaign_2008 Is
     , record_type_code
     , person_or_org
     , birth_dt
-    , rcpt_or_plg_number
+    , daily.rcpt_or_plg_number
     , xsequence
     , anons.anon
     , amount
     , credited_amount
-    , prim_amount As unsplit_amount
+    , unsplit.unsplit_amount
     , year_of_giving
     , date_of_record
     , alloc_code
@@ -2645,6 +2654,7 @@ Cursor c_gift_credit_campaign_2008 Is
   Inner Join tms_trans On tms_trans.transaction_type_code = daily.transaction_type
   Left Join anons On anons.tx_number = daily.rcpt_or_plg_number
     And anons.tx_sequence = daily.xsequence
+  Left Join unsplit On unsplit.rcpt_or_plg_number = daily.rcpt_or_plg_number
   Where daily.alloc_school = 'KM'
   ) Union All (
   -- Internal transfer; 344303 is 50%
