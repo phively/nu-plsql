@@ -375,6 +375,7 @@ Type trans_campaign Is Record (
   , anonymous varchar2(1)
   , amount nu_rpt_t_cmmt_dtl_daily.amount%type
   , credited_amount nu_rpt_t_cmmt_dtl_daily.credited_amount%type
+  , unsplit_amount nu_rpt_t_cmmt_dtl_daily.prim_amount%type
   , year_of_giving nu_rpt_t_cmmt_dtl_daily.year_of_giving%type
   , date_of_record nu_rpt_t_cmmt_dtl_daily.date_of_record%type
   , alloc_code nu_rpt_t_cmmt_dtl_daily.alloc_code%type
@@ -2622,6 +2623,7 @@ Cursor c_gift_credit_campaign_2008 Is
     , anons.anon
     , amount
     , credited_amount
+    , prim_amount As unsplit_amount
     , year_of_giving
     , date_of_record
     , alloc_code
@@ -2656,6 +2658,7 @@ Cursor c_gift_credit_campaign_2008 Is
     , anons.anon
     , 344303 As amount
     , 344303 As credited_amount
+    , 344303 As unsplit_amount
     , year_of_giving
     , date_of_record
     , alloc_code
