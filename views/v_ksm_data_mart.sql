@@ -113,10 +113,15 @@ business_address As (
     , rpt_pbh634.v_geo_code_primary.geo_codes
     , rpt_pbh634.v_geo_code_primary.geo_code_primary
     , rpt_pbh634.v_geo_code_primary.geo_code_primary_desc
+    , geo.LATITUDE
+    , geo.LONGITUDE
   From address
   Left Join rpt_pbh634.v_geo_code_primary
     On rpt_pbh634.v_geo_code_primary.id_number = address.id_number
     And rpt_pbh634.v_geo_code_primary.xsequence = address.xsequence --- Joining Paul's New Geocode Table to get Business Address Geocodes 
+  Left Join rpt_pbh634.v_addr_geocoding geo --- Joining Geocode table for latitude and longitude 
+  On geo.id_number = address.id_number
+  And geo.xsequence = address.xsequence
   Where address.addr_type_code = 'B'
   and Address.Addr_Status_Code = 'A'
 )
@@ -135,10 +140,15 @@ business_address As (
     , rpt_pbh634.v_geo_code_primary.geo_codes --- KIS Wants Geocodes Home Address
     , rpt_pbh634.v_geo_code_primary.geo_code_primary
     , rpt_pbh634.v_geo_code_primary.geo_code_primary_desc
+    , geo.LATITUDE
+    , geo.LONGITUDE
   From address
   Left Join rpt_pbh634.v_geo_code_primary
     On rpt_pbh634.v_geo_code_primary.id_number = address.id_number
     And rpt_pbh634.v_geo_code_primary.xsequence = address.xsequence --- Joining Paul's New Geocode Table to get Business Address Geocodes
+  Left Join rpt_pbh634.v_addr_geocoding geo --- Joining Geocode table for latitude and longitude
+  On geo.id_number = address.id_number
+  And geo.xsequence = address.xsequence
   Where address.addr_type_code = 'H'
     and address.addr_status_code = 'A'
 )
@@ -152,6 +162,8 @@ Select
   , home_address.geo_codes As home_geo_codes
   , home_address.geo_code_primary As home_geo_primary_code
   , home_address.geo_code_primary_desc As home_geo_primary_desc
+  , home_address.LATITUDE as home_latitude
+  , home_address.LONGITUDE as home_longitude
   , home_address.start_dt As home_start_dt
   , home_address.start_date As home_start_date
   , home_address.date_modified As home_date_modified
@@ -164,6 +176,8 @@ Select
   , business_address.geo_codes As business_geo_codes --- KIS Wants Geocodes for Business Address
   , business_address.geo_code_primary As business_geo_primary_code
   , business_address.geo_code_primary_desc As business_geo_primary_desc
+  , business_address.LATITUDE as business_latitude
+  , business_address.LONGITUDE as business_longitude 
   , business_address.start_dt As business_start_dt
   , business_address.start_date As business_start_date
   , business_address.date_modified As business_date_modified
@@ -411,6 +425,7 @@ Group By ec.id_number)
 
 Select
   catracks_id
+  , d
   , report_name
   , degrees_concat
   , degrees_verbose
@@ -425,6 +440,7 @@ Select
   , home_geo_codes
   , home_geo_primary_desc
   , home_start_date
+  , linkedin_address
   , Case
       When primary_job_source = 'Address'
         Then business_job_title
@@ -448,6 +464,5 @@ Select
   , primary_job_source
   , business_date_modified
   , employment_date_modified
-  , linkedin_address
 From emp_chooser
 ;
