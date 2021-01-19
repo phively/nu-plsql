@@ -316,6 +316,51 @@ tms_trans As (
    GROUP BY plg.id,PS.PLEDGE_PLEDGE_NUMBER,plg.alloc
 )
 
+,NFY_BAL5 AS (
+   SELECT 
+    PLG.ID
+    ,PS.PLEDGE_PLEDGE_NUMBER
+    ,PLG.ALLOC
+    ,MIN(rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_PAY
+    ,CASE WHEN PS.PLEDGE_PLEDGE_NUMBER IN (SELECT PLEDGE_NUMBER FROM RPT_ABM1914.MV_KSM_PLEDGE_PAY) 
+         THEN MIN(MV_PLG.AMOUNT) KEEP(DENSE_RANK FIRST ORDER BY MV_PLG.FISCAL_YEAR ASC)
+         ELSE sum(plg.prop * PS.payment_schedule_balance) --Else 0 End)
+      END As balance_nfy5
+  FROM PAY_SCH PS
+  INNER JOIN RPT_PBH634.v_Current_Calendar CAL
+    ON rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD'))= CAL."CURR_FY"+6
+   INNER JOIN PLG 
+   ON PS.pledge_pledge_number = PLG.PLG
+   LEFT JOIN rpt_abm1914.mv_ksm_pledge_pay MV_PLG
+    ON PS.PLEDGE_PLEDGE_NUMBER = MV_PLG.PLEDGE_NUMBER
+    AND MV_PLG.FISCAL_YEAR = CAL."CURR_FY"+6
+   WHERE PS.PAYMENT_SCHEDULE_STATUS = 'U'
+   GROUP BY plg.id,PS.PLEDGE_PLEDGE_NUMBER,plg.alloc
+)
+
+,NFY_BAL_FUTURE AS (
+   SELECT 
+    PLG.ID
+    ,PS.PLEDGE_PLEDGE_NUMBER
+    ,PLG.ALLOC
+    ,MIN(rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_PAY
+    ,MAX(rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_LAST_PAY
+    ,CASE WHEN PS.PLEDGE_PLEDGE_NUMBER IN (SELECT PLEDGE_NUMBER FROM RPT_ABM1914.MV_KSM_PLEDGE_PAY) -- Not sure what this does, may leaed to issues
+         THEN SUM(CASE WHEN mv_plg.fiscal_year >= CAL."CURR_FY" + 7 THEN MV_PLG.AMOUNT ELSE 0 END)
+         ELSE sum(plg.prop * PS.payment_schedule_balance) --Else 0 End)
+      END As balance_nfy_future
+  FROM PAY_SCH PS
+  CROSS JOIN RPT_PBH634.v_Current_Calendar CAL
+   INNER JOIN PLG 
+   ON PS.pledge_pledge_number = PLG.PLG
+   LEFT JOIN rpt_abm1914.mv_ksm_pledge_pay MV_PLG
+    ON PS.PLEDGE_PLEDGE_NUMBER = MV_PLG.PLEDGE_NUMBER
+    AND MV_PLG.FISCAL_YEAR >= CAL."CURR_FY"+7
+   WHERE PS.PAYMENT_SCHEDULE_STATUS = 'U'
+    AND rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD'))>= (CAL."CURR_FY"+7)
+   GROUP BY plg.id,PS.PLEDGE_PLEDGE_NUMBER,plg.alloc
+)
+
 ,PFY_BAL AS (
    SELECT 
     PLG.ID
@@ -372,7 +417,15 @@ tms_trans As (
       As scheduled_payments_nfy4
     , SUM(plg.prop * CASE WHEN SC.PAYMENT_SCHEDULE_STATUS = 'P' AND SC.PAY_SCH_FY = CAL.CURR_FY+5 THEN SC.PAYMENT_SCHEDULE_AMOUNT ELSE 0 END)
       As paid_nfy4
-    , NFB4.balance_nfy4   
+    , NFB4.balance_nfy4
+    , count(Case When sc.pay_sch_fy = cal.curr_fy + 6 Then sc.payment_schedule_date End)
+      As scheduled_payments_nfy5
+    , SUM(plg.prop * CASE WHEN SC.PAYMENT_SCHEDULE_STATUS = 'P' AND SC.PAY_SCH_FY = CAL.CURR_FY+6 THEN SC.PAYMENT_SCHEDULE_AMOUNT ELSE 0 END)
+      As paid_nfy5
+    , NFB5.balance_nfy5
+    , count(Case When sc.pay_sch_fy >= cal.curr_fy + 6 Then sc.payment_schedule_date End)
+      As scheduled_payments_nfy_future
+    , NFBF.balance_nfy_future 
     , count(Case When sc.pay_sch_fy = cal.curr_fy - 1 Then sc.payment_schedule_date End)
       As scheduled_payments_pfy1
     , SUM(plg.prop * CASE WHEN SC.PAYMENT_SCHEDULE_STATUS = 'P' AND SC.PAY_SCH_FY = CAL.CURR_FY-1 THEN SC.PAYMENT_SCHEDULE_AMOUNT ELSE 0 END)
@@ -406,6 +459,14 @@ tms_trans As (
     ON PLG.ID = NFB4.ID
     AND PLG.PLG = NFB4.PLEDGE_PLEDGE_NUMBER
     AND PLG.ALLOC = NFB4.ALLOC
+  LEFT JOIN NFY_BAL5 NFB5
+    ON PLG.ID = NFB5.ID
+    AND PLG.PLG = NFB5.PLEDGE_PLEDGE_NUMBER
+    AND PLG.ALLOC = NFB5.ALLOC
+  LEFT JOIN NFY_BAL_FUTURE NFBF
+    ON PLG.ID = NFBF.ID
+    AND PLG.PLG = NFBF.PLEDGE_PLEDGE_NUMBER
+    AND PLG.ALLOC = NFBF.ALLOC
   LEFT JOIN PFY_BAL PFYB
     ON PLG.ID = PFYB.ID
     AND PLG.PLG = PFYB.PLEDGE_PLEDGE_NUMBER
@@ -420,6 +481,8 @@ tms_trans As (
     ,NFB2.BALANCE_NFY2
     ,NFB3.BALANCE_NFY3
     ,NFB4.BALANCE_NFY4
+    ,NFB5.balance_nfy5
+    ,NFBF.balance_nfy_future 
     ,PFYB.BALANCE_PFY1
 )
 
@@ -503,6 +566,11 @@ SELECT DISTINCT
   , cp.scheduled_payments_nfy4
   , cp.paid_nfy4
   , cp.balance_nfy4
+  , cp.scheduled_payments_nfy5
+  , cp.paid_nfy5
+  , cp.balance_nfy5
+  , cp.scheduled_payments_nfy_future
+  , cp.balance_nfy_future
   , KGS.LAST_GIFT_DATE
   , KGS.LAST_GIFT_ALLOC
   , KGS.LAST_GIFT_TYPE
