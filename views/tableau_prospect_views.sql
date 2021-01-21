@@ -14,30 +14,30 @@ cal As (
 (
   -- Gift data
   Select
-    amount
+    ytd.rcpt_or_plg_number As tx_or_proposal_number
+    , sum(amount) As amount
     , to_number(year_of_giving) As fiscal_year
     , cal.curr_fy
     , ytd_ind
-    , Case
-        When amount >= 10000000 Then 10
-        When amount >=  5000000 Then 5
-        When amount >=  2000000 Then 2
-        When amount >=  1000000 Then 1
-        When amount >=   500000 Then 0.5
-        When amount >=   100000 Then 0.1
-        Else 0
-      End As bin
+    , gift_bin As bin
     , 'Booked' As cat
     , 'Campaign Giving' As src
-  From v_ksm_giving_campaign_ytd
+  From v_ksm_giving_campaign_ytd ytd
   Cross Join cal
-  Where year_of_giving Between 2007 And 2020 -- FY 2007 and 2020 as first and last campaign gift dates
+  Where year_of_giving Between 2007 And cal.curr_fy -- FY 2007 and 2020 as first and last campaign gift dates
     And amount > 0
+  Group By
+    ytd.rcpt_or_plg_number
+    , year_of_giving
+    , cal.curr_fy
+    , ytd_ind
+    , gift_bin
 ) Union All (
   -- Proposal data
   -- Includes proposals expected to close in current and previous fiscal year as current fiscal year
   Select
-    final_anticipated_or_ask_amt
+    to_char(v_ksm_proposal_history.proposal_id)
+    , final_anticipated_or_ask_amt
     , cal.curr_fy As fiscal_year
     , cal.curr_fy
     , 'Y'
@@ -57,7 +57,7 @@ Kellogg prospect pool definition plus giving,
 proposal, etc. fields
 ****************************************/
 
-Create Or Replace View vt_ksm_prs_pool As
+Create Or Replace View rpt_abm1914.ksm_prs_pool As
 
 With
 
@@ -76,7 +76,7 @@ geocode As (
   Select
     prospect_id
     , count(proposal_id) As open_proposals
-  From v_proposal_history_fast
+  From rpt_pbh634.v_proposal_history_fast
   Where proposal_active_calc = 'Active'
   Group By prospect_id
 )
@@ -133,7 +133,7 @@ geocode As (
     , min(ksm_or_univ_anticipated)
       keep(dense_rank First Order By close_date Asc, hierarchy_order Desc, date_modified Desc, proposal_id Asc)
       As next_ksm_anticipated
-  From v_proposal_history_fast
+  From rpt_pbh634.v_proposal_history_fast
   Where proposal_in_progress = 'Y'
     And ksm_proposal_ind = 'Y'
   Group By prospect_id
@@ -146,7 +146,7 @@ geocode As (
     , ah.id_number
     , ah.assignment_id_number
     , ah.assignment_report_name
-  From v_assignment_history ah
+  From rpt_pbh634.v_assignment_history ah
   Where ah.assignment_active_calc = 'Active' -- Active assignments only
     And assignment_type In
       -- Program Manager (PP), Prospect Manager (PM), Leadership Giving Officer (LG)
@@ -193,7 +193,7 @@ geocode As (
     , vcrf.next_fy_start
     , vcrf.yesterday
     , vcrf.ninety_days_ago
-  From v_contact_reports_fast vcrf
+  From rpt_pbh634.v_contact_reports_fast vcrf
   Where ard_staff = 'Y'
 )
 , recent_contact As (
@@ -202,6 +202,9 @@ geocode As (
     -- Outreach in last 365 days
     , sum(Case When contact_date Between yesterday - 365 And yesterday Then 1 Else 0 End)
         As ard_contact_last_365_days
+    -- Outreach in last 3 years (amy) 
+    , SUM(CASE WHEN CONTACT_DATE BETWEEN yesterday-1095 AND yesterday THEN 1 else 0 END)
+        AS ard_contact_last_3_yrs
     -- Most recent contact report
     , min(credited_name) Keep(dense_rank First Order By contact_date Desc)
         As last_credited_name
@@ -257,6 +260,9 @@ geocode As (
     -- Visits in last 365 days
     , sum(Case When contact_date Between yesterday - 365 And yesterday Then 1 Else 0 End)
         As ard_visit_last_365_days
+    -- VIsits in last 3 years (AMY)
+    , SUM(CASE WHEN contact_date BETWEEN yesterday - 1095 AND Yesterday then 1 else 0 END)
+        AS ard_visit_last_3_yrs
     -- Most recent contact report
     , min(credited_name) Keep(dense_rank First Order By contact_date Desc, visit_type Asc)
         As last_visit_credited_name
@@ -291,7 +297,7 @@ geocode As (
     -- Count of open tasks where responsible entity is a KSM GO
     , count(Distinct Case When current_mgo_ind = 'Y' Then task_id Else NULL End)
       As tasks_open_ksm
-  From v_ksm_tasks
+  From rpt_pbh634.v_ksm_tasks
   Where task_code <> 'ST' -- Exclude university overall strategy
     And active_task_ind = 'Y'
   Group By
@@ -312,7 +318,7 @@ geocode As (
       As task_outreach_responsible
     , min(task_description) keep(dense_rank First Order By sched_date Asc, task_id Asc, task_responsible Asc)
       As task_outreach_desc
-  From v_ksm_tasks
+  From rpt_pbh634.v_ksm_tasks
   Where task_code = 'CO'
     And active_task_ind = 'Y'
     And current_mgo_ind = 'Y'
@@ -324,7 +330,7 @@ geocode As (
 
 , pp As (
   Select *
-  From v_ksm_prospect_pool
+  From rpt_pbh634.v_ksm_prospect_pool
 )
 
 , prs As (
@@ -351,8 +357,8 @@ geocode As (
     , gft.last_gift_type
     , gft.last_gift_recognition_credit
   From pp
-  Left Join v_ksm_giving_summary gft On gft.id_number = pp.id_number
-  Left Join v_ksm_giving_campaign cmp On cmp.id_number = pp.id_number
+  Left Join rpt_pbh634.v_ksm_giving_summary gft On gft.id_number = pp.id_number
+  Left Join rpt_pbh634.v_ksm_giving_campaign cmp On cmp.id_number = pp.id_number
 )
 
 , visits As (
@@ -360,7 +366,9 @@ geocode As (
     pp.id_number
     -- Recent contact data
     , recent_visit.ard_visit_last_365_days
+    , recent_visit.ard_visit_last_3_yrs -- Added by Amy
     , recent_contact.ard_contact_last_365_days
+    , recent_contact.ard_contact_last_3_yrs -- Added by Amy
     , recent_visit.last_visit_credited_name
     , recent_visit.last_visit_credited_unit
     , recent_visit.last_visit_credited_ksm
@@ -422,7 +430,9 @@ Select Distinct
   , ksm_proposal.next_ksm_anticipated
   -- Recent contact data
   , visits.ard_visit_last_365_days
+  , visits.ard_visit_last_3_yrs -- added by Amy
   , visits.ard_contact_last_365_days
+  , visits.ard_contact_last_3_yrs -- added by Amy
   , visits.last_visit_credited_name
   , visits.last_visit_credited_unit
   , visits.last_visit_credited_ksm
@@ -460,7 +470,7 @@ Select Distinct
   , cal.yesterday
   , cal.curr_fy
 From prs
-Cross Join v_current_calendar cal
+Cross Join rpt_pbh634.v_current_calendar cal
 Inner Join visits On visits.id_number = prs.id_number
 Left Join geocode On geocode.id_number = prs.id_number
   And geocode.xsequence = prs.xsequence
@@ -474,7 +484,7 @@ Left Join next_outreach_task On next_outreach_task.prospect_id = prs.prospect_id
 Only vt_ksm_prs_pool rows where a KSM GO has been active
 ****************************************/
 
-Create Or Replace View vt_ksm_prs_pool_gos As
+Create Or Replace View rpt_abm1914.ksm_prs_pool_gos As
 
 With
 
@@ -490,7 +500,7 @@ tasks As (
       As own_open_tasks
     , count(Distinct Case When task_code = 'CO' Then task_id Else NULL End)
       As own_open_tasks_outreach
-  From v_ksm_tasks v
+  From rpt_pbh634.v_ksm_tasks v
   Where task_code <> 'ST' -- Exclude university overall strategy
     And active_task_ind = 'Y'
   Group By
@@ -510,6 +520,9 @@ Select Distinct
   -- Only fill in metrics for the primary prospect
   , Case When pool.primary_ind = 'Y' Then mgo.visits_last_365_days End
       As visits_last_365_days
+  --ADDED BY AMY FOR LAST 3 YRS
+  , CASE WHEN pool.primary_ind = 'Y' THEN mgo.visits_last_3_yrs END
+      AS visits_last_3_yrs
   , Case When pool.primary_ind = 'Y' Then mgo.quals_last_365_days End
       As quals_last_365_days
   , Case When pool.primary_ind = 'Y' Then mgo.visits_this_py End
@@ -538,8 +551,8 @@ Select Distinct
       As own_open_tasks
   , Case When pool.primary_ind = 'Y' Then tasks.own_open_tasks_outreach End
       As own_open_tasks_outreach
-From vt_ksm_prs_pool pool
-Inner Join v_ksm_mgo_own_activity_by_prs mgo On mgo.prospect_id = pool.prospect_id
+From ksm_prs_pool pool
+Inner Join rpt_abm1914.ksm_mgo_own_activity_by_prs mgo On mgo.prospect_id = pool.prospect_id
 Left Join tasks On tasks.prospect_id = mgo.prospect_id
   And tasks.task_responsible_id = mgo.gift_officer_id
 ;

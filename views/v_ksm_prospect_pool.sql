@@ -255,6 +255,8 @@ Select Distinct
   , strat.university_strategy
   , strat.strategy_sched_date
   , strat.strategy_responsible
+  , strat.strategy_modified_date
+  , strat.strategy_modified_name
   , dq.dq
   , dq.dq_date
   , perm_stew.ps As permanent_stewardship

@@ -400,6 +400,8 @@ Select
       Else 'Never'
       End
     As af_giving_segment
+  -- Stewardship flags
+  , shc.ksm_stewardship_issue
   -- Anonymous flags
   , shc.anonymous_donor
   , Case When anonymous_cfy > 0 Then 'Y' End As anonymous_cfy_flag
@@ -558,6 +560,12 @@ hh As (
       As anon_steward_thru_fy19
     , sum(Case When fiscal_year <= 2019 And cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
       As nonanon_steward_thru_fy19
+    , sum(Case When fiscal_year <= 2020 Then hh_recognition_credit Else 0 End)
+      As campaign_steward_thru_fy20
+    , sum(Case When fiscal_year <= 2020 And cgft.anonymous In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
+      As anon_steward_thru_fy20
+    , sum(Case When fiscal_year <= 2020 And cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
+      As nonanon_steward_thru_fy20
   From hh
   Cross Join v_current_calendar cal
   Inner Join cgft On cgft.household_id = hh.household_id
@@ -597,7 +605,7 @@ With
 -- View implementing YTD KSM Campaign giving
 -- Year-to-date calculator
 cal As (
-  Select 2007 As prev_fy, 2020 As curr_fy, yesterday -- FY 2007 and 2020 as first and last campaign gift dates
+  Select 2007 As prev_fy, curr_fy As curr_fy, yesterday -- FY 2007 and 2020 as first and last campaign gift dates
   From v_current_calendar
 )
 , ytd_dts As (
@@ -622,6 +630,16 @@ Select
   , deg.degrees_concat
   , prs.prospect_manager
   , allocation.short_name As allocation_name
+  , Case
+      When unsplit_amount >= 10E6 Then 10
+      When unsplit_amount >= 5E6 Then 5
+      When unsplit_amount >= 2E6 Then 2
+      When unsplit_amount >= 1E6 Then 1
+      When unsplit_amount >= 500E3 Then .5
+      When unsplit_amount >= 250E3 Then .25
+      When unsplit_amount >= 100E3 Then .1
+      Else 0
+    End As gift_bin
 From v_ksm_giving_campaign_trans gft
 Cross Join v_current_calendar cal
 Inner Join ytd_dts On ytd_dts.dt = trunc(gft.date_of_record)

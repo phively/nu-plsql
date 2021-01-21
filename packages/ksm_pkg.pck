@@ -91,6 +91,7 @@ Type committee_member Is Record (
   , stop_dt committee.stop_dt%type
   , status tms_committee_status.short_desc%type
   , role tms_committee_role.short_desc%type
+  , committee_title committee.committee_title%type
   , xcomment committee.xcomment%type
   , date_modified committee.date_modified%type
   , operator_name committee.operator_name%type
@@ -176,6 +177,8 @@ Type university_strategy Is Record (
   , university_strategy task.task_description%type
   , strategy_sched_date task.sched_date%type
   , strategy_responsible varchar2(1024)
+  , strategy_modified_date task.sched_date%type
+  , strategy_modified_name entity.report_name%type
 );
 
 /* Numeric capacity */
@@ -372,6 +375,7 @@ Type trans_campaign Is Record (
   , anonymous varchar2(1)
   , amount nu_rpt_t_cmmt_dtl_daily.amount%type
   , credited_amount nu_rpt_t_cmmt_dtl_daily.credited_amount%type
+  , unsplit_amount nu_rpt_t_cmmt_dtl_daily.prim_amount%type
   , year_of_giving nu_rpt_t_cmmt_dtl_daily.year_of_giving%type
   , date_of_record nu_rpt_t_cmmt_dtl_daily.date_of_record%type
   , alloc_code nu_rpt_t_cmmt_dtl_daily.alloc_code%type
@@ -417,6 +421,7 @@ Type special_handling Is Record (
      , no_mail_sol_ind varchar2(1)
      , no_texts_ind varchar2(1)
      , no_texts_sol_ind varchar2(1)
+     , ksm_stewardship_issue varchar2(1)
 );
 
 /*************************************************************************
@@ -453,7 +458,8 @@ Public constant declarations
 
 /* Start months */
 fy_start_month Constant number := 9; -- fiscal start month, 9 = September
-py_start_month Constant number := 5; -- performance start month, 5 = May
+py_start_month Constant number := 6; -- performance start month, 5 = May
+py_start_month_pre_py21 Constant number := 5; -- performance start month was 5 = May until PY2021
 
 /* Committees */
 committee_gab Constant committee.committee_code%type := 'U'; -- Kellogg Global Advisory Board committee code
@@ -469,6 +475,7 @@ committee_trustee Constant committee.committee_code%type := 'TBOT'; -- NU Board 
 committee_healthcare Constant committee.committee_code%type := 'HAK'; -- Healthcare at Kellogg Advisory Council
 committee_WomensLeadership Constant committee.committee_code%type := 'KWLC'; -- Women's Leadership Advisory Council
 committee_KALC Constant committee.committee_code%type := 'KALC'; -- Kellogg Admissions Leadership Council
+committee_kic Constant committee.committee_code%type := 'KIC'; -- Kellogg Inclusion Coalition
 
 /*************************************************************************
 Public variable declarations
@@ -734,6 +741,9 @@ Function tbl_committee_WomensLeadership
 Function tbl_committee_KALC
   Return t_committee_members Pipelined;
 
+Function tbl_committee_kic
+  Return t_committee_members Pipelined;
+
 /*************************************************************************
 End of package
 *************************************************************************/
@@ -885,19 +895,11 @@ Cursor c_current_calendar (fy_start_month In integer, py_start_month In integer)
     Select
       trunc(sysdate) As today
       -- Current fiscal year; uses fy_start_month constant
-      , Case
-        When extract(month from sysdate) >= fy_start_month
-          And fy_start_month != 1
-          Then extract(year from sysdate) + 1 
-        Else extract(year from sysdate)
-      End As yr
+      , get_fiscal_year(sysdate)
+        As yr
       -- Current performance year; uses py_start_month constant
-      , Case
-        When extract(month from sysdate) >= py_start_month
-          And fy_start_month != 1
-          Then extract(year from sysdate) + 1 
-        Else extract(year from sysdate)
-      End As perf_yr
+      , get_performance_year(sysdate)
+        As perf_yr
       -- Correction for starting after January
       , Case
         When fy_start_month != 1 Then 1 Else 0
@@ -925,11 +927,24 @@ Cursor c_current_calendar (fy_start_month In integer, py_start_month In integer)
     -- Current performance year
     , curr_date.perf_yr As curr_py
     -- Start of performance year objects
-    , to_date(py_start_month || '/01/' || (curr_date.perf_yr - yr_dif - 1), 'mm/dd/yyyy')
+    -- Previous PY correction for 2020
+    , Case
+        When perf_yr - 1 <= 2020
+          Then to_date(py_start_month_pre_py21 || '/01/' || (curr_date.perf_yr - yr_dif - 1), 'mm/dd/yyyy')
+        Else to_date(py_start_month || '/01/' || (curr_date.perf_yr - yr_dif - 1), 'mm/dd/yyyy')
+        End
       As prev_py_start
-    , to_date(py_start_month || '/01/' || (curr_date.perf_yr - yr_dif + 0), 'mm/dd/yyyy')
+    , Case
+        When perf_yr <= 2020
+          Then to_date(py_start_month_pre_py21 || '/01/' || (curr_date.perf_yr - yr_dif + 0), 'mm/dd/yyyy')
+        Else to_date(py_start_month || '/01/' || (curr_date.perf_yr - yr_dif + 0), 'mm/dd/yyyy')
+        End
       As curr_py_start
-    , to_date(py_start_month || '/01/' || (curr_date.perf_yr - yr_dif + 1), 'mm/dd/yyyy')
+    , Case
+        When perf_yr + 1 <= 2020
+          Then to_date(py_start_month_pre_py21 || '/01/' || (curr_date.perf_yr - yr_dif + 1), 'mm/dd/yyyy')
+        Else to_date(py_start_month || '/01/' || (curr_date.perf_yr - yr_dif + 1), 'mm/dd/yyyy')
+        End
       As next_py_start
     -- Year-to-date objects
     , add_months(trunc(sysdate), -12) As prev_fy_today
@@ -977,6 +992,7 @@ Cursor c_committee_members (my_committee_cd In varchar2) Is
     , comm.stop_dt
     , tms_status.short_desc As status
     , tms_role.short_desc As role
+    , comm.committee_title
     , comm.xcomment
     , comm.date_modified
     , comm.operator_name
@@ -1700,18 +1716,39 @@ Cursor c_entity_top_150_300 Is
 /* Definition of university strategy */
 Cursor c_university_strategy Is
   With
-  -- Pull first upcoming University Overall Strategy
-  next_uos As (
+  -- Pull latest upcoming University Overall Strategy
+  uos_ids As (
     Select
       prospect_id
-      , min(task_id) keep(dense_rank First Order By sched_date Asc, task.task_id Asc) As task_id
-      , min(task_description) keep(dense_rank First Order By sched_date Asc, task.task_id Asc) As university_strategy
-      , min(sched_date) keep(dense_rank First Order By sched_date Asc, task.task_id Asc) As strategy_sched_date
+      , min(task_id) keep(dense_rank First Order By sched_date Desc, task.task_id Asc) As task_id
     From task
     Where prospect_id Is Not Null -- Prospect strategies only
       And task_code = 'ST' -- University Overall Strategy
       And task_status_code Not In (4, 5) -- Not Completed (4) or Cancelled (5) status
     Group By prospect_id
+  )
+  , next_uos As (
+    Select
+      task.prospect_id
+      , task.task_id
+      , task.task_description As university_strategy
+      , task.sched_date As strategy_sched_date
+      , trunc(task.date_modified) As strategy_modified_date
+      , task.operator_name As strategy_modified_netid
+    From task
+    Inner Join uos_ids
+      On uos_ids.prospect_id = task.prospect_id
+      And uos_ids.task_id = task.task_id
+  )
+  , netids As (
+    Select
+      ids.other_id
+      , ids.id_number
+      , entity.report_name
+    From ids
+    Inner Join entity
+      On entity.id_number = ids.id_number
+    Where ids_type_code = 'NET'
   )
   -- Append task responsible data to first upcoming UOS
   , next_uos_resp As (
@@ -1719,17 +1756,25 @@ Cursor c_university_strategy Is
       uos.prospect_id
       , uos.university_strategy
       , uos.strategy_sched_date
+      , uos.strategy_modified_date
+      , uos.strategy_modified_netid
+      , netids.report_name As strategy_modified_name
       , Listagg(tr.id_number, ', ') Within Group (Order By tr.date_added Desc)
         As strategy_responsible_id
       , Listagg(entity.pref_mail_name, ', ') Within Group (Order By tr.date_added Desc)
         As strategy_responsible
     From next_uos uos
+    Left Join netids
+      On netids.other_id = uos.strategy_modified_netid
     Left Join task_responsible tr On tr.task_id = uos.task_id
     Left Join entity On entity.id_number = tr.id_number
     Group By
       uos.prospect_id
       , uos.university_strategy
       , uos.strategy_sched_date
+      , uos.strategy_modified_date
+      , uos.strategy_modified_netid
+      , netids.report_name
   )
   -- Main query; uses nu_prs_trp_prospect fields if available
   Select Distinct
@@ -1739,13 +1784,15 @@ Cursor c_university_strategy Is
         Else uos.university_strategy
       End As university_strategy
     , Case
-        When prs.strategy_description Is Not Null Then to_date2(prs.strategy_date, 'mm/dd/yyyy')
+        When prs.strategy_description Is Not Null Then ksm_pkg.to_date2(prs.strategy_date, 'mm/dd/yyyy')
         Else uos.strategy_sched_date
       End As strategy_sched_date
     , Case
         When prs.strategy_description Is Not Null Then task_resp
         Else uos.strategy_responsible
       End As strategy_responsible
+    , uos.strategy_modified_date
+    , uos.strategy_modified_name
   From next_uos_resp uos
   Left Join advance_nu.nu_prs_trp_prospect prs On prs.prospect_id = uos.prospect_id
   ;
@@ -2564,6 +2611,15 @@ Cursor c_gift_credit_campaign_2008 Is
       From tms_pledge_type
     )
   )
+  -- Unsplit definition - summing legal amounts across the KSM portion of each gift
+  , unsplit As (
+    Select
+      rcpt_or_plg_number
+      , sum(amount) As unsplit_amount
+    From nu_rpt_t_cmmt_dtl_daily daily
+    Where daily.alloc_school = 'KM'
+    Group By rcpt_or_plg_number
+  )
   -- Main query
   (
   Select
@@ -2571,11 +2627,12 @@ Cursor c_gift_credit_campaign_2008 Is
     , record_type_code
     , person_or_org
     , birth_dt
-    , rcpt_or_plg_number
+    , daily.rcpt_or_plg_number
     , xsequence
     , anons.anon
     , amount
     , credited_amount
+    , unsplit.unsplit_amount
     , year_of_giving
     , date_of_record
     , alloc_code
@@ -2597,6 +2654,7 @@ Cursor c_gift_credit_campaign_2008 Is
   Inner Join tms_trans On tms_trans.transaction_type_code = daily.transaction_type
   Left Join anons On anons.tx_number = daily.rcpt_or_plg_number
     And anons.tx_sequence = daily.xsequence
+  Left Join unsplit On unsplit.rcpt_or_plg_number = daily.rcpt_or_plg_number
   Where daily.alloc_school = 'KM'
   ) Union All (
   -- Internal transfer; 344303 is 50%
@@ -2610,6 +2668,7 @@ Cursor c_gift_credit_campaign_2008 Is
     , anons.anon
     , 344303 As amount
     , 344303 As credited_amount
+    , 344303 As unsplit_amount
     , year_of_giving
     , date_of_record
     , alloc_code
@@ -2858,6 +2917,37 @@ Cursor c_special_handling_concat Is
       ml.id_number
       , e.spouse_id_number
   )
+  -- Alerts
+  , all_alerts As (
+    Select
+      id_number
+      , start_date
+      , stop_date
+      , message
+      -- Kellogg Stewardship Issue indicator
+      , Case
+          When lower(message) Like '%ksm%stewardship%issue%'
+            Or lower(message) Like '%kellogg%stewardship%issue%'
+            Then 'Y'
+          End
+        As ksm_stewardship_issue
+    From zz_alert_message
+  )
+  , alerts As (
+    Select
+      all_alerts.id_number
+      , e.spouse_id_number
+      , start_date
+      , stop_date
+      , message As alert_message
+      , ksm_stewardship_issue
+    From all_alerts
+    Inner Join entity e
+      On e.id_number = all_alerts.id_number
+    Where
+      ksm_stewardship_issue = 'Y'
+      -- Or other indicators, if ever added
+  )
   -- All IDs
   , ids As (
     Select id_number, spouse_id_number
@@ -2865,6 +2955,9 @@ Cursor c_special_handling_concat Is
     Union
     Select id_number, spouse_id_number
     From mailing_lists
+    Union
+    Select id_number, spouse_id_number
+    From alerts
   )
   -- Universal no contact or no solicit
   -- Anyone with one of a few select codes should NEVER be contacted or solicited
@@ -2974,9 +3067,12 @@ Cursor c_special_handling_concat Is
           Or no_texts_solicit = 'Y'
           Then 'Y'
       End As no_texts_sol_ind
+    -- Alerts
+    , alerts.ksm_stewardship_issue
   From unc_ids ids
   Left Join spec_hnd On spec_hnd.id_number = ids.id_number
   Left Join mailing_lists On mailing_lists.id_number = ids.id_number
+  Left Join alerts On alerts.id_number = ids.id_number
   ;
 
 /*************************************************************************
@@ -3222,6 +3318,13 @@ Function get_performance_year(dt In date)
   
   Begin
     this_year := extract(year from dt);
+    -- If year is pre 2020 use the old start month
+    If this_year < 2020 Then
+      If extract(month from dt) < py_start_month_pre_py21 Then
+        Return this_year;
+      End If;
+      Return (this_year + 1);
+    End If;
     -- If month is before fy_start_month, return this_year
     If extract(month from dt) < py_start_month
       Or py_start_month = 1 Then
@@ -4193,6 +4296,19 @@ Function tbl_special_handling_concat
       
       Begin
         committees := committee_members (my_committee_cd => committee_KALC);
+        For i in 1..committees.count Loop
+          Pipe row(committees(i));
+        End Loop;
+        Return;
+      End;
+    
+    -- Kellogg Inclusion Coalition
+    Function tbl_committee_kic
+      Return t_committee_members Pipelined As
+      committees t_committee_members;
+      
+      Begin
+        committees := committee_members (my_committee_cd => committee_kic);
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;

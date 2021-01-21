@@ -79,6 +79,9 @@ cal As (
 , asst As (
   Select
     assignment.proposal_id
+    , Listagg(entity.id_number, '; ') Within Group
+        (Order By assignment.active_ind Desc, assignment.start_date Desc NULLS Last, assignment.date_modified Desc)
+        As proposal_assist_id
     , Listagg(entity.report_name, '; ') Within Group
         (Order By assignment.active_ind Desc, assignment.start_date Desc NULLS Last, assignment.date_modified Desc)
         As proposal_assist
@@ -162,7 +165,9 @@ Select Distinct
     As curr_ksm_proposal_manager
   , gos.team
     As curr_ksm_team
+  , asst.proposal_assist_id
   , asst.proposal_assist
+  , assn.historical_managers_id
   , assn.historical_managers
   , pcc.metrics_credit_ids
   , pcc.metrics_credit_names

@@ -15,6 +15,8 @@ AMP As (
     , status
     , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
       As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
   From table(rpt_pbh634.ksm_pkg.tbl_committee_AMP)
   Group By
     id_number
@@ -35,6 +37,8 @@ AMP As (
     , status
     , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
       As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
   From table(rpt_pbh634.ksm_pkg.tbl_committee_RealEstCouncil)
   Group By
     id_number
@@ -55,6 +59,8 @@ AMP As (
     , status
     , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
       As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
   From table(rpt_pbh634.ksm_pkg.tbl_committee_DivSummit)
   Group By
     id_number
@@ -75,6 +81,8 @@ AMP As (
     , status
     , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
       As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
   From table(rpt_pbh634.ksm_pkg.tbl_committee_WomenSummit)
   Group By
     id_number
@@ -95,6 +103,8 @@ AMP As (
     , status
     , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
       As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
   From table(rpt_pbh634.ksm_pkg.tbl_committee_CorpGov)
   Group By
     id_number
@@ -115,6 +125,8 @@ AMP As (
     , status
     , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
       As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
   From table(rpt_pbh634.ksm_pkg.tbl_committee_KFN)
   Group By
     id_number
@@ -135,6 +147,8 @@ AMP As (
     , status
     , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
       As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
   From table(rpt_pbh634.ksm_pkg.tbl_committee_gab)
   Group By
     id_number
@@ -155,6 +169,8 @@ AMP As (
     , status
     , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
       As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
   From table(rpt_pbh634.ksm_pkg.tbl_committee_healthcare)
   Group By
     id_number
@@ -175,6 +191,8 @@ AMP As (
     , status
     , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
       As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
   From table(rpt_pbh634.ksm_pkg.tbl_committee_WomensLeadership)
   Group By
     id_number
@@ -195,6 +213,8 @@ AMP As (
     , status
     , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
       As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
   From table(rpt_pbh634.ksm_pkg.tbl_committee_kac)
   Group By
     id_number
@@ -320,54 +340,63 @@ Select
   , gab.stop_dt As gab_stop_date
   , gab.status As gab_status
   , gab.role As gab_role
+  , gab.committee_title As gab_committee_title
   , Case When kfn.committee_code = 'KFN' Then 'Y' Else 'N' End
     As kfn_ind
   , kfn.start_dt As kfn_start_date
   , kfn.stop_dt As kfn_stop_date
   , kfn.status As kfn_status
   , kfn.role As kfn_role
+  , kfn.committee_title As kfn_committee_title
   , Case When corpgov.committee_code = 'KCGN' Then 'Y' Else 'N' End
     As corpgov_ind
   , corpgov.start_dt As corpgov_start_date
   , corpgov.stop_dt As corpgov_stop_date
   , corpgov.status As corpgov_status
   , corpgov.role As corpgov_role
+  , corpgov.committee_title As corpgov_committee_title
   , Case When divsummit.committee_code = 'KCDO' Then 'Y' Else 'N' End
     As divsummit_ind
   , divsummit.start_dt As ds_start_date
   , divsummit.stop_dt As ds_stop_date
   , divsummit.status As ds_status
   , divsummit.role As ds_role
+  , divsummit.committee_title As divsummit_committee_title
   , Case When RealEstCouncil.committee_code = 'KREAC' Then 'Y' Else 'N' End
     As realest_ind
   , realestcouncil.start_dt As rec_start_date
   , realestcouncil.stop_dt As rec_stop_date
   , realestcouncil.status As rec_status
   , realestcouncil.role As rec_role
+  , realestcouncil.committee_title As rec_committee_title
   , Case When amp.committee_code = 'KAMP' Then 'Y' Else 'N' End
     As amp_ind
   , amp.start_dt As amp_start_date
   , amp.stop_dt As amp_stop_date
   , amp.status As amp_status
   , amp.role As amp_role
+  , amp.committee_title As amp_committee_title
   , Case When healthcare.committee_code = 'HAK' Then 'Y' Else 'N' End
     As healthcare_ind
   , healthcare.start_dt As healthcare_start_date
   , healthcare.stop_dt As healthcare_stop_date
   , healthcare.status As healthcare_status
   , healthcare.role As healthcare_role
+  , healthcare.committee_title As healthcare_committee_title
   , Case When WomensLeadership.committee_code = 'KWLC' Then 'Y' Else 'N' End
     As womensleadership_ind
   , womensleadership.start_dt As womensleadership_start_date
   , womensleadership.stop_dt As womensleadership_stop_date
   , womensleadership.status As womensleadership_status
   , womensleadership.role As womensleadership_role
+  , womensleadership.committee_title As womens_committee_title
   , Case When KAC.committee_code = 'KACNA' Then 'Y' Else 'N' End
     As kac_ind
   , kac.start_dt As kac_start_date
   , kac.stop_dt As kac_stop_date
   , kac.status As kac_status
   , kac.role As kac_role
+  , kac.committee_title As kac_committee_title
   , nvl(prs.giving_total, 0) As nu_lt_giving
   , acg.cfy_nult_giving
   , acg.lfy_nult_giving
