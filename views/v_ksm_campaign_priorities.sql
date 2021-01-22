@@ -1,15 +1,21 @@
-CREATE OR REPLACE VIEW RPT_ABM1914.V_KSM_CAMPAIGN_PRIORITIES AS
+Create Or Replace View v_ksm_campaign_priorities As
 
 With
 -- KSM-specific campaign new gifts & commitments definition
 
-ksm_data As (
+-- Parameters used throughout the code
+params As (
+  Select
+    to_date('20100901', 'YYYYMMDD') As annual_sw_counting_date
+  From DUAL
+)
+
+, ksm_data As (
   Select *
   From table(rpt_pbh634.ksm_pkg.tbl_gift_credit_campaign)
 )
 
 -- Allocation-priority assignment, taken from RPT_BTAYLOR_WT09931_EXTRACTTRANSACTIONS
-
 , priorities As (
   Select
     field01 As allocation_code
@@ -18,7 +24,7 @@ ksm_data As (
 
 )
 
-  Select Distinct
+Select Distinct
   rcpt_or_plg_number
   , alloc_code
   -- Campaign priority coding
@@ -37,24 +43,40 @@ ksm_data As (
     When alloc_code = '3303000882101GFT'
       Then 'Global Hub'
     When priority = 'Kellogg Capital Projects'
-      And Not (date_of_record >= to_date('20100901', 'YYYYMMDD') And annual_sw = 'Y')
+      And Not (
+        date_of_record >= params.annual_sw_counting_date
+        And annual_sw = 'Y'
+      )
       Then 'Educational Mission'
     -- Global Innovation logic
-    When priority = 'Global Innovation' Or (date_of_record >= to_date('20100901', 'YYYYMMDD') And annual_sw = 'Y') Then (
-      Case
-        When year_of_giving >= '2011' And (annual_sw = 'Y' Or alloc_code = 'BE')
-          Then 'Global Innovation Unrestricted'
-        When date_of_record >= to_date('20100901', 'YYYYMMDD') And annual_sw = 'Y'
-          Then 'Global Innovation'
-        Else priority
-      End
-    )
-
-    When date_of_record >= to_date('20100901', 'YYYYMMDD') And annual_sw = 'Y'
+    When priority = 'Global Innovation'
+      Or (
+        date_of_record >= params.annual_sw_counting_date
+        And annual_sw = 'Y'
+      )
+      Then (
+        Case
+          When year_of_giving >= 2011
+            And (
+              annual_sw = 'Y'
+              Or alloc_code = 'BE'
+            )
+            Then 'Global Innovation Unrestricted'
+          When date_of_record >= params.annual_sw_counting_date
+            And annual_sw = 'Y'
+            Then 'Global Innovation'
+          Else priority
+          End
+      )
+    When date_of_record >= params.annual_sw_counting_date
+      And annual_sw = 'Y'
       Then 'Global Innovation'
     -- Fallback -- read from WT099030_ALLOCATIONS_20111130 table
     Else priority
-  End
+    End
   As ksm_campaign_category
-  From ksm_data
-  Left Join priorities On priorities.allocation_code = ksm_data.alloc_code
+From ksm_data
+Cross Join params
+Left Join priorities
+  On priorities.allocation_code = ksm_data.alloc_code
+;
