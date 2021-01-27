@@ -535,6 +535,27 @@ cal As (
   Group By id_hh_src_dnr
 )
 
+-- Divorced, widowed, etc.
+, marital_status As (
+  Select
+    former_spouse.id_number
+    , former_spouse.marital_status_code
+    , tms_ms.short_desc
+      As marital_status
+    , former_spouse.marital_status_chg_dt
+  From former_spouse
+  Inner Join tms_marital_status tms_ms
+    On tms_ms.marital_status_code = former_spouse.marital_status_code
+  Where former_spouse.marital_status_code Not In ('M', 'P', 'S', 'V', 'X')
+)
+, marital_status_concat As (
+  Select
+    id_number
+    , Listagg(marital_status, '; ') Within Group (Order By marital_status_chg_dt Desc)
+  From marital_status
+  Group By id_number
+)
+
 -- Final results
 Select Distinct
   -- Entity fields
@@ -651,6 +672,7 @@ Left Join klc_cfy On klc_cfy.household_id = af_gifts.id_hh_src_dnr
 Left Join klc_pfy1 On klc_pfy1.household_id = af_gifts.id_hh_src_dnr
 Left Join klc_pfy2 On klc_pfy2.household_id = af_gifts.id_hh_src_dnr
 Left Join klc_pfy3 On klc_pfy3.household_id = af_gifts.id_hh_src_dnr
+Left Join marital_status_concat msc On msc.id_number = af_gifts.id_hh_src_dnr
 ;
 
 /*****************************************
