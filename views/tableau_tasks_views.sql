@@ -261,117 +261,132 @@ Where pr.program_code = 'KM'
 ;
 
 -- Outreach tasks view used in the KSM Prospect Task Dashboard
-CREATE OR REPLACE VIEW RPT_DGZ654.V_OUTREACH_90 AS
+Create Or Replace View rpt_dgz654.v_outreach_90 As
+
 With
 
 --Selects a master outreach task per task responsible
-DA AS (
-          SELECT
-          vt.Task_responsible_ID
-          , vt.Id_number
-          , MAX(VT.Task_ID) keep(dense_rank FIRST ORDER BY VT.date_added ASC, VT.Task_ID ASC) AS Outreach_Task_ID
-          , MAX(VT.Date_added) keep(dense_rank FIRST ORDER BY VT.date_added ASC, VT.Task_ID ASC) AS Outreach_Date_Added
-          FROM v_Task_Report VT
-          GROUP BY vt.Task_responsible_ID, vt.Id_number
-
-),
+da As (
+  Select
+    vt.task_responsible_id
+    , vt.id_number
+    , max(vt.task_id) keep(dense_rank First Order By vt.date_added Asc, vt.task_id Asc)
+      As outreach_task_id
+    , max(vt.date_added) keep(dense_rank First Order By vt.date_added Asc, vt.task_id Asc)
+      As outreach_date_added
+  From rpt_dgz654.v_task_report vt
+  Group By
+    vt.task_responsible_id
+    , vt.id_number
+)
 
 -- New leads that have been assigned an outreach task for over 90 days, that have not been disqualified
 --Includes active and inactive tasks so we capture outreach to new leads that have been assigned as LGO or PM
-New_Leads AS(
-          SELECT distinct
-          vt.Task_responsible_ID
-          , vt.task_responsible
-          , DA.Outreach_Task_ID
-          , VT.ID_number
-          , VT.Prospect_ID
-          , vt.prospect_name
-          , VT.total_disqual
-          , cal.Today
-          , DA.Outreach_Date_Added
-          , cal.TODAY - DA.Outreach_date_added AS Days_Assigned
-          FROM v_Task_Report VT
-          Cross Join rpt_pbh634.v_current_calendar cal
-          Inner Join DA
-          ON DA.Outreach_Task_ID = VT.task_ID
-          Where cal.TODAY - DA.Outreach_date_added > 90
-          AND VT.total_disqual = 0
-          ORDER by VT.ID_Number
-),
+, new_leads As (
+  Select Distinct
+    vt.task_responsible_id
+    , vt.task_responsible
+    , da.outreach_task_id
+    , vt.id_number
+    , vt.prospect_id
+    , vt.prospect_name
+    , vt.total_disqual
+    , cal.today
+    , da.outreach_date_added
+    , cal.today - da.outreach_date_added
+      As days_assigned
+  From rpt_dgz654.v_task_report vt
+  Cross Join rpt_pbh634.v_current_calendar cal
+  Inner Join da
+    On da.outreach_task_id = vt.task_id
+  Where cal.today - da.outreach_date_added > 90
+    And vt.total_disqual = 0
+  Order By vt.id_number Asc
+)
 
---all contact reports
-CR AS (
-          Select
-          CF.report_id
-          , CF.Credited
-          , CF.Credited_Name
-          , CF.Contact_Type
-          , CF.Id_Number
-          , CF.prospect_ID
-          , CF.Contacted_Name
-          , CF.Report_name
-          , CF.Contact_Date
-          FROM rpt_pbh634.v_contact_reports_fast CF
-          Inner Join New_Leads NLD
-          ON NLD.ID_Number = CF.ID_Number
-),
+-- All contact reports
+, cr As (
+  Select
+    cf.report_id
+    , cf.credited
+    , cf.credited_name
+    , cf.contact_type
+    , cf.id_number
+    , cf.prospect_id
+    , cf.contacted_name
+    , cf.report_name
+    , cf.contact_date
+  From rpt_pbh634.v_contact_reports_fast cf
+  Inner Join new_leads nld
+    On nld.id_number = cf.id_number
+)
 
 -- This is where we actually do the summarizing, and what is joined at the end
-CR_summary As (
-           Select
-           CR.Id_Number
-           , CR.Credited
-           , count(Distinct report_id) As contact_reports
-           , sum(Case When NLD.Outreach_Date_added <= contact_date Then 1 Else 0 End)
-             As outreach_post_assignment
-           , MAX(CR.Contact_Date) AS Latest_Contact
-           FROM CR
-           Inner Join new_leads NLD
-           ON CR.id_number = NLD.ID_number
-           AND CR.Credited = NLD.Task_responsible_ID
-           Group By
-           CR.Id_Number
-           , CR.Credited
-           ORDER BY CR.ID_NUMBER
-),
+, cr_summary As (
+  Select
+    cr.id_number
+    , cr.credited
+    , count(Distinct report_id)
+      As contact_reports
+    , sum(Case When nld.outreach_date_added <= contact_date Then 1 Else 0 End)
+      As outreach_post_assignment
+    , max(cr.contact_date)
+      As latest_contact
+  From cr
+  Inner Join new_leads nld
+    On cr.id_number = nld.id_number
+  And cr.credited = nld.task_responsible_id
+  Group By
+    cr.id_number
+    , cr.credited
+  Order By cr.id_number Asc
+)
 
-STA AS(
-          Select ST.*
-          , case when ST.former_staff IS NULL
-                 THEN 'Y'
-                   Else NULL
-                      End KSM_Current_Staff
-          FROM table(rpt_pbh634.ksm_pkg.tbl_frontline_ksm_staff) ST
+-- Staff view
+, sta As (
+  Select
+    st.*
+    , Case
+        When st.former_staff Is Null
+          Then 'Y'
+        Else NULL
+        End
+      As ksm_current_staff
+  From table(rpt_pbh634.ksm_pkg.tbl_frontline_ksm_staff) st
 )
 
 Select Distinct
-NLD.Task_responsible_ID
-, NLD.task_responsible
-, nvl(STA.KSM_Current_Staff,'N') AS KSM_Current_Staff
-, NLD.Outreach_Date_added
-, NLD.Days_Assigned
-, NLD.ID_number
-, E.Pref_Mail_Name
-, NLD.prospect_ID
-, NLD.prospect_name
-, MGO.id_segment
-, MGO.id_score
-, MGO.pr_segment
-, MGO.pr_score
-, nvl(CR_summary.contact_reports,0) As all_outreach
-, nvl(CR_summary.outreach_post_assignment,0) AS outreach_post_assignment
-, CR_summary.latest_contact
-, cal.today - CR_summary.latest_contact AS Days_Since_Last_Contact
+  nld.task_responsible_id
+  , nld.task_responsible
+  , nvl(sta.ksm_current_staff, 'N')
+    As ksm_current_staff
+  , nld.outreach_date_added
+  , nld.days_assigned
+  , nld.id_number
+  , e.pref_mail_name
+  , nld.prospect_id
+  , nld.prospect_name
+  , mgo.id_segment
+  , mgo.id_score
+  , mgo.pr_segment
+  , mgo.pr_score
+  , nvl(cr_summary.contact_reports, 0)
+    As all_outreach
+  , nvl(cr_summary.outreach_post_assignment, 0)
+    As outreach_post_assignment
+  , cr_summary.latest_contact
+  , cal.today - cr_summary.latest_contact
+    As days_since_last_contact
 --, CR.Contact_Date
-FROM New_Leads NLD
-Left join CR_summary
-ON CR_summary.id_number = NLD.ID_number
-AND CR_summary.Credited = NLD.Task_responsible_ID
-Left Join rpt_pbh634.v_ksm_model_mg MGO
-ON MGO.ID_Number = NLD.ID_number
-Inner join Entity E
-ON E.ID_Number = NLD.ID_Number
-Left Join STA
-ON STA.ID_Number = NLD.Task_responsible_ID
+From new_leads nld
 Cross Join rpt_pbh634.v_current_calendar cal
+Inner Join entity e
+  On e.id_number = nld.id_number
+Left Join cr_summary
+  On cr_summary.id_number = nld.id_number
+  And cr_summary.credited = nld.task_responsible_id
+Left Join rpt_pbh634.v_ksm_model_mg mgo
+  On mgo.id_number = nld.id_number
+Left Join sta
+  On sta.id_number = nld.task_responsible_id
 ;
