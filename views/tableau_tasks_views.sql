@@ -59,9 +59,9 @@ params As (
 
 , contact_counts As (
   Select
-    task_ID
-    , task_responsible_ID
-    , Count(Distinct
+    task_id
+    , task_responsible_id
+    , count(Distinct
         Case
           When contact_date Between task_detail.date_added And task_detail.sched_date
             And task_code = 'CO'
@@ -69,7 +69,7 @@ params As (
             Then report_id
           End
       ) As contacts_during_task
-    , Count(Distinct
+    , count(Distinct
         Case
           When contact_date Between task_detail.date_added And task_detail.sched_date
             And task_code = 'CO'
@@ -78,7 +78,7 @@ params As (
             Then report_id
           End
       ) As nonvisit_contacts_during_task
-    , Count(Distinct
+    , count(Distinct
         Case
           When contact_date > task_detail.date_added
             And contact_type = 'Visit'
