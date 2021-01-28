@@ -552,6 +552,7 @@ cal As (
   Select
     id_number
     , Listagg(marital_status, '; ') Within Group (Order By marital_status_chg_dt Desc)
+      As marital_status_concat
   From marital_status
   Group By id_number
 )
@@ -576,6 +577,7 @@ Select Distinct
   , spouse_deg.degrees_concat As spouse_degrees_concat
   , spouse_deg.program As spouse_program
   , spouse_deg.program_group As spouse_program_group
+  , msc.marital_status_concat
   , master_state
   , master_country
   -- Prospect reporting table fields
