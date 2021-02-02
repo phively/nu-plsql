@@ -67,6 +67,10 @@ proposals As (
     -- Date objects
     , cal.yesterday
     , cal.curr_fy
+    , cal.curr_py
+      As performance_year
+    , cal.curr_py_start
+    , cal.next_py_start
   From v_proposal_history_fast phf
   Cross Join v_current_calendar cal
   Where
@@ -244,6 +248,9 @@ proposals As (
     -- Date objects
     , yesterday
     , curr_fy
+    , performance_year
+    , curr_py_start
+    , next_py_start
   From proposals
   Left Join pe
     On pe.prospect_id = proposals.prospect_id
