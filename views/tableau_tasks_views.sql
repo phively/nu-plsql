@@ -223,7 +223,7 @@ Inner Join rpt_pbh634.v_entity_ksm_households hh
   On hh.id_number = pe.id_number
 Left Join nu_prs_trp_prospect pp
   On pe.id_number = pp.id_number
-Inner Join program_prospect pr
+Left Join program_prospect pr
   On pr.prospect_id = p.prospect_id
 Inner Join task_detail
   On task_detail.prospect_id2 = p.prospect_id
@@ -274,6 +274,8 @@ da As (
       As outreach_task_id
     , max(vt.date_added) keep(dense_rank First Order By vt.date_added Asc, vt.task_id Asc)
       As outreach_date_added
+    , max(vt.sched_date) keep(dense_rank First Order By vt.date_added Asc, vt.task_id Asc)
+      As outreach_date_scheduled
   From rpt_dgz654.v_task_report vt
   Group By
     vt.task_responsible_id
@@ -287,12 +289,15 @@ da As (
     vt.task_responsible_id
     , vt.task_responsible
     , da.outreach_task_id
+    , vt.task_status_code
+    , vt.task_status
     , vt.id_number
     , vt.prospect_id
     , vt.prospect_name
     , vt.total_disqual
     , cal.today
     , da.outreach_date_added
+    , da.outreach_date_scheduled
     , cal.today - da.outreach_date_added
       As days_assigned
   From rpt_dgz654.v_task_report vt
@@ -358,9 +363,12 @@ da As (
 Select Distinct
   nld.task_responsible_id
   , nld.task_responsible
+  , nld.task_status_code
+  , nld.task_status
   , nvl(sta.ksm_current_staff, 'N')
     As ksm_current_staff
   , nld.outreach_date_added
+  , nld.outreach_date_scheduled
   , nld.days_assigned
   , nld.id_number
   , e.pref_mail_name
