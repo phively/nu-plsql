@@ -249,6 +249,12 @@ proposals As (
     , yesterday
     , curr_fy
     , performance_year
+    , rpt_pbh634.ksm_pkg.get_performance_year(start_date)
+      As start_py
+    , rpt_pbh634.ksm_pkg.get_performance_year(ask_date)
+      As ask_py
+    , rpt_pbh634.ksm_pkg.get_performance_year(close_date)
+      As close_py
     , curr_py_start
     , next_py_start
   From proposals
