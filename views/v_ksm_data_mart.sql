@@ -37,6 +37,7 @@ Inner Join rpt_pbh634.v_entity_ksm_degrees deg
   On deg.id_number = interest.id_number --- Only Kellogg Alumni
 Where tms_interest.interest_code Like 'L%' --- Any Linkedin Industry Code
   Or tms_Interest.interest_code = '16'  --- KIS also wants the "16" Research Code
+and deg.record_status_code != 'X' --- Remove Purgable
 Order By interest_code Asc
 ;
 
@@ -82,6 +83,7 @@ Left Join ksm_ids net
 Left Join ksm_ids kex
   On kex.id_number = ksm_ids.id_number
   And kex.ids_type_code = 'KEX'
+  And deg.record_status_code != 'X' --- Remove Purgable
   --- Selects IDs for each row
   ;
 
@@ -190,6 +192,7 @@ Left Join rpt_pbh634.v_addr_continents tms_bus
   On business_address.country_code = tms_bus.country_code --- Join to get Home Country Description
 Left Join rpt_pbh634.v_addr_continents tms_home
   On home_address.country_code = tms_home.country_code
+and deg.record_status_code != 'X' --- Remove Purgable
 Order By deg.id_number Asc
 ;
 
@@ -243,7 +246,8 @@ Left  Join tms_job_status
 Left Join org_employer
   On org_employer.id_number = employ.employer_id_number --- To get the name of those with employee ID
 Where employ.job_status_code In ('C', 'P', 'Q', 'R', ' ', 'L')
---- Employment Key: C = Current, P = Past, Q = Semi Retired R = Retired L = On Leave 
+--- Employment Key: C = Current, P = Past, Q = Semi Retired R = Retired L = On Leave
+and deg.record_status_code != 'X' --- Remove Purgable
 Order By employ.id_Number Asc
 ;
 
@@ -304,6 +308,7 @@ Left Join tms_majors m2
   On m2.major_code = degrees.major_code2
 Left Join tms_majors m3
   On m3.major_code = degrees.major_code3
+Where deg.record_status_code != 'X' --- Remove Purgable
 ;
 
 /************************************************************************
@@ -361,6 +366,7 @@ Group By ec.id_number)
   Select
     deg.id_number As catracks_id
     , deg.REPORT_NAME
+    , deg.RECORD_STATUS_CODE
     , deg.degrees_concat
     , deg.degrees_verbose
     , deg.program
@@ -421,18 +427,17 @@ Group By ec.id_number)
   Left Join linked
     On linked.id_number = deg.id_number
   Where deg.record_status_code In ('A', 'C', 'L', 'D')
+  and deg.record_status_code != 'X' --- Remove Purgable
 )
 
 Select
   catracks_id
-  , d
   , report_name
   , degrees_concat
   , degrees_verbose
   , program
   , program_group
   , majors_concat
-  , record_status_code
   , record_status_desc
   , home_city
   , home_state
