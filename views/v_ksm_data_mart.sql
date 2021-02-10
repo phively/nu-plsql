@@ -438,6 +438,7 @@ Select
   , program
   , program_group
   , majors_concat
+  , record_status_code
   , record_status_desc
   , home_city
   , home_state
