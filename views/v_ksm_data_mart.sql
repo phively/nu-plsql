@@ -84,7 +84,7 @@ Left Join ksm_ids net
 Left Join ksm_ids kex
   On kex.id_number = ksm_ids.id_number
   And kex.ids_type_code = 'KEX'
-  And deg.record_status_code != 'X' --- Remove Purgable
+Where deg.record_status_code != 'X' --- Remove Purgable
   --- Selects IDs for each row
   ;
 
@@ -193,7 +193,7 @@ Left Join rpt_pbh634.v_addr_continents tms_bus
   On business_address.country_code = tms_bus.country_code --- Join to get Home Country Description
 Left Join rpt_pbh634.v_addr_continents tms_home
   On home_address.country_code = tms_home.country_code
-and deg.record_status_code != 'X' --- Remove Purgable
+Where deg.record_status_code != 'X' --- Remove Purgable
 Order By deg.id_number Asc
 ;
 
@@ -439,7 +439,6 @@ Select
   , program
   , program_group
   , majors_concat
-  , record_status_code
   , record_status_desc
   , home_city
   , home_state
@@ -559,7 +558,7 @@ Left Join ksm_ids net
 Left Join ksm_ids kex
   On kex.id_number = ksm_ids.id_number
   And kex.ids_type_code = 'KEX'
-  And deg.record_status_code != 'X' --- Remove Purgable
+Where deg.record_status_code != 'X' --- Remove Purgable
   --- Selects IDs for each row
   ;
 
@@ -668,7 +667,7 @@ Left Join rpt_pbh634.v_addr_continents tms_bus
   On business_address.country_code = tms_bus.country_code --- Join to get Home Country Description
 Left Join rpt_pbh634.v_addr_continents tms_home
   On home_address.country_code = tms_home.country_code
-and deg.record_status_code != 'X' --- Remove Purgable
+Where deg.record_status_code != 'X' --- Remove Purgable
 Order By deg.id_number Asc
 ;
 
@@ -914,7 +913,6 @@ Select
   , program
   , program_group
   , majors_concat
-  , record_status_code
   , record_status_desc
   , home_city
   , home_state
@@ -948,4 +946,4 @@ Select
   , employment_date_modified
 From emp_chooser
 ;
->>>>>>> 303657971762f36e593ef0d4d4218a4187e2206d
+>>>>>>> 404706dd9cafa1c2ee2f6380b716ea8f749ebb76
