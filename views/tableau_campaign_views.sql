@@ -13,14 +13,6 @@ ksm_data As (
   From table(ksm_pkg.tbl_gift_credit_campaign)
 )
 
-/* Allocation-priority assignment, taken from RPT_BTAYLOR_WT09931_EXTRACTTRANSACTIONS */
-, priorities As (
-  Select
-    field01 As allocation_code
-    , field02 As priority
-  From WT099030_ALLOCATIONS_20111130 wt
-)
-
 /* Additional KSM-specific derived fields */
 Select
   ksm_data.*
@@ -47,45 +39,17 @@ Select
       When amount <  2500    Then 'E <$2.5K'
     End As giving_band
   -- Campaign priority coding
-  -- Logic copied from function RPT_BTAYLOR.WT09931_EXTRACTTRANSACTIONS
-  , Case
-      -- Special receipt overrides
-      When rcpt_or_plg_number In ('0002214209', '0002224310', '0002323505', '0002259492', '0002293065', '0002335663')
-        Then 'Global Hub'
-      When rcpt_or_plg_number In ('0002144755')
-        Then 'Global Innovation'
-      When rcpt_or_plg_number In ('0002299914', '0002263981', '0002011088', '0002414118')
-        Then 'Thought Leadership'
-      -- General logic
-      When alloc_code In ('BE', 'LE')
-        Then 'Educational Mission Unrestricted'
-      When alloc_code = '3303000882101GFT'
-        Then 'Global Hub'
-      When priority = 'Kellogg Capital Projects'
-        And Not (date_of_record >= to_date('20100901', 'YYYYMMDD') And annual_sw = 'Y')
-        Then 'Educational Mission'
-      -- Global Innovation logic
-      When priority = 'Global Innovation' Or (date_of_record >= to_date('20100901', 'YYYYMMDD') And annual_sw = 'Y') Then (
-        Case
-          When year_of_giving >= '2011' And (annual_sw = 'Y' Or alloc_code = 'BE')
-            Then 'Global Innovation Unrestricted'
-          When date_of_record >= to_date('20100901', 'YYYYMMDD') And annual_sw = 'Y'
-            Then 'Global Innovation'
-          Else priority
-        End
-      )
-      When date_of_record >= to_date('20100901', 'YYYYMMDD') And annual_sw = 'Y'
-        Then 'Global Innovation'
-      -- Fallback -- read from WT099030_ALLOCATIONS_20111130 table
-      Else priority
-    End As ksm_campaign_category
+  , priorities.ksm_campaign_category
   -- Replace null ksm_source_donor with id_number
-  , NVL(ksm_pkg.get_gift_source_donor_ksm(rcpt_or_plg_number), ksm_data.id_number) As ksm_source_donor
+  , NVL(ksm_pkg.get_gift_source_donor_ksm(ksm_data.rcpt_or_plg_number), ksm_data.id_number) As ksm_source_donor
 From ksm_data
 Cross Join v_current_calendar cal
 Inner Join entity On ksm_data.id_number = entity.id_number
-Left Join priorities On priorities.allocation_code = ksm_data.alloc_code
-Left Join nu_prs_trp_prospect prs On prs.id_number = ksm_data.id_number
+Left Join v_ksm_campaign_priorities priorities
+  On priorities.rcpt_or_plg_number = ksm_data.rcpt_or_plg_number
+  And priorities.alloc_code = ksm_data.alloc_code
+Left Join nu_prs_trp_prospect prs
+  On prs.id_number = ksm_data.id_number
 ;
 
 -- Householded version of above
@@ -122,12 +86,14 @@ Select
       When household_record In ('CP', 'CF') Then '4 Corporations'
       When household_record = 'FP' Then '5 Foundations'
       Else '6 Other Organizations'
-    End As hh_source_ksm
+      End
+    As hh_source_ksm
   -- Calendar
   , yesterday
 From ksm_campaign
 Cross Join v_current_calendar cal
-Inner Join v_entity_ksm_households hh On ksm_campaign.ksm_source_donor = hh.id_number
+Inner Join v_entity_ksm_households hh
+  On ksm_campaign.ksm_source_donor = hh.id_number
 ;
 
 /*******************************

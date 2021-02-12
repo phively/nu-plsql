@@ -1,3 +1,4 @@
+-- Task details used in the KSM Prospect Task Dashboard
 Create Or Replace View rpt_dgz654.v_task_report As
 
 With
@@ -58,9 +59,9 @@ params As (
 
 , contact_counts As (
   Select
-    task_ID
-    , task_responsible_ID
-    , Count(Distinct
+    task_id
+    , task_responsible_id
+    , count(Distinct
         Case
           When contact_date Between task_detail.date_added And task_detail.sched_date
             And task_code = 'CO'
@@ -68,7 +69,7 @@ params As (
             Then report_id
           End
       ) As contacts_during_task
-    , Count(Distinct
+    , count(Distinct
         Case
           When contact_date Between task_detail.date_added And task_detail.sched_date
             And task_code = 'CO'
@@ -77,7 +78,7 @@ params As (
             Then report_id
           End
       ) As nonvisit_contacts_during_task
-    , Count(Distinct
+    , count(Distinct
         Case
           When contact_date > task_detail.date_added
             And contact_type = 'Visit'
@@ -222,7 +223,7 @@ Inner Join rpt_pbh634.v_entity_ksm_households hh
   On hh.id_number = pe.id_number
 Left Join nu_prs_trp_prospect pp
   On pe.id_number = pp.id_number
-Inner Join program_prospect pr
+Left Join program_prospect pr
   On pr.prospect_id = p.prospect_id
 Inner Join task_detail
   On task_detail.prospect_id2 = p.prospect_id
@@ -257,4 +258,143 @@ Left Join disqualified d
 Left Join rpt_pbh634.v_ksm_model_mg mgo
   On mgo.id_number = pp.id_number
 Where pr.program_code = 'KM'
+;
+
+-- Outreach tasks view used in the KSM Prospect Task Dashboard
+Create Or Replace View rpt_dgz654.v_outreach_90 As
+
+With
+
+--Selects a master outreach task per task responsible
+da As (
+  Select
+    vt.task_responsible_id
+    , vt.id_number
+    , max(vt.task_id) keep(dense_rank First Order By vt.date_added Asc, vt.task_id Asc)
+      As outreach_task_id
+    , max(vt.date_added) keep(dense_rank First Order By vt.date_added Asc, vt.task_id Asc)
+      As outreach_date_added
+    , max(vt.sched_date) keep(dense_rank First Order By vt.date_added Asc, vt.task_id Asc)
+      As outreach_date_scheduled
+  From rpt_dgz654.v_task_report vt
+  Group By
+    vt.task_responsible_id
+    , vt.id_number
+)
+
+-- New leads that have been assigned an outreach task for over 90 days, that have not been disqualified
+--Includes active and inactive tasks so we capture outreach to new leads that have been assigned as LGO or PM
+, new_leads As (
+  Select Distinct
+    vt.task_responsible_id
+    , vt.task_responsible
+    , da.outreach_task_id
+    , vt.task_status_code
+    , vt.task_status
+    , vt.id_number
+    , vt.prospect_id
+    , vt.prospect_name
+    , vt.total_disqual
+    , cal.today
+    , da.outreach_date_added
+    , da.outreach_date_scheduled
+    , cal.today - da.outreach_date_added
+      As days_assigned
+  From rpt_dgz654.v_task_report vt
+  Cross Join rpt_pbh634.v_current_calendar cal
+  Inner Join da
+    On da.outreach_task_id = vt.task_id
+  Where cal.today - da.outreach_date_added > 90
+    And vt.total_disqual = 0
+  Order By vt.id_number Asc
+)
+
+-- All contact reports
+, cr As (
+  Select
+    cf.report_id
+    , cf.credited
+    , cf.credited_name
+    , cf.contact_type
+    , cf.id_number
+    , cf.prospect_id
+    , cf.contacted_name
+    , cf.report_name
+    , cf.contact_date
+  From rpt_pbh634.v_contact_reports_fast cf
+  Inner Join new_leads nld
+    On nld.id_number = cf.id_number
+)
+
+-- This is where we actually do the summarizing, and what is joined at the end
+, cr_summary As (
+  Select
+    cr.id_number
+    , cr.credited
+    , count(Distinct report_id)
+      As contact_reports
+    , sum(Case When nld.outreach_date_added <= contact_date Then 1 Else 0 End)
+      As outreach_post_assignment
+    , max(cr.contact_date)
+      As latest_contact
+  From cr
+  Inner Join new_leads nld
+    On cr.id_number = nld.id_number
+  And cr.credited = nld.task_responsible_id
+  Group By
+    cr.id_number
+    , cr.credited
+  Order By cr.id_number Asc
+)
+
+-- Staff view
+, sta As (
+  Select
+    st.*
+    , Case
+        When st.former_staff Is Null
+          Then 'Y'
+        Else NULL
+        End
+      As ksm_current_staff
+  From table(rpt_pbh634.ksm_pkg.tbl_frontline_ksm_staff) st
+)
+
+Select Distinct
+  nld.task_responsible_id
+  , nld.task_responsible
+  , nld.task_status_code
+  , nld.task_status
+  , nvl(sta.ksm_current_staff, 'N')
+    As ksm_current_staff
+  , nld.outreach_date_added
+  , nld.outreach_date_scheduled
+  , nld.days_assigned
+  , nld.id_number
+  , e.pref_mail_name
+  , nld.prospect_id
+  , nld.prospect_name
+  , mgo.id_segment
+  , mgo.id_score
+  , mgo.pr_segment
+  , mgo.pr_score
+  , nvl(cr_summary.contact_reports, 0)
+    As all_outreach
+  , nvl(cr_summary.outreach_post_assignment, 0)
+    As outreach_post_assignment
+  , cr_summary.latest_contact
+  , cal.today - cr_summary.latest_contact
+    As days_since_last_contact
+--, CR.Contact_Date
+From new_leads nld
+Cross Join rpt_pbh634.v_current_calendar cal
+Inner Join entity e
+  On e.id_number = nld.id_number
+Left Join cr_summary
+  On cr_summary.id_number = nld.id_number
+  And cr_summary.credited = nld.task_responsible_id
+Left Join rpt_pbh634.v_ksm_model_mg mgo
+  On mgo.id_number = nld.id_number
+Left Join sta
+  On sta.id_number = nld.task_responsible_id
 ;
