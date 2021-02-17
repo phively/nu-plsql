@@ -170,6 +170,18 @@ manual_exclusions_pre As (
   Inner Join prospect p On p.prospect_id = pd.prospect_id
   Where p.active_ind = 'Y' -- Active only
     And pd.proposals_sub_appr > 0 -- Must have proposals
+  Union
+  Select
+    pd.prospect_id
+    , entity.id_number
+    , pe.primary_ind
+    , pd.proposals_sub_appr
+  From ksm_proposal_data pd
+  Inner Join prospect_entity pe On pe.prospect_id = pd.prospect_id
+  Inner Join entity On entity.spouse_id_number = pe.id_number
+  Inner Join prospect p On p.prospect_id = pd.prospect_id
+  Where p.active_ind = 'Y' -- Active only
+    And pd.proposals_sub_appr > 0 -- Must have proposals
 )
 
 -- Degree removals
@@ -246,7 +258,7 @@ manual_exclusions_pre As (
 )
 
 -- Final query
-Select
+Select Distinct
   entity.id_number
   , entity.report_name
   , me.manual_exclusion
