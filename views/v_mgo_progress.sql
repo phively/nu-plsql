@@ -29,6 +29,15 @@ prospect_manager As (
     , staff.office_code
     , tmso.short_desc As office_desc
     , staff.staff_type_code
+    , ksm_gos.start_dt As ksm_start_dt
+    , ksm_gos.stop_dt As ksm_stop_dt
+    , Case
+        When ksm_gos.stop_dt Is Null
+          And ksm_gos.start_dt Is Not Null
+          Then 'Y'
+        End
+      As current_ksm_staff
+    , ksm_gos.team As ksm_team
     , tst.short_desc As staff_type_desc
     , staff.start_date
     , staff.stop_date
@@ -43,6 +52,8 @@ prospect_manager As (
     On tst.staff_type_code = staff.staff_type_code
   Left Join entity senior
     On senior.id_number = staff.senior_staff
+  Left Join rpt_pbh634.mv_past_ksm_gos ksm_gos
+    On ksm_gos.id_number = staff.id_number
   Start With trim(senior_staff) Is Null
   Connect By Prior staff.id_number = staff.senior_staff
 )
@@ -64,6 +75,10 @@ Select Distinct
   , s.active_ind
   , s.start_date
   , s.stop_date
+  , s.ksm_start_dt
+  , s.ksm_stop_dt
+  , s.current_ksm_staff
+  , s.ksm_team
   , mgm.goal_type
   , mgm.goal_desc
   , mgm.cal_year
