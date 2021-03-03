@@ -233,11 +233,34 @@ ksm_deg As (
     And address.addr_type_code = 'H'
 )
 
+-- Prospect interests
+, intersts As (
+  Select Distinct
+    interest.id_number
+    , interest.interest_code As interest_code
+    , tms_interest.short_desc As interest_desc
+  From interest 
+  Inner Join tms_interest
+    On tms_interest.interest_code = interest.interest_code
+  Where tms_interest.interest_code Like 'L%' -- Any LinkedIn Industry Code
+    Or tms_interest.interest_code = '16'  --Research Code
+)
+
+, interests_concat As (
+  Select
+    id_number
+    , Listagg(interest_desc, '; ') Within Group (Order By id_number)
+      As interests_concat
+  From intersts
+  Group By id_number
+)
+
 -- Main query
 Select Distinct
   hh.*
   , prs.business_title
   , trim(prs.employer_name1 || ' ' || prs.employer_name2) As employer_name
+  , interests_concat.interests_concat
   , pref_addr.pref_addr_type
   , prs.pref_city
   , prs.pref_state
@@ -375,3 +398,5 @@ Left Join uor
   On uor.prospect_id = prs.prospect_id
 Left Join table(rpt_pbh634.ksm_pkg.tbl_university_strategy) strat
   On strat.prospect_id = prs.prospect_id
+Left Join interests_concat
+  On interests_concat.id_number = hh.id_number
