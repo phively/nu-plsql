@@ -477,6 +477,7 @@ committee_healthcare Constant committee.committee_code%type := 'HAK'; -- Healthc
 committee_WomensLeadership Constant committee.committee_code%type := 'KWLC'; -- Women's Leadership Advisory Council
 committee_KALC Constant committee.committee_code%type := 'KALC'; -- Kellogg Admissions Leadership Council
 committee_kic Constant committee.committee_code%type := 'KIC'; -- Kellogg Inclusion Coalition
+committee_privateequity Constant committee.committee_code%type := 'KPETC'; -- Kellogg Private Equity Taskforce Council
 
 /*************************************************************************
 Public variable declarations
@@ -751,6 +752,9 @@ Function tbl_committee_KALC
   Return t_committee_members Pipelined;
 
 Function tbl_committee_kic
+  Return t_committee_members Pipelined;
+  
+Function tbl_committee_privateequity
   Return t_committee_members Pipelined;
 
 /*************************************************************************
@@ -4439,6 +4443,19 @@ Function tbl_special_handling_concat
       
       Begin
         committees := committee_members (my_committee_cd => committee_kic);
+        For i in 1..committees.count Loop
+          Pipe row(committees(i));
+        End Loop;
+        Return;
+      End;
+      
+      --  Kellogg Private Equity Taskforce Council
+    Function tbl_committee_privateequity
+      Return t_committee_members Pipelined As
+      committees t_committee_members;
+      
+      Begin
+        committees := committee_members (my_committee_cd => committee_privateequity);
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;
