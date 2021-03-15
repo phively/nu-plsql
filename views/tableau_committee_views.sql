@@ -223,6 +223,50 @@ AMP As (
     , status
 )
 
+, inclusion As (
+  Select
+    id_number
+    , committee_code
+    , short_desc
+    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As start_dt
+    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As stop_dt
+    , status
+    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
+  From table(rpt_pbh634.ksm_pkg.tbl_committee_kic)
+  Group By
+    id_number
+    , committee_code
+    , short_desc
+    , status
+)
+
+, private_equity As (
+  Select
+    id_number
+    , committee_code
+    , short_desc
+    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As start_dt
+    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As stop_dt
+    , status
+    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
+  From table(rpt_pbh634.ksm_pkg.tbl_committee_privateequity)
+  Group By
+    id_number
+    , committee_code
+    , short_desc
+    , status
+)
+
 , all_committees As (
   Select id_number From AMP
   Union
@@ -243,6 +287,10 @@ AMP As (
   Select id_number From WomensLeadership
   Union
   Select id_number From KAC
+  Union
+  Select id_number From inclusion
+  Union
+  Select id_number From private_equity
 )
 
 -- NU yearly NGC giving amounts
@@ -397,6 +445,20 @@ Select
   , kac.status As kac_status
   , kac.role As kac_role
   , kac.committee_title As kac_committee_title
+  , Case When inclusion.committee_code = 'KIC' Then 'Y' Else 'N' End
+    As inclusion_ind
+  , inclusion.start_dt As inclusion_start_date
+  , inclusion.stop_dt As inclusion_stop_date
+  , inclusion.status As inclusion_status
+  , inclusion.role As inclusion_role
+  , inclusion.committee_title As inclusion_committee_title
+  , Case When private_equity.committee_code = 'KPETC' Then 'Y' Else 'N' End
+    As private_equity_ind
+  , private_equity.start_dt As private_equity_start_date
+  , private_equity.stop_dt As private_equity_stop_date
+  , private_equity.status As private_equity_status
+  , private_equity.role As private_equity_role
+  , private_equity.committee_title As private_equity_committee_title
   , nvl(prs.giving_total, 0) As nu_lt_giving
   , acg.cfy_nult_giving
   , acg.lfy_nult_giving
@@ -439,6 +501,430 @@ Left Join WomensLeadership
   On WomensLeadership.id_number = acg.id_number
 Left Join KAC
   On KAC.id_number = acg.id_number
+Left Join inclusion
+  On inclusion.id_number = acg.id_number
+Left Join private_equity
+  On private_equity.id_number = acg.id_number
+Left Join proposalcount
+  On proposalcount.prospect_id = prs.prospect_id
+;
+
+-- One committee per line; needs to be refactored when I have a chance
+Create Or Replace View rpt_pbh634.vt_advisory_committees_list As
+
+With
+
+-- Committees to be included
+AMP As (
+  Select
+    id_number
+    , committee_code
+    , short_desc
+    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As start_dt
+    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As stop_dt
+    , status
+    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
+  From table(rpt_pbh634.ksm_pkg.tbl_committee_AMP)
+  Group By
+    id_number
+    , committee_code
+    , short_desc
+    , status
+)
+
+, RealEstCouncil As (
+  Select
+    id_number
+    , committee_code
+    , short_desc
+    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As start_dt
+    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As stop_dt
+    , status
+    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
+  From table(rpt_pbh634.ksm_pkg.tbl_committee_RealEstCouncil)
+  Group By
+    id_number
+    , committee_code
+    , short_desc
+    , status
+)
+
+, DivSummit As (
+  Select
+    id_number
+    , committee_code
+    , short_desc
+    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As start_dt
+    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As stop_dt
+    , status
+    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
+  From table(rpt_pbh634.ksm_pkg.tbl_committee_DivSummit)
+  Group By
+    id_number
+    , committee_code
+    , short_desc
+    , status
+)
+
+, WomenSummit As (
+  Select
+    id_number
+    , committee_code
+    , short_desc
+    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As start_dt
+    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As stop_dt
+    , status
+    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
+  From table(rpt_pbh634.ksm_pkg.tbl_committee_WomenSummit)
+  Group By
+    id_number
+    , committee_code
+    , short_desc
+    , status
+)
+
+, CorpGov As (
+  Select
+    id_number
+    , committee_code
+    , short_desc
+    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As start_dt
+    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As stop_dt
+    , status
+    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
+  From table(rpt_pbh634.ksm_pkg.tbl_committee_CorpGov)
+  Group By
+    id_number
+    , committee_code
+    , short_desc
+    , status
+)
+
+, KFN As (
+  Select
+    id_number
+    , committee_code
+    , short_desc
+    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As start_dt
+    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As stop_dt
+    , status
+    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
+  From table(rpt_pbh634.ksm_pkg.tbl_committee_KFN)
+  Group By
+    id_number
+    , committee_code
+    , short_desc
+    , status
+)
+
+, GAB As (
+  Select
+    id_number
+    , committee_code
+    , short_desc
+    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As start_dt
+    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As stop_dt
+    , status
+    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
+  From table(rpt_pbh634.ksm_pkg.tbl_committee_gab)
+  Group By
+    id_number
+    , committee_code
+    , short_desc
+    , status
+)
+
+, healthcare As (
+  Select
+    id_number
+    , committee_code
+    , short_desc
+    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As start_dt
+    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As stop_dt
+    , status
+    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
+  From table(rpt_pbh634.ksm_pkg.tbl_committee_healthcare)
+  Group By
+    id_number
+    , committee_code
+    , short_desc
+    , status
+)
+
+, WomensLeadership As (
+  Select
+    id_number
+    , committee_code
+    , short_desc
+    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As start_dt
+    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As stop_dt
+    , status
+    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
+  From table(rpt_pbh634.ksm_pkg.tbl_committee_WomensLeadership)
+  Group By
+    id_number
+    , committee_code
+    , short_desc
+    , status
+)
+
+, KAC As (
+  Select
+    id_number
+    , committee_code
+    , short_desc
+    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As start_dt
+    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As stop_dt
+    , status
+    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
+  From table(rpt_pbh634.ksm_pkg.tbl_committee_kac)
+  Group By
+    id_number
+    , committee_code
+    , short_desc
+    , status
+)
+
+, inclusion As (
+  Select
+    id_number
+    , committee_code
+    , short_desc
+    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As start_dt
+    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As stop_dt
+    , status
+    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
+  From table(rpt_pbh634.ksm_pkg.tbl_committee_kic)
+  Group By
+    id_number
+    , committee_code
+    , short_desc
+    , status
+)
+
+, private_equity As (
+  Select
+    id_number
+    , committee_code
+    , short_desc
+    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As start_dt
+    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As stop_dt
+    , status
+    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As role
+    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
+      As committee_title
+  From table(rpt_pbh634.ksm_pkg.tbl_committee_privateequity)
+  Group By
+    id_number
+    , committee_code
+    , short_desc
+    , status
+)
+
+, all_committees As (
+  Select * From AMP
+  Union
+  Select * From RealEstCouncil
+  Union
+  Select * From DivSummit
+  Union
+  Select * From WomenSummit
+  Union
+  Select * From CorpGov
+  Union
+  Select * From KFN
+  Union
+  Select * From GAB
+  Union
+  Select * From healthcare
+  Union
+  Select * From WomensLeadership
+  Union
+  Select * From KAC
+  Union
+  Select * From inclusion
+  Union
+  Select * From private_equity
+)
+
+-- NU yearly NGC giving amounts
+, fy_nu_giving As (
+  Select
+    nugft.id_number
+    , sum(Case When fiscal_year = cal.curr_fy - 0 Then nugft.credit_amount Else 0 End)
+      As cfy_nult_giving
+    , sum(Case When fiscal_year = cal.curr_fy - 1 Then nugft.credit_amount Else 0 End)
+      As lfy_nult_giving
+    , sum(Case When fiscal_year = cal.curr_fy - 2 Then nugft.credit_amount Else 0 End)
+      As lfy2_nult_giving
+  From nu_gft_trp_gifttrans nugft
+  Cross Join rpt_pbh634.v_current_calendar cal
+  Inner Join all_committees
+    On all_committees.id_number = nugft.id_number
+  Where tx_gypm_ind != 'Y' -- No pledge payments
+    And fiscal_year Between cal.curr_fy - 2 And cal.curr_fy
+  Group By nugft.id_number
+)
+
+, all_committees_giving As (
+  Select
+    all_committees.*
+    , nvl(fy_nu_giving.cfy_nult_giving, 0) As cfy_nult_giving
+    , nvl(fy_nu_giving.lfy_nult_giving, 0) As lfy_nult_giving
+    , nvl(fy_nu_giving.lfy2_nult_giving, 0) As lfy2_nult_giving
+    , nvl(v_ksm_giving_summary.ngc_lifetime_full_rec, 0) As ksm_lt_giving
+    , nvl(v_ksm_giving_campaign.campaign_giving,0) As ksm_campaign_giving
+    , nvl(v_ksm_giving_summary.af_cfy, 0) As af_cfy_sftcredit
+    , nvl(v_ksm_giving_summary.af_pfy1, 0) As af_lyfy_sftcredit
+    , nvl(v_ksm_giving_summary.af_pfy2, 0) As af_lyfy2_sftcredit
+    , nvl(v_ksm_giving_summary.ngc_cfy, 0) As ksm_cfy_sftcredit
+    , nvl(v_ksm_giving_summary.ngc_pfy1, 0) As ksm_lyfy_sftcredit
+    , nvl(v_ksm_giving_summary.ngc_pfy2, 0) As ksm_lyfy2_sftcredit
+    , nvl(v_ksm_giving_campaign.campaign_cfy, 0) As campaign_cfy
+    , nvl(v_ksm_giving_campaign.campaign_pfy1, 0) As campaign_pfy1
+    , nvl(v_ksm_giving_campaign.campaign_pfy2, 0) As campaign_pfy2
+    , nvl(v_ksm_giving_campaign.campaign_pfy3, 0) As campaign_pfy3
+  From all_committees
+  Left Join rpt_pbh634.v_ksm_giving_summary
+    On v_ksm_giving_summary.id_number = all_committees.id_number
+  Left Join fy_nu_giving
+    On all_committees.id_number = fy_nu_giving.id_number
+  Left Join rpt_pbh634.v_ksm_giving_campaign
+    On all_committees.id_number = v_ksm_giving_campaign.id_number
+)
+
+-- KSM proposal data
+, activeproposals As (
+  Select
+    phf.proposal_id
+    , phf.prospect_id
+    , Case
+        When phf.total_original_ask_amt >= 100000
+          Or phf.total_ask_amt >= 100000
+          Or phf.total_anticipated_amt >= 100000
+          Then 'Y'
+        Else 'N'
+        End
+      As majorgift
+  From v_proposal_history_fast phf
+  Where phf.ksm_proposal_ind = 'Y'
+    And phf.proposal_active_calc = 'Active'
+)
+
+, proposalcount As (
+  Select
+    prospect_id
+    , count(proposal_id) As proposalcount
+  From activeproposals
+  Where majorgift = 'Y'
+  Group By prospect_id
+)
+
+-- Main query
+Select
+  prs.id_number
+  , prs.pref_mail_name
+  , v_entity_ksm_degrees.degrees_concat
+  , prs.employer_name1
+  , prs.business_title
+  , prs.pref_city
+  , prs.pref_state
+  , prs.pref_zip
+  , prs.preferred_country
+  , prs.prospect_id
+  , prs.prospect_manager
+  , prs.evaluation_rating
+  , prs.evaluation_date
+  , prs.officer_rating
+  , acg.committee_code
+  , ch.short_desc As committee_name
+  , acg.committee_title
+  , acg.start_dt
+  , acg.stop_dt
+  , acg.status
+  , acg.role
+  , nvl(prs.giving_total, 0) As nu_lt_giving
+  , acg.cfy_nult_giving
+  , acg.lfy_nult_giving
+  , acg.lfy2_nult_giving
+  , acg.ksm_lt_giving
+  , acg.ksm_campaign_giving
+  , nvl(proposalcount.proposalcount, 0) As proposal_count
+  , acg.af_cfy_sftcredit
+  , acg.af_lyfy_sftcredit
+  , acg.af_lyfy2_sftcredit
+  , acg.ksm_cfy_sftcredit
+  , acg.ksm_lyfy_sftcredit
+  , acg.ksm_lyfy2_sftcredit
+  , acg.campaign_cfy
+  , acg.campaign_pfy1
+  , acg.campaign_pfy2
+  , acg.campaign_pfy3
+From all_committees_giving acg
+Inner Join nu_prs_trp_prospect prs
+  On prs.id_number = acg.id_number
+Left Join committee_header ch
+  On ch.committee_code = acg.committee_code
+Left Join rpt_pbh634.v_entity_ksm_degrees
+  On v_entity_ksm_degrees.id_number = acg.id_number
 Left Join proposalcount
   On proposalcount.prospect_id = prs.prospect_id
 ;
