@@ -372,7 +372,6 @@ Group By ec.id_number)
     , deg.program
     , deg.program_group
     , deg.majors_concat
-    , deg.record_status_code
     , tms_rs.short_desc As record_status_desc
     , addr.home_city
     , addr.home_state
