@@ -121,6 +121,7 @@ params As (
       As ngc_lifetime_full_rec
     , sum(Case When tx_gypm_ind != 'Y' And anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
       As ngc_lifetime_nonanon_full_rec
+    , max(nu_giving.lifetime_giving) As nu_max_hh_lifetime_giving
     , sum(Case When tx_gypm_ind != 'P' Then hh_credit Else 0 End) As cash_lifetime
     , sum(Case When tx_gypm_ind != 'Y' And cal.curr_fy = fiscal_year     Then hh_credit Else 0 End) As ngc_cfy
     , sum(Case When tx_gypm_ind != 'Y' And cal.curr_fy = fiscal_year + 1 Then hh_credit Else 0 End) As ngc_pfy1
@@ -206,6 +207,8 @@ params As (
   Cross Join params
   Inner Join hh_giving gfts
     On gfts.household_id = hh.household_id
+  Left Join nu_rpt_t_lifetime_giving nu_giving
+    On nu_giving.id_number = hh.id_number
   Group By
     hh.id_number
     , hh.household_id
