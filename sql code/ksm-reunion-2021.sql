@@ -62,7 +62,10 @@ GIVING_TRANS AS
   ON HH."ID_NUMBER" = KR.ID_NUMBER
 ),
 
-SPOUSE_KSM AS (
+KSM_GIVING_MOD as (select *
+from v_ksm_reunion_giving_mod)
+
+,SPOUSE_KSM AS (
 SELECT
   E.ID_NUMBER
 FROM ENTITY E
@@ -660,6 +663,24 @@ SELECT DISTINCT
   ,KSM_MODEL.id_score
   ,KSM_MODEL.pr_segment
   ,KSM_MODEL.pr_score
+  ,KGM.pledge_modified_cfy
+  ,KGM.pledge_modified_pfy1
+  ,KGM.pledge_modified_pfy2
+  ,KGM.pledge_modified_pfy3
+  ,KGM.pledge_modified_pfy4
+  ,KGM.pledge_modified_pfy5
+  ,KGM.modified_hh_credit_cfy
+  ,KGM.modified_hh_gift_count_cfy
+  ,KGM.modified_hh_gift_credit_pfy1
+  ,KGM.modified_hh_gift_count_pfy1
+  ,KGM.modified_hh_gift_credit_pfy2
+  ,KGM.modified_hh_gift_count_pfy2
+  ,KGM.modified_hh_gift_credit_pfy3
+  ,KGM.modified_hh_gift_count_pfy3
+  ,KGM.modified_hh_gift_credit_pfy4
+  ,KGM.modified_hh_gift_count_pfy4
+  ,KGM.modified_hh_gift_credit_pfy5
+  ,KGM.modified_hh_gift_count_pfy5
 FROM ENTITY E
 INNER JOIN KSM_REUNION KR
 ON E.ID_NUMBER = KR.ID_NUMBER
@@ -772,5 +793,7 @@ LEFT JOIN KSM_CORPORATE_RECRUITERS
      ON KSM_CORPORATE_RECRUITERS.ID_NUMBER = E.ID_NUMBER
 LEFT JOIN GIVING_SUMMARY
      ON GIVING_SUMMARY.id_number = KR.ID_NUMBER
+LEFT JOIN KSM_GIVING_MOD KGM
+        ON KGM.household_id = E.ID_NUMBER
 ORDER BY E.LAST_NAME
 ;
