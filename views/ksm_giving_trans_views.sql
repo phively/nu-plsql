@@ -457,7 +457,10 @@ Kellogg Campaign giving summaries
 *************************************************/
 Create or Replace View v_ksm_giving_campaign As
 With
-hh As (
+manual_dates As (  Select to_date('20210630', 'yyyymmdd') As transforming_together_end_dt
+  From DUAL
+)
+, hh As (
   Select *
   From table(ksm_pkg.tbl_entity_households_ksm)
 )
@@ -534,6 +537,7 @@ hh As (
     , sum(Case When fiscal_year = 2018 Then hh_credit Else 0 End) As campaign_fy18
     , sum(Case When fiscal_year = 2019 Then hh_credit Else 0 End) As campaign_fy19
     , sum(Case When fiscal_year = 2020 Then hh_credit Else 0 End) As campaign_fy20
+    , sum(Case When fiscal_year = 2021 And date_of_record <= manual_dates.transforming_together_end_dt Then hh_credit Else 0 End) As campaign_fy21
     -- Recognition amounts for stewardship purposes; includes face value of bequests and life expectancy intentions
     , sum(cgft.hh_recognition_credit - cgft.hh_credit) As campaign_discounted_bequests
     , sum(cgft.hh_recognition_credit) As campaign_steward_giving
@@ -569,8 +573,15 @@ hh As (
       As anon_steward_thru_fy20
     , sum(Case When fiscal_year <= 2020 And cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
       As nonanon_steward_thru_fy20
+    , sum(Case When fiscal_year <= 2021 And cgft.date_of_record <= manual_dates.transforming_together_end_dt Then hh_recognition_credit Else 0 End)
+      As campaign_steward_thru_fy21
+    , sum(Case When fiscal_year <= 2021 And cgft.date_of_record <= manual_dates.transforming_together_end_dt And cgft.anonymous In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
+      As anon_steward_thru_fy21
+    , sum(Case When fiscal_year <= 2021 And cgft.date_of_record <= manual_dates.transforming_together_end_dt And cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
+      As nonanon_steward_thru_fy21
   From hh
   Cross Join v_current_calendar cal
+  Cross Join manual_dates
   Inner Join cgft On cgft.household_id = hh.household_id
   Left Join legal On legal.id_number = hh.id_number
   Inner Join top_allocs On top_allocs.household_id = hh.household_id
