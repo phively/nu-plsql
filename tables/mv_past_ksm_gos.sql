@@ -60,6 +60,7 @@ adv_dates As (
   Union All Select '0000838656', 'MG', to_date('20201111', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000364856', 'MG', to_date('20201116', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000841644', 'AF', to_date('20210315', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000842004', 'MG', to_date('20210419', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
 )
 
 Select
