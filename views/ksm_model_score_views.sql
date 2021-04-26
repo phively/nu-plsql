@@ -88,7 +88,11 @@ Select
     As pr_segment
   , to_number(prioritization.score)
     As pr_score
-  , to_number(prioritization.score) / to_number(identification.score) As est_probability
+  , Case
+      When to_number(identification.score) <> 0
+        Then to_number(prioritization.score) / to_number(identification.score)
+      End
+     As est_probability
 From identification
 Inner Join prioritization
   On identification.id_number = prioritization.id_number
