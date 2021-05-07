@@ -78,3 +78,53 @@ From v_nu_activities_fast naf
 Inner Join v_entity_ksm_households hh
   On hh.id_number = naf.id_number
 ;
+
+-- Student activities
+Create Or Replace View v_nu_student_activities As
+
+Select 
+  entity.id_number
+  , entity.report_name
+  , entity.person_or_org
+  , entity.institutional_suffix
+  , deg.degrees_concat
+  , deg.first_ksm_year
+  , deg.program_group
+  , sa.student_activity_code
+  , sa.xsequence
+  , tsa.short_desc
+    As student_activity_desc
+  , tsa.owner_usergroup
+  , Case When tsa.owner_usergroup = 'KO' Then 'Y' End
+    As ksm_student_activity
+  , sa.student_particip_code
+  , ksm_pkg.to_date2(sa.start_dt)
+    As start_dt
+  , ksm_pkg.to_date2(sa.stop_dt)
+    As stop_dt
+  , trunc(sa.date_added)
+    As date_added
+  , trunc(sa.date_modified)
+    As date_modified
+  -- FY is based on start/stop date if available, else date added
+  , Case
+      When ksm_pkg.to_date2(sa.start_dt) Is Not Null
+        Then ksm_pkg.get_fiscal_year(ksm_pkg.to_date2(sa.start_dt))
+      Else ksm_pkg.get_fiscal_year(sa.date_added)
+      End
+    As start_fy_calc
+  , Case
+      When ksm_pkg.to_date2(sa.stop_dt) Is Not Null
+        Then ksm_pkg.get_fiscal_year(ksm_pkg.to_date2(sa.stop_dt))
+      Else ksm_pkg.get_fiscal_year(sa.date_added)
+      End
+    As stop_fy_calc
+  , sa.xcomment
+From entity
+Inner Join student_activity sa
+  On sa.id_number = entity.id_number
+Inner Join tms_student_act tsa
+  On tsa.student_activity_code = sa.student_activity_code
+Left Join v_entity_ksm_degrees deg
+  On deg.id_number = entity.id_number
+;
