@@ -803,6 +803,9 @@ Cursor ct_alloc_annual_fund_ksm Is
       , '3203005848101GFT' -- KSM DEI PE Scholarship
       , '3203005797501GFT' -- KSM DEI Scholarship Fund
       , '3203005795201GFT' -- KSM DEI Programmatic Fund
+      , '3203005856201GFT' -- John R. Flanagan Scholarship
+      , '3203002858501GFT' -- Cox-Cohen Scholarship
+      , '3203004600201GFT' -- Woodsum Student Travel
       /************ UPDATE ABOVE HERE ************/
     )
   ;
