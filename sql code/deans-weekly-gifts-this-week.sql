@@ -19,22 +19,29 @@ dts As (
 -- Pulling all associated donors related to a gift
 
 , pre_ad As (
-  SELECT DISTINCT gt.tx_number
+  Select Distinct gt.tx_number
   , entity.pref_mail_name
   From gt
   Inner Join entity On gt.id_number = entity.id_Number
 )
 
 , ad As (
-SELECT tx_number
-      , listagg(pref_mail_name, chr(13)) Within Group (order by pref_mail_name) as all_associated_donors
-From pre_ad
-Group By tx_number
+  Select tx_number
+        , listagg(pref_mail_name, chr(13)) Within Group (order by pref_mail_name) as all_associated_donors
+  From pre_ad
+  Group By tx_number
 )
 
+, payment_years As (
+  Select
+    ps.payment_schedule_pledge_nbr
+    , count(distinct extract(year from rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'yyyymmdd'))) As payment_schedule_year_count
+  From payment_schedule ps 
+  Group By ps.payment_schedule_pledge_nbr
+)
 
 -- Base Table
-Select distinct
+Select Distinct
     gft.tx_number
   , gft.id_number
   , gft.tx_gypm_ind
@@ -45,6 +52,7 @@ Select distinct
   , gft.allocation_code
   , gft.alloc_short_name
   , NULL As empty_column
+  , py.payment_schedule_year_count
   , gft.legal_amount
   , prp.proposal_manager
 From gt gft
@@ -53,14 +61,15 @@ Inner Join ad On gft.tx_number = ad.tx_number
 Inner Join entity On gft.id_number = entity.id_number
 Inner Join tms_record_type tms_rt On tms_rt.record_type_code = entity.record_type_code
 Left Join rpt_pbh634.v_ksm_proposal_history prp On gft.proposal_id = prp.proposal_id
-Left Join nu_gft_trp_gifttrans g ON gft.tx_number = g.tx_number
+Left Join nu_gft_trp_gifttrans g On gft.tx_number = g.tx_number
+Left Join payment_years py On gft.tx_number = py.payment_schedule_pledge_nbr
 Where
   -- Only in the date range
  (
         (gft.date_of_record Between dts.start_dt And dts.stop_dt)
-     OR (g.first_processed_date Between dts.start_dt And dts.stop_dt)
+     Or (g.first_processed_date Between dts.start_dt And dts.stop_dt)
  )
-  AND gft.fiscal_year = '2021'
+  And gft.fiscal_year = '2021'
   -- Only $10K+
   And gft.legal_amount >= 10000
   -- Only outright gifts and pledges; ignore payments, match
