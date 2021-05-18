@@ -32,6 +32,10 @@ From pre_ad
 Group By tx_number
 )
 
+, payment_years AS (select  ps.payment_schedule_pledge_nbr
+       ,count(distinct extract(year from rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'yyyymmdd'))) As payment_schedule_year_count
+from payment_schedule ps 
+group by ps.payment_schedule_pledge_nbr)
 
 -- Base Table
 Select distinct
@@ -45,6 +49,7 @@ Select distinct
   , gft.allocation_code
   , gft.alloc_short_name
   , NULL As empty_column
+  , py.payment_schedule_year_count
   , gft.legal_amount
   , prp.proposal_manager
 From gt gft
@@ -54,6 +59,7 @@ Inner Join entity On gft.id_number = entity.id_number
 Inner Join tms_record_type tms_rt On tms_rt.record_type_code = entity.record_type_code
 Left Join rpt_pbh634.v_ksm_proposal_history prp On gft.proposal_id = prp.proposal_id
 Left Join nu_gft_trp_gifttrans g ON gft.tx_number = g.tx_number
+LEFT JOIN payment_years py ON gft.tx_number = py.payment_schedule_pledge_nbr
 Where
   -- Only in the date range
  (
