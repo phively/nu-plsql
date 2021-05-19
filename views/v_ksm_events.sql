@@ -182,6 +182,54 @@ Left Join event_codes_concat
   On event_codes_concat.event_id = event.event_id
 ;
 
+-- Event registrants
+Create Or Replace View v_nu_event_registrants As
+Select
+  entity.id_number
+  , entity.report_name
+  , entity.person_or_org
+  , entity.institutional_suffix
+  , deg.degrees_concat
+  , deg.first_ksm_year
+  , deg.program_group
+  , v_nu_events.event_id
+  , v_nu_events.event_name
+  , v_nu_events.ksm_event
+  , tms_et.short_desc As event_type
+  , reg.registration_id
+  , reg.registration_status_code
+  , tms_ers.short_desc As registration_status
+  , ppn.participation_id
+  , ppn.participation_status_code
+  , tms_ps.short_desc As participation_status
+  , Case When ppn.participation_status_code In (' ', 'P', 'A')
+      Then 'Y' End
+      As participated_flag
+  , start_dt
+  , stop_dt
+  , start_dt_calc
+  , stop_dt_calc
+  , start_fy_calc
+  , stop_fy_calc
+From ep_registration reg
+Inner Join v_nu_events
+  On v_nu_events.event_id = reg.event_id -- KSM events
+Inner Join entity
+  On entity.id_number = reg.contact_id_number
+Left Join v_entity_ksm_degrees deg
+  On deg.id_number = entity.id_number
+Left Join ep_participant ppt
+  On ppt.registration_id = reg.registration_id
+Left Join ep_participation ppn
+  On ppn.registration_id = ppt.registration_id
+Left Join tms_event_registration_status tms_ers
+  On tms_ers.registration_status_code = reg.registration_status_code
+Left Join tms_event_participant_status tms_ps
+  On tms_ps.participant_status_code = ppn.participation_status_code
+Left Join tms_event_type tms_et
+  On tms_et.event_type = v_nu_events.event_type
+;
+
 -- Event participations
 Create Or Replace View v_nu_event_participants_fast As
 Select
@@ -196,6 +244,9 @@ Select
   , v_nu_events.event_name
   , v_nu_events.ksm_event
   , tms_et.short_desc As event_type
+  , ppn.participation_id
+  , ppn.participation_status_code
+  , tms_ps.short_desc As participation_status
   , start_dt
   , stop_dt
   , start_dt_calc
@@ -213,6 +264,8 @@ Inner Join ep_participation ppn
   On ppn.registration_id = ppt.registration_id
 Left Join tms_event_type tms_et
   On tms_et.event_type = v_nu_events.event_type
+Left Join tms_event_participant_status tms_ps
+  On tms_ps.participant_status_code = ppn.participation_status_code
 Where ppn.participation_status_code In (' ', 'P', 'A') -- Blank, Participated, or Accepted
 ;
 
@@ -233,6 +286,9 @@ Select
   , epf.event_name
   , epf.ksm_event
   , epf.event_type
+  , epf.participation_id
+  , epf.participation_status_code
+  , epf.participation_status
   , epf.start_dt
   , epf.stop_dt
   , epf.start_dt_calc
