@@ -20,7 +20,7 @@ dts As (
 
 , pre_ad As (
   Select Distinct gt.tx_number
-  , entity.pref_mail_name
+  , case when gt.anonymous IN ('1', '2', '3') then 'Anonymous' else entity.pref_mail_name end as pref_mail_name
   From gt
   Inner Join entity On gt.id_number = entity.id_Number
 )
@@ -52,8 +52,8 @@ Select Distinct
   , gft.allocation_code
   , gft.alloc_short_name
   , NULL As empty_column
-  , py.payment_schedule_year_count
   , gft.legal_amount
+  , py.payment_schedule_year_count  
   , prp.proposal_manager
 From gt gft
 Cross Join dts
