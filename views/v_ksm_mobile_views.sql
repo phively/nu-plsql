@@ -38,7 +38,10 @@ Group By ec.id_number),
 
 ksm_give as (select give.ID_NUMBER,
        give.NGC_LIFETIME
-From rpt_pbh634.v_ksm_giving_summary give)
+From rpt_pbh634.v_ksm_giving_summary give),
+
+KSM_telephone AS (Select t.id_number, t.area_code, t.telephone_number, t.telephone_type_code
+From telephone t)
 
 select distinct
        entity.id_number,
@@ -144,7 +147,7 @@ Left Join tms_committee_role tcr
   On tcr.committee_role_code = committee.committee_role_code
   And tcr.committee_role_code <> 'U'
 Left Join tms_committee_status tcs
-  On tcs.committee_status_code = committee.committee_status_code
+  On tcs.committee_status_code = committee.committee_status_code;
   
 --- Contact Reports
 
@@ -185,7 +188,7 @@ SELECT
   ,PG.PROPOSAL_ID
   ,AFCRU."AF_FLAG"
   ,CASE WHEN AFCRU."ALLOCATION_CODE" IS NOT NULL THEN 'Y' ELSE ' ' END AS "CURRENT_USE_FLAG"
-  ,AFCRU."ALLOCATION_CODE"
+  ,AFCRU."ALLOCATION_CODE" AS ALLOCATION_CODE_INDICATOR
   ,TA.short_desc AS ASSOCIATION 
 FROM NU_GFT_TRP_GIFTTRANS NGFT
 INNER JOIN TABLE(RPT_PBH634.KSM_PKG.tbl_committee_kac) KAC
