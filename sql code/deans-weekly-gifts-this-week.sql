@@ -6,8 +6,8 @@ With
 
 dts As (
   Select
-      to_date('20201218', 'yyyymmdd') As start_dt
-    , to_date('20210101', 'yyyymmdd') As stop_dt
+      to_date('20210517', 'yyyymmdd') As start_dt
+    , to_date('20210524', 'yyyymmdd') As stop_dt
   From DUAL
 )
 
@@ -25,10 +25,29 @@ dts As (
   Inner Join entity On gt.id_number = entity.id_Number
 )
 
+, count_anonymous AS (
+select tx_number
+      , count(pref_mail_name) as pref_mail_name_counts
+      , sum(case when pref_mail_name = 'Anonymous' then 1 else 0 end) as anonymous_counts 
+from pre_ad
+group by tx_number
+)
+
+, final_names AS (
+select pre_ad.tx_number
+      ,pre_ad.pref_mail_name
+      ,ca.pref_mail_name_counts
+      ,ca.anonymous_counts
+FROM pre_ad
+INNER JOIN count_anonymous ca ON ca.tx_number = pre_ad.tx_number 
+WHERE ca.pref_mail_name_counts = ca.anonymous_counts
+OR pre_ad.pref_mail_name <> 'Anonymous' 
+)
+
 , ad As (
   Select tx_number
         , listagg(pref_mail_name, chr(13)) Within Group (order by pref_mail_name) as all_associated_donors
-  From pre_ad
+  From final_names
   Group By tx_number
 )
 
