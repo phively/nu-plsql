@@ -6,6 +6,13 @@ From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
   my_committee_cd => ksm_pkg.get_string_constant('committee_gab')
   , shortname => 'GAB')
 )
+-- Asia
+Union
+Select *
+From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
+  my_committee_cd => ksm_pkg.get_string_constant('committee_asia')
+  , shortname => 'KEBA')
+)
 -- KAC
 Union
 Select *
@@ -269,6 +276,13 @@ Select
   , private_equity.status As private_equity_status
   , private_equity.role As private_equity_role
   , private_equity.committee_title As private_equity_committee_title
+  , Case When keba.committee_code = 'KEBA' Then 'Y' Else 'N' End
+    As keba_ind
+  , keba.start_dt As keba_start_date
+  , keba.stop_dt As keba_stop_date
+  , keba.status As keba_status
+  , keba.role As keba_role
+  , keba.committee_title As keba_committee_title
   , nvl(prs.giving_total, 0) As nu_lt_giving
   , acg.cfy_nult_giving
   , acg.lfy_nult_giving
@@ -291,6 +305,8 @@ Inner Join nu_prs_trp_prospect prs
   On prs.id_number = acg.id_number
 Left Join rpt_pbh634.v_entity_ksm_degrees
   On v_entity_ksm_degrees.id_number = acg.id_number
+Left Join proposalcount
+  On proposalcount.prospect_id = prs.prospect_id
 Left Join members amp
   On amp.id_number = acg.id_number
   And amp.committee_short_desc = 'AMP'
@@ -327,8 +343,9 @@ Left Join members inclusion
 Left Join members private_equity
   On private_equity.id_number = acg.id_number
   And private_equity.committee_short_desc = 'PrivateEquity'
-Left Join proposalcount
-  On proposalcount.prospect_id = prs.prospect_id
+Left Join members keba
+  On keba.id_number = acg.id_number
+  And keba.committee_short_desc = 'KEBA'
 ;
 
 /***********************************************

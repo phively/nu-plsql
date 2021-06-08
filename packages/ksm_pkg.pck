@@ -492,6 +492,7 @@ committee_WomensLeadership Constant committee.committee_code%type := 'KWLC'; -- 
 committee_KALC Constant committee.committee_code%type := 'KALC'; -- Kellogg Admissions Leadership Council
 committee_kic Constant committee.committee_code%type := 'KIC'; -- Kellogg Inclusion Coalition
 committee_privateequity Constant committee.committee_code%type := 'KPETC'; -- Kellogg Private Equity Taskforce Council
+committee_asia Constant committee.committee_code%type := 'KEBA'; -- Kellogg Executive Board for Asia
 
 /*************************************************************************
 Public variable declarations
