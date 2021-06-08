@@ -1,4 +1,4 @@
-Create Or Replace Package rpt_pbh634.ksm_pkg_tst Is
+Create Or Replace Package rpt_pbh634.ksm_pkg Is
 
 /*************************************************************************
 Author  : PBH634
@@ -109,7 +109,7 @@ Type committee_agg Is Record (
     , status tms_committee_status.short_desc%type
     , role varchar2(1024)
     , committee_title varchar2(1024)
---    , committee_short_desc varchar2(40)
+    , committee_short_desc varchar2(40)
 );
 
 /* Geo code primary, for addresses */
@@ -782,9 +782,9 @@ Function tbl_committee_privateequity
 End of package
 *************************************************************************/
 
-End ksm_pkg_tst;
+End ksm_pkg;
 /
-Create Or Replace Package Body rpt_pbh634.ksm_pkg_tst Is
+Create Or Replace Package Body rpt_pbh634.ksm_pkg Is
 
 /*************************************************************************
 Private cursor tables -- data definitions; update indicated sections as needed
@@ -1150,7 +1150,7 @@ Cursor c_committee_members (my_committee_cd In varchar2) Is
    2021-06-08 */
 Cursor c_committee_agg (
     my_committee_cd In varchar2
-  --  , shortname In varchar2
+    , shortname In varchar2
   ) Is
   With
   c As (
@@ -1168,7 +1168,7 @@ Cursor c_committee_agg (
         , comm.date_modified
         , comm.operator_name
         , trim(entity.spouse_id_number) As spouse_id_number
---        , shortname As committee_short_desc
+        , shortname As committee_short_desc
       From committee comm
       Inner Join entity
         On entity.id_number = comm.id_number
@@ -1193,8 +1193,8 @@ Cursor c_committee_agg (
       As role
     , listagg(c.committee_title, '; ') Within Group (Order By c.start_dt Asc, c.stop_dt Asc, c.role Asc)
       As committee_title
---    , shortname
---      As committee_short_desc
+    , shortname
+      As committee_short_desc
   From c
   Inner Join entity
     On entity.id_number = c.id_number
@@ -4368,9 +4368,9 @@ Function tbl_special_handling_concat
   
   -- Return table results
   Begin
-    Open c_committee_agg (my_committee_cd => my_committee_cd);
---      , shortname => shortname
---    );
+    Open c_committee_agg (my_committee_cd => my_committee_cd
+      , shortname => shortname
+    );
       Fetch c_committee_agg Bulk Collect Into committees_agg;
       Close c_committee_agg;
       Return committees_agg;
@@ -4589,5 +4589,5 @@ Function tbl_special_handling_concat
         Return;
       End;
 
-End ksm_pkg_tst;
+End ksm_pkg;
 /
