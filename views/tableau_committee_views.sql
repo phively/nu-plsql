@@ -85,299 +85,22 @@ From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
 )
 ;
 
+/***********************************************
+Committee giving views
+***********************************************/
+
 Create Or Replace View rpt_pbh634.vt_advisory_committees_report As
 
 With
 
--- Committees to be included
-AMP As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_AMP)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
-)
-
-, RealEstCouncil As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_RealEstCouncil)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
-)
-
-, DivSummit As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_DivSummit)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
-)
-
-, WomenSummit As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_WomenSummit)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
-)
-
-, CorpGov As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_CorpGov)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
-)
-
-, KFN As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_KFN)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
-)
-
-, GAB As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_gab)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
-)
-
-, healthcare As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_healthcare)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
-)
-
-, WomensLeadership As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_WomensLeadership)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
-)
-
-, KAC As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_kac)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
-)
-
-, inclusion As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_kic)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
-)
-
-, private_equity As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_privateequity)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
+members As (
+  Select *
+  From rpt_pbh634.v_advisory_committees_members
 )
 
 , all_committees As (
-  Select id_number From AMP
-  Union
-  Select id_number From RealEstCouncil
-  Union
-  Select id_number From DivSummit
-  Union
-  Select id_number From WomenSummit
-  Union
-  Select id_number From CorpGov
-  Union
-  Select id_number From KFN
-  Union
-  Select id_number From GAB
-  Union
-  Select id_number From healthcare
-  Union
-  Select id_number From WomensLeadership
-  Union
-  Select id_number From KAC
-  Union
-  Select id_number From inclusion
-  Union
-  Select id_number From private_equity
+  Select Distinct id_number
+  From members
 )
 
 -- NU yearly NGC giving amounts
@@ -568,328 +291,62 @@ Inner Join nu_prs_trp_prospect prs
   On prs.id_number = acg.id_number
 Left Join rpt_pbh634.v_entity_ksm_degrees
   On v_entity_ksm_degrees.id_number = acg.id_number
-Left Join amp
+Left Join members amp
   On amp.id_number = acg.id_number
-Left Join realestcouncil
+  And amp.committee_short_desc = 'AMP'
+Left Join members realestcouncil
   On realestcouncil.id_number = acg.id_number
-Left Join divsummit
+  And realestcouncil.committee_short_desc = 'RealEstCouncil'
+Left Join members divsummit
   On divsummit.id_number = acg.id_number
-Left Join womensummit
+  And divsummit.committee_short_desc = 'DivSummit'
+Left Join members womensummit
   On womensummit.id_number = acg.id_number
-Left Join corpgov
+  And womensummit.committee_short_desc = 'WomenSummit'
+Left Join members corpgov
   On corpgov.id_number = acg.id_number
-Left Join kfn
+  And corpgov.committee_short_desc = 'CorpGov'
+Left Join members kfn
   On kfn.id_number = acg.id_number
-Left Join gab
+  And kfn.committee_short_desc = 'KFN'
+Left Join members gab
   On gab.id_number = acg.id_number
-Left Join healthcare
+  And gab.committee_short_desc = 'GAB'
+Left Join members healthcare
   On healthcare.id_number = acg.id_number
-Left Join WomensLeadership
+  And healthcare.committee_short_desc = 'Healthcare'
+Left Join members WomensLeadership
   On WomensLeadership.id_number = acg.id_number
-Left Join KAC
+  And WomensLeadership.committee_short_desc = 'WomensLeadership'
+Left Join members KAC
   On KAC.id_number = acg.id_number
-Left Join inclusion
+  And KAC.committee_short_desc = 'KAC'
+Left Join members inclusion
   On inclusion.id_number = acg.id_number
-Left Join private_equity
+  And inclusion.committee_short_desc = 'Inclusion'
+Left Join members private_equity
   On private_equity.id_number = acg.id_number
+  And private_equity.committee_short_desc = 'PrivateEquity'
 Left Join proposalcount
   On proposalcount.prospect_id = prs.prospect_id
 ;
 
--- One committee per line; needs to be refactored when I have a chance
+/***********************************************
+Committee data views
+One committee per line
+***********************************************/
 Create Or Replace View rpt_pbh634.vt_advisory_committees_list As
 
 With
 
--- Committees to be included
-AMP As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_AMP)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
-)
-
-, RealEstCouncil As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_RealEstCouncil)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
-)
-
-, DivSummit As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_DivSummit)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
-)
-
-, WomenSummit As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_WomenSummit)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
-)
-
-, CorpGov As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_CorpGov)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
-)
-
-, KFN As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_KFN)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
-)
-
-, GAB As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_gab)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
-)
-
-, healthcare As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_healthcare)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
-)
-
-, WomensLeadership As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_WomensLeadership)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
-)
-
-, KAC As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_kac)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
-)
-
-, inclusion As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_kic)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
-)
-
-, private_equity As (
-  Select
-    id_number
-    , committee_code
-    , short_desc
-    , listagg(start_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As start_dt
-    , listagg(stop_dt, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As stop_dt
-    , status
-    , listagg(role, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As role
-    , listagg(committee_title, '; ') Within Group (Order By start_dt Asc, stop_dt Asc, role Asc)
-      As committee_title
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_privateequity)
-  Group By
-    id_number
-    , committee_code
-    , short_desc
-    , status
+members As (
+  Select *
+  From rpt_pbh634.v_advisory_committees_members
 )
 
 , all_committees As (
-  Select * From AMP
-  Union
-  Select * From RealEstCouncil
-  Union
-  Select * From DivSummit
-  Union
-  Select * From WomenSummit
-  Union
-  Select * From CorpGov
-  Union
-  Select * From KFN
-  Union
-  Select * From GAB
-  Union
-  Select * From healthcare
-  Union
-  Select * From WomensLeadership
-  Union
-  Select * From KAC
-  Union
-  Select * From inclusion
-  Union
-  Select * From private_equity
+  Select *
+  From members
 )
 
 -- NU yearly NGC giving amounts
