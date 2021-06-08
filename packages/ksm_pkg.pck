@@ -101,7 +101,7 @@ Type committee_member Is Record (
 
 Type committee_agg Is Record (
     id_number committee.id_number%type
-/*    , report_name entity.report_name%type
+    , report_name entity.report_name%type
     , committee_code committee.committee_code%type
     , short_desc committee_header.short_desc%type
     , start_dt varchar2(512)
@@ -109,8 +109,8 @@ Type committee_agg Is Record (
     , status tms_committee_status.short_desc%type
     , role varchar2(1024)
     , committee_title varchar2(1024)
-    , committee_short_desc varchar2(40)
-*/);
+--    , committee_short_desc varchar2(40)
+);
 
 /* Geo code primary, for addresses */
 Type geo_code_primary Is Record (
@@ -1148,10 +1148,10 @@ Cursor c_committee_members (my_committee_cd In varchar2) Is
 
 /* Definition of current Kellogg committee members aggregated
    2021-06-08 */
-Cursor c_committee_agg /*(
+Cursor c_committee_agg (
     my_committee_cd In varchar2
-    , shortname In varchar2
-  )*/ Is
+  --  , shortname In varchar2
+  ) Is
   With
   c As (
     -- Same as c_committee_members, above
@@ -1175,13 +1175,13 @@ Cursor c_committee_agg /*(
       Left Join tms_committee_status tms_status On comm.committee_status_code = tms_status.committee_status_code
       Left Join tms_committee_role tms_role On comm.committee_role_code = tms_role.committee_role_code
       Left Join committee_header hdr On comm.committee_code = hdr.committee_code
---      Where comm.committee_code = my_committee_cd
---        And comm.committee_status_code In ('C', 'A') -- 'C'urrent or 'A'ctive; 'A' is deprecated
+      Where comm.committee_code = my_committee_cd
+        And comm.committee_status_code In ('C', 'A') -- 'C'urrent or 'A'ctive; 'A' is deprecated
   )
   -- Main query
   Select
     c.id_number
-/*    , entity.report_name
+    , entity.report_name
     , c.committee_code
     , c.short_desc
     , listagg(c.start_dt, '; ') Within Group (Order By c.start_dt Asc, c.stop_dt Asc, c.role Asc)
@@ -1193,17 +1193,18 @@ Cursor c_committee_agg /*(
       As role
     , listagg(c.committee_title, '; ') Within Group (Order By c.start_dt Asc, c.stop_dt Asc, c.role Asc)
       As committee_title
-    , shortname
-      As committee_short_desc
-*/  From c
-/*  Inner Join entity
+--    , shortname
+--      As committee_short_desc
+  From c
+  Inner Join entity
     On entity.id_number = c.id_number
   Group By
     c.id_number
+    , entity.report_name
     , c.committee_code
     , c.short_desc
     , c.status
-*/  ;
+  ;
 
 /* Definition of Kellogg degrees concatenated
    2017-02-15 */
@@ -4357,20 +4358,19 @@ Function tbl_special_handling_concat
     
   /* Generic committee_agg function, similar to committee_members
      2021-06-08 */
-  Function committee_agg_members /*(
+  Function committee_agg_members (
     my_committee_cd In varchar2
     , shortname In varchar2 Default NULL
-  )*/
+  )
   Return t_committee_agg As
   -- Declarations
   committees_agg t_committee_agg;
   
   -- Return table results
   Begin
-    Open c_committee_agg /*(
-      my_committe_cd => my_committee_cd
-      , shortname => shortname
-    )*/;
+    Open c_committee_agg (my_committee_cd => my_committee_cd);
+--      , shortname => shortname
+--    );
       Fetch c_committee_agg Bulk Collect Into committees_agg;
       Close c_committee_agg;
       Return committees_agg;
@@ -4384,10 +4384,10 @@ Function tbl_special_handling_concat
   committees_agg t_committee_agg;
   
     Begin
-      committees_agg := committee_agg_members /*(
+      committees_agg := committee_agg_members (
         my_committee_cd => my_committee_cd
         , shortname => shortname
-      )*/;
+      );
       For i in 1..committees_agg.count Loop
         Pipe row(committees_agg(i));
       End Loop;
