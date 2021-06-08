@@ -542,6 +542,11 @@ Function get_numeric_constant(
   const_name In varchar2 -- Name of constant to retrieve
 ) Return number Deterministic;
 
+/* Function to return string constants */
+Function get_string_constant(
+  const_name In varchar2 -- Name of constant to retrieve
+) Return varchar2 Deterministic;
+
 /* Compute fiscal or performance quarter from date */
 Function get_quarter(
   dt In date
@@ -3453,6 +3458,30 @@ Function get_numeric_constant(const_name In varchar2)
   Return number Deterministic Is
   -- Declarations
   val number;
+  var varchar2(100);
+  
+  Begin
+    -- If const_name doesn't include ksm_pkg, prepend it
+    If substr(lower(const_name), 1, 8) <> 'ksm_pkg.'
+      Then var := 'ksm_pkg.' || const_name;
+    Else
+      var := const_name;
+    End If;
+    -- Run command
+    Execute Immediate
+      'Begin :val := ' || var || '; End;'
+      Using Out val;
+      Return val;
+  End;
+
+/* Function to return string constants from the package
+   Requires a quoted constant name
+   2021-06-08 */
+Function get_string_constant(const_name In varchar2)
+  Return varchar2 Deterministic Is
+  -- Declarations
+    -- Declarations
+  val varchar2(100);
   var varchar2(100);
   
   Begin
