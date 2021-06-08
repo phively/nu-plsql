@@ -1,3 +1,90 @@
+Create Or Replace View rpt_pbh634.v_advisory_committees_members As
+
+-- GAB
+Select *
+From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
+  my_committee_cd => ksm_pkg.get_string_constant('committee_gab')
+  , shortname => 'GAB')
+)
+-- KAC
+Union
+Select *
+From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
+  my_committee_cd => ksm_pkg.get_string_constant('committee_kac')
+  , shortname => 'KAC')
+)
+-- KFN
+Union
+Select *
+From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
+  my_committee_cd => ksm_pkg.get_string_constant('committee_kfn')
+  , shortname => 'KFN')
+)
+-- AMP
+Union
+Select *
+From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
+  my_committee_cd => ksm_pkg.get_string_constant('committee_AMP')
+  , shortname => 'AMP')
+)
+-- Real Estate
+Union
+Select *
+From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
+  my_committee_cd => ksm_pkg.get_string_constant('committee_RealEstCouncil')
+  , shortname => 'RealEstCouncil')
+)
+-- DivSummit
+Union
+Select *
+From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
+  my_committee_cd => ksm_pkg.get_string_constant('committee_DivSummit')
+  , shortname => 'DivSummit')
+)
+-- WomenSummit
+Union
+Select *
+From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
+  my_committee_cd => ksm_pkg.get_string_constant('committee_WomenSummit')
+  , shortname => 'WomenSummit')
+)
+-- CorpGov
+Union
+Select *
+From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
+  my_committee_cd => ksm_pkg.get_string_constant('committee_CorpGov')
+  , shortname => 'CorpGov')
+)
+-- Healthcare
+Union
+Select *
+From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
+  my_committee_cd => ksm_pkg.get_string_constant('committee_healthcare')
+  , shortname => 'Healthcare')
+)
+-- WomensLeadership
+Union
+Select *
+From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
+  my_committee_cd => ksm_pkg.get_string_constant('committee_WomensLeadership')
+  , shortname => 'WomensLeadership')
+)
+-- Inclusion
+Union
+Select *
+From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
+  my_committee_cd => ksm_pkg.get_string_constant('committee_kic')
+  , shortname => 'Inclusion')
+)
+-- PrivateEquity
+Union
+Select *
+From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
+  my_committee_cd => ksm_pkg.get_string_constant('committee_privateequity')
+  , shortname => 'PrivateEquity')
+)
+;
+
 Create Or Replace View rpt_pbh634.vt_advisory_committees_report As
 
 With
