@@ -1,4 +1,4 @@
-Create Or Replace Package rpt_pbh634.ksm_pkg Is
+Create Or Replace Package rpt_pbh634.ksm_pkg_tst Is
 
 /*************************************************************************
 Author  : PBH634
@@ -98,6 +98,19 @@ Type committee_member Is Record (
   , operator_name committee.operator_name%type
   , spouse_id_number entity.spouse_id_number%type
 );
+
+Type committee_agg Is Record (
+    id_number committee.id_number%type
+/*    , report_name entity.report_name%type
+    , committee_code committee.committee_code%type
+    , short_desc committee_header.short_desc%type
+    , start_dt varchar2(512)
+    , stop_dt varchar2(512)
+    , status tms_committee_status.short_desc%type
+    , role varchar2(1024)
+    , committee_title varchar2(1024)
+    , committee_short_desc varchar2(40)
+*/);
 
 /* Geo code primary, for addresses */
 Type geo_code_primary Is Record (
@@ -435,6 +448,7 @@ Type t_calendar Is Table Of calendar;
 Type t_random_id Is Table Of random_id;
 Type t_degreed_alumni Is Table Of degreed_alumni;
 Type t_committee_members Is Table Of committee_member;
+Type t_committee_agg Is Table Of committee_agg;
 Type t_geo_code_primary Is Table Of geo_code_primary;
 Type t_households Is Table Of household;
 Type t_src_donors Is Table Of src_donor;
@@ -712,6 +726,13 @@ Function tbl_special_handling_concat
     Return t_special_handling Pipelined;
 
 /* Return pipelined table of committee members */
+-- All roles listagged to one per line
+Function tbl_committee_agg (
+  my_committee_cd In varchar2
+  , shortname In varchar2 Default NULL
+) Return t_committee_agg Pipelined;
+
+-- Individual committees
 Function tbl_committee_gab
   Return t_committee_members Pipelined;
 
@@ -761,9 +782,9 @@ Function tbl_committee_privateequity
 End of package
 *************************************************************************/
 
-End ksm_pkg;
+End ksm_pkg_tst;
 /
-Create Or Replace Package Body rpt_pbh634.ksm_pkg Is
+Create Or Replace Package Body rpt_pbh634.ksm_pkg_tst Is
 
 /*************************************************************************
 Private cursor tables -- data definitions; update indicated sections as needed
@@ -1101,6 +1122,7 @@ Cursor c_cypher_vignere(phrase In varchar2, key In varchar2, wordlength In integ
 /* Definition of current Kellogg committee members
    2017-03-01 */
 Cursor c_committee_members (my_committee_cd In varchar2) Is
+  -- Same as comm subquery in c_committee_agg, below
   Select
     comm.id_number
     , comm.committee_code
@@ -1123,6 +1145,65 @@ Cursor c_committee_members (my_committee_cd In varchar2) Is
   Where comm.committee_code = my_committee_cd
     And comm.committee_status_code In ('C', 'A') -- 'C'urrent or 'A'ctive; 'A' is deprecated
   ;
+
+/* Definition of current Kellogg committee members aggregated
+   2021-06-08 */
+Cursor c_committee_agg /*(
+    my_committee_cd In varchar2
+    , shortname In varchar2
+  )*/ Is
+  With
+  c As (
+    -- Same as c_committee_members, above
+      Select
+        comm.id_number
+        , comm.committee_code
+        , hdr.short_desc
+        , comm.start_dt
+        , comm.stop_dt
+        , tms_status.short_desc As status
+        , tms_role.short_desc As role
+        , comm.committee_title
+        , comm.xcomment
+        , comm.date_modified
+        , comm.operator_name
+        , trim(entity.spouse_id_number) As spouse_id_number
+--        , shortname As committee_short_desc
+      From committee comm
+      Inner Join entity
+        On entity.id_number = comm.id_number
+      Left Join tms_committee_status tms_status On comm.committee_status_code = tms_status.committee_status_code
+      Left Join tms_committee_role tms_role On comm.committee_role_code = tms_role.committee_role_code
+      Left Join committee_header hdr On comm.committee_code = hdr.committee_code
+--      Where comm.committee_code = my_committee_cd
+--        And comm.committee_status_code In ('C', 'A') -- 'C'urrent or 'A'ctive; 'A' is deprecated
+  )
+  -- Main query
+  Select
+    c.id_number
+/*    , entity.report_name
+    , c.committee_code
+    , c.short_desc
+    , listagg(c.start_dt, '; ') Within Group (Order By c.start_dt Asc, c.stop_dt Asc, c.role Asc)
+      As start_dt
+    , listagg(c.stop_dt, '; ') Within Group (Order By c.start_dt Asc, c.stop_dt Asc, c.role Asc)
+      As stop_dt
+    , c.status
+    , listagg(c.role, '; ') Within Group (Order By c.start_dt Asc, c.stop_dt Asc, c.role Asc)
+      As role
+    , listagg(c.committee_title, '; ') Within Group (Order By c.start_dt Asc, c.stop_dt Asc, c.role Asc)
+      As committee_title
+    , shortname
+      As committee_short_desc
+*/  From c
+/*  Inner Join entity
+    On entity.id_number = c.id_number
+  Group By
+    c.id_number
+    , c.committee_code
+    , c.short_desc
+    , c.status
+*/  ;
 
 /* Definition of Kellogg degrees concatenated
    2017-02-15 */
@@ -4273,6 +4354,46 @@ Function tbl_special_handling_concat
       Return committees;
     End;
 
+    
+  /* Generic committee_agg function, similar to committee_members
+     2021-06-08 */
+  Function committee_agg_members /*(
+    my_committee_cd In varchar2
+    , shortname In varchar2 Default NULL
+  )*/
+  Return t_committee_agg As
+  -- Declarations
+  committees_agg t_committee_agg;
+  
+  -- Return table results
+  Begin
+    Open c_committee_agg /*(
+      my_committe_cd => my_committee_cd
+      , shortname => shortname
+    )*/;
+      Fetch c_committee_agg Bulk Collect Into committees_agg;
+      Close c_committee_agg;
+      Return committees_agg;
+    End;
+    
+  -- All roles listagged to one per line
+  Function tbl_committee_agg (
+    my_committee_cd In varchar2
+    , shortname In varchar2
+  ) Return t_committee_agg Pipelined As
+  committees_agg t_committee_agg;
+  
+    Begin
+      committees_agg := committee_agg_members /*(
+        my_committee_cd => my_committee_cd
+        , shortname => shortname
+      )*/;
+      For i in 1..committees_agg.count Loop
+        Pipe row(committees_agg(i));
+      End Loop;
+      Return;
+    End;
+
   -- GAB
   Function tbl_committee_gab
     Return t_committee_members Pipelined As
@@ -4468,5 +4589,5 @@ Function tbl_special_handling_concat
         Return;
       End;
 
-End ksm_pkg;
+End ksm_pkg_tst;
 /
