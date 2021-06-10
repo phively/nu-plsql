@@ -325,6 +325,7 @@ Type trans_entity Is Record (
   , associated_code tms_association.associated_code%type
   , associated_desc tms_association.short_desc%type
   , pledge_number pledge.pledge_pledge_number%type
+  , pledge_fiscal_year pledge.pledge_year_of_giving%type
   , matched_tx_number matching_gift.match_gift_matched_receipt%type
   , matched_fiscal_year number
   , payment_type tms_payment_type.short_desc%type
@@ -341,6 +342,7 @@ Type trans_entity Is Record (
   , legal_amount gift.gift_associated_amount%type
   , credit_amount gift.gift_associated_amount%type
   , recognition_credit gift.gift_associated_amount%type
+  , stewardship_credit_amount gift.gift_associated_amount%type
 );
 
 /* Householdable transaction for credit */
@@ -358,6 +360,7 @@ Type trans_household Is Record (
   , associated_code tms_association.associated_code%type
   , associated_desc tms_association.short_desc%type
   , pledge_number pledge.pledge_pledge_number%type
+  , pledge_fiscal_year pledge.pledge_year_of_giving%type
   , matched_tx_number matching_gift.match_gift_matched_receipt%type
   , matched_fiscal_year number
   , payment_type tms_payment_type.short_desc%type
@@ -374,6 +377,7 @@ Type trans_household Is Record (
   , legal_amount gift.gift_associated_amount%type
   , credit_amount gift.gift_associated_amount%type
   , recognition_credit gift.gift_associated_amount%type
+  , stewardship_credit_amount gift.gift_associated_amount%type
   , hh_credit gift.gift_associated_amount%type
   , hh_recognition_credit gift.gift_associated_amount%type
 );
@@ -2266,6 +2270,7 @@ Cursor c_gift_credit Is
       , 'MG' As associated_code
       , 'Matching Gift' As associated_desc
       , NULL As pledge_number
+      , NULL As pledge_fiscal_year
       , match_gift_matched_receipt As matched_tx_number
       , to_number(gift.gift_year_of_giving) As matched_fiscal_year
       , tms_pmt_type.payment_type
@@ -2283,6 +2288,7 @@ Cursor c_gift_credit Is
       , match_gift_amount
       , match_gift_amount
       , match_gift_amount
+      , match_gift_amount As stewardship_credit_amount
     From matching_gift
     Inner Join entity On entity.id_number = matching_gift.match_gift_company_id
     -- Matched gift data
@@ -2314,6 +2320,7 @@ Cursor c_gift_credit Is
       , 'MG' As associated_code
       , 'Matching Gift' As associated_desc
       , NULL As pledge_number
+      , NULL As pledge_fiscal_year
       , match_gift_matched_receipt As matched_tx_number
       , to_number(gift.gift_year_of_giving) As matched_fiscal_year
       , tms_pmt_type.payment_type
@@ -2331,6 +2338,7 @@ Cursor c_gift_credit Is
       , Case When gft.id_number = match_gift_company_id Then match_gift_amount Else 0 End As legal_amount
       , match_gift_amount
       , match_gift_amount
+      , match_gift_amount As stewardship_credit_amount
     From matching_gift
     -- Matched gift data
     Left Join gift On gift.gift_receipt_number = match_gift_matched_receipt
@@ -2374,7 +2382,8 @@ Cursor c_gift_credit Is
         As tx_gypm_ind
       , gift.gift_associated_code
       , tms_assoc.associated_desc
-      , primary_gift.prim_gift_pledge_number As pledge_number
+      , trim(primary_gift.prim_gift_pledge_number) As pledge_number
+      , primary_pledge.prim_pledge_year_of_giving As pledge_fiscal_year
       , NULL As matched_tx_number
       , NULL As matched_fiscal_year
       , tms_pmt_type.payment_type
@@ -2397,12 +2406,32 @@ Cursor c_gift_credit Is
             Then get_number_from_dollar(primary_gift.prim_gift_comment)
           Else gift.gift_associated_credit_amt
         End As recognition_credit
+      -- Stewardship credit, where pledge payments are counted at face value provided the pledge
+      -- was made in an earlier fiscal year
+      , Case
+          -- Internal transfers logic
+          When tms_pmt_type.payment_type = 'Internal Transfer'
+            And gift.gift_associated_credit_amt = 0
+            Then get_number_from_dollar(primary_gift.prim_gift_comment)
+          -- When no associated pledge use credit amount
+          When primary_pledge.prim_pledge_number Is Null
+            Then gift.gift_associated_credit_amt
+          -- When a pledge transaction type, check the year
+          Else Case
+            -- Zero out when pledge fiscal year and payment fiscal year are the same
+            When primary_pledge.prim_pledge_year_of_giving = get_fiscal_year(gift.gift_date_of_record)
+              Then 0
+            Else gift.gift_associated_credit_amt
+            End
+        End As stewardship_credit_amount
     From gift
     Inner Join entity On entity.id_number = gift.gift_donor_id
     -- Allocation
     Inner Join allocation On allocation.allocation_code = gift.gift_associated_allocation
     -- Anonymous association and linked proposal
     Inner Join primary_gift On primary_gift.prim_gift_receipt_number = gift.gift_receipt_number
+    -- Primary pledge fiscal year
+    Left Join primary_pledge On primary_pledge.prim_pledge_number = primary_gift.prim_gift_pledge_number
     -- Trans type descriptions
     Left Join tms_trans On tms_trans.transaction_type_code = gift.gift_transaction_type
     Left Join tms_pmt_type On tms_pmt_type.payment_type_code = gift.gift_payment_type
@@ -2423,6 +2452,7 @@ Cursor c_gift_credit Is
       , pledge.pledge_associated_code
       , tms_assoc.associated_desc
       , pledge.pledge_pledge_number As pledge_number
+      , pledge.pledge_year_of_giving As pledge_fiscal_year
       , NULL As matched_tx_number
       , NULL As matched_fiscal_year
       , NULL As payment_type
@@ -2449,6 +2479,7 @@ Cursor c_gift_credit Is
       , plgd.legal
       , plgd.credit
       , plgd.recognition_credit
+      , plgd.recognition_credit As stewardship_credit_amount
     From pledge
     Inner Join entity On entity.id_number = pledge.pledge_donor_id
     -- Trans type descriptions
@@ -2530,6 +2561,7 @@ Cursor c_gift_credit_ksm Is
       , 'MG' As associated_code
       , 'Matching Gift' As associated_desc
       , NULL As pledge_number
+      , NULL As pledge_fiscal_year
       , match_gift_matched_receipt As matched_tx_number
       , to_number(gift.gift_year_of_giving) As matched_fiscal_year
       , tms_pmt_type.payment_type
@@ -2547,6 +2579,7 @@ Cursor c_gift_credit_ksm Is
       , match_gift_amount
       , match_gift_amount
       , match_gift_amount
+      , match_gift_amount As stewardship_credit_amount
     From matching_gift
     Inner Join entity On entity.id_number = matching_gift.match_gift_company_id
     -- Matched gift data
@@ -2578,6 +2611,7 @@ Cursor c_gift_credit_ksm Is
       , 'MG' As associated_code
       , 'Matching Gift' As associated_desc
       , NULL As pledge_number
+      , NULL As pledge_fiscal_year
       , match_gift_matched_receipt As matched_tx_number
       , to_number(gift.gift_year_of_giving) As matched_fiscal_year
       , tms_pmt_type.payment_type
@@ -2595,6 +2629,7 @@ Cursor c_gift_credit_ksm Is
       , Case When gft.id_number = match_gift_company_id Then match_gift_amount Else 0 End As legal_amount
       , match_gift_amount
       , match_gift_amount
+      , match_gift_amount As stewardship_credit_amount
     From matching_gift
     -- Matched gift data
     Left Join gift On gift.gift_receipt_number = match_gift_matched_receipt
@@ -2638,7 +2673,8 @@ Cursor c_gift_credit_ksm Is
         As tx_gypm_ind
       , tms_assoc.associated_code
       , tms_assoc.associated_desc
-      , primary_gift.prim_gift_pledge_number As pledge_number
+      , trim(primary_gift.prim_gift_pledge_number) As pledge_number
+      , primary_pledge.prim_pledge_year_of_giving As pledge_fiscal_year
       , NULL As matched_tx_number
       , NULL As matched_fiscal_year
       , tms_pmt_type.payment_type
@@ -2661,12 +2697,32 @@ Cursor c_gift_credit_ksm Is
             Then get_number_from_dollar(primary_gift.prim_gift_comment)
           Else gift.gift_associated_credit_amt
         End As recognition_credit
+      -- Stewardship credit, where pledge payments are counted at face value provided the pledge
+      -- was made in an earlier fiscal year
+      , Case
+          -- Internal transfers logic
+          When tms_pmt_type.payment_type = 'Internal Transfer'
+            And gift.gift_associated_credit_amt = 0
+            Then get_number_from_dollar(primary_gift.prim_gift_comment)
+          -- When no associated pledge use credit amount
+          When primary_pledge.prim_pledge_number Is Null
+            Then gift.gift_associated_credit_amt
+          -- When a pledge transaction type, check the year
+          Else Case
+            -- Zero out when pledge fiscal year and payment fiscal year are the same
+            When primary_pledge.prim_pledge_year_of_giving = get_fiscal_year(gift.gift_date_of_record)
+              Then 0
+            Else gift.gift_associated_credit_amt
+            End
+        End As stewardship_credit_amount
     From gift
     Inner Join entity On entity.id_number = gift.gift_donor_id
     -- Allocation
     Inner Join allocation On allocation.allocation_code = gift.gift_associated_allocation
     -- Anonymous association and linked proposal
     Inner Join primary_gift On primary_gift.prim_gift_receipt_number = gift.gift_receipt_number
+    -- Primary pledge fiscal year
+    Left Join primary_pledge On primary_pledge.prim_pledge_number = primary_gift.prim_gift_pledge_number
     -- Trans type descriptions
     Left Join tms_trans On tms_trans.transaction_type_code = gift.gift_transaction_type
     Left Join tms_pmt_type On tms_pmt_type.payment_type_code = gift.gift_payment_type
@@ -2688,6 +2744,7 @@ Cursor c_gift_credit_ksm Is
       , tms_assoc.associated_code
       , tms_assoc.associated_desc
       , pledge.pledge_pledge_number As pledge_number
+      , pledge.pledge_year_of_giving As pledge_fiscal_year
       , NULL As matched_tx_number
       , NULL As matched_fiscal_year
       , NULL As payment_type
@@ -2707,6 +2764,7 @@ Cursor c_gift_credit_ksm Is
       , plgd.legal
       , plgd.credit
       , plgd.recognition_credit
+      , plgd.recognition_credit As stewardship_credit_amount
     From pledge
     Inner Join entity On entity.id_number = pledge.pledge_donor_id
     -- Trans type descriptions
@@ -2916,6 +2974,7 @@ Cursor c_gift_credit_hh_campaign_2008 Is
     , associated_code
     , associated_desc
     , pledge_number
+    , pledge_fiscal_year
     , matched_tx_number
     , matched_fiscal_year
     , payment_type
@@ -2932,6 +2991,7 @@ Cursor c_gift_credit_hh_campaign_2008 Is
     , legal_amount
     , credit_amount
     , recognition_credit
+    , stewardship_credit_amount
     , hh_credit
     , hh_recognition_credit
   From table(tbl_gift_credit_hh_ksm) hh_cred
@@ -2953,6 +3013,7 @@ Cursor c_gift_credit_hh_campaign_2008 Is
     , 'IT' As associated_code
     , 'Internal Transfer' As associated_desc
     , NULL As pledge_number
+    , NULL As pledge_fiscal_year
     , NULL As matched_tx_number
     , NULL As matched_fiscal_year
     , 'Internal Transfer'
@@ -2969,6 +3030,7 @@ Cursor c_gift_credit_hh_campaign_2008 Is
     , 344303 As legal_amount
     , 344303 As credit_amount
     , 344303 As recognition_amount
+    , 344303 As stewardship_credit_amount
     , 344303 As hh_credit
     , 344303 As hh_recognition_credit
   From nu_rpt_t_cmmt_dtl_daily daily

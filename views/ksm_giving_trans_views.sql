@@ -457,7 +457,8 @@ Kellogg Campaign giving summaries
 *************************************************/
 Create or Replace View v_ksm_giving_campaign As
 With
-manual_dates As (  Select to_date('20210630', 'yyyymmdd') As transforming_together_end_dt
+manual_dates As (
+  Select to_date('20210630', 'yyyymmdd') As transforming_together_end_dt
   From DUAL
 )
 , hh As (
