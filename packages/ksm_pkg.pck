@@ -380,6 +380,7 @@ Type trans_household Is Record (
   , stewardship_credit_amount gift.gift_associated_amount%type
   , hh_credit gift.gift_associated_amount%type
   , hh_recognition_credit gift.gift_associated_amount%type
+  , hh_stewardship_credit gift.gift_associated_amount%type
 );
 
 /* Campaign transactions */
@@ -2822,6 +2823,12 @@ Cursor c_gift_credit_hh_ksm Is
         When id_cnt = 1 Then hhid.recognition_credit
         Else 0
       End As hh_recognition_credit
+    -- Household stewardship credit
+    , Case
+        When hhid.id_number = hhid.household_id Then hhid.stewardship_credit_amount
+        When id_cnt = 1 Then hhid.stewardship_credit_amount
+        Else 0
+      End As hh_stewardship_credit
   From hhid
   Inner Join giftcount gc On gc.household_id = hhid.household_id
     And gc.tx_number = hhid.tx_number
@@ -2994,6 +3001,7 @@ Cursor c_gift_credit_hh_campaign_2008 Is
     , stewardship_credit_amount
     , hh_credit
     , hh_recognition_credit
+    , hh_stewardship_credit
   From table(tbl_gift_credit_hh_ksm) hh_cred
   Inner Join (Select Distinct rcpt_or_plg_number From nu_rpt_t_cmmt_dtl_daily) daily
     On hh_cred.tx_number = daily.rcpt_or_plg_number
@@ -3033,6 +3041,7 @@ Cursor c_gift_credit_hh_campaign_2008 Is
     , 344303 As stewardship_credit_amount
     , 344303 As hh_credit
     , 344303 As hh_recognition_credit
+    , 344303 As hh_stewardship_credit
   From nu_rpt_t_cmmt_dtl_daily daily
   Inner Join entity On entity.id_number = daily.id_number
   Inner Join allocation On allocation.allocation_code = daily.alloc_code
