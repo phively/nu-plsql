@@ -168,20 +168,23 @@ params As (
     , sum(Case When tx_gypm_ind != 'P' And cru_flag = 'Y' And (
         (cal.curr_fy = fiscal_year + 5 And tx_gypm_ind != 'M') Or (cal.curr_fy = matched_fiscal_year + 5 And tx_gypm_ind = 'M')
       ) Then hh_credit Else 0 End) As klc_pfy5
+    -- Stewardship giving, defined as new gifts and commitments plus pledge payments where the NGC was not already counted
+    -- in the current year.
     -- WARNING: includes new gifts and commitments as well as cash
-    , sum(Case When cal.curr_fy = fiscal_year     Then hh_credit Else 0 End) As stewardship_cfy
-    , sum(Case When cal.curr_fy = fiscal_year + 1 Then hh_credit Else 0 End) As stewardship_pfy1
-    , sum(Case When cal.curr_fy = fiscal_year + 2 Then hh_credit Else 0 End) As stewardship_pfy2
-    , sum(Case When cal.curr_fy = fiscal_year + 3 Then hh_credit Else 0 End) As stewardship_pfy3
-    , sum(Case When cal.curr_fy = fiscal_year + 4 Then hh_credit Else 0 End) As stewardship_pfy4
-    , sum(Case When cal.curr_fy = fiscal_year + 5 Then hh_credit Else 0 End) As stewardship_pfy5
+    , sum(Case When cal.curr_fy = fiscal_year     Then hh_stewardship_credit Else 0 End) As stewardship_cfy
+    , sum(Case When cal.curr_fy = fiscal_year + 1 Then hh_stewardship_credit Else 0 End) As stewardship_pfy1
+    , sum(Case When cal.curr_fy = fiscal_year + 2 Then hh_stewardship_credit Else 0 End) As stewardship_pfy2
+    , sum(Case When cal.curr_fy = fiscal_year + 3 Then hh_stewardship_credit Else 0 End) As stewardship_pfy3
+    , sum(Case When cal.curr_fy = fiscal_year + 4 Then hh_stewardship_credit Else 0 End) As stewardship_pfy4
+    , sum(Case When cal.curr_fy = fiscal_year + 5 Then hh_stewardship_credit Else 0 End) As stewardship_pfy5
     -- Anonymous stewardship giving per FY
-    , sum(Case When cal.curr_fy = fiscal_year     And anonymous <> ' ' Then hh_credit Else 0 End) As anonymous_cfy
-    , sum(Case When cal.curr_fy = fiscal_year + 1 And anonymous <> ' ' Then hh_credit Else 0 End) As anonymous_pfy1
-    , sum(Case When cal.curr_fy = fiscal_year + 2 And anonymous <> ' ' Then hh_credit Else 0 End) As anonymous_pfy2
-    , sum(Case When cal.curr_fy = fiscal_year + 3 And anonymous <> ' ' Then hh_credit Else 0 End) As anonymous_pfy3
-    , sum(Case When cal.curr_fy = fiscal_year + 4 And anonymous <> ' ' Then hh_credit Else 0 End) As anonymous_pfy4
-    , sum(Case When cal.curr_fy = fiscal_year + 5 And anonymous <> ' ' Then hh_credit Else 0 End) As anonymous_pfy5
+    -- WARNING: includes new gifts and commitments as well as cash
+    , sum(Case When cal.curr_fy = fiscal_year     And anonymous <> ' ' Then hh_stewardship_credit Else 0 End) As anonymous_cfy
+    , sum(Case When cal.curr_fy = fiscal_year + 1 And anonymous <> ' ' Then hh_stewardship_credit Else 0 End) As anonymous_pfy1
+    , sum(Case When cal.curr_fy = fiscal_year + 2 And anonymous <> ' ' Then hh_stewardship_credit Else 0 End) As anonymous_pfy2
+    , sum(Case When cal.curr_fy = fiscal_year + 3 And anonymous <> ' ' Then hh_stewardship_credit Else 0 End) As anonymous_pfy3
+    , sum(Case When cal.curr_fy = fiscal_year + 4 And anonymous <> ' ' Then hh_stewardship_credit Else 0 End) As anonymous_pfy4
+    , sum(Case When cal.curr_fy = fiscal_year + 5 And anonymous <> ' ' Then hh_stewardship_credit Else 0 End) As anonymous_pfy5
     -- Giving history
     , min(gfts.fiscal_year) As fy_giving_first_yr
     , max(gfts.fiscal_year) As fy_giving_last_yr
