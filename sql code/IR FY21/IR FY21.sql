@@ -17,6 +17,11 @@
     
     Updates for FY21:
     - Checked all the <UPDATE THIS> indicators and revised where needed
+    - DO NEXT: revise giving level definitions: now based on stewardship_credit_amount from ksm_pkg (used in v_ksm_giving_summary
+        among others)
+    - TO DO: pull Cornerstone from the gift club (this group might not be called out, but it's future-proofing)
+    - TO DO: create approved names table for FY19 IR
+    - TO DO: check manual householding from FY19
 */
 
 With
@@ -405,19 +410,25 @@ params_cfy As (
   Where fiscal_year = params_cfy
 )
 
+-- Cache v_ksm_giving_trans_hh for efficiency (test if this is a speedup or not)
+, v_kgth As (
+  Select *
+  From v_ksm_giving_trans_hh gfts
+)
+
 /* Loyal households
   Stewardship giving as defined by ksm_giving_trans (and thus indirectly by ksm_pkg).
-  For the FY18 IR, loyal implies either spouse is credited toward any KSM gift > $0, including matches, for each of FY18, FY17, FY16  */
+  For the FY18 IR, loyal implies either spouse is credited toward any KSM gift > $0, including matches, for each of FY18, FY17, FY16  */ 
 , loyal_giving As (
   Select Distinct
     hhs.household_id
     -- WARNING: includes new gifts and commitments as well as cash
-    , sum(Case When fiscal_year = params_pfy2 Then hh_credit Else 0 End) As stewardship_pfy2
-    , sum(Case When fiscal_year = params_pfy1 Then hh_credit Else 0 End) As stewardship_pfy1
-    , sum(Case When fiscal_year = params_cfy Then hh_credit Else 0 End) As stewardship_cfy
+    , sum(Case When fiscal_year = params_pfy2 Then hh_stewardship_credit Else 0 End) As stewardship_pfy2
+    , sum(Case When fiscal_year = params_pfy1 Then hh_stewardship_credit Else 0 End) As stewardship_pfy1
+    , sum(Case When fiscal_year = params_cfy Then hh_stewardship_credit Else 0 End) As stewardship_cfy
   From hhs
   Cross Join params
-  Inner Join v_ksm_giving_trans_hh gfts
+  Inner Join v_kgth gfts
     On gfts.household_id = hhs.household_id
   Group By hhs.household_id
 )
@@ -432,9 +443,37 @@ params_cfy As (
   From loyal_giving
 )
 
+-- Stewardship giving amounts, computed manually to be parametrized
+, stewgft As (
+  Select
+    hhs.id_number
+    , hhs.household_id
+    , hhs.household_rpt_name
+    , hhs.household_spouse_id
+    , hhs.household_spouse
+    -- FY total and anonymous giving definitions
+    , sum(Case When fiscal_year = params.params_cfy Then hh_stewardship_credit Else 0 End) As stewardship_cfy
+    , sum(Case When fiscal_year = params.params_cfy And anonymous <> ' ' Then hh_stewardship_credit Else 0 End) As stewardship_anonymous_cfy
+  From v_kgth
+  Cross Join params
+  Inner Join hhs
+    On hhs.id_number = v_kgth.id_number
+  Group By
+    hhs.id_number
+    , hhs.household_id
+    , hhs.household_rpt_name
+    , hhs.household_spouse_id
+    , hhs.household_spouse
+)
+
+-- NOT USED starting in FY21:
 /* Campaign giving amounts
   ksm_pkg rewrite of Kellogg campaign giving, based on Bill's campaign reporting table.
   For the FY18 IR, this deliberately counts bequests/life expectancy at face value, but only the PAID amounts of cancelled pledges. */
+-- USED starting in FY21:
+/* Stewardship giving amounts
+  Uses giving rules agreed on by KSM stewardship: pledge payment if pledge was in earlier year, else 0, only matches that were
+  received the same FY, etc. */
 , cgft As (
   Select
     gft.*
@@ -464,37 +503,37 @@ params_cfy As (
             End
         -- All others
         When entity.person_or_org = 'O' Then 'Z. Org'
-        When campaign_steward_thru_fy21 >= 10000000 Then 'A. 10M+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy21 >=  5000000 Then 'B. 5M+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy21 >=  2500000 Then 'C. 2.5M+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy21 >=  1000000 Then 'D. 1M+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy21 >=   500000 Then 'E. 500K+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy21 >=   250000 Then 'F. 250K+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy21 >=   100000 Then 'G. 100K+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy21 >=    50000 Then 'H. 50K+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy21 >=    25000 Then 'I. 25K+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy21 >=    10000 Then 'J. 10K+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy21 >=     5000 Then 'K. 5K+' -- <UPDATE THIS>
+        When stewardship_cfy >= 10000000 Then 'A. 10M+'
+        When stewardship_cfy >=  5000000 Then 'B. 5M+'
+        When stewardship_cfy >=  2500000 Then 'C. 2.5M+'
+        When stewardship_cfy >=  1000000 Then 'D. 1M+'
+        When stewardship_cfy >=   500000 Then 'E. 500K+'
+        When stewardship_cfy >=   250000 Then 'F. 250K+'
+        When stewardship_cfy >=   100000 Then 'G. 100K+'
+        When stewardship_cfy >=    50000 Then 'H. 50K+'
+        When stewardship_cfy >=    25000 Then 'I. 25K+'
+        When stewardship_cfy >=    10000 Then 'J. 10K+'
+        When stewardship_cfy >=     5000 Then 'K. 5K+'
         Else 'L. 2.5K+'
         End
       As proposed_giving_level
     , Case
         When entity.person_or_org = 'O' Then 'Z. Org'
-        When campaign_steward_thru_fy21 >= 10000000 Then 'A. 10M+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy21 >=  5000000 Then 'B. 5M+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy21 >=  2500000 Then 'C. 2.5M+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy21 >=  1000000 Then 'D. 1M+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy21 >=   500000 Then 'E. 500K+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy21 >=   250000 Then 'F. 250K+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy21 >=   100000 Then 'G. 100K+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy21 >=    50000 Then 'H. 50K+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy21 >=    25000 Then 'I. 25K+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy21 >=    10000 Then 'J. 10K+' -- <UPDATE THIS>
-        When campaign_steward_thru_fy21 >=     5000 Then 'K. 5K+' -- <UPDATE THIS>
+        When stewardship_cfy >= 10000000 Then 'A. 10M+'
+        When stewardship_cfy >=  5000000 Then 'B. 5M+'
+        When stewardship_cfy >=  2500000 Then 'C. 2.5M+'
+        When stewardship_cfy >=  1000000 Then 'D. 1M+'
+        When stewardship_cfy >=   500000 Then 'E. 500K+'
+        When stewardship_cfy >=   250000 Then 'F. 250K+'
+        When stewardship_cfy >=   100000 Then 'G. 100K+'
+        When stewardship_cfy >=    50000 Then 'H. 50K+'
+        When stewardship_cfy >=    25000 Then 'I. 25K+'
+        When stewardship_cfy >=    10000 Then 'J. 10K+'
+        When stewardship_cfy >=     5000 Then 'K. 5K+'
         Else 'L. 2.5K+'
         End
       As nonanon_giving_level
-  From v_ksm_giving_campaign gft
+  From stewgft gft
   Inner Join entity
     On entity.id_number = gft.id_number
   -- Interface for custom giving levels override; add to the tbl_ir_fy18_custom_level table and they'll show up here
@@ -526,7 +565,7 @@ params_cfy As (
       As cash_fy21 -- <UPDATE THIS>
   From hhs
   Cross Join params
-  Inner Join v_ksm_giving_trans_hh gfts
+  Inner Join v_kgth gfts
     On gfts.household_id = hhs.household_id
   Group By
     hhs.id_number
@@ -537,10 +576,10 @@ params_cfy As (
 )
 
 /* Combine all criteria
-  Main temp table pulling together all criteria for IR17 */
+  Main temp table pulling together all criteria */
 , donorlist As (
   (
-  -- $2500+ cumulative campaign giving for people
+  -- $2500+ giving for people
   Select
     cgft.*, hh.deceased_past_year, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix
     , hh.household_masters_year, hh.primary_name, hh.primary_name_source, hh.constructed_name, hh.gender
@@ -552,11 +591,11 @@ params_cfy As (
     On hh.id_number = cgft.id_number
   Where hh.person_or_org = 'P' -- People
     And (
-      cgft.campaign_steward_thru_fy21 >= 2500 -- <UPDATE THIS>
+      cgft.stewardship_cfy >= 2500 --<UPDATE THIS>
       Or manual_giving_level = 'Y' -- Always include custom level override even if below $2500
     )
   ) Union All (
-  -- $100K+ cumulative campaign giving for orgs
+  -- $100K+ giving for orgs
   Select
     cgft.*, hh.deceased_past_year, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix
     , hh.household_masters_year, hh.primary_name, hh.primary_name_source, hh.constructed_name, hh.gender
@@ -568,10 +607,12 @@ params_cfy As (
     On hh.id_number = cgft.id_number
   Where hh.person_or_org = 'O' -- Orgs
     And (
-      cgft.campaign_steward_thru_fy21 >= 100000 -- <UPDATE THIS>
+      cgft.stewardship_cfy >= 100000 -- <UPDATE THIS>
       Or manual_giving_level = 'Y' -- Always include custom level override even if below $2500
     )
-  ) Union All (
+  )
+  -- REMOVED on 2021-06-18 - is this needed anymore?
+/*Union All (
   -- Young alumni giving $1000+ from FY12 on
   Select
     cgft.*, hh.deceased_past_year, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix
@@ -621,7 +662,7 @@ params_cfy As (
         And (campaign_fy21 >= 1000 Or cash_fy21 >= 1000) -- <UPDATE THIS>
       )
     )
-  )
+  )*/
 )
 
 /* Name ordering helper */
@@ -971,7 +1012,11 @@ Select Distinct
   , loyal.stewardship_cfy
   , loyal.stewardship_pfy1
   , loyal.stewardship_pfy2
-  , campaign_steward_giving
+  , stewardship_cfy
+  , stewardship_anonymous_cfy
+  , stewardship_cfy - stewardship_anonymous_cfy
+    As stewardship_nonanonymous_cfy
+/*  , campaign_steward_giving
   , campaign_anonymous
   , campaign_nonanonymous
   , campaign_giving
@@ -989,7 +1034,7 @@ Select Distinct
   , campaign_fy18
   , campaign_fy19
   , campaign_fy20
-  , campaign_fy21 -- <UPDATE THIS>
+  , campaign_fy21 -- <UPDATE THIS>*/
 From donorlist
 Inner Join rec_name
   On rec_name.id_number = donorlist.id_number

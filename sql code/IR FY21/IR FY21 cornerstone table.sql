@@ -1,7 +1,7 @@
-Drop Table tbl_IR_FY21_cornerstone
+Drop Table tbl_IR_FY21_cornerstone --<UPDATE THIS>
 ;
 
-Create Table tbl_IR_FY21_cornerstone (
+Create Table tbl_IR_FY21_cornerstone ( --<UPDATE THIS>
   -- entity.id_number to include
   id_number varchar2(10)
 )
@@ -21,7 +21,7 @@ Select
   cornerstone.id_number
   , entity.report_name
   , spouse.report_name As spouse_name
-From tbl_IR_FY21_cornerstone cornerstone
+From tbl_IR_FY21_cornerstone cornerstone --<UPDATE THIS>
 Inner Join entity
   On entity.id_number = cornerstone.id_number
 Left Join entity spouse

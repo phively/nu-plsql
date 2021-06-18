@@ -1,7 +1,7 @@
-Drop Table tbl_IR_FY21_manual_household
+Drop Table tbl_IR_FY21_manual_household --<UPDATE THIS>
 ;
 
-Create Table tbl_IR_FY21_manual_household (
+Create Table tbl_IR_FY21_manual_household ( --<UPDATE THIS>
   -- entity.id_number of entity on the report
   id_number varchar2(10)
   -- entity.id_number of former spouse to manually household
@@ -9,7 +9,7 @@ Create Table tbl_IR_FY21_manual_household (
 )
 ;
 
-Insert All
+Insert All --<UPDATE THIS> all years need fixing
   Into tbl_IR_FY21_manual_household Values('0000072318', '0000072317')
   Into tbl_IR_FY21_manual_household Values('0000206429', '0000192640')
   Into tbl_IR_FY21_manual_household Values('0000370388', '0000155433')
@@ -215,7 +215,7 @@ Select
         Then 'Y'
       End
     As check_by_hand
-From tbl_IR_FY21_manual_household ds
+From tbl_IR_FY21_manual_household ds --<UPDATE THIS>
 Inner Join entity
   On ds.id_number = entity.id_number
 Inner Join entity spouse

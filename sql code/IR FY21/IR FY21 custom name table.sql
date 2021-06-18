@@ -1,7 +1,7 @@
-Drop Table tbl_IR_FY21_custom_name
+Drop Table tbl_IR_FY21_custom_name --<UPDATE THIS>
 ;
 
-Create Table tbl_IR_FY21_custom_name (
+Create Table tbl_IR_FY21_custom_name ( --<UPDATE THIS>
   -- entity.id_number to link custom name to record
   id_number varchar2(10)
   -- customized recognition name, with <DECEASED> tag if applicable
@@ -11,7 +11,7 @@ Create Table tbl_IR_FY21_custom_name (
 )
 ;
 
-Insert All
+Insert All --<UPDATE THIS> all years need fixing, but this should really be copy-pasted from the proofing sheet
   -- overrides <LOYAL> and <KLC> designations from main script
   Into tbl_IR_FY21_custom_name Values('1234567890', 'Example Guy ''09 and Nonalum<LOYAL>', 'Y')
   -- main SQL script will still append <LOYAL> and <KLC> if applicable
@@ -60,7 +60,7 @@ Select
       Else 'Y'
       End
     As check_by_hand
-From tbl_IR_FY21_custom_name cust_name
+From tbl_IR_FY21_custom_name cust_name --<UPDATE THIS>
 Inner Join entity
   On entity.id_number = cust_name.id_number
 Left Join hr_names
