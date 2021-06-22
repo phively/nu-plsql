@@ -1,5 +1,6 @@
-/* FY19 Kellogg Investor's Report
-    Based on Campaign giving through the entire counting period, FY07 through FY19
+/* FY21 Kellogg Investor's Report
+    Previously based on Campaign giving through the entire counting period, FY07 through FY19
+    -- UPDATE for FY21: counts only the current year's giving
     See Paul's "Investor's Report" folder on the G drive for criteria and notes
     See GitHub for the complete version history: https://github.com/phively/nu-plsql/tree/master/sql%20code/IR%20FY19
     Shouldn't take more than 8 minutes to run to completion
@@ -477,6 +478,9 @@ params_cfy As (
 , cgft As (
   Select
     gft.*
+    , hhs.report_name
+    , hhs.degrees_concat
+    , hhs.person_or_org
     -- Custom giving level indicator
     , Case When custlvl.id_number Is Not Null Then 'Y' End
       As manual_giving_level
@@ -502,7 +506,7 @@ params_cfy As (
             Else 'CHECK BY HAND'
             End
         -- All others
-        When entity.person_or_org = 'O' Then 'Z. Org'
+        When hhs.person_or_org = 'O' Then 'Z. Org'
         When stewardship_cfy >= 10000000 Then 'A. 10M+'
         When stewardship_cfy >=  5000000 Then 'B. 5M+'
         When stewardship_cfy >=  2500000 Then 'C. 2.5M+'
@@ -518,7 +522,7 @@ params_cfy As (
         End
       As proposed_giving_level
     , Case
-        When entity.person_or_org = 'O' Then 'Z. Org'
+        When hhs.person_or_org = 'O' Then 'Z. Org'
         When stewardship_cfy >= 10000000 Then 'A. 10M+'
         When stewardship_cfy >=  5000000 Then 'B. 5M+'
         When stewardship_cfy >=  2500000 Then 'C. 2.5M+'
@@ -534,8 +538,8 @@ params_cfy As (
         End
       As nonanon_giving_level
   From stewgft gft
-  Inner Join entity
-    On entity.id_number = gft.id_number
+  Inner Join hhs
+    On hhs.id_number = gft.id_number
   -- Interface for custom giving levels override; add to the tbl_ir_fy18_custom_level table and they'll show up here
   Left Join tbl_ir_fy21_custom_level custlvl -- <UPDATE THIS>
     On custlvl.id_number = gft.id_number
@@ -589,6 +593,8 @@ params_cfy As (
   From cgft
   Inner Join hh
     On hh.id_number = cgft.id_number
+  Inner Join entity
+    On entity.id_number = cgft.id_number
   Where hh.person_or_org = 'P' -- People
     And (
       cgft.stewardship_cfy >= 2500 --<UPDATE THIS>
@@ -605,6 +611,8 @@ params_cfy As (
   From cgft
   Inner Join hh
     On hh.id_number = cgft.id_number
+  Inner Join entity
+    On entity.id_number = cgft.id_number
   Where hh.person_or_org = 'O' -- Orgs
     And (
       cgft.stewardship_cfy >= 100000 -- <UPDATE THIS>
@@ -909,16 +917,16 @@ params_cfy As (
 /* Main query */
 Select Distinct
   -- Print in IR flag, for household deduping
-  ids_for_deduping
+  rec_name.ids_for_deduping
   , dense_rank() Over(
-      Partition By ids_for_deduping
-      Order By proposed_giving_level Asc, lower(proposed_sort_name) Asc, proposed_recognition_name Desc, household_rpt_name Asc, donorlist.id_number Asc
+      Partition By rec_name.ids_for_deduping
+      Order By donorlist.proposed_giving_level Asc, lower(rec_name.proposed_sort_name) Asc, rec_name.proposed_recognition_name Desc, donorlist.household_rpt_name Asc, donorlist.id_number Asc
     )
     As name_rank
   , Case
       When dense_rank() Over(
-        Partition By ids_for_deduping
-        Order By proposed_giving_level Asc, lower(proposed_sort_name) Asc, proposed_recognition_name Desc, household_rpt_name Asc, donorlist.id_number Asc
+        Partition By rec_name.ids_for_deduping
+        Order By donorlist.proposed_giving_level Asc, lower(rec_name.proposed_sort_name) Asc, rec_name.proposed_recognition_name Desc, donorlist.household_rpt_name Asc, donorlist.id_number Asc
       ) = 1 Then 'Y'
       End
     As print_in_report
@@ -926,21 +934,18 @@ Select Distinct
   , rec_name.proposed_sort_name
   , rec_name.proposed_recognition_name
   -- Giving level string
-  , proposed_giving_level
+  , donorlist.proposed_giving_level
   -- Anonymous flags
   , Case
-      When proposed_giving_level <> nonanon_giving_level
+      When donorlist.proposed_giving_level <> donorlist.nonanon_giving_level
         And rec_name.anon Is Null
-          Then nonanon_giving_level
+          Then donorlist.nonanon_giving_level
       End
     As different_nonanon_level
   , rec_name.anon
-  , anon_steward_thru_fy21 -- <UPDATE THIS>
-  , nonanon_steward_thru_fy21 -- <UPDATE THIS>
   -- Fields
-  , campaign_steward_thru_fy21 -- <UPDATE THIS>
-  , deceased_past_year
-  , manual_giving_level
+  , donorlist.deceased_past_year
+  , donorlist.manual_giving_level
   , Case
       When rec_name.name_order = 'Manually HH'
         Then 'Y'
@@ -961,80 +966,60 @@ Select Distinct
           Order By proposed_giving_level Asc, lower(proposed_sort_name) Asc, donorlist.id_number Asc
         ) > 1
         And dense_rank() Over(
-          Partition By ids_for_deduping
+          Partition By rec_name.ids_for_deduping
           Order By proposed_giving_level Asc, lower(proposed_sort_name) Asc, proposed_recognition_name Desc, donorlist.id_number Asc
         ) = 1
         Then 'Y'
       End
       As possible_dupe
-  , no_joint_gifts_flag
+  , donorlist.no_joint_gifts_flag
   , assign_conc.managers
   , donorlist.id_number
-  , report_name
-  , degrees_concat
+  , donorlist.report_name
+  , donorlist.degrees_concat
   , dec_spouse_conc.dec_spouse_ids
-  , fmr_spouse_id
-  , fmr_spouse_name
-  , fmr_marital_status
+  , donorlist.fmr_spouse_id
+  , donorlist.fmr_spouse_name
+  , donorlist.fmr_marital_status
   , donorlist.household_id
-  , person_or_org
-  , record_status_code
-  , household_rpt_name
-  , household_suffix
-  , primary_name
-  , constructed_name
-  , primary_name_source
+  , donorlist.person_or_org
+  , donorlist.record_status_code
+  , donorlist.household_rpt_name
+  , donorlist.household_suffix
+  , donorlist.primary_name
+  , donorlist.constructed_name
+  , donorlist.primary_name_source
   , Case
-      When primary_name <> constructed_name
+      When donorlist.primary_name <> donorlist.constructed_name
         Then 'Y'
       End
     As constructed_name_difference
   , Case
-      When primary_name_spouse <> constructed_name_spouse
+      When donorlist.primary_name_spouse <> donorlist.constructed_name_spouse
         Then 'Y'
       End
     As constructed_spouse_difference
-  , check_primary_lastname
-  , check_primary_lastname_spouse
-  , yrs
-  , gender
+  , donorlist.check_primary_lastname
+  , donorlist.check_primary_lastname_spouse
+  , donorlist.yrs
+  , donorlist.gender
   , hr_names.honor_roll_name
-  , household_masters_year
-  , household_spouse_id
-  , household_spouse_rpt_name
-  , household_spouse_suffix
-  , primary_name_spouse
-  , constructed_name_spouse
-  , primary_name_source_spouse
-  , yrs_spouse
-  , gender_spouse
+  , donorlist.household_masters_year
+  , donorlist.household_spouse_id
+  , donorlist.household_spouse_rpt_name
+  , donorlist.household_spouse_suffix
+  , donorlist.primary_name_spouse
+  , donorlist.constructed_name_spouse
+  , donorlist.primary_name_source_spouse
+  , donorlist.yrs_spouse
+  , donorlist.gender_spouse
   , hr_names_s.honor_roll_name As honor_roll_name_spouse
   , loyal.stewardship_cfy
   , loyal.stewardship_pfy1
   , loyal.stewardship_pfy2
-  , stewardship_cfy
-  , stewardship_anonymous_cfy
-  , stewardship_cfy - stewardship_anonymous_cfy
-    As stewardship_nonanonymous_cfy
-/*  , campaign_steward_giving
-  , campaign_anonymous
-  , campaign_nonanonymous
-  , campaign_giving
-  , campaign_reachbacks
-  , campaign_fy08
-  , campaign_fy09
-  , campaign_fy10
-  , campaign_fy11
-  , campaign_fy12
-  , campaign_fy13
-  , campaign_fy14
-  , campaign_fy15
-  , campaign_fy16
-  , campaign_fy17
-  , campaign_fy18
-  , campaign_fy19
-  , campaign_fy20
-  , campaign_fy21 -- <UPDATE THIS>*/
+  , donorlist.stewardship_cfy
+  , donorlist.stewardship_anonymous_cfy
+  , donorlist.stewardship_cfy - donorlist.stewardship_anonymous_cfy As stewardship_nonanonymous_cfy
 From donorlist
 Inner Join rec_name
   On rec_name.id_number = donorlist.id_number
