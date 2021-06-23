@@ -455,6 +455,10 @@ params_cfy As (
     -- FY total and anonymous giving definitions
     , sum(Case When fiscal_year = params.params_cfy Then hh_stewardship_credit Else 0 End) As stewardship_cfy
     , sum(Case When fiscal_year = params.params_cfy And anonymous <> ' ' Then hh_stewardship_credit Else 0 End) As stewardship_anonymous_cfy
+    , sum(Case When fiscal_year = params.params_cfy And anonymous = ' ' Then hh_stewardship_credit Else 0 End) As stewardship_nonanonymous_cfy
+    -- FY cash and NGC
+    , sum(Case When tx_gypm_ind <> 'Y' And fiscal_year = params.params_cfy Then hh_credit Else 0 End) As ngc_cfy
+    , sum(Case When tx_gypm_ind <> 'P' And fiscal_year = params.params_cfy Then hh_credit Else 0 End) As cash_cfy
   From v_kgth
   Cross Join params
   Inner Join hhs
@@ -523,17 +527,17 @@ params_cfy As (
       As proposed_giving_level
     , Case
         When hhs.person_or_org = 'O' Then 'Z. Org'
-        When stewardship_cfy >= 10000000 Then 'A. 10M+'
-        When stewardship_cfy >=  5000000 Then 'B. 5M+'
-        When stewardship_cfy >=  2500000 Then 'C. 2.5M+'
-        When stewardship_cfy >=  1000000 Then 'D. 1M+'
-        When stewardship_cfy >=   500000 Then 'E. 500K+'
-        When stewardship_cfy >=   250000 Then 'F. 250K+'
-        When stewardship_cfy >=   100000 Then 'G. 100K+'
-        When stewardship_cfy >=    50000 Then 'H. 50K+'
-        When stewardship_cfy >=    25000 Then 'I. 25K+'
-        When stewardship_cfy >=    10000 Then 'J. 10K+'
-        When stewardship_cfy >=     5000 Then 'K. 5K+'
+        When stewardship_nonanonymous_cfy >= 10000000 Then 'A. 10M+'
+        When stewardship_nonanonymous_cfy >=  5000000 Then 'B. 5M+'
+        When stewardship_nonanonymous_cfy >=  2500000 Then 'C. 2.5M+'
+        When stewardship_nonanonymous_cfy >=  1000000 Then 'D. 1M+'
+        When stewardship_nonanonymous_cfy >=   500000 Then 'E. 500K+'
+        When stewardship_nonanonymous_cfy >=   250000 Then 'F. 250K+'
+        When stewardship_nonanonymous_cfy >=   100000 Then 'G. 100K+'
+        When stewardship_nonanonymous_cfy >=    50000 Then 'H. 50K+'
+        When stewardship_nonanonymous_cfy >=    25000 Then 'I. 25K+'
+        When stewardship_nonanonymous_cfy >=    10000 Then 'J. 10K+'
+        When stewardship_nonanonymous_cfy >=     5000 Then 'K. 5K+'
         Else 'L. 2.5K+'
         End
       As nonanon_giving_level
@@ -1020,6 +1024,8 @@ Select Distinct
   , donorlist.stewardship_cfy
   , donorlist.stewardship_anonymous_cfy
   , donorlist.stewardship_cfy - donorlist.stewardship_anonymous_cfy As stewardship_nonanonymous_cfy
+  , donorlist.ngc_cfy
+  , donorlist.cash_cfy
 From donorlist
 Inner Join rec_name
   On rec_name.id_number = donorlist.id_number
