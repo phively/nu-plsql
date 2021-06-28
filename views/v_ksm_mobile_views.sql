@@ -95,6 +95,7 @@ From telephone t)
 
 Select
          a.Id_number
+      ,  house.report_name
       ,  a.xsequence
       ,  tms_addr_status.short_desc AS Address_Status
       ,  a.addr_type_code
@@ -120,6 +121,7 @@ Select
       LEFT JOIN tms_country ON tms_country.country_code = a.country_code
       LEFT JOIN KSM_telephone on KSM_telephone.telephone_type_code = a.addr_type_code 
       and KSM_telephone.id_number = a.id_number
+      INNER JOIN rpt_pbh634.v_entity_ksm_households house ON house.ID_NUMBER = a.id_number
       --- Active Addreess
       Where a.addr_status_code IN('A')
       --- Addresses: Home, Business, Alt Home, Alt Business
