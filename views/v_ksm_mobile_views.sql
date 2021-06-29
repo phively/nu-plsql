@@ -95,6 +95,7 @@ From telephone t)
 
 Select
          a.Id_number
+      ,  house.report_name
       ,  a.xsequence
       ,  tms_addr_status.short_desc AS Address_Status
       ,  a.addr_type_code
@@ -116,10 +117,11 @@ Select
       INNER JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
       Inner Join table(rpt_pbh634.ksm_pkg.tbl_committee_kac) kac
       On kac.id_number = a.id_number
-      LEFT JOIN tms_address_type ON tms_address_type.addr_type_code = a.addr_type_code
+      INNER JOIN tms_address_type ON tms_address_type.addr_type_code = a.addr_type_code
       LEFT JOIN tms_country ON tms_country.country_code = a.country_code
       LEFT JOIN KSM_telephone on KSM_telephone.telephone_type_code = a.addr_type_code 
       and KSM_telephone.id_number = a.id_number
+      INNER JOIN rpt_pbh634.v_entity_ksm_households house ON house.ID_NUMBER = a.id_number
       --- Active Addreess
       Where a.addr_status_code IN('A')
       --- Addresses: Home, Business, Alt Home, Alt Business
@@ -155,6 +157,7 @@ Create or Replace View v_ksm__mobile_contact_report as
 
 Select
     crf.id_number
+  , house.report_name
   , crf.report_id
   , crf.contact_type
   , crf.contact_purpose
@@ -165,6 +168,7 @@ Select
 From rpt_pbh634.v_contact_reports_fast crf
 Inner Join table(rpt_pbh634.ksm_pkg.tbl_committee_kac) kac
 on kac.id_number = crf.id_number
+INNER JOIN rpt_pbh634.v_entity_ksm_households house ON house.ID_NUMBER = crf.id_number
 Where crf.fiscal_year >= 2017
 ;
 
