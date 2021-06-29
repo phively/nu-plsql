@@ -157,6 +157,7 @@ Create or Replace View v_ksm__mobile_contact_report as
 
 Select
     crf.id_number
+  , house.report_name
   , crf.report_id
   , crf.contact_type
   , crf.contact_purpose
@@ -167,6 +168,7 @@ Select
 From rpt_pbh634.v_contact_reports_fast crf
 Inner Join table(rpt_pbh634.ksm_pkg.tbl_committee_kac) kac
 on kac.id_number = crf.id_number
+INNER JOIN rpt_pbh634.v_entity_ksm_households house ON house.ID_NUMBER = crf.id_number
 Where crf.fiscal_year >= 2017
 ;
 
