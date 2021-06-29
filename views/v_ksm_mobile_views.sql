@@ -91,7 +91,21 @@ order by relationship.id_number ASC
 Create or Replace View v_ksm_mobile_contact as
 
 With KSM_telephone AS (Select t.id_number, t.area_code, t.telephone_number, t.telephone_type_code
-From telephone t)
+From telephone t),
+
+employ As (
+  Select id_number
+  , job_title
+  ,    Case
+      When employer_id_number Is Not Null And employer_id_number != ' ' Then (
+        Select pref_mail_name
+        From entity
+        Where id_number = employer_id_number)
+      Else trim(employer_name1 || ' ' || employer_name2)
+    End As employer_name
+  From employment
+  Where employment.primary_emp_ind = 'Y'
+)
 
 Select
          a.Id_number
@@ -113,6 +127,8 @@ Select
       ,  KSM_telephone.telephone_type_code AS Telephone_Type
       ,  KSM_telephone.area_code
       ,  KSM_telephone.telephone_number
+      ,  employ.job_title
+      ,  employ.employer_name
       FROM address a
       INNER JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
       Inner Join table(rpt_pbh634.ksm_pkg.tbl_committee_kac) kac
@@ -122,6 +138,7 @@ Select
       LEFT JOIN KSM_telephone on KSM_telephone.telephone_type_code = a.addr_type_code 
       and KSM_telephone.id_number = a.id_number
       INNER JOIN rpt_pbh634.v_entity_ksm_households house ON house.ID_NUMBER = a.id_number
+      LEFT JOIN employ on employ.id_number = a.id_number
       --- Active Addreess
       Where a.addr_status_code IN('A')
       --- Addresses: Home, Business, Alt Home, Alt Business
