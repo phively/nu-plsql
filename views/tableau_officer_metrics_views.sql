@@ -22,6 +22,8 @@ Select Distinct
   , Phf.proposal_type
   , Phf.proposal_manager_id
   , Phf.proposal_manager
+  , Phf.curr_ksm_proposal_manager
+  , Phf.curr_ksm_team
   , Phf.proposal_assist
   , Phf.historical_managers
   , Phf.metrics_credit_ids
