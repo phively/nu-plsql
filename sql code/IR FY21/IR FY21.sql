@@ -1018,14 +1018,14 @@ Select Distinct
   , donorlist.yrs_spouse
   , donorlist.gender_spouse
   , hr_names_s.honor_roll_name As honor_roll_name_spouse
-  , loyal.stewardship_cfy
-  , loyal.stewardship_pfy1
-  , loyal.stewardship_pfy2
   , donorlist.stewardship_cfy
   , donorlist.stewardship_anonymous_cfy
   , donorlist.stewardship_cfy - donorlist.stewardship_anonymous_cfy As stewardship_nonanonymous_cfy
   , donorlist.ngc_cfy
   , donorlist.cash_cfy
+--  , loyal.stewardship_cfy
+--  , loyal.stewardship_pfy1
+--  , loyal.stewardship_pfy2
 From donorlist
 Inner Join rec_name
   On rec_name.id_number = donorlist.id_number

@@ -432,6 +432,9 @@ Type special_handling Is Record (
      , anonymous_donor varchar2(1)
      , exc_all_comm varchar2(1)
      , exc_all_sols varchar2(1)
+     , exc_surveys varchar2(1)
+     , last_survey_dt date
+     , no_survey_ind varchar2(1)
      , no_phone_ind varchar2(1)
      , no_phone_sol_ind varchar2(1)
      , no_email_ind varchar2(1)
@@ -3130,6 +3133,39 @@ Cursor c_special_handling_concat Is
       h.id_number
       , e.spouse_id_number
   )
+  -- Survey appeals
+  , surveys As (
+    Select
+      ah.appeal_group
+      , ah.appeal_code
+      , ah.description
+      , a.id_number
+      , a.appeal_month
+      , a.appeal_year
+      , to_date2(a.appeal_year || a.appeal_month || '01', 'yyyymmdd')
+        As appeal_date
+    From appeals a
+    Inner Join appeal_header ah
+      On ah.appeal_code = a.appeal_code
+      And ah.appeal_group = 'SY' -- Survey
+  )
+  , last_survey As (
+    Select
+      id_number
+      , count(appeal_date)
+        As past_surveys
+      , max(appeal_date)
+        As last_survey_dt
+      , Case
+          When add_months(max(appeal_date), 4) >= max(cal.today)
+            Then 'Y'
+          End
+        As surveyed_last_4_months
+    From surveys
+    Cross Join table(tbl_current_calendar) cal
+    Where appeal_date <= cal.today
+    Group By id_number
+  )
   -- Mailing list entities
   , mailing_lists As (
     Select
@@ -3157,6 +3193,9 @@ Cursor c_special_handling_concat Is
       -- All solicitation
       , max(Case When ml.mail_list_code = 'AS' And ml.mail_list_ctrl_code = 'EXC' Then 'Y' End)
         As exc_all_sols
+      -- Surveys
+      , max(Case When ml.mail_list_code = 'SURV' And ml.mail_list_ctrl_code = 'EXC' Then 'Y' End)
+        As exc_surveys
       -- Phonathon communication
       , max(Case When ml.mail_list_code = 'PC' And ml.mail_list_ctrl_code = 'EXC' Then 'Y' End)
         As exc_phone_comm
@@ -3186,7 +3225,7 @@ Cursor c_special_handling_concat Is
          ml.unit_code = 'KM'
          Or (
           ml.unit_code = ' '
-          And ml.mail_list_code In ('AC', 'AS', 'PC', 'PS', 'EC', 'ES', 'MC', 'MS')
+          And ml.mail_list_code In ('AC', 'AS', 'PC', 'PS', 'EC', 'ES', 'MC', 'MS', 'SURV')
          )
        )
     Group By
@@ -3281,6 +3320,18 @@ Cursor c_special_handling_concat Is
     -- Overall mailing list indicators
     , exc_all_comm
     , exc_all_sols
+    , exc_surveys
+    , last_survey.last_survey_dt
+    -- No surveys combined
+    -- Based on p. 7 of Alumni Survey Request Guidelines and Procedures
+    -- (v0.7 updated 6/24/2015)
+    , Case
+        When univ_no_contact = 'Y'
+          Or spec_hnd.no_release = 'Y'
+          Or exc_surveys = 'Y'
+          Or last_survey.surveyed_last_4_months = 'Y' 
+          Then 'Y'
+      End As no_survey_ind
     -- No phone combined
     , Case
         When univ_no_contact = 'Y'
@@ -3349,6 +3400,7 @@ Cursor c_special_handling_concat Is
   Left Join spec_hnd On spec_hnd.id_number = ids.id_number
   Left Join mailing_lists On mailing_lists.id_number = ids.id_number
   Left Join alerts On alerts.id_number = ids.id_number
+  Left Join last_survey On last_survey.id_number = ids.id_number
   ;
 
 /*************************************************************************
