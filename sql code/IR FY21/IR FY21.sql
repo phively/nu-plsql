@@ -18,9 +18,9 @@
     
     Updates for FY21:
     - Checked all the <UPDATE THIS> indicators and revised where needed
-    - DO NEXT: revise giving level definitions: now based on stewardship_credit_amount from ksm_pkg (used in v_ksm_giving_summary
+    - Revised giving level definitions: now based on stewardship_credit_amount from ksm_pkg (used in v_ksm_giving_summary
         among others)
-    - TO DO: pull Cornerstone from the gift club (this group might not be called out, but it's future-proofing)
+    - Pulled Cornerstone from the gift club table rather than manually tagging (this group might not be called out, but it's future-proofing)
     - TO DO: create approved names table for FY19 IR
     - TO DO: check manual householding from FY19
 */
@@ -583,6 +583,31 @@ params_cfy As (
     , hhs.household_spouse
 )
 
+/* Cornerstone criteria
+  Uses the new Cornerstone gift club; anyone with an end date in the FY of interest should be included */
+, cornerstone_data As (
+  Select
+    gc.gift_club_id_number As id_number
+    , gtt.club_code
+    , gtt.club_desc
+    , gc.gift_club_start_date
+    , gc.gift_club_end_date
+    , gc.school_code
+    , rpt_pbh634.ksm_pkg.to_date2(gift_club_end_date) As gift_club_end_dt
+    , extract(year from rpt_pbh634.ksm_pkg.to_date2(gift_club_end_date)) As gift_club_end_fy
+  From gift_clubs gc
+  Inner Join tms_gift_club_table gtt
+    On gtt.club_code = gc.gift_club_code
+  Where gc.gift_club_code = 'KCD'
+)
+, cornerstone As (
+  Select Distinct
+    id_number
+  From cornerstone_data
+  Cross Join params
+  Where cornerstone_data.gift_club_end_fy = params.params_cfy
+)
+
 /* Combine all criteria
   Main temp table pulling together all criteria */
 , donorlist As (
@@ -912,9 +937,9 @@ params_cfy As (
     On anon.household_id = rn.household_id
   Left Join tbl_IR_FY21_custom_name cust_name -- <UPDATE THIS>
     On cust_name.id_number = rn.id_number
-  Left Join tbl_IR_FY21_cornerstone cornerstone -- <UPDATE THIS>
+  Left Join cornerstone
     On cornerstone.id_number = rn.household_id
-  Left Join tbl_IR_FY21_cornerstone cornerstone_s -- <UPDATE THIS>
+  Left Join cornerstone cornerstone_s
     On cornerstone_s.id_number = rn.household_spouse_id
 )
 
