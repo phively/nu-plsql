@@ -3,7 +3,8 @@
     -- UPDATE for FY21: counts only the current year's giving
     See Paul's "Investor's Report" folder on the G drive for criteria and notes
     See GitHub for the complete version history: https://github.com/phively/nu-plsql/tree/master/sql%20code/IR%20FY19
-    Shouldn't take more than 8 minutes to run to completion
+    Shouldn't take more than 5 minutes to run to completion
+    (FY19: 8 minutes)
     
     Updates for FY19:
     - Added 1 to all the years, table names, column names, etc. next to an <UPDATE THIS> tag
@@ -21,8 +22,8 @@
     - Revised giving level definitions: now based on stewardship_credit_amount from ksm_pkg (used in v_ksm_giving_summary
         among others)
     - Pulled Cornerstone from the gift club table rather than manually tagging (this group might not be called out, but it's future-proofing)
-    - TO DO: create approved names table for FY19 IR
-    - TO DO: check manual householding from FY19
+    - Created approved names table for FY19 IR and added additional audits
+    - Checked manual householding from FY19
 */
 
 With
@@ -972,6 +973,13 @@ Select Distinct
       End
     As different_nonanon_level
   , rec_name.anon
+  --- Check last year's name; drops everything after the first < delimiter
+  , Case
+      When ir_names.ir19_name <> regexp_substr(rec_name.proposed_recognition_name, '[^<]*') --<UPDATE THIS>
+        Then 'Y'
+      End
+    As name_change_from_pfy
+  , ir_names.ir19_name --<UPDATE THIS>
   -- Fields
   , donorlist.deceased_past_year
   , donorlist.manual_giving_level
@@ -1064,6 +1072,8 @@ Left Join hr_names
   On hr_names.id_number = donorlist.household_id
 Left Join hr_names hr_names_s
   On hr_names_s.id_number = donorlist.household_spouse_id
+  Left Join ir_names
+    On ir_names.id_number = donorlist.id_number
 Order By
   proposed_giving_level Asc
   , lower(proposed_sort_name) Asc
