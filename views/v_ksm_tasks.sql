@@ -1,8 +1,8 @@
 /*********************
-All tasks falling in the previous or current fiscal year
+All tasks, no time period restriction
 *********************/
 
-Create Or Replace View v_ksm_tasks As
+Create Or Replace View v_ksm_tasks_full As 
 
 With
 
@@ -37,11 +37,8 @@ cal As (
       As date_modified
     , task.operator_name
   From task
-  Cross Join cal
   Inner Join task_responsible tr
     On tr.task_id = task.task_id
-  Where sched_date Between cal.prev_fy_start And cal.this_fy_end
-    Or completed_date Between cal.prev_fy_start And cal.this_fy_end
 )
 
 -- Prospect categories
@@ -153,4 +150,79 @@ Left Join tms_prospect_category
   On tms_prospect_category.prospect_category_code = cat.prospect_category_code
 Left Join tms_task
   On tms_task.task_code = task_detail.task_code
+;
+
+/*********************
+All tasks falling in the previous or current fiscal year
+*********************/
+
+Create Or Replace View v_ksm_tasks As
+
+With
+
+-- Calendar objects
+cal As (
+  Select
+    prev_fy_start
+    , (next_fy_start - 1) As this_fy_end
+  From rpt_pbh634.v_current_calendar cal
+)
+
+-- Main query
+Select
+  t.id_number
+  , t.prospect_id
+  , t.prospect_name
+  , t.record_status_code
+  , t.record_type_code
+  , t.employer_name1
+  , t.employer_name2
+  , t.evaluation_rating
+  , t.evaluation_date
+  , t.officer_rating
+  , t.prospect_stage
+  , t.prospect_type
+  , t.prospect_manager_id
+  , t.prospect_manager
+  , t.former_staff
+  , t.prospect_category_code
+  , t.prospect_cat
+  , t.interest
+  , t.giving_affiliation
+  , t.pref_city
+  , t.pref_state
+  , t.pref_zip
+  , t.preferred_country
+  , t.pref_country_name
+  , t.task_id
+  , t.task_code
+  , t.task_code_desc
+  , t.original_sched_date
+  , t.sched_date
+  , t.start_dt_calc
+  , t.stop_dt_calc
+  , t.date_added
+  , t.date_modified
+  , t.status_summary
+  , t.completed_date
+  , t.owner_id_number
+  , t.owner_name
+  , t.task_responsible_id
+  , t.task_responsible
+  , t.source_id_number
+  , t.source_name
+  , t.task_priority_code
+  , t.task_priority
+  , t.task_purpose_code
+  , t.task_purpose
+  , t.task_status_code
+  , t.task_status
+  , t.task_description
+  , t.active_task_ind
+  , t."150_300_IND"
+  , t.current_mgo_ind
+From v_ksm_tasks_full t
+Cross Join cal
+Where t.sched_date Between cal.prev_fy_start And cal.this_fy_end
+  Or t.completed_date Between cal.prev_fy_start And cal.this_fy_end
 ;
