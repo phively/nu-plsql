@@ -6,8 +6,8 @@ With
 
 dts As (
   Select
-      to_date('20210517', 'yyyymmdd') As start_dt
-    , to_date('20210524', 'yyyymmdd') As stop_dt
+      to_date('20210614', 'yyyymmdd') As start_dt
+    , to_date('20210621', 'yyyymmdd') As stop_dt
   From DUAL
 )
 
@@ -28,7 +28,7 @@ dts As (
 , count_anonymous AS (
 select tx_number
       , count(pref_mail_name) as pref_mail_name_counts
-      , sum(case when pref_mail_name = 'Anonymous' then 1 else 0 end) as anonymous_counts 
+      , sum(case when pref_mail_name = 'Anonymous' then 1 else 0 end) as anonymous_counts
 from pre_ad
 group by tx_number
 )
@@ -39,9 +39,9 @@ select pre_ad.tx_number
       ,ca.pref_mail_name_counts
       ,ca.anonymous_counts
 FROM pre_ad
-INNER JOIN count_anonymous ca ON ca.tx_number = pre_ad.tx_number 
+INNER JOIN count_anonymous ca ON ca.tx_number = pre_ad.tx_number
 WHERE ca.pref_mail_name_counts = ca.anonymous_counts
-OR pre_ad.pref_mail_name <> 'Anonymous' 
+OR pre_ad.pref_mail_name <> 'Anonymous'
 )
 
 , ad As (
@@ -55,7 +55,7 @@ OR pre_ad.pref_mail_name <> 'Anonymous'
   Select
     ps.payment_schedule_pledge_nbr
     , count(distinct extract(year from rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'yyyymmdd'))) As payment_schedule_year_count
-  From payment_schedule ps 
+  From payment_schedule ps
   Group By ps.payment_schedule_pledge_nbr
 )
 
@@ -72,7 +72,7 @@ Select Distinct
   , gft.alloc_short_name
   , NULL As empty_column
   , gft.legal_amount
-  , py.payment_schedule_year_count  
+  , case when py.payment_schedule_year_count is null then 'Outright Gift' else to_char(py.payment_schedule_year_count) end as payment_schedule_year_count
   , prp.proposal_manager
 From gt gft
 Cross Join dts
