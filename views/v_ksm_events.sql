@@ -202,7 +202,7 @@ Select
   , ppn.participation_id
   , ppn.participation_status_code
   , tms_ps.short_desc As participation_status
-  , Case When ppn.participation_status_code In (' ', 'P', 'A')
+  , Case When ppn.participation_status_code In (' ', 'P', 'A', 'V') -- Blank, Participated, Accepted, Virtual
       Then 'Y' End
       As participated_flag
   , start_dt
@@ -266,7 +266,7 @@ Left Join tms_event_type tms_et
   On tms_et.event_type = v_nu_events.event_type
 Left Join tms_event_participant_status tms_ps
   On tms_ps.participant_status_code = ppn.participation_status_code
-Where ppn.participation_status_code In (' ', 'P', 'A') -- Blank, Participated, or Accepted
+Where ppn.participation_status_code In (' ', 'P', 'A', 'V') -- Blank, Participated, Accepted, Virtual
 ;
 
 Create Or Replace View v_nu_event_participants As
