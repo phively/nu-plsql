@@ -255,6 +255,28 @@ WHERE PHF.proposal_active = 'Y'
 ORDER BY E.ID_NUMBER
 ;
 
+Create or Replace View v_ksm_mobile_prospect As
 
+With managers as (select assign.id_number,
+assign.prospect_manager,
+assign.lgos,
+assign.managers
+from rpt_pbh634.v_assignment_summary assign)
+
+select entity.id_number,
+       entity.report_name,
+       managers.prospect_manager,
+       managers.lgos,
+       managers.managers,
+       p.proposal_active,
+       p.proposal_title,
+       p.start_date,
+       p.ask_date,
+       p.total_ask_amt
+from entity
+inner join rpt_pbh634.v_ksm_proposal_history p on p.household_id = entity.id_number
+Inner Join table(rpt_pbh634.ksm_pkg.tbl_committee_kac) kac
+      On kac.id_number = entity.id_number
+left join managers on managers.id_number = entity.id_number;
 
 
