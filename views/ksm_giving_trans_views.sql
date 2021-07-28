@@ -666,3 +666,116 @@ Inner Join allocation On allocation.allocation_code = gft.alloc_code
 Left Join deg On deg.id_number = entity.id_number
 Left Join nu_prs_trp_prospect prs On prs.id_number = entity.id_number
 ;
+
+/*************************************************
+Same as v_ksm_giving_campaign_ytd but includes gifts after the close of the campaign
+*************************************************/
+Create Or Replace View v_ksm_giving_post_campaign_ytd As
+With
+-- View implementing YTD KSM Campaign giving
+-- Year-to-date calculator
+cal As (
+  Select
+    -- FY 2007 and 2020 as first and last campaign gift dates
+    2007 As prev_fy
+    , curr_fy As curr_fy
+    , yesterday
+    , to_date('20210630', 'yyyymmdd') As campaign_end_dt
+  From v_current_calendar
+)
+, ytd_dts As (
+  Select to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1 As dt,
+    ksm_pkg.fytd_indicator(to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1) As ytd_ind
+  From cal
+  Connect By
+    rownum <= (to_date('09/01/' || cal.curr_fy, 'mm/dd/yyyy') - to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy'))
+)
+-- Kellogg degrees
+, deg As (
+  Select id_number, degrees_concat
+  From v_entity_ksm_degrees
+)
+-- Unsplit amount - from ksm_pkg
+, unsplit As (
+  Select
+    gt.tx_number
+    , sum(legal_amount)
+      As unsplit_amount
+  From v_ksm_giving_trans gt
+  Cross Join cal
+  Where gt.date_of_record > campaign_end_dt
+  Group By gt.tx_number
+)
+-- Union
+, gift_union As (
+  Select
+    cgft.*
+  From v_ksm_giving_campaign_trans cgft
+  Union
+  Select
+    gt.id_number
+    , entity.record_type_code
+    , entity.person_or_org
+    , entity.birth_dt
+    , gt.tx_number
+    , gt.tx_sequence
+    , gt.anonymous
+    , gt.legal_amount
+    , gt.credit_amount
+    , unsplit.unsplit_amount
+    , to_char(gt.fiscal_year)
+    , gt.date_of_record
+    , gt.allocation_code
+    , allocation.alloc_school
+    , allocation.alloc_purpose
+    , allocation.annual_sw
+    , allocation.restrict_code
+    , gt.transaction_type_code
+    , gt.transaction_type
+    , gt.pledge_status
+    , gt.tx_gypm_ind
+    , 'CHECK' As matched_donor_id
+    , gt.matched_tx_number
+    , NULL
+    , NULL
+    , 'KM'
+    , NULL
+  From v_ksm_giving_trans gt
+  Cross Join cal
+  Inner Join entity
+    On entity.id_number = gt.id_number
+  Inner Join allocation
+    On allocation.allocation_code = gt.allocation_code
+  Left Join unsplit
+    On unsplit.tx_number = gt.tx_number
+  Where gt.date_of_record > campaign_end_dt
+    And gt.tx_gypm_ind <> 'Y'
+)
+-- Main query
+Select
+  gft.*
+  , cal.curr_fy
+  , ytd_dts.ytd_ind
+  , entity.report_name
+  , entity.institutional_suffix
+  , deg.degrees_concat
+  , prs.prospect_manager
+  , allocation.short_name As allocation_name
+  , Case
+      When unsplit_amount >= 10E6 Then 10
+      When unsplit_amount >= 5E6 Then 5
+      When unsplit_amount >= 2E6 Then 2
+      When unsplit_amount >= 1E6 Then 1
+      When unsplit_amount >= 500E3 Then .5
+      When unsplit_amount >= 250E3 Then .25
+      When unsplit_amount >= 100E3 Then .1
+      Else 0
+    End As gift_bin
+From gift_union gft
+Cross Join v_current_calendar cal
+Inner Join ytd_dts On ytd_dts.dt = trunc(gft.date_of_record)
+Inner Join entity On entity.id_number = gft.id_number
+Inner Join allocation On allocation.allocation_code = gft.alloc_code
+Left Join deg On deg.id_number = entity.id_number
+Left Join nu_prs_trp_prospect prs On prs.id_number = entity.id_number
+;

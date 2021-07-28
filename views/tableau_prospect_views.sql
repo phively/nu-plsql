@@ -22,7 +22,7 @@ cal As (
     , gift_bin As bin
     , 'Booked' As cat
     , 'Campaign Giving' As src
-  From v_ksm_giving_campaign_ytd ytd
+  From v_ksm_giving_post_campaign_ytd ytd
   Cross Join cal
   Where year_of_giving Between 2007 And cal.curr_fy -- FY 2007 and 2020 as first and last campaign gift dates
     And amount > 0
