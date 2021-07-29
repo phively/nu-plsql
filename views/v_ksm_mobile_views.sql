@@ -274,7 +274,7 @@ select entity.id_number,
        p.ask_date,
        p.total_ask_amt
 from entity
-inner join rpt_pbh634.v_ksm_proposal_history p on p.household_id = entity.id_number
+Left join rpt_pbh634.v_ksm_proposal_history p on p.household_id = entity.id_number
 Inner Join table(rpt_pbh634.ksm_pkg.tbl_committee_kac) kac
       On kac.id_number = entity.id_number
 left join managers on managers.id_number = entity.id_number;
