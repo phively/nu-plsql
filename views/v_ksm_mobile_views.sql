@@ -44,8 +44,8 @@ KSM_telephone AS (Select t.id_number, t.area_code, t.telephone_number, t.telepho
 From telephone t)
 
 select distinct
-       entity.id_number,
-       entity.report_name,
+       deg.id_number,
+       deg.report_name,
        entity.institutional_suffix,
        linked.linkedin_address,
        pm_manager.prospect_manager,
@@ -53,15 +53,14 @@ select distinct
        KSM_telephone.area_code as preferred_area_code,
        KSM_telephone.telephone_number as preferred_phone,
        ksm_give.NGC_LIFETIME      
-from entity 
-left join KSM_Email on KSM_Email.id_number = entity.ID_NUMBER
-left join pm_manager on pm_manager.id_number = entity.ID_NUMBER
-left join KSM_telephone on KSM_telephone.id_number = entity.ID_NUMBER
-left join linked on linked.id_number = entity.ID_NUMBER
-left join entity on entity.id_number = entity.ID_NUMBER
-left join ksm_give on ksm_give.id_number = entity.ID_NUMBER
-Inner Join table(rpt_pbh634.ksm_pkg.tbl_committee_kac) kac
-      On kac.id_number = entity.id_number
+from rpt_pbh634.v_entity_ksm_degrees deg 
+left join KSM_Email on KSM_Email.id_number = deg.ID_NUMBER
+left join pm_manager on pm_manager.id_number = deg.ID_NUMBER
+left join KSM_telephone on KSM_telephone.id_number = deg.ID_NUMBER
+left join linked on linked.id_number = deg.ID_NUMBER
+left join entity on entity.id_number = deg.ID_NUMBER
+left join ksm_give on ksm_give.id_number = deg.ID_NUMBER
+left join entity on entity.id_number = deg.ID_Number
 ;
 
 
@@ -70,6 +69,7 @@ Inner Join table(rpt_pbh634.ksm_pkg.tbl_committee_kac) kac
 Create or Replace View v_ksm_mobile_realtionship as
 
 select relationship.id_number,
+       deg.report_name,
        relationship.relation_id_number,
        TMS_RELATIONSHIPS.short_desc as relationship_type,
        case when relationship.relation_name = ' 'then entity2.pref_mail_name
@@ -81,8 +81,7 @@ select relationship.id_number,
 left join entity on entity.id_number = relationship.id_number   
 left join entity entity2 on entity2.id_number = relationship.relation_id_number
 left join TMS_RELATIONSHIPS on TMS_RELATIONSHIPS.relation_type_code = relationship.relation_type_code
-Inner Join table(rpt_pbh634.ksm_pkg.tbl_committee_kac) kac
-      On kac.id_number = relationship.id_number
+Inner Join rpt_pbh634.v_entity_ksm_degrees deg on deg.id_number = relationship.id_number
 order by relationship.id_number ASC
 ;
 
@@ -109,7 +108,7 @@ employ As (
 
 Select
          a.Id_number
-      ,  house.report_name
+      ,  deg.report_name
       ,  a.xsequence
       ,  tms_addr_status.short_desc AS Address_Status
       ,  a.addr_type_code
@@ -131,13 +130,11 @@ Select
       ,  employ.employer_name
       FROM address a
       INNER JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
-      Inner Join table(rpt_pbh634.ksm_pkg.tbl_committee_kac) kac
-      On kac.id_number = a.id_number
+      Inner Join rpt_pbh634.v_entity_ksm_degrees deg on deg.id_number = a.id_number
       INNER JOIN tms_address_type ON tms_address_type.addr_type_code = a.addr_type_code
       LEFT JOIN tms_country ON tms_country.country_code = a.country_code
       LEFT JOIN KSM_telephone on KSM_telephone.telephone_type_code = a.addr_type_code 
       and KSM_telephone.id_number = a.id_number
-      INNER JOIN rpt_pbh634.v_entity_ksm_households house ON house.ID_NUMBER = a.id_number
       LEFT JOIN employ on employ.id_number = a.id_number
       --- Active Addreess
       Where a.addr_status_code IN('A')
@@ -150,6 +147,7 @@ Create or Replace View v_ksm_mobile_committee as
 
 Select
   committee.id_number
+  ,deg.report_name
 --  , id_number
   , ch.short_desc As committee_name
   , committee.start_dt
@@ -160,8 +158,7 @@ Select
 From committee
 Inner Join committee_header ch
   On ch.committee_code = committee.committee_code
-Inner Join table(rpt_pbh634.ksm_pkg.tbl_committee_kac) kac
-  On kac.id_number = committee.id_number
+Inner Join rpt_pbh634.v_entity_ksm_degrees deg on deg.id_number =  committee.id_number
 Left Join tms_committee_role tcr
   On tcr.committee_role_code = committee.committee_role_code
   And tcr.committee_role_code <> 'U'
@@ -174,7 +171,7 @@ Create or Replace View v_ksm__mobile_contact_report as
 
 Select
     crf.id_number
-  , house.report_name
+  , deg.report_name
   , crf.report_id
   , crf.contact_type
   , crf.contact_purpose
@@ -183,9 +180,7 @@ Select
   , crf.description
   , crf.summary
 From rpt_pbh634.v_contact_reports_fast crf
-Inner Join table(rpt_pbh634.ksm_pkg.tbl_committee_kac) kac
-on kac.id_number = crf.id_number
-INNER JOIN rpt_pbh634.v_entity_ksm_households house ON house.ID_NUMBER = crf.id_number
+Inner Join rpt_pbh634.v_entity_ksm_degrees deg on deg.id_number = crf.id_number
 Where crf.fiscal_year >= 2017
 ;
 
@@ -195,6 +190,7 @@ Create or Replace View v_ksm_mobile_gift As
 
 SELECT
    NGFT.ID_NUMBER
+  ,deg.report_name
   ,NGFT.TX_NUMBER
   ,NGFT.DATE_OF_RECORD
   ,NGFT.DATE_OF_RECEIPT 
@@ -212,8 +208,7 @@ SELECT
   ,AFCRU."ALLOCATION_CODE" AS ALLOCATION_CODE_INDICATOR
   ,TA.short_desc AS ASSOCIATION 
 FROM NU_GFT_TRP_GIFTTRANS NGFT
-INNER JOIN TABLE(RPT_PBH634.KSM_PKG.tbl_committee_kac) KAC
-ON NGFT.ID_NUMBER = KAC.ID_NUMBER
+Inner Join rpt_pbh634.v_entity_ksm_degrees deg on deg.id_number = NGFT.ID_NUMBER 
 LEFT JOIN TMS_TRANSACTION_TYPE TTT
 ON NGFT.TRANSACTION_TYPE = TTT.transaction_type_code
 LEFT JOIN PRIMARY_GIFT PG
@@ -234,6 +229,7 @@ Create or Replace View v_ksm_mobile_proposal as
 
 SELECT
    e.id_number
+  ,deg.report_name
   ,PHF.proposal_id
   ,CASE WHEN PHF.KSM_PROPOSAL_IND = 'Y' THEN 'Kellogg' ELSE ' ' END AS PROGRAM
   ,PHF.other_programs
@@ -242,8 +238,7 @@ SELECT
   ,PHF.close_date
   ,PHF.total_ask_amt
 FROM ENTITY E
-INNER JOIN TABLE(RPT_PBH634.KSM_PKG.tbl_committee_kac) KAC
-ON E.ID_NUMBER = KAC.ID_NUMBER
+Inner Join rpt_pbh634.v_entity_ksm_degrees deg on deg.id_number = E.ID_NUMBER 
 INNER JOIN PROSPECT_ENTITY PE
 ON E.ID_NUMBER = PE.ID_NUMBER
 INNER JOIN PROSPECT P
@@ -275,8 +270,7 @@ select entity.id_number,
        p.total_ask_amt
 from entity
 Left join rpt_pbh634.v_ksm_proposal_history p on p.household_id = entity.id_number
-Inner Join table(rpt_pbh634.ksm_pkg.tbl_committee_kac) kac
-      On kac.id_number = entity.id_number
+Inner Join rpt_pbh634.v_entity_ksm_degrees deg on deg.id_number = entity.id_number
 left join managers on managers.id_number = entity.id_number;
 
 
