@@ -649,9 +649,8 @@ params_cfy As (
       Or manual_giving_level = 'Y' -- Always include custom level override even if below $2500
     )
   )
-  -- REMOVED on 2021-06-18 - is this needed anymore?
-/*Union All (
-  -- Young alumni giving $1000+ from FY12 on
+Union All (
+  -- Young alumni (degree in CFY-5 to CFY) giving $1000+ in CFY
   Select
     cgft.*, hh.deceased_past_year, hh.record_status_code, hh.household_spouse_rpt_name, hh.household_suffix, hh.household_spouse_suffix
     , hh.household_masters_year, hh.primary_name, hh.primary_name_source, hh.constructed_name, hh.gender
@@ -669,38 +668,11 @@ params_cfy As (
   -- haven't given at least $2500 cumulative by then; this is intentional!
   Where cgft.household_id In (Select Distinct household_id From young_klc)
     And (
-      (
-        (hh.last_noncert_year Between params_pfy10 And params_pfy5
-          Or hh.spouse_last_noncert_year Between params_pfy10 And params_pfy5)
-        And (campaign_fy16 >= 1000 Or cash_fy16 >= 1000) -- <UPDATE THIS>
-      )
-      Or (
-        (hh.last_noncert_year Between params_pfy9 And params_pfy4
-          Or hh.spouse_last_noncert_year Between params_pfy9 And params_pfy4)
-        And (campaign_fy17 >= 1000 Or cash_fy17 >= 1000) -- <UPDATE THIS>
-      )
-      Or (
-        (hh.last_noncert_year Between params_pfy8 And params_pfy3
-          Or hh.spouse_last_noncert_year Between params_pfy8 And params_pfy3)
-        And (campaign_fy18 >= 1000 Or cash_fy18 >= 1000) -- <UPDATE THIS>
-      )
-      Or (
-        (hh.last_noncert_year Between params_pfy7 And params_pfy2
-          Or hh.spouse_last_noncert_year Between params_pfy7 And params_pfy2)
-        And (campaign_fy19 >= 1000 Or cash_fy19 >= 1000) -- <UPDATE THIS>
-      )
-      Or (
-        (hh.last_noncert_year Between params_pfy6 And params_pfy1
-          Or hh.spouse_last_noncert_year Between params_pfy6 And params_pfy1)
-        And (campaign_fy20 >= 1000 Or cash_fy20 >= 1000) -- <UPDATE THIS>
-      )
-      Or (
-        (hh.last_noncert_year Between params_pfy5 And params_cfy
-          Or hh.spouse_last_noncert_year Between params_pfy5 And params_cfy)
-        And (campaign_fy21 >= 1000 Or cash_fy21 >= 1000) -- <UPDATE THIS>
-      )
+      hh.last_noncert_year Between params_pfy5 And params_cfy
+      Or hh.spouse_last_noncert_year Between params_pfy5 And params_cfy
     )
-  )*/
+    And cgft.stewardship_cfy >= 1000 -- <UPDATE THIS>
+  )
 )
 
 /* Name ordering helper */
