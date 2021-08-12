@@ -93,6 +93,8 @@ Aggregated address view for data mart
 Updated 2019-11-12
 - Includes only current home and business addresses, as well as
   the job title/company associated with each business address (if any)
+Updated 2021-08-11
+-Includes Home and Business Zipcodes and Foreign Zipcodes
 ************************************************************************/
 Create Or Replace View v_datamart_address As
 -- View for Address (Business + Home) v_data_mart_address
@@ -106,6 +108,8 @@ business_address As (
       ) As business_company_name
     , address.city
     , address.state_code
+    , address.zipcode
+    , address.foreign_cityzip
     , address.country_code
     , address.addr_type_code
     , address.addr_status_code
@@ -133,6 +137,8 @@ business_address As (
     address.id_number
     , address.city --- KIS Wants Homes
     , address.state_code
+    , address.zipcode
+    , address.foreign_cityzip
     , address.country_code
     , address.addr_type_code
     , address.addr_status_code
@@ -159,6 +165,8 @@ Select
   deg.id_number As catracks_id
   , home_address.city As home_city
   , home_address.state_code As home_state
+  , home_address.zipcode AS home_zipcode
+  , home_address.foreign_cityzip AS home_foreign_zipcode
   , home_address.country_code As home_country_code
   , tms_home.country As home_country_desc
   , home_address.geo_codes As home_geo_codes
@@ -173,6 +181,8 @@ Select
   , business_address.business_company_name
   , business_address.city As business_city
   , business_address.state_code As business_state
+  , business_address.zipcode AS business_zipcode
+  , business_address.foreign_cityzip AS business_foreign_zipcode
   , business_address.country_code As business_country_code
   , tms_bus.country As business_country_desc
   , business_address.geo_codes As business_geo_codes --- KIS Wants Geocodes for Business Address
@@ -203,6 +213,8 @@ Updated 2019-11-12
 - Includes both current and past job information
 - N.B. people may not have a row on the employment table but have text
   entered under company or job_title on the address table
+Updated 2021-08-11
+- Includes Employer ID Number
 ************************************************************************/
 Create or Replace View v_datamart_employment As
 --- View for Employer: v_data_mart_employer
@@ -225,6 +237,7 @@ Select
   , employ.primary_emp_ind As primary_employer_indicator
   , employ.self_employ_ind As self_employed_indicator
   , employ.job_title
+  , employ.employer_id_number
   , Case --- Used for those alumni with an employer code, but not employer name1
       When employ.employer_name1 = ' '
         Then org_employer.report_name
@@ -325,6 +338,13 @@ Updated 2019-11-12
 - Primary job title and employer are now defined as the title/company
   associated with the most recently updated table, whether employment
   or address with addr_type_code = 'B'
+2021-08-11
+- Includes: Home and Business Zipcode and Foreign Zipcodes
+- Employer ID 
+- First, Last Name
+- Gender
+- Ethnicity 
+- Birthdate
 ************************************************************************/
 
 Create Or Replace View v_datamart_entities As
@@ -340,6 +360,7 @@ emp As (
     , empl.employer
     , empl.fld_of_work_desc
     , empl.date_modified
+    , empl.employer_id_number
   From v_datamart_employment empl
   Where empl.job_status_code = 'C' -- current only
     And empl.primary_employer_indicator = 'Y' -- primary employer only
@@ -352,7 +373,16 @@ emp As (
       As interests_concat
   From v_datamart_career_interests intr
   Group By intr.catracks_id
-)
+),
+
+Reunion As 
+( Select aff.id_number,
+         aff.affil_code,
+         aff.affil_level_code,
+         aff.class_year
+From affiliation aff
+Where aff.affil_code = 'KM'
+And aff.affil_level_code = 'RG')
 
 , linked as (select distinct ec.id_number,
 max(ec.start_dt) keep(dense_rank First Order By ec.start_dt Desc, ec.econtact asc) As Max_Date,
@@ -365,6 +395,12 @@ Group By ec.id_number)
 , emp_chooser As (
   Select
     deg.id_number As catracks_id
+    , entity.first_name
+    , entity.middle_name
+    , entity.last_name
+    , entity.gender_code
+    , TMS_RACE.short_desc as race
+    , entity.birth_dt
     , deg.REPORT_NAME
     , deg.RECORD_STATUS_CODE
     , deg.degrees_concat
@@ -372,9 +408,12 @@ Group By ec.id_number)
     , deg.program
     , deg.program_group
     , deg.majors_concat
+    , reunion.class_year AS reunion_class_year
     , tms_rs.short_desc As record_status_desc
     , addr.home_city
     , addr.home_state
+    , addr.home_zipcode
+    , addr.home_foreign_zipcode
     , addr.home_country_desc
     , addr.home_geo_codes
     , addr.home_geo_primary_desc
@@ -404,10 +443,13 @@ Group By ec.id_number)
     , emp.job_title
     , emp.employer
     , emp.fld_of_work_desc
+    , emp.employer_id_number
     , addr.business_job_title
     , addr.business_company_name
     , addr.business_city
     , addr.business_state
+    , addr.business_zipcode
+    , addr.business_foreign_zipcode
     , addr.business_country_desc
     , addr.business_geo_codes
     , addr.business_geo_primary_desc
@@ -425,27 +467,43 @@ Group By ec.id_number)
     On intr.catracks_id = deg.id_number
   Left Join linked
     On linked.id_number = deg.id_number
+  Left Join entity 
+    On entity.id_number = deg.id_number
+  Left Join TMS_RACE 
+    ON TMS_RACE.ethnic_code = entity.ethnic_code
+  Left Join Reunion 
+    On Reunion.id_number = deg.id_number
   Where deg.record_status_code In ('A', 'C', 'L', 'D')
   and deg.record_status_code != 'X' --- Remove Purgable
 )
 
 Select
   catracks_id
+  , first_name
+  , middle_name
+  , last_name
+  , gender_code
+  , race
+  , birth_dt
   , report_name
   , degrees_concat
   , degrees_verbose
   , program
   , program_group
   , majors_concat
+  , reunion_class_year
   , record_status_code
   , record_status_desc
   , home_city
   , home_state
+  , home_zipcode
+  , home_foreign_zipcode
   , home_country_desc
   , home_geo_codes
   , home_geo_primary_desc
   , home_start_date
   , linkedin_address
+  , employer_id_number
   , Case
       When primary_job_source = 'Address'
         Then business_job_title
@@ -460,6 +518,8 @@ Select
     As primary_employer
   , business_city
   , business_state
+  , business_zipcode
+  , business_foreign_zipcode
   , business_country_desc
   , business_geo_codes
   , business_geo_primary_desc
@@ -471,3 +531,115 @@ Select
   , employment_date_modified
 From emp_chooser
 ;
+
+/************************************************************************
+
+Updated: 2021-08-11
+
+Added a new view to include giving data
+Most Recent Gift Credit Year 
+Gift Credit Years in Prev 5 
+Gift Credit Years of $100+ 
+Gift Credit Years of Gift Credit Years of $1K+ 
+Gift Credit Years of $1K+ in Past 5 FYs 
+Annual Giving Category 
+Kellogg Most Recent Gift Credit Year 
+Kellogg Gift Credit Years in Prev 5 
+Kellogg Gift Credit Years of $100+ 
+Kellogg Gift Credit Years of $1K+ 
+Kellogg Gift Credit Years of $1K+ in Past 5 
+Kellogg Annual Giving Category 
+Kellogg AF Most Recent Gift Credit Year 
+Kellogg AF Gift Credit Years in Prev 5 
+Kellogg AF Gift Credit Years of $1K+ 
+Kellogg AF Gift Credit Years of $1K+ in Past 5 FYs 
+Kellogg AF Annual Giving Category 
+
+
+************************************************************************/
+
+
+Create or Replace View v_datamart_giving as 
+
+With gs as (select      
+     g.ID_NUMBER,
+--- Last Gift Date
+     g.LAST_GIFT_DATE,
+     --- Giving Last 5 Years
+     g.NGC_CFY,
+     g.NGC_PFY1,
+     g.NGC_PFY2,
+     g.NGC_PFY3,
+     g.NGC_PFY4,
+     g.NGC_PFY5,
+     --- Annual Fund Status
+     g.af_status, 
+     g.af_status_fy_start,
+     --- Annual Fund Giving
+     g.CRU_CFY,
+     g.CRU_PFY1,
+     g.CRU_PFY2,
+     g.CRU_PFY3,
+     g.CRU_PFY4,
+     g.CRU_PFY5,
+     g.LAST_GIFT_ALLOC_CODE,
+     g.FY_GIVING_FIRST_YR,
+     g.FY_GIVING_LAST_YR,
+     g.FY_GIVING_YR_COUNT
+from RPT_PBH634.v_Ksm_Giving_Summary g),
+
+give As (
+--- Counting Years of Gifts $100 and $1000 
+
+select give.ID_NUMBER,
+--- Last 5 Years Over $100 NGC
+count(Case When give.NGC_CFY > 100
+or give.NGC_PFY1 > 100 or give.NGC_PFY2 > 100 or give.NGC_PFY3 > 100 or give.NGC_PFY4 > 100
+or give.NGC_PFY5 > 100 Then give.FY_GIVING_YR_COUNT Else NULL End)  as Count_Yrs_Gifts_Over_100,
+--- Last 5 Years Over $1000 NGC
+count(Case When give.NGC_CFY > 1000 or give.NGC_PFY1 > 1000
+or give.NGC_PFY2 > 1000 or give.NGC_PFY3 > 1000 or give.NGC_PFY4 > 1000 or give.NGC_PFY5 > 1000 
+Then give.FY_GIVING_YR_COUNT Else NULL End) as Count_Yrs_Gifts_Over_1000,
+--- Last 5 Years Over $100 AF
+count(Case When give.CRU_CFY > 100 or give.NGC_PFY1 > 100
+or give.CRU_PFY2 > 100 or give.CRU_PFY3 > 100 or give.CRU_PFY4 > 100 or give.CRU_PFY5 > 100 
+Then give.FY_GIVING_YR_COUNT Else NULL End) as Count_AFYrs_Gifts_Over_100,
+--- Last 5 Years Over $1000 AF 
+count(Case When give.CRU_CFY > 1000 or give.NGC_PFY1 > 1000
+or give.CRU_PFY2 > 1000 or give.CRU_PFY3 > 1000 or give.CRU_PFY4 > 1000 or give.CRU_PFY5 > 1000 
+Then give.FY_GIVING_YR_COUNT Else NULL End) as Count_AFYrs_Gifts_Over_1000
+       From rpt_pbh634.v_entity_ksm_households hh
+       inner join gs give on give.id_number = hh.id_number 
+       Group By give.id_number)
+
+Select deg.ID_NUMBER,
+--- Last Gift Date
+     gs.LAST_GIFT_DATE,
+     --- Giving Last 5 Years
+     gs.NGC_CFY,
+     gs.NGC_PFY1,
+     gs.NGC_PFY2,
+     gs.NGC_PFY3,
+     gs.NGC_PFY4,
+     gs.NGC_PFY5,
+     --- Annual Fund Status
+     gs.af_status, 
+     gs.af_status_fy_start,
+     --- Annual Fund Giving
+     gs.CRU_CFY,
+     gs.CRU_PFY1,
+     gs.CRU_PFY2,
+     gs.CRU_PFY3,
+     gs.CRU_PFY4,
+     gs.CRU_PFY5,
+     gs.LAST_GIFT_ALLOC_CODE,
+     gs.FY_GIVING_FIRST_YR,
+     gs.FY_GIVING_LAST_YR,
+     gs.FY_GIVING_YR_COUNT,
+     give.Count_Yrs_Gifts_Over_100,
+     give.Count_Yrs_Gifts_Over_1000,
+     give.Count_AFYrs_Gifts_Over_100,
+     give.Count_AFYrs_Gifts_Over_1000
+from rpt_pbh634.v_entity_ksm_degrees deg
+left join gs on gs.id_number = deg.ID_NUMBER
+left join give on give.ID_NUMBER = deg.ID_NUMBER;
