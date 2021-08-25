@@ -224,7 +224,13 @@ org_employer As (
   Select id_number, report_name
   From entity 
   Where entity.person_or_org = 'O'
-) 
+),
+
+p_employ as (Select
+  id_number
+  , ultimate_parent_employer_id
+  , ultimate_parent_employer_name
+From dm_ard.dim_employment@catrackstobi)
 
 Select
   employ.id_Number As catracks_id
@@ -238,6 +244,8 @@ Select
   , employ.self_employ_ind As self_employed_indicator
   , employ.job_title
   , employ.employer_id_number
+  , p_employ.ultimate_parent_employer_id
+  , p_employ.ultimate_parent_employer_name
   , Case --- Used for those alumni with an employer code, but not employer name1
       When employ.employer_name1 = ' '
         Then org_employer.report_name
@@ -258,6 +266,7 @@ Left  Join tms_job_status
   On tms_job_status.job_status_code = employ.job_status_code --- To get job description
 Left Join org_employer
   On org_employer.id_number = employ.employer_id_number --- To get the name of those with employee ID
+Left Join P_Employ on P_Employ.id_number = deg.id_number --- to get parent employer ID and parent employer name
 Where employ.job_status_code In ('C', 'P', 'Q', 'R', ' ', 'L')
 --- Employment Key: C = Current, P = Past, Q = Semi Retired R = Retired L = On Leave
 and deg.record_status_code != 'X' --- Remove Purgable
@@ -361,6 +370,8 @@ emp As (
     , empl.fld_of_work_desc
     , empl.date_modified
     , empl.employer_id_number
+    , empl.ultimate_parent_employer_id
+    , empl.ultimate_parent_employer_name
   From v_datamart_employment empl
   Where empl.job_status_code = 'C' -- current only
     And empl.primary_employer_indicator = 'Y' -- primary employer only
@@ -376,13 +387,12 @@ emp As (
 ),
 
 Reunion As 
-( Select aff.id_number,
-         aff.affil_code,
-         aff.affil_level_code,
-         aff.class_year
+(Select aff.id_number,
+         Listagg (aff.class_year, ';  ') Within Group (Order By aff.class_year) As class_year
 From affiliation aff
 Where aff.affil_code = 'KM'
-And aff.affil_level_code = 'RG')
+And aff.affil_level_code = 'RG'
+Group By aff.id_number)
 
 , linked as (select distinct ec.id_number,
 max(ec.start_dt) keep(dense_rank First Order By ec.start_dt Desc, ec.econtact asc) As Max_Date,
@@ -444,6 +454,8 @@ Group By ec.id_number)
     , emp.employer
     , emp.fld_of_work_desc
     , emp.employer_id_number
+    , emp.ultimate_parent_employer_id as ult_parent_employer_id
+    , emp.ultimate_parent_employer_name as ult_parent_employer_name
     , addr.business_job_title
     , addr.business_company_name
     , addr.business_city
@@ -484,7 +496,7 @@ Select
   , last_name
   , gender_code
   , race
-  , birth_dt
+  , (substr (birth_dt, 1, 6)) as birth_dt
   , report_name
   , degrees_concat
   , degrees_verbose
@@ -532,114 +544,123 @@ Select
 From emp_chooser
 ;
 
-/************************************************************************
-
-Updated: 2021-08-11
-
-Added a new view to include giving data
-Most Recent Gift Credit Year 
-Gift Credit Years in Prev 5 
-Gift Credit Years of $100+ 
-Gift Credit Years of Gift Credit Years of $1K+ 
-Gift Credit Years of $1K+ in Past 5 FYs 
-Annual Giving Category 
-Kellogg Most Recent Gift Credit Year 
-Kellogg Gift Credit Years in Prev 5 
-Kellogg Gift Credit Years of $100+ 
-Kellogg Gift Credit Years of $1K+ 
-Kellogg Gift Credit Years of $1K+ in Past 5 
-Kellogg Annual Giving Category 
-Kellogg AF Most Recent Gift Credit Year 
-Kellogg AF Gift Credit Years in Prev 5 
-Kellogg AF Gift Credit Years of $1K+ 
-Kellogg AF Gift Credit Years of $1K+ in Past 5 FYs 
-Kellogg AF Annual Giving Category 
 
 
-************************************************************************/
 
+/*** 
+
+Updated: 2021-08-24
+ Paul Hively
+    Giving definitions
+1) subquery based on v_ksm_giving_trans_hh
+2) drop any transactions that are anonymous, e.g. WHERE trim(anonymous) is null
+3) drop any entities with anonymous special handling code
+
+, anonymous As (
+Select *
+From v_entity_special_handling sh
+Where sh."ANONYMOUS_DONOR" = 'Y'
+)
+
+Fields to include, ALWAYS excluding the transactions above:
+1) FY of most recent transaction, group by entity
+2) Made any gifts this FY (use v_current_calendar)
+3) Made any gifts last FY
+4) KSM total years of giving (count distinct fiscal_year)
+5) AF donor status - you can get this from v_ksm_giving_summary, but again drop anonymous donors
+6) KLC status - this FY - from gift_clubs (again drop anonymous donors)
+7) KLC status - last FY
+8) Distinct years of giving in last 5 (should be a number 0 to 5; maybe try count(distinct fiscal_year) again)
+9) KSM KLC years on record (count distinct year from gift_club, again dropping anonymous)
+
+
+****/
 
 Create or Replace View v_datamart_giving as 
+--- Still Working on this 8/20/2021
 
-With gs as (select      
-     g.ID_NUMBER,
---- Last Gift Date
-     g.LAST_GIFT_DATE,
-     --- Giving Last 5 Years
-     g.NGC_CFY,
-     g.NGC_PFY1,
-     g.NGC_PFY2,
-     g.NGC_PFY3,
-     g.NGC_PFY4,
-     g.NGC_PFY5,
-     --- Annual Fund Status
-     g.af_status, 
-     g.af_status_fy_start,
-     --- Annual Fund Giving
-     g.CRU_CFY,
-     g.CRU_PFY1,
-     g.CRU_PFY2,
-     g.CRU_PFY3,
-     g.CRU_PFY4,
-     g.CRU_PFY5,
-     g.LAST_GIFT_ALLOC_CODE,
-     g.FY_GIVING_FIRST_YR,
-     g.FY_GIVING_LAST_YR,
-     g.FY_GIVING_YR_COUNT
-from RPT_PBH634.v_Ksm_Giving_Summary g),
 
-give As (
---- Counting Years of Gifts $100 and $1000 
 
-select give.ID_NUMBER,
---- Last 5 Years Over $100 NGC
-count(Case When give.NGC_CFY > 100
-or give.NGC_PFY1 > 100 or give.NGC_PFY2 > 100 or give.NGC_PFY3 > 100 or give.NGC_PFY4 > 100
-or give.NGC_PFY5 > 100 Then give.FY_GIVING_YR_COUNT Else NULL End)  as Count_Yrs_Gifts_Over_100,
---- Last 5 Years Over $1000 NGC
-count(Case When give.NGC_CFY > 1000 or give.NGC_PFY1 > 1000
-or give.NGC_PFY2 > 1000 or give.NGC_PFY3 > 1000 or give.NGC_PFY4 > 1000 or give.NGC_PFY5 > 1000 
-Then give.FY_GIVING_YR_COUNT Else NULL End) as Count_Yrs_Gifts_Over_1000,
---- Last 5 Years Over $100 AF
-count(Case When give.CRU_CFY > 100 or give.NGC_PFY1 > 100
-or give.CRU_PFY2 > 100 or give.CRU_PFY3 > 100 or give.CRU_PFY4 > 100 or give.CRU_PFY5 > 100 
-Then give.FY_GIVING_YR_COUNT Else NULL End) as Count_AFYrs_Gifts_Over_100,
---- Last 5 Years Over $1000 AF 
-count(Case When give.CRU_CFY > 1000 or give.NGC_PFY1 > 1000
-or give.CRU_PFY2 > 1000 or give.CRU_PFY3 > 1000 or give.CRU_PFY4 > 1000 or give.CRU_PFY5 > 1000 
-Then give.FY_GIVING_YR_COUNT Else NULL End) as Count_AFYrs_Gifts_Over_1000
-       From rpt_pbh634.v_entity_ksm_households hh
-       inner join gs give on give.id_number = hh.id_number 
-       Group By give.id_number)
+--- anonymous subquery 
 
-Select deg.ID_NUMBER,
---- Last Gift Date
-     gs.LAST_GIFT_DATE,
-     --- Giving Last 5 Years
-     gs.NGC_CFY,
-     gs.NGC_PFY1,
-     gs.NGC_PFY2,
-     gs.NGC_PFY3,
-     gs.NGC_PFY4,
-     gs.NGC_PFY5,
-     --- Annual Fund Status
-     gs.af_status, 
-     gs.af_status_fy_start,
-     --- Annual Fund Giving
-     gs.CRU_CFY,
-     gs.CRU_PFY1,
-     gs.CRU_PFY2,
-     gs.CRU_PFY3,
-     gs.CRU_PFY4,
-     gs.CRU_PFY5,
-     gs.LAST_GIFT_ALLOC_CODE,
-     gs.FY_GIVING_FIRST_YR,
-     gs.FY_GIVING_LAST_YR,
-     gs.FY_GIVING_YR_COUNT,
-     give.Count_Yrs_Gifts_Over_100,
-     give.Count_Yrs_Gifts_Over_1000,
-     give.Count_AFYrs_Gifts_Over_100,
-     give.Count_AFYrs_Gifts_Over_1000
-from rpt_pbh634.v_entity_ksm_degrees deg
-left join gs on gs.id_number = deg.ID_NUMBER
-left join give on give.ID_NUMBER = deg.ID_NUMBER;
+With anonymous As (
+Select *
+From rpt_pbh634.v_entity_special_handling sh
+Where sh."ANONYMOUS_DONOR" = 'Y'
+),
+
+hh as (select *
+from rpt_pbh634.v_ksm_giving_trans_hh),
+
+give as (select *
+from RPT_PBH634.v_Ksm_Giving_Summary),
+
+Give_Count as (select hh.ID_NUMBER,
+--- Latest Gift
+min (hh.DATE_OF_RECORD) as recent_gift,
+min (hh.FISCAL_YEAR) as recent_gift_fy,
+--- Count gifts in this fiscal year
+count (Case When cal.curr_fy = fiscal_year Then hh.fiscal_year Else 0 End) as gift_count_fy,
+--- Count gifts in last fiscal year
+count (Case When cal.curr_fy = fiscal_year + 1 Then hh.fiscal_year Else 0 End) as gift_count_pfy1,
+--- Count Fiscal Years of Giving 
+count (distinct hh.FISCAL_YEAR) as fy_count,
+--- Count of Fiscal Years of Giving (Current FY - Previous 5 FY)
+count(distinct Case When cal.curr_fy = fiscal_year 
+ or cal.curr_fy = fiscal_year + 1
+ or cal.curr_fy = fiscal_year + 2
+ or cal.curr_fy = fiscal_year + 3
+ or cal.curr_fy = fiscal_year + 4
+ or cal.curr_fy = fiscal_year + 5
+ Then hh.FISCAL_YEAR Else 0 End) as giving_last_5_year
+from hh
+cross join rpt_pbh634.v_current_calendar cal
+group by hh.ID_NUMBER),
+
+--- KLC Donors
+--- Used a subquery from Amy's KLC report to identify KLC Members 
+
+KLC AS (
+       SELECT GIFT_CLUBS.GIFT_CLUB_ID_NUMBER,
+       GIFT_CLUBS.GIFT_CLUB_STATUS,
+       GIFT_CLUBS.GIFT_CLUB_CODE,
+       TMS_GIFT_CLUB_TABLE.club_desc
+FROM GIFT_CLUBS
+LEFT JOIN TMS_GIFT_CLUB_TABLE ON TMS_GIFT_CLUB_TABLE.club_code = GIFT_CLUBS.GIFT_CLUB_CODE
+left join anonymous on anonymous.id_number = GIFT_CLUBS.GIFT_CLUB_ID_NUMBER
+Where (GIFT_CLUB_CODE = 'LKM'
+  AND GIFT_CLUB_STATUS = 'A'
+  AND OPERATOR_NAME = 'lrb324')
+  OR (GIFT_CLUB_CODE = 'LKM'
+  AND GIFT_CLUB_STATUS = 'A'
+  AND OPERATOR_NAME = 'abm1914')--added myself on 11/15 after adding someone for Bridget
+  OR (GIFT_CLUB_CODE = 'LKM'
+  AND GIFT_CLUB_STATUS = 'A'
+  AND GIFT_CLUB_REASON = 'KLC Recurring Gift Pledge'))
+  
+select deg.ID_NUMBER,
+--- Most Recent Gift Date to Kellogg
+       GIVE_COUNT.recent_gift as date_recent_gift,
+--- Most Recent Gift FY to Kellogg
+       GIVE_COUNT.recent_gift_fy as date_recent_gift_year,
+--- Count of Gifts in Current FY (2021)
+       GIVE_COUNT.gift_count_fy as total_gifts_fy,
+--- Count of Gifts in Past FY (2020)       
+       GIVE_COUNT.gift_count_pfy1 as total_gifts_pfy,
+--- Count of Total Years of Giving to Kellogg
+       GIVE_COUNT.fy_count as count_total_years_giving,
+--- Count of Giving in Last 5 Years
+       GIVE_COUNT.giving_last_5_year as count_years_giving_last5,
+---- AF Status
+       GIVE.af_status,
+---- KLC Indicator
+       KLC.club_desc as KLC_indicator,
+---- KLC Club Status
+       KLC.GIFT_CLUB_STATUS as KLC_status
+       FROM rpt_pbh634.v_entity_ksm_degrees deg
+       LEFT JOIN GIVE_COUNT on GIVE_COUNT.id_number = deg.ID_NUMBER
+       LEFT JOIN GIVE ON GIVE.id_number = deg.ID_NUMBER
+       LEFT JOIN KLC ON KLC.GIFT_CLUB_ID_NUMBER = deg.ID_NUMBER
+       LEFT JOIN anonymous ON anonymous.id_number = deg.ID_NUMBER
+       --- Dropping the anonymous donors
+       where anonymous.id_number is null
