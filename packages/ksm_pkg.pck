@@ -422,6 +422,9 @@ Type special_handling Is Record (
      , spec_hnd_codes varchar2(1024)
      , mailing_list_concat varchar2(1024)
      , ml_codes varchar2(1024)
+     , record_status_code entity.record_status_code%type
+     , gab varchar2(16)
+     , trustee varchar2(16)
      , no_contact varchar2(1)
      , no_solicit varchar2(1)
      , no_release varchar2(1)
@@ -3263,6 +3266,32 @@ Cursor c_special_handling_concat Is
       ksm_stewardship_issue = 'Y'
       -- Or other indicators, if ever added
   )
+  -- Committees
+  , gab As (
+    Select
+      gab.id_number
+      , e.spouse_id_number
+      , 'Y' As flag
+    From table(ksm_pkg.tbl_committee_gab) gab
+    Inner Join entity e
+      On e.id_number = gab.id_number
+  )
+  , trustee As (
+    Select
+      tr.id_number
+      , e.spouse_id_number
+      , 'Y' As flag
+    From table(ksm_pkg.tbl_committee_trustee) tr
+    Inner Join entity e
+      On e.id_number = tr.id_number
+  )
+  , committees_merged As (
+    Select id_number, spouse_id_number
+    From gab
+    Union
+    Select id_number, spouse_id_number
+    From trustee
+  )
   -- All IDs
   , ids As (
     Select id_number, spouse_id_number
@@ -3273,6 +3302,9 @@ Cursor c_special_handling_concat Is
     Union
     Select id_number, spouse_id_number
     From alerts
+    Union
+    Select id_number, spouse_id_number
+    From committees_merged
   )
   -- Universal no contact or no solicit
   -- Anyone with one of a few select codes should NEVER be contacted or solicited
@@ -3308,6 +3340,20 @@ Cursor c_special_handling_concat Is
     , spec_hnd.spec_hnd_codes
     , mailing_lists.mailing_list_concat
     , mailing_lists.ml_codes
+    -- Entity flags
+    , entity.record_status_code
+    , Case
+        When gab.flag = 'Y'
+          Then 'GAB'
+        When gab_s.flag = 'Y'
+          Then 'GAB Spouse'
+      End As gab
+    , Case
+        When trustee.flag = 'Y'
+          Then 'Trustee'
+        When trustee_s.flag = 'Y'
+          Then 'Trustee Spouse'
+      End As trustee
     -- Overall special handling indicators
     , spec_hnd.no_contact
     , spec_hnd.no_solicit
@@ -3397,10 +3443,15 @@ Cursor c_special_handling_concat Is
     -- Alerts
     , alerts.ksm_stewardship_issue
   From unc_ids ids
+  Inner Join entity On entity.id_number = ids.id_number
   Left Join spec_hnd On spec_hnd.id_number = ids.id_number
   Left Join mailing_lists On mailing_lists.id_number = ids.id_number
   Left Join alerts On alerts.id_number = ids.id_number
   Left Join last_survey On last_survey.id_number = ids.id_number
+  Left Join gab On gab.id_number = ids.id_number
+  Left Join gab gab_s On gab_s.id_number = ids.spouse_id_number
+  Left Join trustee On trustee.id_number = ids.id_number
+  Left Join trustee trustee_s On trustee_s.id_number = ids.spouse_id_number
   ;
 
 /*************************************************************************
