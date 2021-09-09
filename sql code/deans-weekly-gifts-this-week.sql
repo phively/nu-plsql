@@ -21,6 +21,7 @@ dts As (
 , pre_ad As (
   Select Distinct gt.tx_number
   , case when gt.anonymous IN ('1', '2', '3') then 'Anonymous' else entity.pref_mail_name end as pref_mail_name
+  , case when gt.anonymous IN ('1', '2', '3') then 'Anonymous' else entity.institutional_suffix end as institutional_suffix
   From gt
   Inner Join entity On gt.id_number = entity.id_Number
 )
@@ -36,6 +37,7 @@ group by tx_number
 , final_names AS (
 select pre_ad.tx_number
       ,pre_ad.pref_mail_name
+      ,pre_ad.institutional_suffix
       ,ca.pref_mail_name_counts
       ,ca.anonymous_counts
 FROM pre_ad
@@ -47,6 +49,7 @@ OR pre_ad.pref_mail_name <> 'Anonymous'
 , ad As (
   Select tx_number
         , listagg(pref_mail_name, chr(13)) Within Group (order by pref_mail_name) as all_associated_donors
+        , listagg(institutional_suffix, chr(13)) Within Group (order by pref_mail_name) as all_institutional_suffix
   From final_names
   Group By tx_number
 )
@@ -66,6 +69,7 @@ Select Distinct
   , gft.tx_gypm_ind
   , tms_rt.short_desc As record_type
   , entity.pref_mail_name As primary_donor
+  , ad.all_institutional_suffix
   , ad.all_associated_donors
   , gft.date_of_record
   , gft.allocation_code
