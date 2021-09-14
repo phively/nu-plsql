@@ -24,6 +24,7 @@
     - Pulled Cornerstone from the gift club table rather than manually tagging (this group might not be called out, but it's future-proofing)
     - Created approved names table for FY19 IR and added additional audits
     - Checked manual householding from FY19
+    - Removed Cornerstone and KLC indicators
 */
 
 With
@@ -811,7 +812,7 @@ Union All (
                  Then loyal.loyal
              End
         -- Add KLC tag if applicable
-        || Case
+       /* || Case
              When rn.name_order Not In('Anon', 'Org')
                And cust_name.override_suffixes Is Null
                  Then fy_klc.klc
@@ -821,7 +822,7 @@ Union All (
              When cornerstone.id_number Is Not Null
                Or cornerstone_s.id_number Is Not Null
                  Then '<CORNERSTONE>'
-             End
+             End */
       As proposed_recognition_name --<EDIT>
     -- Proposed sort name within groups
     , Case
