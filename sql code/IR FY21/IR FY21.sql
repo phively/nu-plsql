@@ -379,6 +379,16 @@ params_cfy As (
     , prospect_id
     , assignment_id_number
     , assignment_report_name
+    , assignment_type
+    , Case
+        When assignment_type = 'PM'
+          Then 1
+        When assignment_type = 'LG'
+          Then 2
+        When assignment_type = 'PP'
+          Then 3
+        End
+      As assignment_rank
   From v_assignment_history ah
   Inner Join hhs
     On hhs.id_number = ah.id_number
@@ -388,8 +398,10 @@ params_cfy As (
 , assign_conc As (
   Select
     household_id
-    , Listagg(assignment_report_name, ';  ') Within Group (Order By assignment_report_name)
+    , Listagg(assignment_report_name, ';  ') Within Group (Order By assignment_rank Asc, assignment_report_name Asc)
       As managers
+    , Listagg(assignment_type, '; ') Within Group (Order By assignment_rank Asc, assignment_report_name Asc)
+      As assignment_types
   From assign
   Group By household_id
 )
@@ -984,6 +996,7 @@ Select Distinct
       As possible_dupe
   , donorlist.no_joint_gifts_flag
   , assign_conc.managers
+  , assign_conc.assignment_types
   , donorlist.id_number
   , donorlist.report_name
   , donorlist.degrees_concat
