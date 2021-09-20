@@ -376,34 +376,113 @@ params_cfy As (
 , assign As (
   Select Distinct
     hhs.household_id
-    , prospect_id
-    , assignment_id_number
-    , assignment_report_name
-    , assignment_type
+--    , ah.prospect_id
+    , ah.assignment_id_number
+    , ah.assignment_report_name
+    , ksm.team As ksm_team
+    , ah.assignment_type
     , Case
-        When assignment_type = 'PM'
+        When ah.assignment_type = 'PM'
           Then 1
-        When assignment_type = 'LG'
+        When ah.assignment_type = 'LG'
           Then 2
-        When assignment_type = 'PP'
+        When ah.assignment_type = 'PP'
           Then 3
         End
       As assignment_rank
   From v_assignment_history ah
   Inner Join hhs
     On hhs.id_number = ah.id_number
-  Where assignment_active_calc = 'Active' -- Active assignments only
-    And assignment_type In ('PP', 'PM', 'LG') -- Program Manager (PP), Prospect Manager (PM), Leadership Giving Officer (LG)
+  Left Join v_frontline_ksm_staff ksm
+    On ksm.id_number = ah.assignment_id_number
+    And ksm.former_staff Is Null
+  Where ah.assignment_active_calc = 'Active' -- Active assignments only
+    And ah.assignment_type In ('PP', 'PM', 'LG') -- Program Manager (PP), Prospect Manager (PM), Leadership Giving Officer (LG)
 )
 , assign_conc As (
   Select
     household_id
-    , Listagg(assignment_report_name, ';  ') Within Group (Order By assignment_rank Asc, assignment_report_name Asc)
+    , Listagg(assignment_report_name, ';  ') Within Group (Order By assignment_rank Asc, ksm_team Asc Nulls Last, assignment_report_name Asc)
       As managers
-    , Listagg(assignment_type, '; ') Within Group (Order By assignment_rank Asc, assignment_report_name Asc)
+    , Listagg(assignment_type, '; ') Within Group (Order By assignment_rank Asc, ksm_team Asc Nulls Last, assignment_report_name Asc)
       As assignment_types
+    -- Show only specific assignment types
+    , Listagg(
+        Case When assignment_type = 'PM' Then assignment_report_name End
+        , ';  '
+      ) Within Group (Order By assignment_rank Asc, ksm_team Asc Nulls Last, assignment_report_name Asc)
+      As pm
+    , Listagg(
+        Case When assignment_type = 'PP' Then assignment_report_name End
+        , ';  '
+      ) Within Group (Order By assignment_rank Asc, ksm_team Asc Nulls Last, assignment_report_name Asc)
+      As ppm
+    , Listagg(
+        Case When assignment_type = 'LG' Then assignment_report_name End
+        , ';  '
+      ) Within Group (Order By assignment_rank Asc, ksm_team Asc Nulls Last, assignment_report_name Asc)
+      As lgo
+    -- Determine whether the specific assignment types include KSM GOs
+    , Listagg(
+        Case When assignment_type = 'PM' Then ksm_team End
+        , ';  '
+      ) Within Group (Order By assignment_rank Asc, ksm_team Asc Nulls Last, assignment_report_name Asc)
+      As pm_ksm
+    , Listagg(
+        Case When assignment_type = 'PP' Then ksm_team End
+        , ';  '
+      ) Within Group (Order By assignment_rank Asc, ksm_team Asc Nulls Last, assignment_report_name Asc)
+      As ppm_ksm
+    , Listagg(
+        Case When assignment_type = 'LG' Then ksm_team End
+        , ';  '
+      ) Within Group (Order By assignment_rank Asc, ksm_team Asc Nulls Last, assignment_report_name Asc)
+      As lgo_ksm
   From assign
   Group By household_id
+)
+/* Recommended KSM or Central reviewer
+  1.  If Kellogg PM, always use Kellogg PM
+  2.  Otherwise, if Kellogg PPM, use Kellogg PPM
+  3.  Otherwise, if Kellogg LGO, use Kellogg LGO
+  4.  Otherwise, use Central PM if present
+  5.  Otherwise, use Central PPM if present
+  6.  Otherwise, use Central LGO if present
+*/
+, assign_reviewer As (
+  Select
+    household_id
+    , Case
+        When pm_ksm Is Not Null
+          Then 'PM KSM'
+        When ppm_ksm Is Not Null
+          Then 'PPM KSM'
+        When lgo_ksm Is Not Null
+          Then 'LGO KSM'
+        When pm Is Not Null
+          Then 'PM'
+        When ppm Is Not Null
+          Then 'PPM'
+        When lgo Is Not Null
+          Then 'LGO'
+        End
+      As reviewer_assign_type
+      , Case
+          When pm_ksm Is Not Null
+            Then pm
+          When ppm_ksm Is Not Null
+            Then ppm
+          When lgo_ksm Is Not Null
+            Then lgo
+          When pm Is Not Null
+            Then pm
+          When ppm Is Not Null
+            Then ppm
+          When lgo Is Not Null
+            Then lgo
+          End
+        As reviewer
+  From assign_conc
 )
 
 /* KLC entities
@@ -997,6 +1076,11 @@ Select Distinct
   , donorlist.no_joint_gifts_flag
   , assign_conc.managers
   , assign_conc.assignment_types
+  , assign_conc.pm
+  , assign_conc.ppm
+  , assign_conc.lgo
+  , assign_reviewer.reviewer
+  , assign_reviewer.reviewer_assign_type
   , donorlist.id_number
   , donorlist.report_name
   , donorlist.degrees_concat
@@ -1050,6 +1134,8 @@ Inner Join rec_name
   On rec_name.id_number = donorlist.id_number
 Left Join assign_conc
   On assign_conc.household_id = donorlist.household_id
+Left Join assign_reviewer
+  On assign_reviewer.household_id = donorlist.household_id
 Left Join loyal
   On loyal.household_id = donorlist.household_id
 Left Join dec_spouse_conc
