@@ -613,7 +613,7 @@ Using a subquery to find out if an entity gave during a given year */
 Donor as (select distinct hh.ID_NUMBER,
 Max(Case When cal.curr_fy = fiscal_year Then hh.FISCAL_YEAR Else NULL End) as KSM_donor_cfy,
 Max(Case When cal.curr_fy = fiscal_year + 1 Then hh.FISCAL_YEAR Else NULL End) as KSM_donor_pfy1
-from rpt_pbh634.v_ksm_giving_trans_hh hh
+from hh
 inner join degrees on degrees.ID_NUMBER = hh.ID_NUMBER
 cross join rpt_pbh634.v_current_calendar cal
 where trim(hh.ANONYMOUS) is null
@@ -670,8 +670,7 @@ KLC5 AS (Select distinct KLC.GIFT_CLUB_ID_NUMBER,
 Count (distinct Club_END_DATE) as klc_fy_count_5
 from KLC
 cross join rpt_pbh634.v_current_calendar cal
-Where (KLC.Club_END_DATE = cal.CURR_FY 
-or KLC.Club_END_DATE = cal.CURR_FY - 1
+Where (KLC.Club_END_DATE = cal.CURR_FY - 1
 or KLC.Club_END_DATE = cal.CURR_FY - 2
 or KLC.Club_END_DATE = cal.CURR_FY - 3 
 or KLC.Club_END_DATE = cal.CURR_FY - 4
@@ -700,21 +699,21 @@ Select distinct degrees.ID_NUMBER
 --- FY of most recent gift, pledge, or payment, (numeric)
 ,Give.last_gift_fy --use FY function, give FY not date
 --- KSM Donor this Year
-,Donor_Ind.Donor_fy_ind
+,Donor_Ind.Donor_fy_ind as KSM_Donor_CFY
 --- KSM Donor last Year
-,Donor_Ind.Donor_pfy_ind
+,Donor_Ind.Donor_pfy_ind as KSM_Donor_Pfy
 --- KSM Total Years of Giving (Numeric) 
 ,G.fy_count as KSM_total_years_giving
 --- Current KSM AF donor status, (Donor, LYBUNT, PYBUNT, Lapsed, Non)
 ,Give.af_status
 --- KLC FY Donor This Year
-,KLC_Final.KSM_donor_cfy
+,KLC_Final.KSM_donor_cfy as KSM_KLC_Donor_CFY
 --- KLC FY Donor Last Year 
-,KLC_Final.KSM_donor_pfy1
+,KLC_Final.KSM_donor_pfy1 as KSM_KLC_Donor_PFY
 --- KLC Total Years on Record 
-,KLC_Final.klc_fy_count
+,KLC_Final.klc_fy_count as KSM_KLC_Total_FY_Count
 --- KLC Total Years in the Last 5
-,KLC_Final.klc_fy_count_5
+,KLC_Final.klc_fy_count_5 as KSM_KLC_Last5_PFY_Count
 FROM degrees
 Left Join a on a.id_number = degrees.ID_NUMBER
 Left Join give on give.id_number = degrees.ID_NUMBER
