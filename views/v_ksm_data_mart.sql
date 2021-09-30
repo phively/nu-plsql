@@ -584,7 +584,7 @@ Create or Replace View v_datamart_giving as
 /* 
 EXCLUSIONS:
 1) Drop all records linked to an entity with the anonymous special handling code
-2) Drop individual gifts with anonymous type 1, 2, 3 for the purpose of calculating the suggested fields…or alternatively drop all such records
+2) Drop individual gifts with anonymous type 1, 2, 3 for the purpose of calculating the suggested fields,or alternatively drop all such records
 
 */ 
 
@@ -597,16 +597,32 @@ Where sh.ANONYMOUS_DONOR is not null
 
 hh as (select *
 from rpt_pbh634.v_ksm_giving_trans_hh
---- Drop individual gifts with anonymous type 1, 2, 3 for the purpose of calculating the suggested fields…or alternatively drop all such records
+--- Drop individual gifts with anonymous type 1, 2, 3 for the purpose of calculating the suggested fields,or alternatively drop all such records
 where trim(rpt_pbh634.v_ksm_giving_trans_hh.ANONYMOUS) is null),
+
+degrees as (select *
+from rpt_pbh634.v_entity_ksm_degrees),
+
+--- Subquery for spouse (9/29) where we take out anonymous donor. 
+
+spouse as (select degrees.id_number,
+a_spouse.ANONYMOUS_DONOR
+from degrees 
+left join a a_spouse on a_spouse.spouse_id_number = degrees.id_number
+where a_spouse.anonymous_donor is not null),
 
 give as (select give.ID_NUMBER, 
 give.af_status,
 rpt_pbh634.ksm_pkg.get_fiscal_year(give.LAST_GIFT_DATE) as last_gift_fy
 from RPT_PBH634.v_Ksm_Giving_Summary give), --- stewardship amount
 
-degrees as (select *
-from rpt_pbh634.v_entity_ksm_degrees),
+--- Subquery (9/29) for Most Recent Gift, but takes out anonymous donors
+
+max_date as (select hh.ID_NUMBER,
+rpt_pbh634.ksm_pkg.get_fiscal_year (max (hh.DATE_OF_RECORD)) as last_gift_fy 
+from hh
+where trim (hh.ANONYMOUS) is null
+group by hh.ID_NUMBER),
 
 /* KSM Donor Current FY and Last FY
 Using a subquery to find out if an entity gave during a given year */
@@ -697,7 +713,7 @@ cross join rpt_pbh634.v_current_calendar cal)
 
 Select distinct degrees.ID_NUMBER
 --- FY of most recent gift, pledge, or payment, (numeric)
-,Give.last_gift_fy --use FY function, give FY not date
+,max_date.last_gift_fy --use FY function, give FY not date
 --- KSM Donor this Year
 ,Donor_Ind.Donor_fy_ind as KSM_Donor_CFY
 --- KSM Donor last Year
@@ -720,4 +736,7 @@ Left Join give on give.id_number = degrees.ID_NUMBER
 Left Join g on g.id_number = degrees.ID_NUMBER
 Left Join KLC_Final on KLC_Final.GIFT_CLUB_ID_NUMBER = degrees.ID_NUMBER
 Left Join Donor_Ind on Donor_Ind.id_number = degrees.id_number
+Left Join spouse on spouse.id_number = degrees.id_number
+Left Join max_date on max_date.id_number = degrees.id_number
 where a.ANONYMOUS_DONOR is null
+and spouse.ANONYMOUS_DONOR is null
