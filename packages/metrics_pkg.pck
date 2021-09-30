@@ -15,9 +15,11 @@ Public constant declarations
 *************************************************************************/
 
 -- Thresholds for proposals to count toward MGO metrics
-mg_ask_amt Constant number := 100000; -- As of 2018-03-23. Minimum $ to count as ask
-mg_granted_amt Constant number := 48000; -- As of 2018-03-23. Minimum $ to count as granted
-mg_funded_count Constant number := 98000; -- As of 2018-03-23. Minimum $ to count as funded
+mg_ask_amt Constant number := 100E3; -- As of 2018-03-23. Minimum $ to count as ask
+mg_ask_amt_ksm_outright Constant number := 100E3; -- As of 2021-05-01. Minimum KSM outright $ to count as ask.
+mg_ask_amt_ksm_plg Constant number := 250E3; -- As of 2021-05-01. Minimum KSM pledge $ to count as ask.
+mg_granted_amt Constant number := 48E3; -- As of 2018-03-23. Minimum $ to count as granted
+mg_funded_count Constant number := 98E3; -- As of 2018-03-23. Minimum $ to count as funded
 
 /*************************************************************************
 Public type declarations
@@ -90,6 +92,15 @@ Type t_funded_dollars Is Table Of funded_dollars;
 Type t_contact_report Is Table Of contact_report;
 Type t_contact_count Is Table Of contact_count;
 Type t_ask_assist_credit Is Table Of ask_assist_credit;
+
+/*************************************************************************
+Public function declarations
+*************************************************************************/
+
+/* Function to return public/private constants */
+Function get_constant(
+  const_name In varchar2 -- Name of constant to retrieve
+) Return number Deterministic;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -461,6 +472,30 @@ Cursor c_assist_count Is
   Group By proposal_id
     , assignment_id_number
   ;
+
+/*************************************************************************
+Functions
+*************************************************************************/
+
+Function get_constant(const_name In varchar2)
+  Return number Deterministic Is
+  -- Declarations
+  val number;
+  var varchar2(100);
+  
+  Begin
+    -- If const_name doesn't include metrics_pkg, prepend it
+    If substr(lower(const_name), 1, 12) <> 'metrics_pkg.'
+      Then var := 'metrics_pkg.' || const_name;
+    Else
+      var := const_name;
+    End If;
+    -- Run command
+    Execute Immediate
+      'Begin :val := ' || var || '; End;'
+      Using Out val;
+      Return val;
+  End;
 
 /*************************************************************************
 Pipelined functions
