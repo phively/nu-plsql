@@ -201,9 +201,8 @@ SELECT
   ,NU_PRS_TRP_PROSPECT.GIVING_TOTAL
   ,NGFT.PLEDGE_BALANCE
   ,NGFT.PLEDGE_STATUS
-  ,NGFT.ALLOCATION_CODE
-  ,NGFT.ALLOC_SHORT_NAME  
-  ,TAS.short_desc AS ALLOC_SCHOOL  
+  ,NGFT.ALLOCATION_CODE 
+  ,TAS.short_desc AS ALLOC_SCHOOL_DESC 
   ,TTT.short_desc AS TRANS_TYPE
   ,PG.PROPOSAL_ID
   ,AFCRU."AF_FLAG"
@@ -268,14 +267,14 @@ select entity.id_number,
        managers.prospect_manager,
        managers.lgos,
        managers.managers,
-       p.proposal_active,
-       p.proposal_title,
-       p.start_date,
-       p.ask_date,
-       p.total_ask_amt
+       phf.proposal_active,
+       phf.proposal_title,
+       phf.start_date,
+       phf.ask_date,
+       phf.total_ask_amt
 from entity
-Left join rpt_pbh634.v_ksm_proposal_history p on p.household_id = entity.id_number
+Inner Join Prospect_Entity PE on PE.ID_NUMBER = Entity.Id_Number
+Inner Join Prospect PR on PR.PROSPECT_ID = PE.PROSPECT_ID
+Inner Join rpt_pbh634.v_proposal_history_fast phf on phf.prospect_id = pr.prospect_id
 Inner Join rpt_pbh634.v_entity_ksm_degrees deg on deg.id_number = entity.id_number
 left join managers on managers.id_number = entity.id_number;
-
-
