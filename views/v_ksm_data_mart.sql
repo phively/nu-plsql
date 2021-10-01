@@ -581,86 +581,162 @@ Create or Replace View v_datamart_giving as
 
 
 
---- anonymous subquery 
+/* 
+EXCLUSIONS:
+1) Drop all records linked to an entity with the anonymous special handling code
+2) Drop individual gifts with anonymous type 1, 2, 3 for the purpose of calculating the suggested fields,or alternatively drop all such records
 
-With anonymous As (
+*/ 
+
+With a As (
 Select *
 From rpt_pbh634.v_entity_special_handling sh
-Where sh."ANONYMOUS_DONOR" = 'Y'
+--- Drop all records linked to an entity with the anonymous special handling code
+Where sh.ANONYMOUS_DONOR is not null
 ),
 
 hh as (select *
-from rpt_pbh634.v_ksm_giving_trans_hh),
+from rpt_pbh634.v_ksm_giving_trans_hh
+--- Drop individual gifts with anonymous type 1, 2, 3 for the purpose of calculating the suggested fields,or alternatively drop all such records
+where trim(rpt_pbh634.v_ksm_giving_trans_hh.ANONYMOUS) is null),
 
-give as (select *
-from RPT_PBH634.v_Ksm_Giving_Summary),
+degrees as (select *
+from rpt_pbh634.v_entity_ksm_degrees),
 
-Give_Count as (select hh.ID_NUMBER,
---- Latest Gift
-min (hh.DATE_OF_RECORD) as recent_gift,
-min (hh.FISCAL_YEAR) as recent_gift_fy,
---- Count gifts in this fiscal year
-count (Case When cal.curr_fy = fiscal_year Then hh.fiscal_year Else 0 End) as gift_count_fy,
---- Count gifts in last fiscal year
-count (Case When cal.curr_fy = fiscal_year + 1 Then hh.fiscal_year Else 0 End) as gift_count_pfy1,
---- Count Fiscal Years of Giving 
-count (distinct hh.FISCAL_YEAR) as fy_count,
---- Count of Fiscal Years of Giving (Current FY - Previous 5 FY)
-count(distinct Case When cal.curr_fy = fiscal_year 
- or cal.curr_fy = fiscal_year + 1
- or cal.curr_fy = fiscal_year + 2
- or cal.curr_fy = fiscal_year + 3
- or cal.curr_fy = fiscal_year + 4
- or cal.curr_fy = fiscal_year + 5
- Then hh.FISCAL_YEAR Else 0 End) as giving_last_5_year
+--- Subquery for spouse (9/29) where we take out anonymous donor. 
+
+spouse as (select degrees.id_number,
+a_spouse.ANONYMOUS_DONOR
+from degrees 
+left join a a_spouse on a_spouse.spouse_id_number = degrees.id_number
+where a_spouse.anonymous_donor is not null),
+
+give as (select give.ID_NUMBER, 
+give.af_status,
+rpt_pbh634.ksm_pkg.get_fiscal_year(give.LAST_GIFT_DATE) as last_gift_fy
+from RPT_PBH634.v_Ksm_Giving_Summary give), --- stewardship amount
+
+--- Subquery (9/29) for Most Recent Gift, but takes out anonymous donors
+
+max_date as (select hh.ID_NUMBER,
+rpt_pbh634.ksm_pkg.get_fiscal_year (max (hh.DATE_OF_RECORD)) as last_gift_fy 
 from hh
-cross join rpt_pbh634.v_current_calendar cal
+where trim (hh.ANONYMOUS) is null
 group by hh.ID_NUMBER),
 
---- KLC Donors
---- Used a subquery from Amy's KLC report to identify KLC Members 
+/* KSM Donor Current FY and Last FY
+Using a subquery to find out if an entity gave during a given year */
+Donor as (select distinct hh.ID_NUMBER,
+Max(Case When cal.curr_fy = fiscal_year Then hh.FISCAL_YEAR Else NULL End) as KSM_donor_cfy,
+Max(Case When cal.curr_fy = fiscal_year + 1 Then hh.FISCAL_YEAR Else NULL End) as KSM_donor_pfy1
+from hh
+inner join degrees on degrees.ID_NUMBER = hh.ID_NUMBER
+cross join rpt_pbh634.v_current_calendar cal
+where trim(hh.ANONYMOUS) is null
+Group by hh.ID_NUMBER),
 
-KLC AS (
-       SELECT GIFT_CLUBS.GIFT_CLUB_ID_NUMBER,
-       GIFT_CLUBS.GIFT_CLUB_STATUS,
+/* Donor Indicator of FY and PFY
+Using the previous subquery to populate and Yes or Null to donor in a given year */
+
+Donor_Ind AS (Select Donor.id_number,
+Case when Donor.KSM_donor_cfy is not null then 'Yes' Else '' END as Donor_fy_ind,
+Case when Donor.KSM_donor_pfy1 is not null then 'Yes' Else '' END as Donor_pfy_ind
+from Donor),
+
+---- KSM Total Years of Giving
+G as (select hh.ID_NUMBER,
+count (distinct hh.FISCAL_YEAR) as fy_count
+from hh
+group by hh.ID_NUMBER),
+
+/* KLC Membership Queries
+1. Establishing KLC Members
+2. Separate Queries to Count Total KLC Years and for the last 5 */
+
+--- Establishing KLC Membership: Date Functions to reflect years in gift club
+
+KLC AS (Select distinct
+       GIFT_CLUBS.GIFT_CLUB_ID_NUMBER,
        GIFT_CLUBS.GIFT_CLUB_CODE,
-       TMS_GIFT_CLUB_TABLE.club_desc
+       TMS_GIFT_CLUB_TABLE.club_desc,
+       rpt_pbh634.ksm_pkg.get_fiscal_year (GIFT_CLUBS.GIFT_CLUB_END_DATE) as Club_END_DATE
 FROM GIFT_CLUBS
 LEFT JOIN TMS_GIFT_CLUB_TABLE ON TMS_GIFT_CLUB_TABLE.club_code = GIFT_CLUBS.GIFT_CLUB_CODE
-left join anonymous on anonymous.id_number = GIFT_CLUBS.GIFT_CLUB_ID_NUMBER
-Where (GIFT_CLUB_CODE = 'LKM'
-  AND GIFT_CLUB_STATUS = 'A'
-  AND OPERATOR_NAME = 'lrb324')
-  OR (GIFT_CLUB_CODE = 'LKM'
-  AND GIFT_CLUB_STATUS = 'A'
-  AND OPERATOR_NAME = 'abm1914')--added myself on 11/15 after adding someone for Bridget
-  OR (GIFT_CLUB_CODE = 'LKM'
-  AND GIFT_CLUB_STATUS = 'A'
-  AND GIFT_CLUB_REASON = 'KLC Recurring Gift Pledge'))
-  
-select deg.ID_NUMBER,
---- Most Recent Gift Date to Kellogg
-       GIVE_COUNT.recent_gift as date_recent_gift,
---- Most Recent Gift FY to Kellogg
-       GIVE_COUNT.recent_gift_fy as date_recent_gift_year,
---- Count of Gifts in Current FY (2021)
-       GIVE_COUNT.gift_count_fy as total_gifts_fy,
---- Count of Gifts in Past FY (2020)       
-       GIVE_COUNT.gift_count_pfy1 as total_gifts_pfy,
---- Count of Total Years of Giving to Kellogg
-       GIVE_COUNT.fy_count as count_total_years_giving,
---- Count of Giving in Last 5 Years
-       GIVE_COUNT.giving_last_5_year as count_years_giving_last5,
----- AF Status
-       GIVE.af_status,
----- KLC Indicator
-       KLC.club_desc as KLC_indicator,
----- KLC Club Status
-       KLC.GIFT_CLUB_STATUS as KLC_status
-       FROM rpt_pbh634.v_entity_ksm_degrees deg
-       LEFT JOIN GIVE_COUNT on GIVE_COUNT.id_number = deg.ID_NUMBER
-       LEFT JOIN GIVE ON GIVE.id_number = deg.ID_NUMBER
-       LEFT JOIN KLC ON KLC.GIFT_CLUB_ID_NUMBER = deg.ID_NUMBER
-       LEFT JOIN anonymous ON anonymous.id_number = deg.ID_NUMBER
-       --- Dropping the anonymous donors
-       where anonymous.id_number is null
+Where GIFT_CLUB_CODE = 'LKM'),
+
+
+KLC_Give_Ind As (select KLC.GIFT_CLUB_ID_NUMBER,
+Max(Case When cal.curr_fy = Club_END_DATE Then 'Yes' Else NULL End) as KSM_donor_cfy,
+Max(Case When cal.curr_fy = Club_END_DATE + 1 Then 'Yes' Else NULL End) as KSM_donor_pfy1
+from KLC
+cross join rpt_pbh634.v_current_calendar cal
+group BY KLC.GIFT_CLUB_ID_NUMBER),
+
+--- Count Total KLC Years 
+
+KLC_Count As (Select distinct KLC.GIFT_CLUB_ID_NUMBER,
+Count (distinct Club_END_DATE) as klc_fy_count
+from KLC
+cross join rpt_pbh634.v_current_calendar cal
+GROUP BY KLC.GIFT_CLUB_ID_NUMBER),
+
+--- Count of KLC Years, but in last 5
+
+KLC5 AS (Select distinct KLC.GIFT_CLUB_ID_NUMBER,
+Count (distinct Club_END_DATE) as klc_fy_count_5
+from KLC
+cross join rpt_pbh634.v_current_calendar cal
+Where (KLC.Club_END_DATE = cal.CURR_FY - 1
+or KLC.Club_END_DATE = cal.CURR_FY - 2
+or KLC.Club_END_DATE = cal.CURR_FY - 3 
+or KLC.Club_END_DATE = cal.CURR_FY - 4
+or KLC.Club_END_DATE = cal.CURR_FY - 5)
+Group By KLC.GIFT_CLUB_ID_NUMBER),
+
+
+KLC_Final As (Select distinct KLC.GIFT_CLUB_ID_NUMBER,
+--- KLC FY Donor This Year
+KLC_Give_Ind.KSM_donor_cfy,
+--- KLC FY Donor Last Year 
+KLC_Give_Ind.KSM_donor_pfy1,
+--- KLC Total Years on Record 
+KLC_Count.klc_fy_count,
+--- KLC Total Years in the Last 5
+KLC5.klc_fy_count_5
+from KLC
+left join KLC_Count on KLC_Count.GIFT_CLUB_ID_NUMBER = KLC.GIFT_CLUB_ID_NUMBER
+left join KLC5 ON KLC5.GIFT_CLUB_ID_NUMBER = KLC.GIFT_CLUB_ID_NUMBER 
+left join KLC_Give_Ind on KLC_Give_Ind.GIFT_CLUB_ID_NUMBER = KLC.GIFT_CLUB_ID_NUMBER
+cross join rpt_pbh634.v_current_calendar cal)
+
+/* Final Query */
+
+Select distinct degrees.ID_NUMBER
+--- FY of most recent gift, pledge, or payment, (numeric)
+,max_date.last_gift_fy --use FY function, give FY not date
+--- KSM Donor this Year
+,Donor_Ind.Donor_fy_ind as KSM_Donor_CFY
+--- KSM Donor last Year
+,Donor_Ind.Donor_pfy_ind as KSM_Donor_Pfy
+--- KSM Total Years of Giving (Numeric) 
+,G.fy_count as KSM_total_years_giving
+--- Current KSM AF donor status, (Donor, LYBUNT, PYBUNT, Lapsed, Non)
+,Give.af_status
+--- KLC FY Donor This Year
+,KLC_Final.KSM_donor_cfy as KSM_KLC_Donor_CFY
+--- KLC FY Donor Last Year 
+,KLC_Final.KSM_donor_pfy1 as KSM_KLC_Donor_PFY
+--- KLC Total Years on Record 
+,KLC_Final.klc_fy_count as KSM_KLC_Total_FY_Count
+--- KLC Total Years in the Last 5
+,KLC_Final.klc_fy_count_5 as KSM_KLC_Last5_PFY_Count
+FROM degrees
+Left Join a on a.id_number = degrees.ID_NUMBER
+Left Join give on give.id_number = degrees.ID_NUMBER
+Left Join g on g.id_number = degrees.ID_NUMBER
+Left Join KLC_Final on KLC_Final.GIFT_CLUB_ID_NUMBER = degrees.ID_NUMBER
+Left Join Donor_Ind on Donor_Ind.id_number = degrees.id_number
+Left Join spouse on spouse.id_number = degrees.id_number
+Left Join max_date on max_date.id_number = degrees.id_number
+where a.ANONYMOUS_DONOR is null
+and spouse.ANONYMOUS_DONOR is null
