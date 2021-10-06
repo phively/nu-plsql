@@ -795,6 +795,9 @@ Function tbl_committee_kic
 Function tbl_committee_privateequity
   Return t_committee_members Pipelined;
 
+Function tbl_committee_asia
+  Return t_committee_members Pipelined;
+
 /*************************************************************************
 End of package
 *************************************************************************/
@@ -4780,13 +4783,26 @@ Function tbl_special_handling_concat
         Return;
       End;
       
-      --  Kellogg Private Equity Taskforce Council
+    --  Kellogg Private Equity Taskforce Council
     Function tbl_committee_privateequity
       Return t_committee_members Pipelined As
       committees t_committee_members;
-      
+        
       Begin
         committees := committee_members (my_committee_cd => committee_privateequity);
+        For i in 1..committees.count Loop
+          Pipe row(committees(i));
+        End Loop;
+        Return;
+      End;
+
+    --  Kellogg Executive Board for Asia
+    Function tbl_committee_asia
+      Return t_committee_members Pipelined As
+      committees t_committee_members;
+        
+      Begin
+        committees := committee_members (my_committee_cd => committee_asia);
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;
