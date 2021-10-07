@@ -68,7 +68,7 @@ Where
    Or committee_header.short_desc LIKE '%NU-%'
    Or committee_header.short_desc = 'NU Club of Switzerland'
 )
-   AND entity.record_status_code = 'A'
+   AND entity.record_status_code IN ('A','L')
    
 --- Sort by Club Name 
 
