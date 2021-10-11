@@ -92,6 +92,46 @@ Group By rpt_pbh634.ksm_pkg.get_fiscal_year(acr.ask_or_stop_dt)
   , g.goal_2
   , pyg.goal_2
 Union
+----- KSM supplement - Kellogg asks
+Select ack.assignment_id_number As id_number
+  , e.report_name
+  , 'KGS' As goal_type
+  , 'KSM Sols' As goal_desc
+  , extract(year From ack.ask_or_stop_dt) As cal_year
+  , extract(month From ack.ask_or_stop_dt) As cal_month
+  , rpt_pbh634.ksm_pkg.get_fiscal_year(ack.ask_or_stop_dt) As fiscal_year
+  , rpt_pbh634.ksm_pkg.get_quarter(ack.ask_or_stop_dt, 'fisc') As fiscal_quarter
+  , rpt_pbh634.ksm_pkg.get_performance_year(ack.ask_or_stop_dt) As perf_year
+  , rpt_pbh634.ksm_pkg.get_quarter(ack.ask_or_stop_dt, 'perf') As perf_quarter
+  , g.goal_2 As fy_goal
+  , pyg.goal_2 As py_goal
+  -- Original definition: count only if ask date is filled in
+  , Count(Distinct Case When ack.initial_contribution_date Is Not Null Then ack.proposal_id End)
+    As progress
+  -- Alternate definition: count if either ask date or stop date is filled in
+  , Count(Distinct ack.proposal_id) As adjusted_progress
+  , NULL As addl_progress_detail
+From table(rpt_pbh634.metrics_pkg.tbl_asked_count_ksm) ack
+Inner Join entity e On e.id_number = ack.assignment_id_number
+-- Fiscal year goals
+Left Join goal g
+  On ack.assignment_id_number = g.id_number
+    And g.year = rpt_pbh634.ksm_pkg.get_fiscal_year(ack.ask_or_stop_dt)
+-- Performance year goals
+Left Join goal pyg
+  On ack.assignment_id_number = pyg.id_number
+    And pyg.year = rpt_pbh634.ksm_pkg.get_performance_year(ack.ask_or_stop_dt)
+Group By rpt_pbh634.ksm_pkg.get_fiscal_year(ack.ask_or_stop_dt)
+  , ack.assignment_id_number
+  , e.report_name
+  , extract(year From ack.ask_or_stop_dt)
+  , extract(month From ack.ask_or_stop_dt)
+  , rpt_pbh634.ksm_pkg.get_quarter(ack.ask_or_stop_dt, 'fisc')
+  , rpt_pbh634.ksm_pkg.get_quarter(ack.ask_or_stop_dt, 'perf')
+  , rpt_pbh634.ksm_pkg.get_performance_year(ack.ask_or_stop_dt)
+  , g.goal_2
+  , pyg.goal_2
+Union
 ----- Main query goal 3, equivalent to lines 848-1391 in nu_gft_v_officer_metrics -----
 Select fr.assignment_id_number As id_number
   , e.report_name
@@ -285,6 +325,27 @@ With goals As (
     , entity.report_name
     , 'MGS' As goal_type
     , 'MG Sols' As goal_desc
+    , goal.year As cal_year
+    , 1 As cal_month
+    , goal.year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.year As perf_year
+    , 1 As perf_quarter
+    , goal_2 As fy_goal
+    , goal_2 As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+    , NULL As addl_progress_detail
+  From entity
+  Inner Join goal
+    On entity.id_number = goal.id_number
+  Union All
+  -- Goal 2 KSM
+  Select
+    goal.id_number
+    , entity.report_name
+    , 'KGS' As goal_type
+    , 'KSM Sols' As goal_desc
     , goal.year As cal_year
     , 1 As cal_month
     , goal.year As fiscal_year

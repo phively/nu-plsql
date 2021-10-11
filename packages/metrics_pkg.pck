@@ -31,6 +31,8 @@ Type proposals_data Is Record (
   , assignment_type assignment.assignment_type%type
   , assignment_active_ind assignment.active_ind%type
   , proposal_active_ind proposal.active_ind%type
+  , proposal_type proposal.proposal_type%type
+  , outright_gift_proposal varchar2(1)
   , ask_amt proposal.ask_amt%type
   , granted_amt proposal.granted_amt%type
   , proposal_status_code proposal.proposal_status_code%type
@@ -144,6 +146,9 @@ Function tbl_funded_dollars
 Function tbl_asked_count
   Return t_ask_assist_credit Pipelined;
 
+Function tbl_asked_count_ksm
+  Return t_ask_assist_credit Pipelined;
+
 Function tbl_contact_reports
   Return t_contact_report Pipelined;
 
@@ -171,6 +176,9 @@ Cursor c_universal_proposals_data Is
     , a.assignment_type
     , a.active_ind As assignment_active_ind
     , p.active_ind As proposal_active_ind
+    , p.proposal_type
+    , Case When p.proposal_type = '01' Then 'Y' End
+      As outright_gift_proposal
     , p.ask_amt
     , p.granted_amt
     , p.proposal_status_code
@@ -349,6 +357,68 @@ Cursor c_asked_count Is
     From table(tbl_universal_proposals_data)
     Where assignment_type = 'PA' -- Proposal Manager
       And ask_amt >= metrics_pkg.mg_ask_amt
+  )
+  , asked_count As (
+      -- 1st priority - Look across all proposal managers on a proposal (inactive OR active).
+      -- If there is ONE proposal manager only, credit that for that proposal ID.
+      Select proposal_id
+        , assignment_id_number
+        , initial_contribution_date
+        , proposal_stop_date
+        , 1 As info_rank
+      From proposals_asked_count
+      Where proposalManagerCount = 1 -- only one proposal manager/ credit that PA 
+    Union
+      -- 2nd priority - For #2 if there is more than one active proposal managers on a proposal credit BOTH and exit the process.
+      Select proposal_id
+        , assignment_id_number
+        , initial_contribution_date
+        , proposal_stop_date
+        , 2 As info_rank
+      From proposals_asked_count
+      Where assignment_active_ind = 'Y'
+    Union
+      -- 3rd priority - For #3, Credit all inactive proposal managers where proposal stop date and assignment stop date within 24 hours
+      Select proposal_id
+        , assignment_id_number
+        , initial_contribution_date
+        , proposal_stop_date
+        , 3 As info_rank
+      From proposals_asked_count
+      Where proposal_active_ind = 'N' -- Inactives on the proposal.
+        And proposal_stop_date - assignment_stop_date <= 1
+    Order By info_rank
+  )
+  Select proposal_id
+    , assignment_id_number
+    , min(initial_contribution_date) keep(dense_rank First Order By info_rank Asc)  -- initial_contribution_date is 'ask_date'
+      As initial_contribution_date
+    -- Replace null initial_contribution_date with proposal_stop_date
+    , min(nvl(initial_contribution_date, proposal_stop_date)) keep(dense_rank First Order By info_rank Asc)
+      As ask_or_stop_dt
+  From asked_count
+  Group By proposal_id
+    , assignment_id_number
+  ;
+
+-- KSM asked count: asks must be for an outright gift >= mg_ask_amt_ksm_outright
+-- or for a pledge >= mg_ask_amt_ksm_plg
+Cursor c_asked_count_ksm Is
+  -- Must be proposal manager and above the ask credit threshold
+  With
+  proposals_asked_count As (
+    Select *
+    From table(tbl_universal_proposals_data)
+    Where assignment_type = 'PA' -- Proposal Manager
+      And (
+        -- Any gift type above overall threshold
+        ask_amt >= metrics_pkg.mg_ask_amt_ksm_plg
+        -- Outright asks above outright threshold
+        Or (
+          ask_amt >= metrics_pkg.mg_ask_amt_ksm_outright
+          And outright_gift_proposal = 'Y'
+        )
+      )
   )
   , asked_count As (
       -- 1st priority - Look across all proposal managers on a proposal (inactive OR active).
@@ -579,6 +649,22 @@ Function tbl_asked_count
     Open c_asked_count; -- Annual Fund allocations cursor
       Fetch c_asked_count Bulk Collect Into pd;
     Close c_asked_count;
+    -- Pipe out the data
+    For i in 1..(pd.count) Loop
+      Pipe row(pd(i));
+    End Loop;
+    Return;
+  End;
+  
+Function tbl_asked_count_ksm
+  Return t_ask_assist_credit Pipelined As
+    -- Declarations
+    pd t_ask_assist_credit;
+
+  Begin
+    Open c_asked_count_ksm; -- Annual Fund allocations cursor
+      Fetch c_asked_count_ksm Bulk Collect Into pd;
+    Close c_asked_count_ksm;
     -- Pipe out the data
     For i in 1..(pd.count) Loop
       Pipe row(pd(i));
