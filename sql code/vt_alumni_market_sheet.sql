@@ -48,7 +48,28 @@ ksm_assignment as (select distinct assign.id_number,
 assign.prospect_manager,
 assign.lgos,
 assign.managers
-from rpt_pbh634.v_assignment_summary assign)
+from rpt_pbh634.v_assignment_summary assign),
+
+--- KSM Emails (To build email flag in marketsheet) 
+
+KSM_Email AS (select email.id_number,
+       email.email_address
+From email
+Inner Join rpt_pbh634.v_entity_ksm_degrees deg on deg.ID_NUMBER = email.id_number
+Where email.preferred_ind = 'Y'),
+
+--- KSM Spec (To indicate Special Handling)
+
+Spec AS (Select rpt_pbh634.v_entity_special_handling.ID_NUMBER,
+       rpt_pbh634.v_entity_special_handling.GAB,
+       rpt_pbh634.v_entity_special_handling.TRUSTEE,
+       rpt_pbh634.v_entity_special_handling.NO_CONTACT,
+       rpt_pbh634.v_entity_special_handling.NO_SOLICIT,
+       rpt_pbh634.v_entity_special_handling.NO_PHONE_IND,
+       rpt_pbh634.v_entity_special_handling.NO_EMAIL_IND,
+       rpt_pbh634.v_entity_special_handling.NO_MAIL_IND,
+       rpt_pbh634.v_entity_special_handling.SPECIAL_HANDLING_CONCAT
+From rpt_pbh634.v_entity_special_handling)
 
 --- Degree Fields
 
@@ -101,7 +122,25 @@ ksm_assignment.managers,
 
 Prospect_1M_Plus.EVALUATION_RATING,
 
-Prospect_1M_Plus.OFFICER_RATING
+Prospect_1M_Plus.OFFICER_RATING,
+
+case when KSM_Email.email_address is not null then 'Y' Else 'N' END As pref_email_ind, 
+
+spec.GAB,
+
+spec.TRUSTEE,
+
+spec.NO_CONTACT,
+
+spec.NO_SOLICIT,
+
+spec.NO_PHONE_IND,
+
+spec.NO_EMAIL_IND,
+
+spec.NO_MAIL_IND,
+
+spec.SPECIAL_HANDLING_CONCAT
 
 From rpt_pbh634.v_entity_ksm_degrees
 
@@ -125,7 +164,12 @@ Left Join ksm_assignment on ksm_assignment.id_number = rpt_pbh634.v_entity_ksm_d
 
 Left Join Prospect_1M_Plus on Prospect_1M_Plus.id_number = rpt_pbh634.v_entity_ksm_degrees.ID_NUMBER
 
----- Active Alumni
+Left Join KSM_Email on KSM_Email.id_number = rpt_pbh634.v_entity_ksm_degrees.id_number
 
-Where rpt_pbh634.v_entity_ksm_degrees.Record_Status_Code = 'A'
+Left Join SPEC ON Spec.id_number = rpt_pbh634.v_entity_ksm_degrees.ID_NUMBER
+
+---- Active Alumni
+--- *** Revised 10/5/2021 *** We will now include lost records and create a filter for them on Tableau 
+
+Where rpt_pbh634.v_entity_ksm_degrees.Record_Status_Code IN ('A','L')
 ;
