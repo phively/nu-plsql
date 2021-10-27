@@ -804,7 +804,7 @@ End of package
 
 End ksm_pkg;
 /
-CREATE OR REPLACE Package Body ksm_pkg Is
+Create Or Replace Package Body ksm_pkg Is
 
 /*************************************************************************
 Private cursor tables -- data definitions; update indicated sections as needed
@@ -1669,7 +1669,7 @@ With
     From table(tbl_geo_code_primary)
     Where addr_pref_ind = 'Y'
   )
-
+  -- Individual preferred addresses
   , pref_addr As (
     Select
       addr.id_number
@@ -1831,19 +1831,30 @@ With
     , household.household_last_masters_year
     , couples.program As household_program
     , couples.program_group As household_program_group
-    , pref_addr.xsequence
-    , pref_addr.pref_city
-    , pref_addr.pref_state
-    , pref_addr.zipcode
-    , pref_addr.geo_codes
-    , pref_addr.geo_code_primary
-    , pref_addr.geo_code_primary_desc
-    , pref_addr.pref_country
-    , pref_addr.pref_continent
+    -- HH preferred address logic
+    , Case When pa_prim.xsequence Is Not Null Then pa_prim.xsequence Else pa_sp.xsequence End
+      As xsequence
+    , Case When pa_prim.xsequence Is Not Null Then pa_prim.pref_city Else pa_sp.pref_city End
+      As pref_city
+    , Case When pa_prim.xsequence Is Not Null Then pa_prim.pref_state Else pa_sp.pref_state End
+      As pref_state
+    , Case When pa_prim.xsequence Is Not Null Then pa_prim.zipcode Else pa_sp.zipcode End
+      As zipcode
+    , Case When pa_prim.xsequence Is Not Null Then pa_prim.geo_codes Else pa_sp.geo_codes End
+      As geo_codes
+    , Case When pa_prim.xsequence Is Not Null Then pa_prim.geo_code_primary Else pa_sp.geo_code_primary End
+      As geo_code_primary
+    , Case When pa_prim.xsequence Is Not Null Then pa_prim.geo_code_primary_desc Else pa_sp.geo_code_primary_desc End
+      As geo_code_primary_desc
+    , Case When pa_prim.xsequence Is Not Null Then pa_prim.pref_country Else pa_sp.pref_country End
+      As pref_country
+    , Case When pa_prim.xsequence Is Not Null Then pa_prim.pref_continent Else pa_sp.pref_continent End
+      As pref_continent
   From household
   Inner Join couples On household.household_id = couples.id_number
   Left Join mailing_order On household.household_id = mailing_order.household_id
-  Left Join pref_addr On household.id_number = pref_addr.id_number
+  Left Join pref_addr pa_prim On household.household_id = pa_prim.id_number
+  Left Join pref_addr pa_sp On couples.spouse_id_number = pa_sp.id_number
   Left Join fmr_spouse On household.id_number = fmr_spouse.id_number
   ;
 
