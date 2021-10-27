@@ -324,6 +324,17 @@ members As (
   Group By prospect_id
 )
 
+, prs As (
+  Select
+    nuprs.*
+    , proposalcount.proposalcount
+  From nu_prs_trp_prospect nuprs
+  Inner Join all_committees
+    On all_committees.id_number = nuprs.id_number
+  Left Join proposalcount
+    On proposalcount.prospect_id = nuprs.prospect_id
+)
+
 -- Main query
 Select
   prs.id_number
@@ -425,7 +436,7 @@ Select
   , acg.lfy2_nult_giving
   , acg.ksm_lt_giving
   , acg.ksm_campaign_giving
-  , nvl(proposalcount.proposalcount, 0) As proposal_count
+  , nvl(prs.proposalcount, 0) As proposal_count
   , acg.af_cfy_sftcredit
   , acg.af_lyfy_sftcredit
   , acg.af_lyfy2_sftcredit
@@ -437,12 +448,10 @@ Select
   , acg.campaign_pfy2
   , acg.campaign_pfy3
 From all_committees ac
-Inner Join nu_prs_trp_prospect prs
+Inner Join prs
   On prs.id_number = ac.id_number
 Left Join rpt_pbh634.v_entity_ksm_degrees
   On v_entity_ksm_degrees.id_number = ac.id_number
-Left Join proposalcount
-  On proposalcount.prospect_id = prs.prospect_id
 Left Join all_committees_giving acg
   On acg.id_number = ac.id_number
 ;
