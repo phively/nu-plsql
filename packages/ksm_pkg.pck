@@ -804,7 +804,7 @@ End of package
 
 End ksm_pkg;
 /
-Create Or Replace Package Body rpt_pbh634.ksm_pkg Is
+CREATE OR REPLACE Package Body ksm_pkg Is
 
 /*************************************************************************
 Private cursor tables -- data definitions; update indicated sections as needed
