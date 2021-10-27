@@ -20,6 +20,13 @@ From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
   my_committee_cd => ksm_pkg.get_string_constant('committee_kac')
   , shortname => 'KAC')
 )
+-- PHS
+Union
+Select *
+From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
+  my_committee_cd => ksm_pkg.get_string_constant('committee_phs')
+  , shortname => 'PHS')
+)
 -- KFN
 Union
 Select *
@@ -262,6 +269,13 @@ Select
   , kac.status As kac_status
   , kac.role As kac_role
   , kac.committee_title As kac_committee_title
+  , Case When phs.committee_code = 'KPH' Then 'Y' Else 'N' End
+    As phs_ind
+  , phs.start_dt As phs_start_date
+  , phs.stop_dt As phs_stop_date
+  , phs.status As phs_status
+  , phs.role As phs_role
+  , phs.committee_title As phs_committee_title
   , Case When inclusion.committee_code = 'KIC' Then 'Y' Else 'N' End
     As inclusion_ind
   , inclusion.start_dt As inclusion_start_date
@@ -337,6 +351,9 @@ Left Join members WomensLeadership
 Left Join members KAC
   On KAC.id_number = acg.id_number
   And KAC.committee_short_desc = 'KAC'
+Left Join members PHS
+  On KAC.id_number = acg.id_number
+  And KAC.committee_short_desc = 'PHS'
 Left Join members inclusion
   On inclusion.id_number = acg.id_number
   And inclusion.committee_short_desc = 'Inclusion'
