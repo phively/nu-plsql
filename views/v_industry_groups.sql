@@ -218,7 +218,7 @@ case when tms_fld_of_work.short_desc IN ('Law Practice','Legal Services', 'Alter
     --- Organization Indicator
     case when tms_fld_of_work.short_desc IN ('Fund-Raising','Non-Profit Organization Management', 'Philanthropy',
    'Civic & Social Organization','Consumer Services', 'Environmental Services','Individual & Family Services',
-  'Religious Institutions','Alternative Dispute Resolution','Renewables & Environment','Nanotechnology',
+  'Religious Institutions','Alternative Dispute Resolution','Renewables & Environment',
   'Political Organization','Think Tanks','International Trade and Development','E-Learning',
   'Security and Investigations','Program Development'
    ) 
@@ -248,8 +248,7 @@ case when tms_fld_of_work.short_desc IN ('Law Practice','Legal Services', 'Alter
     case when tms_fld_of_work.short_desc IN ('Maritime','Transportation/Trucking/Railroad','Warehousing', 
      'Hospitality','Leisure, Travel & Tourism',
      'Package/Freight Delivery','Airlines/Aviation','Logistics and Supply Chain',
-     'Import and Export','Pharmaceuticals','Defense & Space',
-'Telecommunications','Biotechnology','Venture Capital & Private Equity','International Trade and Development') 
+     'Import and Export','International Trade and Development') 
   then 'X' else '' END as TRAN
        from  tms_fld_of_work 
        where tms_fld_of_work.fld_of_work_code Like 'L%'
