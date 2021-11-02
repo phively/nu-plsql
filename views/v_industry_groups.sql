@@ -165,7 +165,7 @@ case when tms_fld_of_work.short_desc IN ('Animation', 'Design', 'Graphic Design'
    'Public Relations and Communications','Staffing and Recruiting',
    'Accounting','Import and Export','Translation and Localization',
    'Business Supplies and Equipment','Marketing and Advertising','Program Development',
-   'Security and Investigations','Events Services','Facilities Services','Logistics and Supply Chain') 
+   'Security and Investigations','Events Services','Facilities Services','Logistics and Supply Chain','Commercial Real Estate') 
   then 'X' else '' END as CORP,
     --- Education Indicator
 case when tms_fld_of_work.short_desc IN ('Education Management','Higher Education',
@@ -173,7 +173,7 @@ case when tms_fld_of_work.short_desc IN ('Education Management','Higher Educatio
   then 'X' else '' END as EDU,
     --- Finance Indicator
 case when tms_fld_of_work.short_desc IN ('Banking','Capital Markets', 'Financial Services','Insurance',
-  'Investment Banking','Investment Management','Venture Capital & Private Equity','Accounting') 
+  'Investment Banking','Investment Management','Venture Capital & Private Equity','Accounting','Commercial Real Estate','Real Estate') 
   then 'X' else '' END as FIN,
     --- Goods Indicator 
 case when tms_fld_of_work.short_desc IN ('Apparel & Fashion','Cosmetics', 'Luxury Goods & Jewelry','Supermarkets',
@@ -194,7 +194,7 @@ case when tms_fld_of_work.short_desc IN ('Executive Office','Government Administ
   'Mental Health Care','Veterinary','Health, Wellness and Fitness','Pharmaceuticals','Biotechnology') 
   then 'X' else '' END as HLTH,
  --- Legal Indicator
-case when tms_fld_of_work.short_desc IN ('Law Practice','Legal Services', 'Alternative Dispute Resolution') 
+case when tms_fld_of_work.short_desc IN ('Law Practice','Legal Services', 'Alternative Dispute Resolution','Judiciary','Law Enforcement','Legislative Office') 
   then 'X' else '' END as LEG,
  --- Manufacturing Indicator
  case when tms_fld_of_work.short_desc IN ('Automotive','Chemicals', 'Machinery',
@@ -210,7 +210,9 @@ case when tms_fld_of_work.short_desc IN ('Law Practice','Legal Services', 'Alter
     --- Medical Indicator
      case when tms_fld_of_work.short_desc IN ('Online Media','Broadcast Media', 'Computer Games',
    'Entertainment','Media Production', 'Newspapers','Printing',
-  'Publishing','Libraries','Information Services'
+  'Publishing','Libraries','Information Services','Animation','Arts and Crafts',
+  'Design','Fine Art','Graphic Design','Marketing and Advertising',
+  'Motion Pictures and Film','Museums and Institutions','Performing Arts','Photography','Writing and Editing'
    ) 
   then 'X' else '' END as MED,
     --- Organization Indicator
@@ -226,15 +228,15 @@ case when tms_fld_of_work.short_desc IN ('Law Practice','Legal Services', 'Alter
    'Recreational Facilities and Services','Restaurants', 'Hospitality','Leisure, Travel & Tourism',
    'Broadcast Media','Computer Games', 'Entertainment','Media Production', 'Newspapers',
    'Printing','Publishing', 'Entertainment','Libraries','Health, Wellness and Fitness','Sporting Goods',
-   'Wine and Spirits','Events Services'
+   'Wine and Spirits','Events Services','Arts and Crafts','Fine Art','Motion Pictures and Film','Museums and Institutions','Performing Arts',
+     'Photography','Writing and Editing','Music'
    ) 
     ---- Service Indicator
   then 'X' else '' END as REC, 
    case when tms_fld_of_work.short_desc IN ('Package/Freight Delivery','Civic & Social Organization','Consumer Services', 
      'Environmental Services','Individual & Family Services','Religious Institutions','Libraries','Food Production'
-     ,'Facilities Services','Events Services','Security and Investigations','Translation and Localization',
-     'Arts and Crafts','Fine Art','Motion Pictures and Film','Museums and Institutions','Performing Arts',
-     'Photography','Writing and Editing') 
+     ,'Facilities Services','Events Services','Security and Investigations','Translation and Localization','Food & Beverages',
+     'Hospitality','Information Services','Leisure, Travel & Tourism','Recreational Facilities and Services','Restaurants') 
   then 'X' else '' END as SERV,
     --- Technology Indicator
     case when tms_fld_of_work.short_desc IN ('Computer & Network Security','Computer Hardware','Computer Networking', 
@@ -247,10 +249,9 @@ case when tms_fld_of_work.short_desc IN ('Law Practice','Legal Services', 'Alter
      'Hospitality','Leisure, Travel & Tourism',
      'Package/Freight Delivery','Airlines/Aviation','Logistics and Supply Chain',
      'Import and Export','Pharmaceuticals','Defense & Space',
-'Telecommunications','Biotechnology','Venture Capital & Private Equity') 
+'Telecommunications','Biotechnology','Venture Capital & Private Equity','International Trade and Development') 
   then 'X' else '' END as TRAN
        from  tms_fld_of_work 
        where tms_fld_of_work.fld_of_work_code Like 'L%'
        and tms_fld_of_work.fld_of_work_code Not Like 'LENF'
            order by tms_fld_of_work.short_desc asc
-   
