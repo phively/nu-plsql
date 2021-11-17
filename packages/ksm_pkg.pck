@@ -3727,15 +3727,15 @@ Function get_fiscal_year(dt In date)
     Return (this_year + 1);
   End;
 -- String version
-Function get_fiscal_year(dt In varchar2, format In varchar2)
+Function get_fiscal_year(dt In varchar2, format In varchar2 Default 'yyyy/mm/dd')
   Return number Is
   -- Declarations
   this_year number;
   
   Begin
-    this_year := extract(year from to_date(dt, format));
+    this_year := extract(year from to_date2(dt, format));
     -- If month is before fy_start_month, return this_year
-    If extract(month from to_date(dt, format)) < fy_start_month
+    If extract(month from to_date2(dt, format)) < fy_start_month
       Or fy_start_month = 1 Then
       Return this_year;
     End If;

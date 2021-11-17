@@ -238,8 +238,8 @@ members As (
     On KAC.id_number = ac.id_number
     And KAC.committee_short_desc = 'KAC'
   Left Join members PHS
-    On KAC.id_number = ac.id_number
-    And KAC.committee_short_desc = 'PHS'
+    On phs.id_number = ac.id_number
+    And phs.committee_short_desc = 'PHS'
   Left Join members inclusion
     On inclusion.id_number = ac.id_number
     And inclusion.committee_short_desc = 'Inclusion'
