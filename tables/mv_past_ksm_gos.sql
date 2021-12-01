@@ -10,7 +10,7 @@ With
 adv_dates As (
   Select 'notarealid' As id_number, 'notateam' As team, NULL As start_dt, NULL As stop_dt From DUAL
   Union All Select '0000562844', 'MG', to_date('20080808', 'yyyymmdd'), to_date('20150601', 'yyyymmdd') From DUAL
-  Union All Select '0000235591', 'AF', to_date('20160501', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000235591', 'MG', to_date('20160501', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000482962', 'MG', to_date('20030619', 'yyyymmdd'), to_date('20110511', 'yyyymmdd') From DUAL
   Union All Select '0000510455', 'MG', to_date('20081001', 'yyyymmdd'), to_date('20110920', 'yyyymmdd') From DUAL
   Union All Select '0000609581', 'MG', to_date('20110501', 'yyyymmdd'), to_date('20130901', 'yyyymmdd') From DUAL
