@@ -23,6 +23,28 @@ employ As (
   Where employment.primary_emp_ind = 'Y'
 ),
 
+BusinessAddress AS( 
+      Select
+         a.Id_number
+      ,  tms_addr_status.short_desc AS Address_Status
+      ,  tms_address_type.short_desc AS Address_Type
+      ,  a.addr_pref_ind
+      ,  a.street1
+      ,  a.street2
+      ,  a.street3
+      ,  a.foreign_cityzip
+      ,  a.city
+      ,  a.state_code
+      ,  a.zipcode
+      ,  tms_country.short_desc AS Country
+      FROM address a
+      INNER JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
+      LEFT JOIN tms_address_type ON tms_address_type.addr_type_code = a.addr_type_code
+      LEFT JOIN tms_country ON tms_country.country_code = a.country_code
+      WHERE a.addr_type_code = 'B'
+      AND a.addr_status_code IN('A','K')
+),
+
 --- Prospect 1Mil + - Used for Ben's New Map (4/7/2021)
 
 Prospect_1M_Plus AS (
@@ -114,6 +136,14 @@ rpt_pbh634.v_entity_ksm_households.HOUSEHOLD_COUNTRY,
 
 rpt_pbh634.v_entity_ksm_households.HOUSEHOLD_CONTINENT,
 
+BusinessAddress.city as business_city,
+
+BusinessAddress.state_code as business_state_code ,
+
+BusinessAddress.zipcode as business_zipcode,
+
+BusinessAddress.Country as business_country,
+
 ksm_assignment.prospect_manager,
 
 ksm_assignment.lgos,
@@ -165,6 +195,10 @@ Left Join ksm_assignment on ksm_assignment.id_number = rpt_pbh634.v_entity_ksm_d
 Left Join Prospect_1M_Plus on Prospect_1M_Plus.id_number = rpt_pbh634.v_entity_ksm_degrees.ID_NUMBER
 
 Left Join KSM_Email on KSM_Email.id_number = rpt_pbh634.v_entity_ksm_degrees.id_number
+
+--- Include Business Address 
+
+Left Join BusinessAddress on BusinessAddress.id_number = rpt_pbh634.v_entity_ksm_degrees.id_number
 
 Left Join SPEC ON Spec.id_number = rpt_pbh634.v_entity_ksm_degrees.ID_NUMBER
 
