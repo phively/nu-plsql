@@ -847,6 +847,7 @@ Cursor ct_alloc_annual_fund_ksm Is
       , '3203005856201GFT' -- John R. Flanagan Scholarship
       , '3203002858501GFT' -- Cox-Cohen Scholarship
       , '3203004600201GFT' -- Woodsum Student Travel
+      , '3203005990501GFT' -- Finance Fellows Program
       /************ UPDATE ABOVE HERE ************/
     )
   ;
