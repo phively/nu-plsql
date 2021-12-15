@@ -76,19 +76,130 @@ salutations As (
     Or trim(entity.spouse_name) Is Not Null
 )
 
-, relationship_children As (
-  -- Children coded under relationship
-  Select *
+-- Children coded under relationship
+, relationship_table As (
+  Select
+    relationship.id_number
+    , relationship.relation_id_number
+      As child_id_number
+    , relationship.relation_name
+    , relationship.relation_type_code
+    , tms_r.short_desc
+      As relation_type
+    , relationship.relation_status_code
+    , entity.gender_code
+      As child_gender_code
+    , relationship.last_name
+    , relationship.first_name
+    , Case
+        When trim(relationship.relation_id_number) Is Not Null
+          Then entity.pref_mail_name
+        When trim(relationship.relation_name) Is Not Null
+          Then relationship.relation_name
+        Else trim(
+          trim(relationship.first_name) || ' ' || trim(relationship.last_name)
+        )
+        End
+      As child_name
+    , Case
+        When entity.institutional_suffix Is Not Null
+          Then entity.institutional_suffix
+        Else ' '
+        End
+      As child_institutional_suffix
   From relationship
+  Inner Join tms_relationships tms_r
+    On tms_r.relation_type_code = relationship.relation_type_code
+  Left Join entity
+    On entity.id_number = relationship.relation_id_number
+  Where relationship.relation_type_code In ('CP', 'SP') -- child/parent, stepchild/parent
 )
 
+-- Children coded under children
 , children_table As (
-  -- Children coded under children
-  Select *
+  Select
+    children.id_number
+    , children.child_id_number
+    , children.preferred_name
+    , children.child_relation_code
+    , tms_r.short_desc
+      As relation_type
+    , children.record_status_type
+    , Case
+        When entity.gender_code Is Not Null
+          Then entity.gender_code
+        Else children.gender_code
+        End
+      As child_gender_code
+    , children.last_name
+    , children.first_name
+    , Case
+      When trim(children.child_id_number) Is Not Null
+        Then entity.pref_mail_name
+      When trim(children.preferred_name) Is Not Null
+        Then children.preferred_name
+      Else trim(
+        trim(children.first_name) || ' ' || trim(children.last_name)
+      )
+      End
+    As child_name
+  , Case
+      When entity.institutional_suffix Is Not Null
+        Then entity.institutional_suffix
+      Else ' '
+      End
+    As child_institutional_suffix
   From children
+  Inner Join tms_relationships tms_r
+    On tms_r.relation_type_code = children.child_relation_code
+  Left Join entity
+    On entity.id_number = children.child_id_number
+  Where children.child_relation_code In ('CP', 'SP') -- child/parent, stepchild/parent
 )
 
--- Combined/concatenated children
+-- Combined children
+-- Goal: dedupe based on id_number where available, otherwise name and gender
+, children_combined As (
+  -- Select relevant fields
+  Select
+    id_number
+    , child_id_number
+    , child_gender_code
+    , relation_type
+    , child_name
+    , child_institutional_suffix
+  From children_table
+  Union
+  Select 
+    id_number
+    , child_id_number
+    , child_gender_code
+    , relation_type
+    , child_name
+    , child_institutional_suffix
+  From relationship_table
+)
+
+-- Concatenated children
+, children_concat As (
+  Select
+    id_number
+    , count(child_name)
+      As deduped_children_count
+    , Listagg(child_id_number, chr(13)) Within Group (Order By child_id_number Asc, child_name Asc)
+      As child_id_numbers
+    , Listagg(child_name, chr(13)) Within Group (Order By child_id_number Asc, child_name Asc)
+      As child_names
+    , Listagg(child_institutional_suffix, chr(13)) Within Group (Order By child_id_number Asc, child_name Asc)
+      As child_institutional_suffixes
+    , Listagg(relation_type, chr(13)) Within Group (Order By child_id_number Asc, child_name Asc)
+      As child_relation_types
+    , Listagg(child_gender_code, chr(13)) Within Group (Order By child_id_number Asc, child_name Asc)
+      As child_gender_codes
+  From children_combined
+  Group By
+    id_number
+)
 
 Select
   entity.id_number
@@ -103,11 +214,18 @@ Select
   , spouse.spouse_ksm_salutations
   , spouse.spouse_report_name
   , spouse.spouse_institutional_suffix
+  , children_concat.deduped_children_count
+  , children_concat.child_id_numbers
+  , children_concat.child_names
+  , children_concat.child_institutional_suffixes
+  , children_concat.child_relation_types
+  , children_concat.child_gender_codes
 From entity
 Left Join sal_concat
   On sal_concat.id_number = entity.id_number
 Left Join spouse
   On spouse.id_number = entity.id_number
--- Children joins
+Left Join children_concat
+  On children_concat.id_number = entity.id_number
 ;
 
