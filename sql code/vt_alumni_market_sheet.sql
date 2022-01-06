@@ -23,6 +23,16 @@ employ As (
   Where employment.primary_emp_ind = 'Y'
 ),
 
+--- Use BG - Business Geo Code
+
+BG as (Select
+gc.*
+From table(rpt_pbh634.ksm_pkg.tbl_geo_code_primary) gc
+Inner Join address
+On address.id_number = gc.id_number
+And address.xsequence = gc.xsequence
+Where address.addr_type_code = 'B'),
+
 BusinessAddress AS( 
       Select
          a.Id_number
@@ -37,10 +47,14 @@ BusinessAddress AS(
       ,  a.state_code
       ,  a.zipcode
       ,  tms_country.short_desc AS Country
+      ,  BG.GEO_CODE_PRIMARY_DESC AS BUSINESS_GEO_CODE
       FROM address a
       INNER JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
       LEFT JOIN tms_address_type ON tms_address_type.addr_type_code = a.addr_type_code
       LEFT JOIN tms_country ON tms_country.country_code = a.country_code
+      INNER JOIN BG 
+      ON BG.ID_NUMBER = A.ID_NUMBER
+      AND BG.xsequence = a.xsequence
       WHERE a.addr_type_code = 'B'
       AND a.addr_status_code IN('A','K')
 ),
@@ -143,6 +157,8 @@ BusinessAddress.state_code as business_state_code ,
 BusinessAddress.zipcode as business_zipcode,
 
 BusinessAddress.Country as business_country,
+
+BusinessAddress.BUSINESS_GEO_CODE,
 
 ksm_assignment.prospect_manager,
 
