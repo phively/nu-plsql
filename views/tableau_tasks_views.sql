@@ -257,7 +257,7 @@ Left Join disqualified d
   On d.prospect_id = p.prospect_id
 Left Join rpt_pbh634.v_ksm_model_mg mgo
   On mgo.id_number = pp.id_number
-Where pr.program_code = 'KM'
+--Where pr.program_code = 'KM'
 ;
 
 -- Outreach tasks view used in the KSM Prospect Task Dashboard
