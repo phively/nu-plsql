@@ -207,7 +207,7 @@ case when tms_fld_of_work.short_desc IN ('Law Practice','Legal Services', 'Alter
 'Industrial Automation'
    ) 
   then 'X' else '' END as MAN,  
-    --- Medical Indicator
+    --- Media Indicator
      case when tms_fld_of_work.short_desc IN ('Online Media','Broadcast Media', 'Computer Games',
    'Entertainment','Media Production', 'Newspapers','Printing',
   'Publishing','Libraries','Information Services','Animation','Arts and Crafts',
