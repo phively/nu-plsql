@@ -70,6 +70,10 @@ Where
 )
    AND entity.record_status_code IN ('A','L')
    
+   --- Remove Dean Cornelli and Bernie Banks 
+   AND entity.id_number NOT LIKE '0000804796'
+   AND entity.id_number NOT LIKE '0000574616'
+   
 --- Sort by Club Name 
 
 Order BY committee_header.short_desc
