@@ -186,6 +186,8 @@ salutations As (
     id_number
     , count(child_name)
       As deduped_children_count
+    , sum(Case When child_institutional_suffix Is Not Null Then 1 Else 0 End)
+      As deduped_children_nu_count
     , Listagg(child_id_number, chr(13)) Within Group (Order By child_id_number Asc, child_name Asc)
       As child_id_numbers
     , Listagg(child_name, chr(13)) Within Group (Order By child_id_number Asc, child_name Asc)
@@ -215,6 +217,7 @@ Select
   , spouse.spouse_report_name
   , spouse.spouse_institutional_suffix
   , children_concat.deduped_children_count
+  , children_concat.deduped_children_nu_count
   , children_concat.child_id_numbers
   , children_concat.child_names
   , children_concat.child_institutional_suffixes
