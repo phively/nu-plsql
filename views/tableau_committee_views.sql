@@ -97,6 +97,13 @@ From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
   my_committee_cd => ksm_pkg.get_string_constant('committee_privateequity')
   , shortname => 'PrivateEquity')
 )
+-- PE Asia
+Union
+Select *
+From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
+  my_committee_cd => ksm_pkg.get_string_constant('committee_pe_asia')
+  , shortname => 'AsiaPEAC')
+)
 ;
 
 /***********************************************
@@ -199,6 +206,13 @@ members As (
     , private_equity.status As private_equity_status
     , private_equity.role As private_equity_role
     , private_equity.committee_title As private_equity_committee_title
+    , Case When asia_peac.committee_code = 'APEAC' Then 'Y' Else 'N' End
+      As asia_peac_ind
+    , asia_peac.start_dt As asia_peac_start_date
+    , asia_peac.stop_dt As asia_peac_stop_date
+    , asia_peac.status As asia_peac_status
+    , asia_peac.role As asia_peac_role
+    , asia_peac.committee_title As asia_peac_committee_title
     , Case When keba.committee_code = 'KEBA' Then 'Y' Else 'N' End
       As keba_ind
     , keba.start_dt As keba_start_date
@@ -246,6 +260,9 @@ members As (
   Left Join members private_equity
     On private_equity.id_number = ac.id_number
     And private_equity.committee_short_desc = 'PrivateEquity'
+  Left Join members asia_peac
+    On asia_peac.id_number = ac.id_number
+    And asia_peac.committee_short_desc = 'AsiaPEAC'
   Left Join members keba
     On keba.id_number = ac.id_number
     And keba.committee_short_desc = 'KEBA'
@@ -424,6 +441,12 @@ Select
   , private_equity_status
   , private_equity_role
   , private_equity_committee_title
+  , asia_peac_ind
+  , asia_peac_start_date
+  , asia_peac_stop_date
+  , asia_peac_status
+  , asia_peac_role
+  , asia_peac_committee_title
   , keba_ind
   , keba_start_date
   , keba_stop_date
