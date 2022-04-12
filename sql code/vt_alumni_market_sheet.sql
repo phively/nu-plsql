@@ -105,7 +105,41 @@ Spec AS (Select rpt_pbh634.v_entity_special_handling.ID_NUMBER,
        rpt_pbh634.v_entity_special_handling.NO_EMAIL_IND,
        rpt_pbh634.v_entity_special_handling.NO_MAIL_IND,
        rpt_pbh634.v_entity_special_handling.SPECIAL_HANDLING_CONCAT
-From rpt_pbh634.v_entity_special_handling)
+From rpt_pbh634.v_entity_special_handling),
+
+
+APR AS (
+
+--- This will pull all events type coded Reunion, but takes away the Reunion Events that are a sub event of
+--- the actual Reunion, so we will have only the Reunion Event Pulled by Year
+Select distinct 
+EP_Participant.Id_Number,
+rpt_pbh634.v_nu_events.event_name,
+rpt_pbh634.v_nu_events.event_id,
+rpt_pbh634.v_nu_events.start_dt,
+rpt_pbh634.v_nu_events.start_dt_calc,
+rpt_pbh634.v_nu_events.start_fy_calc
+From ep_event
+Left Join EP_Participant
+ON ep_participant.event_id = ep_event.event_id
+Inner Join rpt_pbh634.v_nu_events on rpt_pbh634.v_nu_events.event_id = ep_event.event_id
+Where ep_event.event_type = '02'
+and rpt_pbh634.v_nu_events.kellogg_organizers = 'Y'
+and ep_event.event_id not IN ('21637','21121','22657','18819','20926','25896','17739','18982','21264',
+'6897','8358')
+Order by rpt_pbh634.v_nu_events.event_name DESC
+),
+
+recent_reunion AS (--- Subquery to add into the 2021 Reunion Report. This will help user identify an alum's most recent attendance. 
+
+Select DISTINCT apr.id_number,
+       max (apr.start_dt_calc) keep (dense_rank First Order By apr.start_dt_calc DESC) As Date_Recent_Event,
+       max (apr.event_id) keep (dense_rank First Order By apr.start_dt_calc DESC) As Recent_Event_ID,
+       max (apr.event_name) keep(dense_rank First Order By apr.start_dt_calc DESC) As Recent_Event_Name
+from apr
+Group BY apr.id_number
+Order By Date_Recent_Event ASC)
+
 
 --- Degree Fields
 
@@ -186,7 +220,15 @@ spec.NO_EMAIL_IND,
 
 spec.NO_MAIL_IND,
 
-spec.SPECIAL_HANDLING_CONCAT
+spec.SPECIAL_HANDLING_CONCAT,
+
+case when APR.id_number is not null then 'Attended Previous Reunion' Else '' END As Attended_Previous_Reunion,
+  
+recent_reunion.Date_Recent_Event,
+
+recent_reunion.Recent_Event_ID,
+
+recent_reunion.Recent_Event_Name
 
 From rpt_pbh634.v_entity_ksm_degrees
 
@@ -220,6 +262,14 @@ Left Join SPEC ON Spec.id_number = rpt_pbh634.v_entity_ksm_degrees.ID_NUMBER
 
 ---- Active Alumni
 --- *** Revised 10/5/2021 *** We will now include lost records and create a filter for them on Tableau 
+
+--- Join Attended Past Reunion As
+
+Left Join apr on apr.id_number = rpt_pbh634.v_entity_ksm_degrees.ID_NUMBER
+
+--- Join Last Reunion Attended As
+
+Left Join recent_reunion on recent_reunion.id_number = rpt_pbh634.v_entity_ksm_degrees.ID_NUMBER
 
 Where rpt_pbh634.v_entity_ksm_degrees.Record_Status_Code IN ('A','L')
 ;
