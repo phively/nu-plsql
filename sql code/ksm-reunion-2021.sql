@@ -35,8 +35,7 @@ AND A.AFFIL_LEVEL_CODE = 'RG'
 ),
 
 GIVING_SUMMARY AS (
-Select Distinct hh.id_number
-    , hh.household_id
+Select Distinct hh.household_id
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year     And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_cfy
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 1 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy1
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 2 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy2
@@ -48,12 +47,7 @@ From rpt_pbh634.v_entity_ksm_households hh
   Inner Join rpt_pbh634.v_ksm_giving_trans_hh gfts
     On gfts.household_id = hh.household_id
   Group By
-    hh.id_number
-    , hh.household_id
-    , hh.household_rpt_name
-    , hh.household_spouse_id
-    , hh.household_spouse
-    , hh.household_last_masters_year),
+hh.household_id),
 
 GIVING_TRANS AS
 ( SELECT HH.*
@@ -828,7 +822,7 @@ LEFT JOIN KSM_SPEAKERS
 LEFT JOIN KSM_CORPORATE_RECRUITERS
      ON KSM_CORPORATE_RECRUITERS.ID_NUMBER = E.ID_NUMBER
 LEFT JOIN GIVING_SUMMARY
-     ON GIVING_SUMMARY.id_number = KR.ID_NUMBER
+     ON GIVING_SUMMARY.household_id = KR.ID_NUMBER
 LEFT JOIN KSM_GIVING_MOD KGM
         ON KGM.household_id = E.ID_NUMBER
 LEFT JOIN reunion1
