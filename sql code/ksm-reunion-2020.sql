@@ -20,10 +20,12 @@ KSM_DEGREES AS (
 SELECT
 A.*
 ,GC.P_GEOCODE_Desc
+,HH.HOUSEHOLD_ID
 FROM AFFILIATION A
 CROSS JOIN manual_dates MD
 INNER JOIN KSM_DEGREES KD
 ON A.ID_NUMBER = KD."ID_NUMBER"
+LEFT JOIN rpt_pbh634.v_entity_ksm_households hh ON HH.ID_NUMBER = A.ID_NUMBER
 LEFT JOIN RPT_DGZ654.V_GEO_CODE GC
   ON A.ID_NUMBER = GC.ID_NUMBER
     AND GC.ADDR_PREF_IND = 'Y'
@@ -33,6 +35,21 @@ WHERE TO_NUMBER(NVL(TRIM(A.CLASS_YEAR),'0')) IN (MD.CFY-1, MD.CFY-5, MD.CFY-10, 
 AND A.AFFIL_CODE = 'KM'
 AND A.AFFIL_LEVEL_CODE = 'RG'
 ),
+
+GIVING_SUMMARY AS (
+Select Distinct hh.household_id
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year     And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_cfy
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 1 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy1
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 2 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy2
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 3 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy3
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 4 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy4
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 5 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy5
+From rpt_pbh634.v_entity_ksm_households hh
+  Cross Join rpt_pbh634.v_current_calendar cal
+  Inner Join rpt_pbh634.v_ksm_giving_trans_hh gfts
+    On gfts.household_id = hh.household_id
+  Group By
+  hh.household_id),
 
 GIVING_TRANS AS
 ( SELECT HH.*
@@ -586,6 +603,18 @@ SELECT DISTINCT
   ,BEM.EMAIL_ADDRESS AS BS_EMAIL
   ,EMPL.EMPLOYER_NAME1 AS EMPLOYER
   ,EMPL.JOB_TITLE AS BS_POSITION
+  ,GIVING_SUMMARY.CRU_CFY
+  ,GIVING_SUMMARY.CRU_PFY1
+  ,GIVING_SUMMARY.CRU_PFY2
+  ,GIVING_SUMMARY.CRU_PFY3
+  ,GIVING_SUMMARY.CRU_PFY4
+  ,GIVING_SUMMARY.CRU_PFY5
+  , case when GIVING_SUMMARY.CRU_PFY1 > 0
+   or GIVING_SUMMARY.CRU_PFY2 > 0 
+   or GIVING_SUMMARY.CRU_PFY3 > 0
+   or GIVING_SUMMARY.CRU_PFY4 > 0
+   or GIVING_SUMMARY.CRU_PFY5 > 0 then 'Giver_Last_5'
+  Else '' END as Giver_Last_5_Years
   ,FW.short_desc AS FLD_OF_WORK
   ,PR.last_plg_dt AS PLG_DATE
   ,PR.pacct1 AS PLG_ALLOC
@@ -751,6 +780,8 @@ LEFT JOIN KSM_SPEAKERS
      ON KSM_SPEAKERS.ID_NUMBER = E.ID_NUMBER
 LEFT JOIN KSM_CORPORATE_RECRUITERS
      ON KSM_CORPORATE_RECRUITERS.ID_NUMBER = E.ID_NUMBER
+LEFT JOIN GIVING_SUMMARY
+     ON GIVING_SUMMARY.household_id = KR.HOUSEHOLD_ID
 LEFT JOIN reunion1
      ON reunion1.id_number = E.ID_NUMBER
 LEFT JOIN reunion2
