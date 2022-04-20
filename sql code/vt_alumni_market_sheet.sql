@@ -141,10 +141,9 @@ Group BY apr.id_number
 Order By Date_Recent_Event ASC),
 
 birth as (select  entity.id_number,
-rpt_pbh634.ksm_pkg.get_fiscal_year (entity.birth_dt) as birth_year,
+(substr (birth_dt, 1, 4)) as birth_year,
 entity.birth_dt
-from entity
-inner join rpt_pbh634.v_entity_ksm_degrees d on d.id_number = entity.id_number)
+from entity)
 
 
 --- Degree Fields
