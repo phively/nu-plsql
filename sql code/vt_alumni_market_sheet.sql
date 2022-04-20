@@ -138,7 +138,12 @@ Select DISTINCT apr.id_number,
        max (apr.event_name) keep(dense_rank First Order By apr.start_dt_calc DESC) As Recent_Event_Name
 from apr
 Group BY apr.id_number
-Order By Date_Recent_Event ASC)
+Order By Date_Recent_Event ASC),
+
+birth as (select  entity.id_number,
+(substr (birth_dt, 1, 4)) as birth_year,
+entity.birth_dt
+from entity)
 
 
 --- Degree Fields
@@ -155,6 +160,8 @@ rpt_pbh634.v_entity_ksm_degrees.FIRST_KSM_YEAR,
 rpt_pbh634.v_entity_ksm_degrees.PROGRAM,
 
 rpt_pbh634.v_entity_ksm_degrees.PROGRAM_GROUP,
+
+birth.birth_year,
 
 --- Gender Code
 
@@ -270,6 +277,8 @@ Left Join apr on apr.id_number = rpt_pbh634.v_entity_ksm_degrees.ID_NUMBER
 --- Join Last Reunion Attended As
 
 Left Join recent_reunion on recent_reunion.id_number = rpt_pbh634.v_entity_ksm_degrees.ID_NUMBER
+
+Left Join birth on birth.id_number = rpt_pbh634.v_entity_ksm_degrees.id_number
 
 Where rpt_pbh634.v_entity_ksm_degrees.Record_Status_Code IN ('A','L')
 ;
