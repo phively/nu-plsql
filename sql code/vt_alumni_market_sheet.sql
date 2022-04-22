@@ -161,6 +161,8 @@ rpt_pbh634.v_entity_ksm_degrees.PROGRAM,
 
 rpt_pbh634.v_entity_ksm_degrees.PROGRAM_GROUP,
 
+rpt_pbh634.v_entity_ksm_degrees.CLASS_SECTION,
+
 birth.birth_year,
 
 --- Gender Code
