@@ -577,7 +577,6 @@ Fields to include, ALWAYS excluding the transactions above:
 ****/
 
 Create or Replace View v_datamart_giving as 
---- Still Working on this 8/20/2021
 
 
 
@@ -739,4 +738,52 @@ Left Join Donor_Ind on Donor_Ind.id_number = degrees.id_number
 Left Join spouse on spouse.id_number = degrees.id_number
 Left Join max_date on max_date.id_number = degrees.id_number
 where a.ANONYMOUS_DONOR is null
-and spouse.ANONYMOUS_DONOR is null
+and spouse.ANONYMOUS_DONOR is null;
+
+--- View to Pull in KSM Students with CATracks ID, EMPLID, Insitutiona and affilations
+
+Create or Replace View v_datamart_students as
+
+With
+
+ksm_ids As (
+  Select ids_base.id_number
+    , ids_base.ids_type_code
+    , ids_base.other_id
+  From entity --- Kellogg Alumni Only
+  Left Join ids_base
+    On ids_base.id_number = entity.id_number
+  Where ids_base.ids_type_code In ('SES') --- SES = EMPLID + KSF = Salesforce ID + NET = NetID + KEX = KSM EXED ID
+),
+
+--- Pull Affilaton For Student Details 
+
+A as (SELECT DISTINCT
+aff.id_number,
+aff.affil_code,
+tms_affil_code.short_desc as affilation,
+tms_affiliation_level.short_desc as affilation_level,
+aff.class_year,
+aff.start_date
+  FROM  affiliation aff
+  LEFT JOIN tms_affil_code on tms_affil_code.affil_code = aff.affil_code
+  LEFT JOIN tms_affiliation_level on tms_affiliation_level.affil_level_code = aff.affil_level_code
+ WHERE  aff.affil_code = 'KM' 
+   AND  aff.affil_status_code = 'E' 
+   AND  aff.record_type_code = 'ST')
+
+Select Distinct
+   ksm_ids.id_number As catracks_id
+  , ksm_ids.other_id As emplid
+  , entity.record_type_code
+  , entity.institutional_suffix
+  , a.affilation
+  , a.affilation_level
+  , a.class_year
+  , a.start_date
+From entity
+Left Join ksm_ids On ksm_ids.id_number = entity.id_number
+Left Join a on a.id_number = entity.id_number
+  Where ksm_ids.other_id is not null
+  And entity.record_type_code = 'ST'
+  And entity.pref_school_code = 'KSM';
