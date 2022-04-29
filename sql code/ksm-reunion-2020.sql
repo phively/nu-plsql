@@ -488,20 +488,32 @@ AND ACT.ACTIVITY_PARTICIPATION_CODE = 'P'),
 
 --- Registrations on April 23+24 Reunion Weekends
 
-reunion1 as (select id_number
-from april_23_24),
+reunion1 as (select EP_REGISTRATION.CONTACT_ID_NUMBER,
+EP_REGISTRATION.EVENT_ID,
+TMS_EVENT_REGISTRATION_STATUS.short_desc,
+EP_REGISTRATION.RESPONSE_DATE
+from EP_REGISTRATION
+left join TMS_EVENT_REGISTRATION_STATUS ON TMS_EVENT_REGISTRATION_STATUS.registration_status_code = EP_REGISTRATION.REGISTRATION_STATUS_CODE
+where EP_REGISTRATION.EVENT_ID = '26358'),
 
 ---- Registrations on April 30 + May 1 Reunion Weekends
 
 reunion2 as (select id_number 
-from april30_may1)
+from april30_may1),
+
+----Participants on April 23+24 Reunion Weekends
+
+p1 as (select p.id_number
+from rpt_pbh634.v_nu_event_participants_fast p
+where p.event_id = '26358')
 
 SELECT DISTINCT
   E.ID_NUMBER
   ,' ' AS "Ask Strategy"
   ,AFASK.ASK3_ROUNDED AS "Ask Amount"
   ,' ' AS "Attending Reunion"
-  ,CASE WHEN REUNION1.ID_NUMBER IS NOT NULL THEN 'Y' END AS REGISTERED_APR23_24_WEEKEND
+  ,CASE WHEN REUNION1.CONTACT_ID_NUMBER IS NOT NULL THEN 'Y' END AS REGISTERED_APR23_24_WEEKEND
+  ,CASE WHEN P1.ID_NUMBER IS NOT NULL THEN 'Y' END AS PARTICIPATED_APR23_24_WEEKEND
   ,CASE WHEN REUNION2.ID_NUMBER IS NOT NULL THEN 'Y' END AS REGISTERED_APR30_MAY1_WEEKEND
   ,CASE WHEN RC.ID_NUMBER IS NOT NULL THEN 'Y' END AS "CURRENT_REUNION_COMMITTEE"
   ,CASE WHEN R15.ID_NUMBER IS NOT NULL THEN 'Y' END AS "REUNION_2015_COMMITTEE"
@@ -783,8 +795,10 @@ LEFT JOIN KSM_CORPORATE_RECRUITERS
 LEFT JOIN GIVING_SUMMARY
      ON GIVING_SUMMARY.household_id = KR.HOUSEHOLD_ID
 LEFT JOIN reunion1
-     ON reunion1.id_number = E.ID_NUMBER
+     ON reunion1.CONTACT_ID_NUMBER = E.ID_NUMBER
 LEFT JOIN reunion2
-     ON reunion2.id_number = E.ID_NUMBER         
+     ON reunion2.id_number = E.ID_NUMBER  
+LEFT JOIN p1
+        ON p1.ID_number = E.ID_number       
 ORDER BY E.LAST_NAME
 ;
