@@ -808,3 +808,49 @@ Left Join a on a.id_number = entity.id_number
   Where ksm_ids.other_id is not null
   And entity.record_type_code = 'ST'
   And entity.pref_school_code = 'KSM';
+  
+--- View to Pull Primary Email and Phones Number with consideration of special handling codes
+
+Create or Replace View v_datamart_contact as
+
+With KSM_Email AS (select email.id_number,
+       TMS_EMAIL_TYPE.short_desc,
+       email.email_address
+From email
+Left join TMS_EMAIL_TYPE ON TMS_EMAIL_TYPE.email_type_code = email.email_type_code
+Where email.preferred_ind = 'Y'),
+
+--- Phone - Fields for Brad
+Phone as (Select t.id_number,
+t.telephone_type_code,
+TMS_TELEPHONE_TYPE.short_desc,
+t.preferred_ind,
+t.area_code,
+t.telephone_number
+from telephone t
+left join TMS_TELEPHONE_TYPE on TMS_TELEPHONE_TYPE.telephone_type_code = t.telephone_type_code
+where t.preferred_ind = 'Y'),
+
+--- Special Handling Code
+
+KSM_Spec AS (Select spec.ID_NUMBER,
+       spec.NO_PHONE_IND,
+       spec.NO_CONTACT,
+       spec.NO_EMAIL_IND,
+       spec.ACTIVE_WITH_RESTRICTIONS
+From rpt_pbh634.v_entity_special_handling spec)
+
+select d.ID_NUMBER,
+e.short_desc as email_type,
+e.email_address as email,
+p.short_desc as phone_type,
+p.area_code,
+p.telephone_number
+from rpt_pbh634.v_entity_ksm_degrees d
+LEFT JOIN KSM_Email e ON e.ID_NUMBER = d.ID_NUMBER
+LEFT JOIN phone p on p.id_number = d.id_number
+Left Join KSM_Spec on KSM_Spec.id_number = d.id_number
+Where (KSM_Spec.NO_PHONE_IND is null
+and KSM_Spec.NO_EMAIL_IND is null 
+and KSM_Spec.NO_CONTACT is null
+and KSM_Spec.ACTIVE_WITH_RESTRICTIONS is null);
