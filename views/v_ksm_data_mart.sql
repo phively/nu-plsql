@@ -278,6 +278,11 @@ Disaggregated degree view for data mart
 
 Updated 2019-11-12
 - Includes all degrees, not just KSM or NU ones
+
+Updated 2022-05-05
+-Including first KSM Year and first Masters Year from Paul's Degree View
+- Included a case when for KSM years as well 
+- Adding degree level
 ************************************************************************/
 
 Create Or Replace View v_datamart_degrees As
@@ -294,6 +299,8 @@ Select
   , degrees.degree_code
   , tms_deg.short_desc As degree_desc
   , degrees.degree_year
+  , degrees.degree_level_code 
+  , TMS_DEGREE_LEVEL.short_desc As Degree_Level_Desc
   , degrees.grad_dt
   , rpt_pbh634.ksm_pkg.to_date2(degrees.grad_dt) As grad_date
   , degrees.class_section
@@ -309,6 +316,8 @@ Select
   , degrees.date_added
   , degrees.date_modified
   , degrees.operator_name
+  , case when deg.FIRST_KSM_YEAR is not null and degrees.school_code = 'KSM' then deg.FIRST_KSM_YEAR else '' End As First_KSM_Year
+  , case when deg.FIRST_MASTERS_YEAR is not null and degrees.school_code = 'KSM' then deg.FIRST_MASTERS_YEAR Else '' End as First_KSM_Masters_Year
 From degrees
 Inner Join rpt_pbh634.v_entity_ksm_degrees deg -- Alumni only
   On deg.id_number = degrees.id_number
@@ -330,6 +339,8 @@ Left Join tms_majors m2
   On m2.major_code = degrees.major_code2
 Left Join tms_majors m3
   On m3.major_code = degrees.major_code3
+Left join TMS_DEGREE_LEVEL 
+ON TMS_DEGREE_LEVEL.degree_level_code = degrees.degree_level_code
 Where deg.record_status_code != 'X' --- Remove Purgable
 ;
 
@@ -354,12 +365,16 @@ Updated 2019-11-12
 - Gender
 - Ethnicity 
 - Birthdate
+2022-05-05
+- Added Full Birthday
+- Adding in Pref Mail Name and Dean Salutation (Nickname)
 ************************************************************************/
 
 Create Or Replace View v_datamart_entities As
 -- KSM entity view
 -- Core alumni table which includes summary information and current fields from the other views
 -- Aggregated to return one unique alum per line
+--- Adding Pref Mail Name and Nickname (Dean Salut)
 With
 emp As (
   Select
@@ -408,6 +423,8 @@ Group By ec.id_number)
     , entity.first_name
     , entity.middle_name
     , entity.last_name
+    , p.P_Dean_Salut
+    , p.p_pref_mail_name
     , entity.gender_code
     , TMS_RACE.short_desc as race
     , entity.birth_dt
@@ -485,6 +502,8 @@ Group By ec.id_number)
     ON TMS_RACE.ethnic_code = entity.ethnic_code
   Left Join Reunion 
     On Reunion.id_number = deg.id_number
+  Left Join rpt_zrc8929.v_dean_salutation p
+    On p.id_number = deg.id_number
   Where deg.record_status_code In ('A', 'C', 'L', 'D')
   and deg.record_status_code != 'X' --- Remove Purgable
 )
@@ -494,9 +513,11 @@ Select
   , first_name
   , middle_name
   , last_name
+  , P_Dean_Salut
+  , p_pref_mail_name
   , gender_code
   , race
-  , (substr (birth_dt, 1, 6)) as birth_dt
+  , (substr (birth_dt, 1, 10)) as birth_dt
   , report_name
   , degrees_concat
   , degrees_verbose
@@ -536,8 +557,8 @@ Select
   , business_geo_codes
   , business_geo_primary_desc
   , business_start_date
-  , fld_of_work_desc
-  , interests_concat
+  , fld_of_work_desc as employment_industry
+  , interests_concat as industry_interest_concat
   , primary_job_source
   , business_date_modified
   , employment_date_modified
