@@ -842,12 +842,12 @@ e.short_desc as email_type,
 e.email_address as email,
 p.short_desc as phone_type,
 p.area_code,
-p.telephone_number
+p.telephone_number,
+case when KSM_Spec.NO_PHONE_IND is not null then 'No Phone' Else '' End as NO_PHONE_IND,
+case when KSM_Spec.NO_Email_Ind is not null then 'No Email' Else '' End as NO_EMAIL_IND
 from rpt_pbh634.v_entity_ksm_degrees d
 LEFT JOIN KSM_Email e ON e.ID_NUMBER = d.ID_NUMBER
 LEFT JOIN phone p on p.id_number = d.id_number
 Left Join KSM_Spec on KSM_Spec.id_number = d.id_number
-Where (KSM_Spec.NO_PHONE_IND is null
-and KSM_Spec.NO_EMAIL_IND is null 
-and KSM_Spec.NO_CONTACT is null
+Where (KSM_Spec.NO_CONTACT is null
 and KSM_Spec.ACTIVE_WITH_RESTRICTIONS is null);
