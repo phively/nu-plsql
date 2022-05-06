@@ -278,6 +278,11 @@ Disaggregated degree view for data mart
 
 Updated 2019-11-12
 - Includes all degrees, not just KSM or NU ones
+
+Updated 2022-05-05
+-Including first KSM Year and first Masters Year from Paul's Degree View
+- Included a case when for KSM years as well 
+- Adding degree level
 ************************************************************************/
 
 Create Or Replace View v_datamart_degrees As
@@ -294,6 +299,8 @@ Select
   , degrees.degree_code
   , tms_deg.short_desc As degree_desc
   , degrees.degree_year
+  , degrees.degree_level_code 
+  , TMS_DEGREE_LEVEL.short_desc As Degree_Level_Desc
   , degrees.grad_dt
   , rpt_pbh634.ksm_pkg.to_date2(degrees.grad_dt) As grad_date
   , degrees.class_section
@@ -309,6 +316,8 @@ Select
   , degrees.date_added
   , degrees.date_modified
   , degrees.operator_name
+  , case when deg.FIRST_KSM_YEAR is not null and degrees.school_code = 'KSM' then deg.FIRST_KSM_YEAR else '' End As First_KSM_Year
+  , case when deg.FIRST_MASTERS_YEAR is not null and degrees.school_code = 'KSM' then deg.FIRST_MASTERS_YEAR Else '' End as First_KSM_Masters_Year
 From degrees
 Inner Join rpt_pbh634.v_entity_ksm_degrees deg -- Alumni only
   On deg.id_number = degrees.id_number
@@ -330,6 +339,8 @@ Left Join tms_majors m2
   On m2.major_code = degrees.major_code2
 Left Join tms_majors m3
   On m3.major_code = degrees.major_code3
+Left join TMS_DEGREE_LEVEL 
+ON TMS_DEGREE_LEVEL.degree_level_code = degrees.degree_level_code
 Where deg.record_status_code != 'X' --- Remove Purgable
 ;
 
@@ -354,12 +365,16 @@ Updated 2019-11-12
 - Gender
 - Ethnicity 
 - Birthdate
+2022-05-05
+- Added Full Birthday
+- Adding in Pref Mail Name and Dean Salutation (Nickname)
 ************************************************************************/
 
 Create Or Replace View v_datamart_entities As
 -- KSM entity view
 -- Core alumni table which includes summary information and current fields from the other views
 -- Aggregated to return one unique alum per line
+--- Adding Pref Mail Name and Nickname (Dean Salut)
 With
 emp As (
   Select
@@ -408,6 +423,8 @@ Group By ec.id_number)
     , entity.first_name
     , entity.middle_name
     , entity.last_name
+    , p.P_Dean_Salut
+    , p.p_pref_mail_name
     , entity.gender_code
     , TMS_RACE.short_desc as race
     , entity.birth_dt
@@ -485,6 +502,8 @@ Group By ec.id_number)
     ON TMS_RACE.ethnic_code = entity.ethnic_code
   Left Join Reunion 
     On Reunion.id_number = deg.id_number
+  Left Join rpt_zrc8929.v_dean_salutation p
+    On p.id_number = deg.id_number
   Where deg.record_status_code In ('A', 'C', 'L', 'D')
   and deg.record_status_code != 'X' --- Remove Purgable
 )
@@ -494,9 +513,11 @@ Select
   , first_name
   , middle_name
   , last_name
+  , P_Dean_Salut
+  , p_pref_mail_name
   , gender_code
   , race
-  , (substr (birth_dt, 1, 6)) as birth_dt
+  , (substr (birth_dt, 1, 10)) as birth_dt
   , report_name
   , degrees_concat
   , degrees_verbose
@@ -536,8 +557,8 @@ Select
   , business_geo_codes
   , business_geo_primary_desc
   , business_start_date
-  , fld_of_work_desc
-  , interests_concat
+  , fld_of_work_desc as employment_industry
+  , interests_concat as industry_interest_concat
   , primary_job_source
   , business_date_modified
   , employment_date_modified
@@ -577,7 +598,6 @@ Fields to include, ALWAYS excluding the transactions above:
 ****/
 
 Create or Replace View v_datamart_giving as 
---- Still Working on this 8/20/2021
 
 
 
@@ -739,4 +759,98 @@ Left Join Donor_Ind on Donor_Ind.id_number = degrees.id_number
 Left Join spouse on spouse.id_number = degrees.id_number
 Left Join max_date on max_date.id_number = degrees.id_number
 where a.ANONYMOUS_DONOR is null
-and spouse.ANONYMOUS_DONOR is null
+and spouse.ANONYMOUS_DONOR is null;
+
+--- View to Pull in KSM Students with CATracks ID, EMPLID, Insitutiona and affilations
+
+Create or Replace View v_datamart_students as
+
+With
+
+ksm_ids As (
+  Select ids_base.id_number
+    , ids_base.ids_type_code
+    , ids_base.other_id
+  From entity --- Kellogg Alumni Only
+  Left Join ids_base
+    On ids_base.id_number = entity.id_number
+  Where ids_base.ids_type_code In ('SES') --- SES = EMPLID + KSF = Salesforce ID + NET = NetID + KEX = KSM EXED ID
+),
+
+--- Pull Affilaton For Student Details 
+
+A as (SELECT DISTINCT
+aff.id_number,
+aff.affil_code,
+tms_affil_code.short_desc as affilation,
+tms_affiliation_level.short_desc as affilation_level,
+aff.class_year,
+aff.start_date
+  FROM  affiliation aff
+  LEFT JOIN tms_affil_code on tms_affil_code.affil_code = aff.affil_code
+  LEFT JOIN tms_affiliation_level on tms_affiliation_level.affil_level_code = aff.affil_level_code
+ WHERE  aff.affil_code = 'KM' 
+   AND  aff.affil_status_code = 'E' 
+   AND  aff.record_type_code = 'ST')
+
+Select Distinct
+   ksm_ids.id_number As catracks_id
+  , ksm_ids.other_id As emplid
+  , entity.record_type_code
+  , entity.institutional_suffix
+  , a.affilation
+  , a.affilation_level
+  , a.class_year
+  , a.start_date
+From entity
+Left Join ksm_ids On ksm_ids.id_number = entity.id_number
+Left Join a on a.id_number = entity.id_number
+  Where ksm_ids.other_id is not null
+  And entity.record_type_code = 'ST'
+  And entity.pref_school_code = 'KSM';
+  
+--- View to Pull Primary Email and Phones Number with consideration of special handling codes
+
+Create or Replace View v_datamart_contact as
+
+With KSM_Email AS (select email.id_number,
+       TMS_EMAIL_TYPE.short_desc,
+       email.email_address
+From email
+Left join TMS_EMAIL_TYPE ON TMS_EMAIL_TYPE.email_type_code = email.email_type_code
+Where email.preferred_ind = 'Y'),
+
+--- Phone - Fields for Brad
+Phone as (Select t.id_number,
+t.telephone_type_code,
+TMS_TELEPHONE_TYPE.short_desc,
+t.preferred_ind,
+t.area_code,
+t.telephone_number
+from telephone t
+left join TMS_TELEPHONE_TYPE on TMS_TELEPHONE_TYPE.telephone_type_code = t.telephone_type_code
+where t.preferred_ind = 'Y'),
+
+--- Special Handling Code
+
+KSM_Spec AS (Select spec.ID_NUMBER,
+       spec.NO_PHONE_IND,
+       spec.NO_CONTACT,
+       spec.NO_EMAIL_IND,
+       spec.ACTIVE_WITH_RESTRICTIONS
+From rpt_pbh634.v_entity_special_handling spec)
+
+select d.ID_NUMBER,
+e.short_desc as email_type,
+e.email_address as email,
+p.short_desc as phone_type,
+p.area_code,
+p.telephone_number
+from rpt_pbh634.v_entity_ksm_degrees d
+LEFT JOIN KSM_Email e ON e.ID_NUMBER = d.ID_NUMBER
+LEFT JOIN phone p on p.id_number = d.id_number
+Left Join KSM_Spec on KSM_Spec.id_number = d.id_number
+Where (KSM_Spec.NO_PHONE_IND is null
+and KSM_Spec.NO_EMAIL_IND is null 
+and KSM_Spec.NO_CONTACT is null
+and KSM_Spec.ACTIVE_WITH_RESTRICTIONS is null);
