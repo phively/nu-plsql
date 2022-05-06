@@ -790,8 +790,7 @@ aff.start_date
   LEFT JOIN tms_affil_code on tms_affil_code.affil_code = aff.affil_code
   LEFT JOIN tms_affiliation_level on tms_affiliation_level.affil_level_code = aff.affil_level_code
  WHERE  aff.affil_code = 'KM' 
-   AND  aff.affil_status_code = 'E' 
-   AND  aff.record_type_code = 'ST')
+   AND  aff.affil_status_code = 'E')
 
 Select Distinct
    ksm_ids.id_number As catracks_id
@@ -804,10 +803,8 @@ Select Distinct
   , a.start_date
 From entity
 Left Join ksm_ids On ksm_ids.id_number = entity.id_number
-Left Join a on a.id_number = entity.id_number
-  Where ksm_ids.other_id is not null
-  And entity.record_type_code = 'ST'
-  And entity.pref_school_code = 'KSM';
+Inner Join a on a.id_number = entity.id_number
+  Where ksm_ids.other_id is not null;
   
 --- View to Pull Primary Email and Phones Number with consideration of special handling codes
 
