@@ -763,6 +763,23 @@ and spouse.ANONYMOUS_DONOR is null;
 
 --- View to Pull in KSM Students with CATracks ID, EMPLID, Insitutiona and affilations
 
+/*
+
+Confirmed by Jennifer Meyer
+
+Hi Sergio - 
+
+Yes, the affiliation table is the best place to base your query on.  
+
+You are correct that if someone is an Alum and has now re-enrolled as a student their Record Type will still show Alum and not Student (there can be only one Record Type and Alum takes priority).  
+
+However, the Affiliation table will show all existing student or alumni paths that individual has earned/is on.  Also, the affiliation table is going to be more accurate/up to date for their affiliated school because it is pulling directly from SES (where student and degree information is stored from the registrar).    
+
+Your query looks good!
+
+
+*/
+
 Create or Replace View v_datamart_students as
 
 With
@@ -789,6 +806,7 @@ aff.start_date
   FROM  affiliation aff
   LEFT JOIN tms_affil_code on tms_affil_code.affil_code = aff.affil_code
   LEFT JOIN tms_affiliation_level on tms_affiliation_level.affil_level_code = aff.affil_level_code
+--- Pulling school code and enrollment - This will pull in "Alumni" from other schools who are students at KSM 
  WHERE  aff.affil_code = 'KM' 
    AND  aff.affil_status_code = 'E')
 
@@ -817,7 +835,7 @@ From email
 Left join TMS_EMAIL_TYPE ON TMS_EMAIL_TYPE.email_type_code = email.email_type_code
 Where email.preferred_ind = 'Y'),
 
---- Phone - Fields for Brad
+--- Phone 
 Phone as (Select t.id_number,
 t.telephone_type_code,
 TMS_TELEPHONE_TYPE.short_desc,
