@@ -856,11 +856,22 @@ KSM_Spec AS (Select spec.ID_NUMBER,
 From rpt_pbh634.v_entity_special_handling spec)
 
 select d.ID_NUMBER,
-e.short_desc as email_type,
-e.email_address as email,
-p.short_desc as phone_type,
-p.area_code,
-p.telephone_number,
+--- Use Case Whens to exclude no emails/no phone special handling codes
+--- Case when for Phone Type
+Case When NO_PHONE_IND is null then p.short_desc 
+  when KSM_Spec.NO_PHONE_IND is not null then 'No Phone' End as phone_type,
+--- Case when for area code 
+Case When NO_PHONE_IND is null then p.area_code 
+  when KSM_Spec.NO_PHONE_IND is not null then 'No Phone' End as area_code,
+--- Case when telephone number
+Case  When NO_PHONE_IND is null then p.telephone_number 
+  when KSM_Spec.NO_PHONE_IND is not null then 'No Phone' End as telephone_number,
+--- Case when Email Type 
+Case  When NO_Email_Ind is null then e.short_desc 
+  when KSM_Spec.NO_Email_Ind is not null then 'No Email' End as email_type,
+---- Case when email addresses
+Case When KSM_Spec.NO_Email_Ind is null then e.email_address 
+when KSM_Spec.NO_Email_Ind is not null then 'No Email' End as Email,
 case when KSM_Spec.NO_PHONE_IND is not null then 'No Phone' Else '' End as NO_PHONE_IND,
 case when KSM_Spec.NO_Email_Ind is not null then 'No Email' Else '' End as NO_EMAIL_IND
 from rpt_pbh634.v_entity_ksm_degrees d
