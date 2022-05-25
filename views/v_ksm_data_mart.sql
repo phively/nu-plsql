@@ -316,8 +316,8 @@ Select
   , degrees.date_added
   , degrees.date_modified
   , degrees.operator_name
-  , case when deg.FIRST_KSM_YEAR is not null and degrees.school_code = 'KSM' then deg.FIRST_KSM_YEAR else '' End As First_KSM_Year
-  , case when deg.FIRST_MASTERS_YEAR is not null and degrees.school_code = 'KSM' then deg.FIRST_MASTERS_YEAR Else '' End as First_KSM_Masters_Year
+  , case when deg.FIRST_KSM_YEAR is not null and degrees.school_code = 'KSM' then deg.FIRST_KSM_YEAR End As First_KSM_Year
+  , case when deg.FIRST_MASTERS_YEAR is not null and degrees.school_code = 'KSM' then deg.FIRST_MASTERS_YEAR End as First_KSM_Masters_Year
 From degrees
 Inner Join rpt_pbh634.v_entity_ksm_degrees deg -- Alumni only
   On deg.id_number = degrees.id_number
@@ -763,6 +763,23 @@ and spouse.ANONYMOUS_DONOR is null;
 
 --- View to Pull in KSM Students with CATracks ID, EMPLID, Insitutiona and affilations
 
+/*
+
+Confirmed by Jennifer Meyer
+
+Hi Sergio - 
+
+Yes, the affiliation table is the best place to base your query on.  
+
+You are correct that if someone is an Alum and has now re-enrolled as a student their Record Type will still show Alum and not Student (there can be only one Record Type and Alum takes priority).  
+
+However, the Affiliation table will show all existing student or alumni paths that individual has earned/is on.  Also, the affiliation table is going to be more accurate/up to date for their affiliated school because it is pulling directly from SES (where student and degree information is stored from the registrar).    
+
+Your query looks good!
+
+
+*/
+
 Create or Replace View v_datamart_students as
 
 With
@@ -789,9 +806,9 @@ aff.start_date
   FROM  affiliation aff
   LEFT JOIN tms_affil_code on tms_affil_code.affil_code = aff.affil_code
   LEFT JOIN tms_affiliation_level on tms_affiliation_level.affil_level_code = aff.affil_level_code
+--- Pulling school code and enrollment - This will pull in "Alumni" from other schools who are students at KSM 
  WHERE  aff.affil_code = 'KM' 
-   AND  aff.affil_status_code = 'E' 
-   AND  aff.record_type_code = 'ST')
+   AND  aff.affil_status_code = 'E')
 
 Select Distinct
    ksm_ids.id_number As catracks_id
@@ -804,10 +821,8 @@ Select Distinct
   , a.start_date
 From entity
 Left Join ksm_ids On ksm_ids.id_number = entity.id_number
-Left Join a on a.id_number = entity.id_number
-  Where ksm_ids.other_id is not null
-  And entity.record_type_code = 'ST'
-  And entity.pref_school_code = 'KSM';
+Inner Join a on a.id_number = entity.id_number
+  Where ksm_ids.other_id is not null;
   
 --- View to Pull Primary Email and Phones Number with consideration of special handling codes
 
@@ -820,7 +835,7 @@ From email
 Left join TMS_EMAIL_TYPE ON TMS_EMAIL_TYPE.email_type_code = email.email_type_code
 Where email.preferred_ind = 'Y'),
 
---- Phone - Fields for Brad
+--- Phone 
 Phone as (Select t.id_number,
 t.telephone_type_code,
 TMS_TELEPHONE_TYPE.short_desc,
@@ -841,16 +856,27 @@ KSM_Spec AS (Select spec.ID_NUMBER,
 From rpt_pbh634.v_entity_special_handling spec)
 
 select d.ID_NUMBER,
-e.short_desc as email_type,
-e.email_address as email,
-p.short_desc as phone_type,
-p.area_code,
-p.telephone_number
+--- Use Case Whens to exclude no emails/no phone special handling codes
+--- Case when for Phone Type
+Case When NO_PHONE_IND is null then p.short_desc 
+  when KSM_Spec.NO_PHONE_IND is not null then 'No Phone' End as phone_type,
+--- Case when for area code 
+Case When NO_PHONE_IND is null then p.area_code 
+  when KSM_Spec.NO_PHONE_IND is not null then 'No Phone' End as area_code,
+--- Case when telephone number
+Case  When NO_PHONE_IND is null then p.telephone_number 
+  when KSM_Spec.NO_PHONE_IND is not null then 'No Phone' End as telephone_number,
+--- Case when Email Type 
+Case  When NO_Email_Ind is null then e.short_desc 
+  when KSM_Spec.NO_Email_Ind is not null then 'No Email' End as email_type,
+---- Case when email addresses
+Case When KSM_Spec.NO_Email_Ind is null then e.email_address 
+when KSM_Spec.NO_Email_Ind is not null then 'No Email' End as Email,
+case when KSM_Spec.NO_PHONE_IND is not null then 'No Phone' Else '' End as NO_PHONE_IND,
+case when KSM_Spec.NO_Email_Ind is not null then 'No Email' Else '' End as NO_EMAIL_IND
 from rpt_pbh634.v_entity_ksm_degrees d
 LEFT JOIN KSM_Email e ON e.ID_NUMBER = d.ID_NUMBER
 LEFT JOIN phone p on p.id_number = d.id_number
 Left Join KSM_Spec on KSM_Spec.id_number = d.id_number
-Where (KSM_Spec.NO_PHONE_IND is null
-and KSM_Spec.NO_EMAIL_IND is null 
-and KSM_Spec.NO_CONTACT is null
+Where (KSM_Spec.NO_CONTACT is null
 and KSM_Spec.ACTIVE_WITH_RESTRICTIONS is null);
