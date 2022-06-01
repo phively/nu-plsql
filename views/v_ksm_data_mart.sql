@@ -432,6 +432,8 @@ Group By ec.id_number)
     , deg.RECORD_STATUS_CODE
     , deg.degrees_concat
     , deg.degrees_verbose
+    , deg.FIRST_KSM_YEAR
+    , deg.FIRST_MASTERS_YEAR
     , deg.program
     , deg.program_group
     , deg.majors_concat
@@ -794,6 +796,29 @@ ksm_ids As (
   Where ids_base.ids_type_code In ('SES') --- SES = EMPLID + KSF = Salesforce ID + NET = NetID + KEX = KSM EXED ID
 ),
 
+KSM_Email AS (select email.id_number,
+       TMS_EMAIL_TYPE.short_desc,
+       email.email_type_code,
+       email.email_address
+From email
+Left join TMS_EMAIL_TYPE ON TMS_EMAIL_TYPE.email_type_code = email.email_type_code
+Where email.preferred_ind = 'Y'),
+
+KSM_Spec AS (Select spec.ID_NUMBER,
+       spec.NO_PHONE_IND,
+       spec.NO_CONTACT,
+       spec.NO_EMAIL_IND,
+       spec.ACTIVE_WITH_RESTRICTIONS
+From rpt_pbh634.v_entity_special_handling spec),
+
+linked as (select distinct ec.id_number,
+max(ec.start_dt) keep(dense_rank First Order By ec.start_dt Desc, ec.econtact asc) As Max_Date,
+max (ec.econtact) keep(dense_rank First Order By ec.start_dt Desc, ec.econtact asc) as linkedin_address
+from econtact ec
+where  ec.econtact_status_code = 'A'
+and  ec.econtact_type_code = 'L'
+Group By ec.id_number),
+
 --- Pull Affilaton For Student Details 
 
 A as (SELECT DISTINCT
@@ -801,11 +826,13 @@ aff.id_number,
 aff.affil_code,
 tms_affil_code.short_desc as affilation,
 tms_affiliation_level.short_desc as affilation_level,
+tms_affil_status.short_desc as affilation_status,
 aff.class_year,
 aff.start_date
   FROM  affiliation aff
   LEFT JOIN tms_affil_code on tms_affil_code.affil_code = aff.affil_code
   LEFT JOIN tms_affiliation_level on tms_affiliation_level.affil_level_code = aff.affil_level_code
+  Left Join tms_affil_status on  tms_affil_status.affil_status_code = aff.affil_status_code
 --- Pulling school code and enrollment - This will pull in "Alumni" from other schools who are students at KSM 
  WHERE  aff.affil_code = 'KM' 
    AND  aff.affil_status_code = 'E')
@@ -813,16 +840,33 @@ aff.start_date
 Select Distinct
    ksm_ids.id_number As catracks_id
   , ksm_ids.other_id As emplid
+  , entity.report_name
+  , entity.first_name
+  , entity.middle_name
+  , entity.last_name
   , entity.record_type_code
   , entity.institutional_suffix
+  , linked.linkedin_address
   , a.affilation
+  , a.affilation_status
   , a.affilation_level
   , a.class_year
   , a.start_date
+  ,Case  When NO_Email_Ind is null then KSM_Email.email_type_code 
+  when KSM_Spec.NO_Email_Ind is not null then 'No Email' End as email_type
+  ,Case When KSM_Spec.NO_Email_Ind is null then KSM_Email.email_address 
+   when KSM_Spec.NO_Email_Ind is not null then 'No Email' End as Email
+
 From entity
 Left Join ksm_ids On ksm_ids.id_number = entity.id_number
+Left Join KSM_Email on KSM_Email.id_number = entity.id_number
+Left Join KSM_Spec on KSM_Spec.id_number = entity.id_number
+Left Join linked on linked.id_number = entity.id_number
 Inner Join a on a.id_number = entity.id_number
-  Where ksm_ids.other_id is not null;
+  Where ksm_ids.other_id is not null
+  and entity.record_status_code In ('A', 'C', 'L', 'D')
+  and entity.record_status_code != 'X' --- Remove Purgable
+  ;
   
 --- View to Pull Primary Email and Phones Number with consideration of special handling codes
 
