@@ -525,6 +525,8 @@ Select
   , degrees_verbose
   , program
   , program_group
+  , FIRST_KSM_YEAR
+  , FIRST_MASTERS_YEAR
   , majors_concat
   , reunion_class_year
   , record_status_code
