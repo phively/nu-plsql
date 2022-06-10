@@ -33,6 +33,8 @@ Type allocation_info Is Record (
   , status_code allocation.status_code%type
   , short_name allocation.short_name%type
   , af_flag allocation.annual_sw%type
+  , sweepable allocation.annual_sw%type
+  , budget_relieving allocation.annual_sw%type 
 );
 
 Type calendar Is Record (
@@ -822,6 +824,8 @@ Cursor ct_alloc_annual_fund_ksm Is
     , status_code
     , short_name
     , 'Y' As af_flag
+    , NULL
+    , NULL
   From allocation
   Where
     -- KSM af-flagged allocations
@@ -934,13 +938,113 @@ Cursor c_alloc_curr_use_ksm Is
     Select *
     From table(tbl_alloc_annual_fund_ksm)
   )
+  , sweepable As (
+    Select
+      allocation.allocation_code
+      , allocation.short_name
+      , allocation.long_name
+      , Case
+          -- Unrestricted scholarships
+          When allocation.alloc_purpose In (
+              'SFO' -- Scholarships/Fellowships: General
+            , 'SFG' -- Scholarships/Fellowships: Graduate
+          )
+            Then 'Y'
+          -- Allocation name contains
+          When lower(allocation.long_name) Like '%excellence%'
+            Or lower(allocation.long_name) Like '%kellogg%annual%fund%'
+            Or lower(allocation.long_name) Like '%discretionary%'
+            Or lower(allocation.long_name) Like '%dean%innovation%'
+            Or lower(allocation.long_name) Like '%to%be%designated%'
+            Or lower(allocation.long_name) Like '%unrestricted%bequest%'
+            Or lower(allocation.long_name) Like '%provost%fund%kellogg%'
+            Then 'Y'
+          -- Fallback: not sweepable
+          Else 'N'
+          End
+        As sweepable
+    From allocation
+    Inner Join table(ksm_pkg.tbl_alloc_curr_use_ksm) cru
+      On allocation.allocation_code = cru.allocation_code
+  )
+  , br As (
+    Select
+      allocation.allocation_code
+      , allocation.short_name
+      , allocation.long_name
+      , sweepable.sweepable
+      , Case
+          -- Is sweepable
+          When sweepable.sweepable = 'Y'
+            Then 'Y'
+          -- Fund name contains
+          When lower(allocation.long_name) Like '%class of%'
+            Or lower(allocation.long_name) Like '%class%gift%'
+            Then 'Y'
+          -- Fund name exclude
+          When lower(allocation.long_name) Like '%event%'
+            Or lower(allocation.long_name) Like '%conference%'
+            Or lower(allocation.long_name) Like '%summit%'
+            Or lower(allocation.long_name) Like '%challenge%'
+            Or lower(allocation.long_name) Like '%competition%'
+            Then 'N'
+          -- Alloc purpose is:
+          -- Lectures & Seminars - Women's Summit only
+          When allocation.alloc_purpose = 'LSM'
+            Then Case
+              When lower(allocation.long_name) Like '%women%leadership%'
+                Then 'Y'
+              Else 'N'
+              End
+          -- Alloc purpose is:
+          When allocation.alloc_purpose In (
+                'MNT' -- Maintenance
+              , 'CIS' -- Center & Institute Support
+              , 'SLF' -- Student Life
+            )
+            Then 'Y'
+          -- Alloc purpose exclude
+          When allocation.alloc_purpose In (
+              'NAA' -- Non-Academic Administration
+            , 'NCP' -- Named Chairs & Professorships
+            , 'PRZ' -- Prizes
+            , 'SFU' -- Scholarships/Fellowships: Undergraduate
+            , 'TBD' -- TBD/Miscellaneous
+          )
+            Then 'N'
+          -- Center/priority, but flagged department
+          When allocation.allocation_code In (
+              '3203000855901GFT' -- HCAK
+            , '3203000860901GFT' -- AMP
+            , '3203004013501GFT' -- KIEI
+            , '3203005114401GFT' -- GPRL
+            , '3203005795201GFT' -- DEI
+            , '3203004957901GFT' -- Ward Center
+          )
+            Then 'Y'
+          -- CFAE purpose is
+          When allocation.cfae_purpose_code In (
+            'CU' -- Current Operations - Unrestricted
+          )
+            Then 'Y'
+          -- Fallback
+          Else 'N'
+          End
+        As budget_relieving
+    From allocation
+    Inner Join sweepable
+      On sweepable.allocation_code = allocation.allocation_code
+  )
   Select Distinct
     alloc.allocation_code
     , alloc.status_code
     , alloc.short_name
     , nvl(af_flag, 'N') As af_flag
+    , br.sweepable
+    , br.budget_relieving
   From allocation alloc
   Left Join ksm_af On ksm_af.allocation_code = alloc.allocation_code
+  Left Join br On br.allocation_code = alloc.allocation_code
   Where (agency = 'CRU' And alloc_school = 'KM'
       And alloc.allocation_code <> '3303002283701GFT' -- Exclude Envision building gifts
     )
