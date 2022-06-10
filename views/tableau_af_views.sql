@@ -12,9 +12,7 @@ With
 
 -- Kellogg Annual Fund allocations as defined in ksm_pkg
 ksm_cru_allocs As (
-  Select
-    allocation_code
-    , af_flag
+  Select *
   From table(ksm_pkg.tbl_alloc_curr_use_ksm)
 )
 
@@ -65,6 +63,8 @@ ksm_cru_allocs As (
   Select
     cru.allocation_code
     , cru.af_flag
+    , cru.sweepable
+    , cru.budget_relieving
     , gft.alloc_short_name
     , gft.alloc_purpose_desc
     , gft.tx_number
@@ -92,6 +92,8 @@ Select
   -- Giving fields
   af.allocation_code
   , af.af_flag
+  , af.sweepable
+  , af.budget_relieving
   , af.alloc_short_name
   , af.alloc_purpose_desc
   , af.tx_number
@@ -276,6 +278,8 @@ Select
   , master_country
   -- Giving fields
   , af_flag
+  , sweepable
+  , budget_relieving
   , allocation_code
   , alloc_short_name
   , alloc_purpose_desc
@@ -307,6 +311,8 @@ Group By
   , master_country
   -- Giving fields
   , af_flag
+  , sweepable
+  , budget_relieving
   , allocation_code
   , alloc_short_name
   , alloc_purpose_desc

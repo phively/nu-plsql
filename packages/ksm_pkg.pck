@@ -964,8 +964,6 @@ Cursor c_alloc_curr_use_ksm Is
           End
         As sweepable
     From allocation
-    Inner Join table(ksm_pkg.tbl_alloc_curr_use_ksm) cru
-      On allocation.allocation_code = cru.allocation_code
   )
   , br As (
     Select
