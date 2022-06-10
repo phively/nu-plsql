@@ -786,9 +786,7 @@ Your query looks good!
 
 Create or Replace View v_datamart_students as
 
-With
-
-ksm_ids As (
+With ksm_ids As (
   Select ids_base.id_number
     , ids_base.ids_type_code
     , ids_base.other_id
@@ -821,54 +819,305 @@ where  ec.econtact_status_code = 'A'
 and  ec.econtact_type_code = 'L'
 Group By ec.id_number),
 
+org_employer As (
+  --- Using subquery to Get Employer Names from Employee ID #'s 
+  Select id_number, report_name
+  From entity 
+  Where entity.person_or_org = 'O'
+),
+
+p_employ as (Select
+  id_number
+  , ultimate_parent_employer_id
+  , ultimate_parent_employer_name
+From dm_ard.dim_employment@catrackstobi),
+
+
+employ As (
+Select
+  employ.id_Number As catracks_id
+  , employ.start_dt
+  , rpt_pbh634.ksm_pkg.to_date2(employ.start_dt) As employment_start_date
+  , employ.stop_dt
+  , rpt_pbh634.ksm_pkg.to_date2(employ.stop_dt) As employment_stop_date
+  , employ.job_status_code As job_status_code
+  , tms_job_status.short_desc As job_status_desc
+  , employ.primary_emp_ind As primary_employer_indicator
+  , employ.self_employ_ind As self_employed_indicator
+  , employ.job_title
+  , employ.employer_id_number
+  , p_employ.ultimate_parent_employer_id
+  , p_employ.ultimate_parent_employer_name
+  , Case --- Used for those alumni with an employer code, but not employer name1
+      When employ.employer_name1 = ' '
+        Then org_employer.report_name
+      Else employ.employer_name1
+      End
+    As employer
+  , employ.fld_of_work_code As fld_of_work_code
+  , fow.short_desc As fld_of_work_desc
+  , employ.date_added
+  , employ.date_modified
+  , employ.operator_name
+From employment employ
+Left Join rpt_pbh634.v_entity_ksm_households h on h.id_number = employ.id_number
+Left Join tms_fld_of_work fow
+  On employ.fld_of_work_code = fow.fld_of_work_code --- To get FLD of Work Code
+Left  Join tms_job_status
+  On tms_job_status.job_status_code = employ.job_status_code --- To get job description
+Left Join org_employer
+  On org_employer.id_number = employ.employer_id_number --- To get the name of those with employee ID
+Left Join P_Employ on P_Employ.id_number = h.id_number --- to get parent employer ID and parent employer name
+Where employ.job_status_code In ('C', 'P', 'Q', 'R', ' ', 'L')
+--- Employment Key: C = Current, P = Past, Q = Semi Retired R = Retired L = On Leave
+and h.record_status_code != 'X' --- Remove Purgable
+Order By employ.id_Number Asc),
+
+e as (Select
+  employ.catracks_id
+  , max (employ.start_dt) as start_dt
+  , max (rpt_pbh634.ksm_pkg.to_date2(employ.start_dt)) As employment_start_date
+  , max (employ.stop_dt) as stop_dt
+  , max (employ.job_status_desc) As job_status_code
+  , max (job_status_desc) As job_status_desc
+  , max (employ.primary_employer_indicator) As primary_employer_indicator
+  , max (employ.self_employed_indicator) As self_employed_indicator
+  , max (employ.job_title) as job_title
+  , max (employ.employer_id_number) as employer_id_number
+  , max (employ.ultimate_parent_employer_id) as ultimate_parent_employer_id
+  , max (employ.ultimate_parent_employer_name) as ultimate_parent_employer_name
+  , max (employ.employer) as employer
+  , max (employ.fld_of_work_desc) As fld_of_work_code
+  , max (employ.fld_of_work_desc) As fld_of_work_desc
+  , max (employ.date_added) as date_added
+  , max (employ.date_modified) as date_modified
+  , max (employ.operator_name) as operator_name
+  from employ 
+  group by employ.catracks_id),
+
+intr As (
+  Select
+    intr.catracks_id
+    , Listagg(intr.interest_desc, '; ') Within Group (Order By interest_start_date Asc, interest_desc Asc)
+      As interests_concat
+  From v_datamart_career_interests intr
+  Group By intr.catracks_id
+),
+
+Reunion As 
+(Select aff.id_number,
+         Listagg (aff.class_year, ';  ') Within Group (Order By aff.class_year) As class_year
+From affiliation aff
+Where aff.affil_code = 'KM'
+And aff.affil_level_code = 'RG'
+Group By aff.id_number),
+
 --- Pull Affilaton For Student Details 
+
+--- Creating a Listag for Affilation Level, Class Year and Start Date 
+--- Noticed that a few entities had multiple aff levels (masters/doctorate)
+--- Coding defensively just in case a future recrod has mult class years and start dates
+
+lev as (select distinct affiliation.id_number,
+--- Concat Affilation Levels
+listagg (tms_affiliation_level.short_desc, ';  ') Within Group (Order By tms_affiliation_level.short_desc) As affilation_level,
+--- Possibly concat if there are mult years
+listagg (affiliation.class_year, ';  ') Within Group (Order By affiliation.class_year) As class_year,
+--- Earliest Date of Enrollment
+min (affiliation.start_date) as start_date
+from affiliation 
+LEFT JOIN tms_affiliation_level on tms_affiliation_level.affil_level_code = affiliation.affil_level_code
+--- Pulling school code and enrollment - This will pull in "Alumni" from other schools who are students at KSM 
+where affiliation.affil_code = 'KM'
+and affiliation.affil_status_code = 'E'
+Group by affiliation.id_number),
 
 A as (SELECT DISTINCT
 aff.id_number,
 aff.affil_code,
 tms_affil_code.short_desc as affilation,
-tms_affiliation_level.short_desc as affilation_level,
+lev.affilation_level,
 tms_affil_status.short_desc as affilation_status,
-aff.class_year,
-aff.start_date
+lev.class_year,
+lev.start_date
   FROM  affiliation aff
+  Inner Join lev on lev.id_number = aff.id_number
   LEFT JOIN tms_affil_code on tms_affil_code.affil_code = aff.affil_code
   LEFT JOIN tms_affiliation_level on tms_affiliation_level.affil_level_code = aff.affil_level_code
   Left Join tms_affil_status on  tms_affil_status.affil_status_code = aff.affil_status_code
 --- Pulling school code and enrollment - This will pull in "Alumni" from other schools who are students at KSM 
- WHERE  aff.affil_code = 'KM' 
-   AND  aff.affil_status_code = 'E')
+ WHERE  (aff.affil_code = 'KM' 
+   AND  aff.affil_status_code = 'E')),
+   
+emp_chooser As (
+  Select Distinct
+    h.id_number As catracks_id
+    , entity.first_name
+    , entity.middle_name
+    , entity.last_name
+    , p.P_Dean_Salut
+    , p.p_pref_mail_name
+    , entity.gender_code
+    , TMS_RACE.short_desc as race
+    , entity.birth_dt
+    , h.REPORT_NAME
+    , h.RECORD_STATUS_CODE
+    , a.id_number
+    , a.affil_code
+    , a.affilation
+    , a.affilation_level
+    , a.affilation_status
+    , a.class_year
+    , a.start_date
+    , d.degrees_concat
+    , d.degrees_verbose
+    , d.FIRST_KSM_YEAR
+    , d.FIRST_MASTERS_YEAR
+    , h.program
+    , h.program_group
+    , d.majors_concat
+    , reunion.class_year AS reunion_class_year
+    , tms_rs.short_desc As record_status_desc
+    , addr.home_city
+    , addr.home_state
+    , addr.home_zipcode
+    , addr.home_foreign_zipcode
+    , addr.home_country_desc
+    , addr.home_geo_codes
+    , addr.home_geo_primary_desc
+    , addr.home_start_date
+    -- Determine whether to use business job title or employment job title
+    -- The row with a later modified date is assumed to be more recent
+    , addr.business_date_modified
+    , e.date_modified As employment_date_modified
+    , Case
+        -- No data -> none
+        When addr.business_date_modified Is Null
+          And e.date_modified Is Null
+          Then 'None'
+        When addr.business_date_modified Is Not Null
+          And e.date_modified Is Null
+          Then 'Address'
+        When addr.business_date_modified Is Null
+          And e.date_modified Is Not Null
+          Then 'Employment'
+        When addr.business_date_modified >= e.date_modified
+          Then 'Address'
+        When addr.business_date_modified <= e.date_modified
+          Then 'Employment'
+        Else '#ERR'
+        End
+      As primary_job_source
+    , e.job_title
+    , e.employer
+    , e.fld_of_work_desc
+    , e.employer_id_number
+    , e.ultimate_parent_employer_id as ult_parent_employer_id
+    , e.ultimate_parent_employer_name as ult_parent_employer_name
+    , addr.business_job_title
+    , addr.business_company_name
+    , addr.business_city
+    , addr.business_state
+    , addr.business_zipcode
+    , addr.business_foreign_zipcode
+    , addr.business_country_desc
+    , addr.business_geo_codes
+    , addr.business_geo_primary_desc
+    , addr.business_start_date
+    , intr.interests_concat
+    , linked.linkedin_address
+  From rpt_pbh634.v_entity_ksm_households h
+    Inner Join A on A.id_number = h.id_number
+  Left Join rpt_pbh634.v_entity_ksm_degrees d 
+    On d.id_number = h.id_number
+  Left Join tms_record_status tms_rs
+    On tms_rs.record_status_code = h.record_status_code
+  Left Join v_datamart_address addr
+    On addr.catracks_id = h.id_number
+  Left join e
+    On e.catracks_id = h.id_number
+  Left Join intr
+    On intr.catracks_id = h.id_number
+  Left Join linked
+    On linked.id_number = h.id_number
+  Left Join entity 
+    On entity.id_number = h.id_number
+  Left Join TMS_RACE 
+    ON TMS_RACE.ethnic_code = entity.ethnic_code
+  Left Join Reunion 
+    On Reunion.id_number = h.id_number
+  Left Join rpt_zrc8929.v_dean_salutation p
+    On p.id_number = h.id_number
+  Where h.record_status_code In ('A', 'C', 'L', 'D')
+  and h.record_status_code != 'X' --- Remove Purgable
+  --- Enrolled Students Only! 
+  and a.id_number is not null 
+)
 
-Select Distinct
-   ksm_ids.id_number As catracks_id
-  , ksm_ids.other_id As emplid
-  , entity.report_name
-  , entity.first_name
-  , entity.middle_name
-  , entity.last_name
-  , entity.record_type_code
-  , entity.institutional_suffix
-  , linked.linkedin_address
-  , a.affilation
-  , a.affilation_status
-  , a.affilation_level
-  , a.class_year
-  , a.start_date
-  ,Case  When NO_Email_Ind is null then KSM_Email.email_type_code 
-  when KSM_Spec.NO_Email_Ind is not null then 'No Email' End as email_type
-  ,Case When KSM_Spec.NO_Email_Ind is null then KSM_Email.email_address 
-   when KSM_Spec.NO_Email_Ind is not null then 'No Email' End as Email
-
-From entity
-Left Join ksm_ids On ksm_ids.id_number = entity.id_number
-Left Join KSM_Email on KSM_Email.id_number = entity.id_number
-Left Join KSM_Spec on KSM_Spec.id_number = entity.id_number
-Left Join linked on linked.id_number = entity.id_number
-Inner Join a on a.id_number = entity.id_number
-  Where ksm_ids.other_id is not null
-  and entity.record_status_code In ('A', 'C', 'L', 'D')
-  and entity.record_status_code != 'X' --- Remove Purgable
-  ;
+Select Distinct 
+  catracks_id
+  , first_name
+  , middle_name
+  , last_name
+  , P_Dean_Salut
+  , p_pref_mail_name
+  , gender_code
+  , race
+  , (substr (birth_dt, 1, 10)) as birth_dt
+  , report_name
+  , affil_code as affiltation_code
+  , affilation as affilation_desc
+  , start_date as start_date
+  , affilation_level
+  , affilation_status
+  , class_year as expected_graduation_year
+  , degrees_concat
+  , degrees_verbose
+  , program
+  , program_group
+  , FIRST_KSM_YEAR
+  , FIRST_MASTERS_YEAR
+  , majors_concat
+  , reunion_class_year
+  , record_status_code
+  , record_status_desc
+  , home_city
+  , home_state
+  , home_zipcode
+  , home_foreign_zipcode
+  , home_country_desc
+  , home_geo_codes
+  , home_geo_primary_desc
+  , home_start_date
+  , linkedin_address
+  , employer_id_number
+  , Case
+      When primary_job_source = 'Address'
+        Then business_job_title
+      Else job_title
+      End
+    As primary_job_title
+  , Case
+      When primary_job_source = 'Address'
+        Then business_company_name
+      Else employer
+      End
+    As primary_employer
+  , business_city
+  , business_state
+  , business_zipcode
+  , business_foreign_zipcode
+  , business_country_desc
+  , business_geo_codes
+  , business_geo_primary_desc
+  , business_start_date
+  , fld_of_work_desc as employment_industry
+  , interests_concat as industry_interest_concat
+  , primary_job_source
+  , business_date_modified
+  , employment_date_modified
+From emp_chooser
+;
   
 --- View to Pull Primary Email and Phones Number with consideration of special handling codes
 
