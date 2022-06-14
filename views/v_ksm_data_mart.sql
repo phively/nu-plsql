@@ -1026,6 +1026,12 @@ emp_chooser As (
     , addr.business_start_date
     , intr.interests_concat
     , linked.linkedin_address
+       --- Case when Email Type 
+    , Case  When NO_Email_Ind is null then KSM_email.short_desc 
+      when KSM_Spec.NO_Email_Ind is not null then 'No Email' End as email_type
+      ---- Case when email addresses
+    , Case When KSM_Spec.NO_Email_Ind is null then KSM_email.email_address 
+      when KSM_Spec.NO_Email_Ind is not null then 'No Email' End as Email
   From rpt_pbh634.v_entity_ksm_households h
     Inner Join A on A.id_number = h.id_number
   Left Join rpt_pbh634.v_entity_ksm_degrees d 
@@ -1048,10 +1054,17 @@ emp_chooser As (
     On Reunion.id_number = h.id_number
   Left Join rpt_zrc8929.v_dean_salutation p
     On p.id_number = h.id_number
+  Left Join KSM_Email 
+  on KSM_Email.id_number = h.id_number
+  Left Join KSM_Spec
+  on KSM_Spec.id_number = h.id_number
   Where h.record_status_code In ('A', 'C', 'L', 'D')
   and h.record_status_code != 'X' --- Remove Purgable
   --- Enrolled Students Only! 
   and a.id_number is not null 
+  --- Take out No Contacts and Active with Restrictions
+  and (KSM_Spec.NO_CONTACT is null
+and KSM_Spec.ACTIVE_WITH_RESTRICTIONS is null)
 )
 
 Select Distinct 
@@ -1065,8 +1078,8 @@ Select Distinct
   , race
   , (substr (birth_dt, 1, 10)) as birth_dt
   , report_name
-  , affil_code as affiltation_code
-  , affilation as affilation_desc
+  , affil_code as affiliation_code
+  , affilation as affiliation_desc
   , start_date as start_date
   , affilation_level
   , affilation_status
@@ -1116,6 +1129,8 @@ Select Distinct
   , primary_job_source
   , business_date_modified
   , employment_date_modified
+  , email_type
+  , email
 From emp_chooser
 ;
   
