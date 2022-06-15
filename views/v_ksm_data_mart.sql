@@ -952,6 +952,8 @@ lev.start_date
 emp_chooser As (
   Select Distinct
     h.id_number As catracks_id
+    , ksm_ids.other_id As EMPLID
+    , h.INSTITUTIONAL_SUFFIX
     , entity.first_name
     , entity.middle_name
     , entity.last_name
@@ -1058,6 +1060,8 @@ emp_chooser As (
   on KSM_Email.id_number = h.id_number
   Left Join KSM_Spec
   on KSM_Spec.id_number = h.id_number
+  Left Join ksm_ids
+  on ksm_ids.id_number = h.id_number
   Where h.record_status_code In ('A', 'C', 'L', 'D')
   and h.record_status_code != 'X' --- Remove Purgable
   --- Enrolled Students Only! 
@@ -1069,6 +1073,7 @@ and KSM_Spec.ACTIVE_WITH_RESTRICTIONS is null)
 
 Select Distinct 
   catracks_id
+  , EMPLID
   , first_name
   , middle_name
   , last_name
@@ -1084,6 +1089,7 @@ Select Distinct
   , affilation_level
   , affilation_status
   , class_year as expected_graduation_year
+  , INSTITUTIONAL_SUFFIX
   , degrees_concat
   , degrees_verbose
   , program
