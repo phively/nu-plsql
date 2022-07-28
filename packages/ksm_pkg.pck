@@ -427,6 +427,7 @@ Type special_handling Is Record (
      , record_status_code entity.record_status_code%type
      , gab varchar2(16)
      , trustee varchar2(16)
+     , ebfa varchar2(16)
      , no_contact varchar2(1)
      , no_solicit varchar2(1)
      , no_release varchar2(1)
@@ -3406,12 +3407,24 @@ Cursor c_special_handling_concat Is
     Inner Join entity e
       On e.id_number = tr.id_number
   )
+  , ebfa As (
+    Select
+      ebfa.id_number
+      , e.spouse_id_number
+      , 'Y' As flag
+    From table(ksm_pkg.tbl_committee_asia) ebfa
+    Inner Join entity e
+      On e.id_number = ebfa.id_number
+  )
   , committees_merged As (
     Select id_number, spouse_id_number
     From gab
     Union
     Select id_number, spouse_id_number
     From trustee
+    Union
+    Select id_number, spouse_id_number
+    From ebfa
   )
   -- All IDs
   , ids As (
@@ -3475,6 +3488,12 @@ Cursor c_special_handling_concat Is
         When trustee_s.flag = 'Y'
           Then 'Trustee Spouse'
       End As trustee
+    , Case
+        When ebfa.flag = 'Y'
+          Then 'EBFA'
+        When ebfa_s.flag = 'Y'
+          Then 'EBFA Spouse'
+      End As ebfa
     -- Overall special handling indicators
     , spec_hnd.no_contact
     , spec_hnd.no_solicit
@@ -3573,6 +3592,8 @@ Cursor c_special_handling_concat Is
   Left Join gab gab_s On gab_s.id_number = ids.spouse_id_number
   Left Join trustee On trustee.id_number = ids.id_number
   Left Join trustee trustee_s On trustee_s.id_number = ids.spouse_id_number
+  Left Join ebfa On ebfa.id_number = ids.id_number
+  Left Join ebfa ebfa_s On ebfa_s.id_number = ids.spouse_id_number
   ;
 
 /*************************************************************************
