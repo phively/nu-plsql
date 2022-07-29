@@ -3,10 +3,10 @@ With KFN AS (select k.id_number,
        k.role,
        k.committee_title,
        k.short_desc,
-       rpt_pbh634.ksm_pkg.get_fiscal_year (k.start_dt) as FY_Joined_KFN,
+       rpt_pbh634.ksm_pkg_tmp.get_fiscal_year (k.start_dt) as FY_Joined_KFN,
        k.start_dt,
        k.stop_dt
-From table (rpt_pbh634.ksm_pkg.tbl_committee_KFN) k),
+From table (rpt_pbh634.ksm_pkg_tmp.tbl_committee_KFN) k),
 
 --- Giving Summary
 

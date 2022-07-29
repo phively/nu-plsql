@@ -131,12 +131,12 @@ WHERE HH.FISCAL_YEAR = '2022'
 SELECT
  ID_NUMBER
  ,ANONYMOUS_DONOR
-From table(rpt_pbh634.ksm_pkg.tbl_special_handling_concat)
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_special_handling_concat)
 WHERE ANONYMOUS_DONOR = 'Y'
 )
 
 ,KSM_STAFF AS (
-  SELECT * FROM table(rpt_pbh634.ksm_pkg.tbl_frontline_ksm_staff) staff -- Historical Kellogg gift officers
+  SELECT * FROM table(rpt_pbh634.ksm_pkg_tmp.tbl_frontline_ksm_staff) staff -- Historical Kellogg gift officers
   -- Join credited visit ID to staff ID number
  )
 
@@ -594,7 +594,7 @@ SELECT DISTINCT
   ,PR.bal1 AS PLG_BALANCE
   ,PR.status1 AS PLG_STATUS
   ,PR.plgActive AS PLG_ACTIVE
-  ,RPT_PBH634.KSM_PKG.get_fiscal_year(GI.GDT1) AS RECENT_FISAL_YEAR
+  ,rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(GI.GDT1) AS RECENT_FISAL_YEAR
   ,GI.GDT1 AS DATE1
   ,GI.GAMT1 AS AMOUNT1
   ,GI.GACCT1 AS ACC1
@@ -687,7 +687,7 @@ LEFT JOIN NU_PRS_TRP_PROSPECT NP
 ON E.ID_NUMBER = NP.ID_NUMBER
 LEFT JOIN ASSIGNED LGOA
 ON E.ID_NUMBER = LGOA.ID_NUMBER
-LEFT JOIN table(rpt_pbh634.ksm_pkg.tbl_special_handling_concat) SH
+LEFT JOIN table(rpt_pbh634.ksm_pkg_tmp.tbl_special_handling_concat) SH
 ON E.ID_NUMBER = SH.ID_NUMBER
 LEFT JOIN REUNION_2018_REGISTRANTS R18
 ON E.ID_NUMBER = R18.Contact_ID_number

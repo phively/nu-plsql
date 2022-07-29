@@ -27,7 +27,7 @@ employ As (
 
 BG as (Select
 gc.*
-From table(rpt_pbh634.ksm_pkg.tbl_geo_code_primary) gc
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_geo_code_primary) gc
 Inner Join address
 On address.id_number = gc.id_number
 And address.xsequence = gc.xsequence
