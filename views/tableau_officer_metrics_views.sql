@@ -67,14 +67,14 @@ Select Distinct
       When ksm_or_univ_ask >= 100000 
         And total_granted_amt >= 98000
         And proposal_Status_code = '7'
-        Then rpt_pbh634.ksm_pkg.get_performance_year(close_date)
+        Then rpt_pbh634.ksm_pkg_tmp.get_performance_year(close_date)
       Else NULL
       End
     As MG_Commitments
   , Case
       When ksm_or_univ_ask >= 100000 
         And proposal_status_code In ('5', 'C', 'B', '8', '7')
-        Then rpt_pbh634.ksm_pkg.get_performance_year(ask_date)
+        Then rpt_pbh634.ksm_pkg_tmp.get_performance_year(ask_date)
       Else NULL
       End
     As MG_Solicitations
@@ -82,7 +82,7 @@ Select Distinct
       When ksm_or_univ_ask >= 100000 
         And total_granted_amt >= 48000
         And proposal_status_code = '7'
-        Then rpt_pbh634.ksm_pkg.get_performance_year(close_date)
+        Then rpt_pbh634.ksm_pkg_tmp.get_performance_year(close_date)
       Else NULL
       End
     As MG_Dollars_Raised
@@ -141,7 +141,7 @@ Select
   , hh.household_geo_primary_desc
   , hh.household_state
   , hh.household_country
-  , rpt_pbh634.ksm_pkg.get_performance_year(contact_date) As PY_Contact
+  , rpt_pbh634.ksm_pkg_tmp.get_performance_year(contact_date) As PY_Contact
 From rpt_pbh634.v_contact_reports_fast CR
 Inner Join rpt_pbh634.v_entity_ksm_households hh
   On hh.id_number = CR.id_number

@@ -2,106 +2,106 @@ Create Or Replace View rpt_pbh634.v_advisory_committees_members As
 
 -- GAB
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_gab')
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_tmp.get_string_constant('committee_gab')
   , shortname => 'GAB')
 )
 -- Asia
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_asia')
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_tmp.get_string_constant('committee_asia')
   , shortname => 'KEBA')
 )
 -- KAC
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_kac')
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_tmp.get_string_constant('committee_kac')
   , shortname => 'KAC')
 )
 -- PHS
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_phs')
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_tmp.get_string_constant('committee_phs')
   , shortname => 'PHS')
 )
 -- KFN
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_kfn')
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_tmp.get_string_constant('committee_kfn')
   , shortname => 'KFN')
 )
 -- AMP
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_AMP')
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_tmp.get_string_constant('committee_AMP')
   , shortname => 'AMP')
 )
 -- Real Estate
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_RealEstCouncil')
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_tmp.get_string_constant('committee_RealEstCouncil')
   , shortname => 'RealEstCouncil')
 )
 -- DivSummit
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_DivSummit')
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_tmp.get_string_constant('committee_DivSummit')
   , shortname => 'DivSummit')
 )
 -- WomenSummit
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_WomenSummit')
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_tmp.get_string_constant('committee_WomenSummit')
   , shortname => 'WomenSummit')
 )
 -- CorpGov
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_CorpGov')
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_tmp.get_string_constant('committee_CorpGov')
   , shortname => 'CorpGov')
 )
 -- Healthcare
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_healthcare')
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_tmp.get_string_constant('committee_healthcare')
   , shortname => 'Healthcare')
 )
 -- WomensLeadership
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_WomensLeadership')
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_tmp.get_string_constant('committee_WomensLeadership')
   , shortname => 'WomensLeadership')
 )
 -- Inclusion
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_kic')
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_tmp.get_string_constant('committee_kic')
   , shortname => 'Inclusion')
 )
 -- PrivateEquity
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_privateequity')
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_tmp.get_string_constant('committee_privateequity')
   , shortname => 'PrivateEquity')
 )
 -- PE Asia
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_pe_asia')
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_tmp.get_string_constant('committee_pe_asia')
   , shortname => 'AsiaPEAC')
 )
 ;
@@ -652,7 +652,7 @@ Inner Join nu_prs_trp_prospect prs
   On prs.id_number = acg.id_number
 Left Join committee_header ch
   On ch.committee_code = acg.committee_code
-LEFT JOIN TABLE(RPT_PBH634.KSM_PKG.tbl_committee_trustee) T
+LEFT JOIN TABLE(RPT_PBH634.ksm_pkg_tmp.tbl_committee_trustee) T
 ON T.ID_NUMBER = acg.id_number
 LEFT JOIN ENTITY e
 ON e.id_number = acg.id_number

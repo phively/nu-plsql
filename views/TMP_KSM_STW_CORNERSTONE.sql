@@ -19,7 +19,7 @@ Select id_number
      , status
      , role
      , start_dt
-     From table(rpt_pbh634.ksm_pkg.tbl_committee_gab)
+     From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_gab)
 ),
 
 Trustee As (
@@ -35,8 +35,8 @@ Select e.id_number
      , hh.SPOUSE_ID_NUMBER
      , hh.SPOUSE_REPORT_NAME
      , gc.gift_club_code
-     , RPT_PBH634.KSM_PKG.to_date2(gc.gift_club_start_date, 'YYYYMMDD') As gift_club_start_date
-     , RPT_PBH634.KSM_PKG.to_date2(gc.gift_club_end_date, 'YYYYMMDD') As gift_club_end_date
+     , RPT_PBH634.ksm_pkg_tmp.to_date2(gc.gift_club_start_date, 'YYYYMMDD') As gift_club_start_date
+     , RPT_PBH634.ksm_pkg_tmp.to_date2(gc.gift_club_end_date, 'YYYYMMDD') As gift_club_end_date
      , gc.gift_club_status
      , gc.school_code AS "Role_code"
      , tms.short_desc AS "Role"

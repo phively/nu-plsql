@@ -1,4 +1,4 @@
-Create Or Replace Package rpt_pbh634.ksm_pkg Is
+CREATE OR REPLACE Package ksm_pkg_tmp Is
 
 /*************************************************************************
 Author  : PBH634
@@ -809,9 +809,9 @@ Function tbl_committee_asia
 End of package
 *************************************************************************/
 
-End ksm_pkg;
+End ksm_pkg_tmp;
 /
-Create Or Replace Package Body ksm_pkg Is
+Create Or Replace Package Body ksm_pkg_tmp Is
 
 /*************************************************************************
 Private cursor tables -- data definitions; update indicated sections as needed
@@ -909,7 +909,7 @@ Cursor ct_numeric_capacity_ratings Is
       , short_desc As rating_desc
       , Case
           When rating_code = 0 Then 0
-          Else rpt_pbh634.ksm_pkg.get_number_from_dollar(short_desc) / 1000000
+          Else rpt_pbh634.ksm_pkg_tmp.get_number_from_dollar(short_desc) / 1000000
         End As numeric_rating
     From tms_rating
   )
@@ -2122,7 +2122,7 @@ Cursor c_university_strategy Is
         Else uos.university_strategy
       End As university_strategy
     , Case
-        When prs.strategy_description Is Not Null Then ksm_pkg.to_date2(prs.strategy_date, 'mm/dd/yyyy')
+        When prs.strategy_description Is Not Null Then ksm_pkg_tmp.to_date2(prs.strategy_date, 'mm/dd/yyyy')
         Else uos.strategy_sched_date
       End As strategy_sched_date
     , Case
@@ -3394,7 +3394,7 @@ Cursor c_special_handling_concat Is
       gab.id_number
       , e.spouse_id_number
       , 'Y' As flag
-    From table(ksm_pkg.tbl_committee_gab) gab
+    From table(ksm_pkg_tmp.tbl_committee_gab) gab
     Inner Join entity e
       On e.id_number = gab.id_number
   )
@@ -3403,7 +3403,7 @@ Cursor c_special_handling_concat Is
       tr.id_number
       , e.spouse_id_number
       , 'Y' As flag
-    From table(ksm_pkg.tbl_committee_trustee) tr
+    From table(ksm_pkg_tmp.tbl_committee_trustee) tr
     Inner Join entity e
       On e.id_number = tr.id_number
   )
@@ -3412,7 +3412,7 @@ Cursor c_special_handling_concat Is
       ebfa.id_number
       , e.spouse_id_number
       , 'Y' As flag
-    From table(ksm_pkg.tbl_committee_asia) ebfa
+    From table(ksm_pkg_tmp.tbl_committee_asia) ebfa
     Inner Join entity e
       On e.id_number = ebfa.id_number
   )
@@ -3779,8 +3779,8 @@ Function get_numeric_constant(const_name In varchar2)
   
   Begin
     -- If const_name doesn't include ksm_pkg, prepend it
-    If substr(lower(const_name), 1, 8) <> 'ksm_pkg.'
-      Then var := 'ksm_pkg.' || const_name;
+    If substr(lower(const_name), 1, 8) <> 'ksm_pkg_tmp.'
+      Then var := 'ksm_pkg_tmp.' || const_name;
     Else
       var := const_name;
     End If;
@@ -3803,8 +3803,8 @@ Function get_string_constant(const_name In varchar2)
   
   Begin
     -- If const_name doesn't include ksm_pkg, prepend it
-    If substr(lower(const_name), 1, 8) <> 'ksm_pkg.'
-      Then var := 'ksm_pkg.' || const_name;
+    If substr(lower(const_name), 1, 8) <> 'ksm_pkg_tmp.'
+      Then var := 'ksm_pkg_tmp.' || const_name;
     Else
       var := const_name;
     End If;
@@ -4961,5 +4961,5 @@ Function tbl_special_handling_concat
         Return;
       End;
 
-End ksm_pkg;
+End ksm_pkg_tmp;
 /

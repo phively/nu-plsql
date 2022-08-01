@@ -61,7 +61,7 @@ salutations As (
     , sal_concat.ksm_salutations
       As spouse_ksm_salutations
     , entity.marital_status_chg_dt
-    , rpt_pbh634.ksm_pkg.to_date2(entity.marital_status_chg_dt)
+    , rpt_pbh634.ksm_pkg_tmp.to_date2(entity.marital_status_chg_dt)
       As marital_status_dt
   From entity
   Left Join tms_marital_status tms_ms

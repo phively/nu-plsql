@@ -129,7 +129,7 @@ Select
       Else trunc(event.date_added)
       End
     As stop_dt_calc
-  , ksm_pkg.get_fiscal_year(
+  , ksm_pkg_tmp.get_fiscal_year(
       Case
         When event.event_start_datetime Is Not Null
           Then trunc(event.event_start_datetime)
@@ -138,7 +138,7 @@ Select
         End
     )
     As start_fy_calc
-  , ksm_pkg.get_fiscal_year(
+  , ksm_pkg_tmp.get_fiscal_year(
       Case
         When event.event_stop_datetime Is Not Null
           Then trunc(event.event_stop_datetime)

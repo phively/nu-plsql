@@ -13,7 +13,7 @@ Select
     As description
   , to_number(score) As score
 From table(
-  rpt_pbh634.ksm_pkg.tbl_model_af_10k(
+  rpt_pbh634.ksm_pkg_tmp.tbl_model_af_10k(
     -- Replace these with the most up-to-date modeled score month/year
     model_year => 2018
     , model_month => 01
@@ -54,7 +54,7 @@ seg_yr As (
 , identification As (
   Select *
   From table(
-    rpt_pbh634.ksm_pkg.tbl_model_mg_identification(
+    rpt_pbh634.ksm_pkg_tmp.tbl_model_mg_identification(
       -- Replace these with the most up-to-date modeled score month/year
       model_year => (Select segment_year From seg_yr)
       , model_month => (Select segment_month From seg_mo)
@@ -64,7 +64,7 @@ seg_yr As (
 , prioritization As (
   Select *
   From table(
-    rpt_pbh634.ksm_pkg.tbl_model_mg_prioritization(
+    rpt_pbh634.ksm_pkg_tmp.tbl_model_mg_prioritization(
       -- Replace these with the most up-to-date modeled score month/year
       model_year => (Select segment_year From seg_yr)
       , model_month => (Select segment_month From seg_mo)

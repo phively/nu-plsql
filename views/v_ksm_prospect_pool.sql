@@ -23,13 +23,13 @@ ksm_deg As (
 -- Kellogg Top 150/300
 , ksm_150_300 As (
   Select *
-  From table(rpt_pbh634.ksm_pkg.tbl_entity_top_150_300)
+  From table(rpt_pbh634.ksm_pkg_tmp.tbl_entity_top_150_300)
 )
 
 -- Numeric rating bins
 , rating_bins As (
   Select *
-  From table(ksm_pkg.tbl_numeric_capacity_ratings)
+  From table(ksm_pkg_tmp.tbl_numeric_capacity_ratings)
 )
 
 -- Prospect entity table filtered for active prospects
@@ -356,7 +356,7 @@ Select Distinct
       -- Fallback
       Else 'Z. None'
     End As pool_group
-From table(rpt_pbh634.ksm_pkg.tbl_entity_households_ksm) hh
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_entity_households_ksm) hh
 Inner Join ksm_prs_ids -- Must be a valid Kellogg entity
   On ksm_prs_ids.id_number = hh.id_number
 Left Join ksm_prs
@@ -396,7 +396,7 @@ Left Join spec_hnd
   On spec_hnd.id_number = hh.id_number
 Left Join uor
   On uor.prospect_id = prs.prospect_id
-Left Join table(rpt_pbh634.ksm_pkg.tbl_university_strategy) strat
+Left Join table(rpt_pbh634.ksm_pkg_tmp.tbl_university_strategy) strat
   On strat.prospect_id = prs.prospect_id
 Left Join interests_concat
   On interests_concat.id_number = hh.id_number

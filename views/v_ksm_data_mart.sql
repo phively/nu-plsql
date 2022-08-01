@@ -24,9 +24,9 @@ Select
   , interest.interest_code As interest_code
   , tms_interest.short_desc As interest_desc
   , interest.start_dt
-  , rpt_pbh634.ksm_pkg.to_date2(start_dt) As interest_start_date
+  , rpt_pbh634.ksm_pkg_tmp.to_date2(start_dt) As interest_start_date
   , interest.stop_dt
-  , rpt_pbh634.ksm_pkg.to_date2(stop_dt) As interest_stop_date
+  , rpt_pbh634.ksm_pkg_tmp.to_date2(stop_dt) As interest_stop_date
   , interest.date_added
   , interest.date_modified
   , interest.operator_name
@@ -114,7 +114,7 @@ business_address As (
     , address.addr_type_code
     , address.addr_status_code
     , address.start_dt
-    , rpt_pbh634.ksm_pkg.to_date2(address.start_dt) As start_date
+    , rpt_pbh634.ksm_pkg_tmp.to_date2(address.start_dt) As start_date
     , address.date_modified
     , rpt_pbh634.v_geo_code_primary.geo_codes
     , rpt_pbh634.v_geo_code_primary.geo_code_primary
@@ -143,7 +143,7 @@ business_address As (
     , address.addr_type_code
     , address.addr_status_code
     , address.start_dt
-    , rpt_pbh634.ksm_pkg.to_date2(address.start_dt) As start_date
+    , rpt_pbh634.ksm_pkg_tmp.to_date2(address.start_dt) As start_date
     , address.date_modified
     , rpt_pbh634.v_geo_code_primary.geo_codes --- KIS Wants Geocodes Home Address
     , rpt_pbh634.v_geo_code_primary.geo_code_primary
@@ -235,9 +235,9 @@ From dm_ard.dim_employment@catrackstobi)
 Select
   employ.id_Number As catracks_id
   , employ.start_dt
-  , rpt_pbh634.ksm_pkg.to_date2(employ.start_dt) As employment_start_date
+  , rpt_pbh634.ksm_pkg_tmp.to_date2(employ.start_dt) As employment_start_date
   , employ.stop_dt
-  , rpt_pbh634.ksm_pkg.to_date2(employ.stop_dt) As employment_stop_date
+  , rpt_pbh634.ksm_pkg_tmp.to_date2(employ.stop_dt) As employment_stop_date
   , employ.job_status_code As job_status_code
   , tms_job_status.short_desc As job_status_desc
   , employ.primary_emp_ind As primary_employer_indicator
@@ -302,7 +302,7 @@ Select
   , degrees.degree_level_code 
   , TMS_DEGREE_LEVEL.short_desc As Degree_Level_Desc
   , degrees.grad_dt
-  , rpt_pbh634.ksm_pkg.to_date2(degrees.grad_dt) As grad_date
+  , rpt_pbh634.ksm_pkg_tmp.to_date2(degrees.grad_dt) As grad_date
   , degrees.class_section
   , tms_cs.short_desc As class_section_desc
   , degrees.dept_code
@@ -637,13 +637,13 @@ where a_spouse.anonymous_donor is not null),
 
 give as (select give.ID_NUMBER, 
 give.af_status,
-rpt_pbh634.ksm_pkg.get_fiscal_year(give.LAST_GIFT_DATE) as last_gift_fy
+rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(give.LAST_GIFT_DATE) as last_gift_fy
 from RPT_PBH634.v_Ksm_Giving_Summary give), --- stewardship amount
 
 --- Subquery (9/29) for Most Recent Gift, but takes out anonymous donors
 
 max_date as (select hh.ID_NUMBER,
-rpt_pbh634.ksm_pkg.get_fiscal_year (max (hh.DATE_OF_RECORD)) as last_gift_fy 
+rpt_pbh634.ksm_pkg_tmp.get_fiscal_year (max (hh.DATE_OF_RECORD)) as last_gift_fy 
 from hh
 where trim (hh.ANONYMOUS) is null
 group by hh.ID_NUMBER),
@@ -683,7 +683,7 @@ KLC AS (Select distinct
        GIFT_CLUBS.GIFT_CLUB_ID_NUMBER,
        GIFT_CLUBS.GIFT_CLUB_CODE,
        TMS_GIFT_CLUB_TABLE.club_desc,
-       rpt_pbh634.ksm_pkg.get_fiscal_year (GIFT_CLUBS.GIFT_CLUB_END_DATE) as Club_END_DATE
+       rpt_pbh634.ksm_pkg_tmp.get_fiscal_year (GIFT_CLUBS.GIFT_CLUB_END_DATE) as Club_END_DATE
 FROM GIFT_CLUBS
 LEFT JOIN TMS_GIFT_CLUB_TABLE ON TMS_GIFT_CLUB_TABLE.club_code = GIFT_CLUBS.GIFT_CLUB_CODE
 Where GIFT_CLUB_CODE = 'LKM'),
@@ -837,9 +837,9 @@ employ As (
 Select
   employ.id_Number As catracks_id
   , employ.start_dt
-  , rpt_pbh634.ksm_pkg.to_date2(employ.start_dt) As employment_start_date
+  , rpt_pbh634.ksm_pkg_tmp.to_date2(employ.start_dt) As employment_start_date
   , employ.stop_dt
-  , rpt_pbh634.ksm_pkg.to_date2(employ.stop_dt) As employment_stop_date
+  , rpt_pbh634.ksm_pkg_tmp.to_date2(employ.stop_dt) As employment_stop_date
   , employ.job_status_code As job_status_code
   , tms_job_status.short_desc As job_status_desc
   , employ.primary_emp_ind As primary_employer_indicator
@@ -876,7 +876,7 @@ Order By employ.id_Number Asc),
 e as (Select
   employ.catracks_id
   , max (employ.start_dt) as start_dt
-  , max (rpt_pbh634.ksm_pkg.to_date2(employ.start_dt)) As employment_start_date
+  , max (rpt_pbh634.ksm_pkg_tmp.to_date2(employ.start_dt)) As employment_start_date
   , max (employ.stop_dt) as stop_dt
   , max (employ.job_status_desc) As job_status_code
   , max (job_status_desc) As job_status_desc
