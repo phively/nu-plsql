@@ -8,12 +8,12 @@ Select
   2022 AS pfy
   ,2023 AS cfy
   From DUAL
-),
+)
 
-HOUSE AS (SELECT *
-FROM rpt_pbh634.v_entity_ksm_households H),
+,HOUSE AS (SELECT *
+FROM rpt_pbh634.v_entity_ksm_households H)
 
-KSM_DEGREES AS (
+,KSM_DEGREES AS (
  SELECT
    KD.ID_NUMBER
    ,KD.PROGRAM
@@ -40,9 +40,9 @@ WHERE TO_NUMBER(NVL(TRIM(A.CLASS_YEAR),'1')) IN (MD.CFY-1, MD.CFY-5, MD.CFY-10, 
   MD.CFY-45, MD.CFY-50, MD.CFY-51, MD.CFY-52, MD.CFY-53, MD.CFY-54, MD.CFY-55, MD.CFY-56, MD.CFY-57, MD.CFY-58, MD.CFY-59, MD.CFY-60)
 AND A.AFFIL_CODE = 'KM'
 AND A.AFFIL_LEVEL_CODE = 'RG'
-),
+)
 
-GIVING_SUMMARY AS (
+,GIVING_SUMMARY AS (
 Select Distinct house.household_id
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year     And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_cfy
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 1 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy1
@@ -55,16 +55,16 @@ From house
   Inner Join rpt_pbh634.v_ksm_giving_trans_hh gfts
     On gfts.household_id = house.household_id
   Group By
-house.household_id),
+house.household_id)
 
-GIVING_TRANS AS
+,GIVING_TRANS AS
 ( SELECT HH.*
   FROM rpt_pbh634.v_ksm_giving_trans_hh HH
   INNER JOIN KSM_REUNION KR
   ON HH."ID_NUMBER" = KR.ID_NUMBER
-),
+)
 
-KSM_GIVING_MOD as (select *
+,KSM_GIVING_MOD as (select *
 from v_ksm_reunion_giving_mod)
 
 --- Spouse Reunion Year Only for 2023
@@ -112,22 +112,12 @@ inner join KSM_REUNION ON KSM_REUNION.ID_number = house.SPOUSE_ID_NUMBER)
 ,CURRENT_DONOR AS (
   SELECT DISTINCT HH.ID_NUMBER
 FROM GIVING_TRANS HH
-WHERE HH.FISCAL_YEAR = '2022'
+cross join rpt_pbh634.v_current_calendar cal
+WHERE HH.FISCAL_YEAR = cal.CURR_FY
  AND HH.TX_GYPM_IND NOT IN ('P', 'M')
 )
-
-,ANON_DONOR AS (
-SELECT
- ID_NUMBER
- ,ANONYMOUS_DONOR
-From table(rpt_pbh634.ksm_pkg_tmp.tbl_special_handling_concat)
-WHERE ANONYMOUS_DONOR = 'Y'
-)
-
-,KSM_STAFF AS (
-  SELECT * FROM table(rpt_pbh634.ksm_pkg_tmp.tbl_frontline_ksm_staff) staff -- Historical Kellogg gift officers
+ -- Historical Kellogg gift officers
   -- Join credited visit ID to staff ID number
- )
 
 --- Edit: 5/20/22
 --- Edit: Reunion 2018 Registrations and Participants
@@ -193,16 +183,6 @@ Where
    Or committee_header.short_desc LIKE '%NU-%'
    Or committee_header.short_desc = 'NU Club of Switzerland')
 Group By committee.id_number)
-
-,BUSINESS_EMAIL AS (
-  SELECT
-    EM.ID_NUMBER
-    ,MAX(EM.EMAIL_ADDRESS) AS EMAIL_ADDRESS
-  FROM EMAIL EM
-  WHERE EM.EMAIL_TYPE_CODE = 'Y'
-  AND EM.EMAIL_STATUS_CODE = 'A'
-  GROUP BY EM.ID_NUMBER
-)
 
 ,PLG AS
 (SELECT
@@ -365,7 +345,7 @@ SELECT
   GROUP BY GT.ID_NUMBER
 )
 
-,KSM_TOTAL23 AS (
+,KSM_TOTAL22 AS (
   SELECT
   GT.ID_NUMBER
   ,SUM(GT.CREDIT_AMOUNT) AS KSM_TOTAL
@@ -376,7 +356,7 @@ SELECT
  GROUP BY GT.ID_NUMBER
 )
 
-,KSM_MATCH_23 AS (
+,KSM_MATCH_22 AS (
    SELECT DISTINCT
      GT.ID_NUMBER
    FROM GIVING_TRANS GT
@@ -414,32 +394,37 @@ From rpt_pbh634.v_ksm_model_mg mg)
 
 --- ADDING ACTIVITIES (SPEAKERS AND CORPORATE RECRUITERS) 
 
---- KSM_SPEAKERS
-
-,KSM_SPEAKERS AS (
-SELECT DISTINCT ACT.ID_NUMBER,
+,A as (SELECT DISTINCT ACT.ID_NUMBER,
        TMS_ACTIVITY_TABLE.short_desc,
        ACT.ACTIVITY_CODE,
        ACT.ACTIVITY_PARTICIPATION_CODE
 FROM  activity act
-LEFT JOIN TMS_ACTIVITY_TABLE ON TMS_ACTIVITY_TABLE.activity_code = ACT.ACTIVITY_CODE
-WHERE  act.activity_code = 'KSP'
-AND ACT.ACTIVITY_PARTICIPATION_CODE = 'P')
+LEFT JOIN TMS_ACTIVITY_TABLE ON TMS_ACTIVITY_TABLE.activity_code = ACT.ACTIVITY_CODE)
+
+--- KSM_SPEAKERS
+
+,KSM_SPEAKERS AS (
+SELECT DISTINCT a.ID_NUMBER,
+       a.short_desc,
+       a.ACTIVITY_CODE,
+       a.ACTIVITY_PARTICIPATION_CODE
+FROM  a
+WHERE  a.activity_code = 'KSP'
+AND A.ACTIVITY_PARTICIPATION_CODE = 'P')
 
 
 --- KSM CORPORATE RECRUITERS 
 
 ,KSM_CORPORATE_RECRUITERS AS (
-SELECT DISTINCT ACT.ID_NUMBER,
-       TMS_ACTIVITY_TABLE.short_desc,
-       ACT.ACTIVITY_CODE,
-       ACT.ACTIVITY_PARTICIPATION_CODE
-FROM  activity act
-LEFT JOIN TMS_ACTIVITY_TABLE ON TMS_ACTIVITY_TABLE.activity_code = ACT.ACTIVITY_CODE
-WHERE  act.activity_code = 'KCR'
-AND ACT.ACTIVITY_PARTICIPATION_CODE = 'P'),
+SELECT DISTINCT a.ID_NUMBER,
+       a.short_desc,
+       a.ACTIVITY_CODE,
+       a.ACTIVITY_PARTICIPATION_CODE
+FROM  a
+WHERE  a.activity_code = 'KCR'
+AND A.ACTIVITY_PARTICIPATION_CODE = 'P')
 
-Preferred_address as (Select
+,Preferred_address as (Select
          a.Id_number
       ,  a.addr_type_code
       ,  a.addr_pref_ind
@@ -451,23 +436,52 @@ Preferred_address as (Select
       ,  a.state_code
       ,  a.country_code
       FROM address a
-      WHERE a.addr_pref_IND = 'Y'),
+      WHERE a.addr_pref_IND = 'Y')
       
-s as (Select spec.ID_NUMBER,
+,s as (Select spec.ID_NUMBER,
+       spec.SPOUSE_ID_NUMBER,
+       spec.SPECIAL_HANDLING_CONCAT,
+       spec.SPEC_HND_CODES,
+       spec.MAILING_LIST_CONCAT,
+       spec.ML_CODES,
+       spec.RECORD_STATUS_CODE,
+       spec.GAB,
+       spec.TRUSTEE,
        spec.EBFA,
-       spec.NO_CONTACT
-From rpt_pbh634.v_entity_special_handling spec),
+       spec.NO_CONTACT,
+       spec.NO_SOLICIT,
+       spec.NO_RELEASE,
+       spec.ACTIVE_WITH_RESTRICTIONS,
+       spec.NEVER_ENGAGED_FOREVER,
+       spec.NEVER_ENGAGED_REUNION,
+       spec.HAS_OPT_INS_OPT_OUTS,
+       spec.ANONYMOUS_DONOR,
+       spec.EXC_ALL_COMM,
+       spec.EXC_ALL_SOLS,
+       spec.EXC_SURVEYS,
+       spec.LAST_SURVEY_DT,
+       spec.NO_SURVEY_IND,
+       spec.NO_PHONE_IND,
+       spec.NO_PHONE_SOL_IND,
+       spec.NO_EMAIL_IND,
+       spec.NO_EMAIL_SOL_IND,
+       spec.NO_MAIL_IND,
+       spec.NO_MAIL_SOL_IND,
+       spec.NO_TEXTS_IND,
+       spec.NO_TEXTS_SOL_IND,
+       spec.KSM_STEWARDSHIP_ISSUE
+From rpt_pbh634.v_entity_special_handling spec)
 
-assign as (select assign.id_number,
+,assign as (select assign.id_number,
        assign.prospect_manager,
        assign.lgos,
        assign.managers,
        assign.curr_ksm_manager
-from rpt_pbh634.v_assignment_summary assign),
+from rpt_pbh634.v_assignment_summary assign)
 
 --- Recent Contact Report
 
-c as (select
+,c as (select
 id_number,
 max (cr.credited) keep (dense_rank First Order By cr.contact_date DESC) as credited,
 max (cr.credited_name) keep (dense_rank First Order By cr.contact_date DESC) as credited_name,
@@ -478,17 +492,54 @@ max (cr.summary) keep (dense_rank First Order By cr.contact_date DESC) as summar
 from rpt_pbh634.v_contact_reports_fast cr
 group by cr.id_number)
 
+,Maiden_Name AS(
+Select id_number,
+ max(pref_name) keep(dense_rank first order by date_modified desc) AS maiden_name
+FROM name
+WHERE name_type_code = 'MN'
+GROUP BY id_number
+)
+
+--- Dean Salutation 
+,dean as (Select rpt_zrc8929.v_dean_salutation.ID_NUMBER,
+       rpt_zrc8929.v_dean_salutation.P_Dean_Salut
+From rpt_zrc8929.v_dean_salutation)
+
+,Phone as (Select t.id_number
+,t.preferred_ind
+,t.telephone_type_code
+,t.area_code
+,t.telephone_number
+From telephone t
+where t.preferred_ind = 'Y'),
+
+KAC AS (select k.id_number,
+       k.committee_code,
+       k.short_desc,
+       k.status
+From table (rpt_pbh634.ksm_pkg_tmp.tbl_committee_kac) k),
+
+GAB AS (Select g.id_number,
+       g.short_desc,
+       g.status
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_gab) g),
+
+PHS AS (Select p.id_number,
+       p.short_desc,
+       p.status
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_phs) P),
+
+Trustee As (select trustee.id_number,
+trustee.short_desc
+From Table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_trustee) Trustee)
+
 --- Don't need the temp table .... Yet. Will create one when registration opens in Jan 2023. 
 
 SELECT DISTINCT
    E.ID_NUMBER
   ,E.pref_mail_name
-    ,WT0_PKG.GetMaidenLast(E.ID_NUMBER) MAIDEN_1
-  ,SALUTATION_FIRST(E.ID_NUMBER,
-                        DECODE(TRIM(E.PREF_MAIL_NAME),
-                               NULL, ' ',
-                               E.SPOUSE_ID_NUMBER)) FIRST_NAME_SAL
-  ,WT0_PKG.GetDeansSal(E.ID_NUMBER, 'KM') DEANS_SALUTATION
+  ,M.maiden_name
+  ,d.P_Dean_Salut
   ,E.RECORD_STATUS_CODE
   ,E.GENDER_CODE
   ,KD."PROGRAM" AS DEGREE_PROGRAM
@@ -523,36 +574,26 @@ SELECT DISTINCT
   ,p.state_code
   ,p.country_code
   ,KR.P_GEOCODE_DESC AS GEO_AREA 
-  ,SH.NO_MAIL_SOL_IND AS NO_MAIL_SOLICIT
-  ,HEM.EMAIL_ADDRESS AS HM_EMAIL
-  ,BEM.EMAIL_ADDRESS AS BS_EMAIL
-  ,CASE WHEN SH.SPECIAL_HANDLING_CONCAT LIKE '%No Email Solicitation%' THEN 'No Email Solicitation'
-     WHEN SH.SPECIAL_HANDLING_CONCAT LIKE '%No Email%' THEN 'No Email'
-     WHEN EM.EMAIL_ADDRESS IS NULL THEN ' '
-     ELSE '(' || TEM.SHORT_DESC || ')' END AS EMAIL_USAGE_1
-  ,SH.NO_EMAIL_IND AS NO_EMAIL
-  ,SH.NO_EMAIL_SOL_IND AS NO_EMAIL_SOLICIT  
-  ,WT0_PKG.GetPrefPhoneType(E.ID_NUMBER) PREF_PHONE_TYPE
-  ,WT0_PKG.GetPrefPhoneInd(E.ID_NUMBER) PREF_PHONE_STATUS
-  ,WT0_PKG.GetPrefPhone(E.ID_NUMBER) PREF_PHONE
-  ,WT0_PKG.GetPhone(E.ID_NUMBER, 'B') BS_PHONE
-  ,SH.NO_PHONE_SOL_IND AS NO_PHONE_SOLICIT
-  ,SH.SPECIAL_HANDLING_CONCAT AS RESTRICTIONS
+  ,t.telephone_type_code
+  ,t.preferred_ind
+  ,t.area_code
+  ,t.telephone_number 
+  ,S.NO_EMAIL_IND AS NO_EMAIL
+  ,S.NO_EMAIL_SOL_IND AS NO_EMAIL_SOLICIT
+  ,S.NO_MAIL_SOL_IND AS NO_MAIL_SOLICIT
+  ,S.NO_PHONE_SOL_IND AS NO_PHONE_SOLICIT
+  ,S.SPECIAL_HANDLING_CONCAT AS RESTRICTIONS
   ,S.NO_CONTACT
-  ,CASE WHEN WT0_PKG.GetGAB(E.ID_NUMBER) = 'TRUE' THEN 'GAB'
-       WHEN WT0_PKG.GetGAB(E.SPOUSE_ID_NUMBER) = 'TRUE' THEN 'Spouse GAB' ELSE ' ' END GAB
-  ,CASE WHEN WT0_PKG.GetKAC(E.ID_NUMBER) = 'TRUE' THEN 'KAC'
-     WHEN WT0_PKG.GetKAC(E.SPOUSE_ID_NUMBER) = 'TRUE' THEN 'Spouse KAC' ELSE ' ' END KAC
-  ,CASE WHEN WT0_PKG.GetPeteHenderson(E.ID_NUMBER) = 'Y' THEN 'PHS'
-     WHEN WT0_PKG.GetPeteHenderson(E.SPOUSE_ID_NUMBER) = 'Y' THEN 'Spouse PHS' ELSE ' ' END PHS
-  ,CASE WHEN WT0_PKG.IsCurrentTrustee(E.ID_NUMBER) = 'TRUE' THEN 'Trustee'
-     WHEN WT0_PKG.IsCurrentTrustee(E.SPOUSE_ID_NUMBER) = 'TRUE' THEN 'Spouse Trustee' ELSE ' ' END TRUSTEE 
-  ,S.EBFA
+  ,KAC.SHORT_DESC AS KAC
+  ,PHS.SHORT_DESC AS PHS
+  ,TRUSTEE.SHORT_DESC AS TRUSTEE
+  ,GAB.SHORT_DESC AS GAB
+  ,S.EBFA AS ASIA_EXECUTIVE_BOARD
   ,KSM_ENGAGEMENT.Date_Recent_Event
   ,KSM_ENGAGEMENT.Recent_Event_ID
   ,KSM_ENGAGEMENT.Recent_Event_Name
   ,CASE WHEN CYD.ID_NUMBER IS NOT NULL THEN 'Y' END AS "CYD"
-  ,ANON.ANONYMOUS_DONOR
+  ,S.ANONYMOUS_DONOR
   ,assign.LGOS
   ,assign.Prospect_Manager
   ,GIVING_SUMMARY.CRU_CFY
@@ -600,8 +641,8 @@ SELECT DISTINCT
   ,WT0_GIFTS2.IsAnonymousDonor(E.SPOUSE_ID_NUMBER) ANON_DONOR2
   ,KSMT.KSM_TOTAL
   ,KAFT.KSM_AF_TOTAL
-  ,KSM23.KSM_TOTAL AS KSM_TOTAL_2023
-  ,CASE WHEN KM23.ID_NUMBER IS NOT NULL THEN 'Y' END AS MATCH_2023
+  ,KSM22.KSM_TOTAL AS KSM_TOTAL_2022
+  ,CASE WHEN KM22.ID_NUMBER IS NOT NULL THEN 'Y' END AS MATCH_2022
   ,NP.OFFICER_RATING
   ,REPLACE(WT0_PKG.GetRecentRating(E.ID_NUMBER, 'PR'), ';;') RESEARCH_RATING
   --,WT0_PKG.Get_Prime_Geo_Area_From_Zip(PA.ZIPCODE) AS GEO_AREA
@@ -642,6 +683,7 @@ SELECT DISTINCT
   ,c.Contacted_name
   ,c.Max_Date
 FROM ENTITY E
+--- Just want Reunion for the given year
 INNER JOIN KSM_REUNION KR
 ON E.ID_NUMBER = KR.ID_NUMBER
 INNER JOIN HOUSE
@@ -652,51 +694,17 @@ LEFT JOIN PAST_REUNION_COMMITTEE PRC
 ON E.ID_NUMBER = PRC.ID_NUMBER
 LEFT JOIN CURRENT_DONOR CYD
 ON E.ID_NUMBER = CYD.ID_NUMBER
-LEFT JOIN ANON_DONOR ANON
-ON E.ID_NUMBER = ANON.ID_NUMBER
-LEFT JOIN RPT_PBH634.V_ENTITY_KSM_DEGREES KD
+--- Inner Join Degrees - They're all KSM alumni! 
+INNER JOIN RPT_PBH634.V_ENTITY_KSM_DEGREES KD
 ON E.ID_NUMBER = KD.ID_NUMBER
 LEFT JOIN NU_PRS_TRP_PROSPECT NP
 ON E.ID_NUMBER = NP.ID_NUMBER
-LEFT JOIN table(rpt_pbh634.ksm_pkg_tmp.tbl_special_handling_concat) SH
-ON E.ID_NUMBER = SH.ID_NUMBER
 LEFT JOIN REUNION_2018_REGISTRANTS R18
 ON E.ID_NUMBER = R18.Contact_ID_number
 LEFT JOIN REUNION_2018_PARTICIPANTS RP18
 ON E.ID_NUMBER = RP18.ID_NUMBER
 LEFT JOIN KSM_CLUB_LEADERS KCL
 ON E.ID_NUMBER = KCL.ID_NUMBER
-LEFT JOIN EMAIL EM
-ON E.ID_NUMBER = EM.ID_NUMBER
-  AND EM.EMAIL_STATUS_CODE = 'A'
-  AND EM.PREFERRED_IND = 'Y'
-LEFT JOIN TMS_EMAIL_TYPE TEM
-ON EM.EMAIL_TYPE_CODE = TEM.email_type_code
-LEFT JOIN ADDRESS PA
-ON E.ID_NUMBER = PA.ID_NUMBER
-  AND PA.ADDR_STATUS_CODE = 'A'
-  AND PA.ADDR_PREF_IND = 'Y'
-LEFT JOIN TMS_COUNTRY PC
-ON PA.COUNTRY_CODE = PC.COUNTRY_CODE
-LEFT JOIN ADDRESS HA
-ON E.ID_NUMBER = HA.ID_NUMBER
-  AND HA.ADDR_STATUS_CODE = 'A'
-  AND HA.ADDR_TYPE_CODE = 'H'
-LEFT JOIN TMS_COUNTRY HC
-ON HA.COUNTRY_CODE = HC.country_code
-LEFT JOIN EMAIL HEM
-ON E.ID_NUMBER = HEM.ID_NUMBER
- AND HEM.EMAIL_STATUS_CODE = 'A'
- AND HEM.EMAIL_TYPE_CODE = 'X'
- AND HEM.PREFERRED_IND = 'Y'
-LEFT JOIN ADDRESS BA
-ON E.ID_NUMBER = BA.ID_NUMBER
-  AND BA.ADDR_STATUS_CODE = 'A'
-  AND BA.ADDR_TYPE_CODE = 'B'
-LEFT JOIN TMS_COUNTRY BC
-ON BA.COUNTRY_CODE = BC.country_code
-LEFT JOIN BUSINESS_EMAIL BEM
-ON E.ID_NUMBER = BEM.ID_NUMBER
 LEFT JOIN EMPLOYMENT EMPL
 ON E.ID_NUMBER = EMPL.ID_NUMBER
   AND EMPL.JOB_STATUS_CODE = 'C'
@@ -711,10 +719,10 @@ LEFT JOIN KSM_TOTAL KSMT
  ON E.ID_NUMBER = KSMT.ID_NUMBER
 LEFT JOIN KSM_AF_TOTAL KAFT
   ON E.ID_NUMBER = KAFT.ID_NUMBER
-LEFT JOIN KSM_TOTAL23 KSM23
-  ON E.ID_NUMBER = KSM23.ID_NUMBER
-LEFT JOIN KSM_MATCH_23 KM23
-  ON E.ID_NUMBER = KM23.ID_NUMBER
+LEFT JOIN KSM_TOTAL22 KSM22
+  ON E.ID_NUMBER = KSM22.ID_NUMBER
+LEFT JOIN KSM_MATCH_22 KM22
+  ON E.ID_NUMBER = KM22.ID_NUMBER
 LEFT JOIN NU_PRS_TRP_PROSPECT NP
   ON E.ID_NUMBER = NP.ID_NUMBER
 LEFT JOIN PROPOSALS PROP
@@ -747,4 +755,20 @@ LEFT JOIN C
 ON C.ID_NUMBER = E.ID_NUMBER
 LEFT JOIN assign
 ON assign.id_number = E.ID_NUMBER
+LEFT JOIN Maiden_Name M
+on m.id_number = e.id_number
+LEFT JOIN DEAN d
+on d.id_number = e.id_number
+LEFT JOIN PHONE P
+on p.id_number = e.id_number
+LEFT JOIN Trustee 
+ON Trustee.id_number = e.ID_NUMBER
+LEFT JOIN GAB 
+ON GAB.id_number = e.ID_NUMBER
+LEFT JOIN phs 
+ON PHS.ID_NUMBER = E.ID_NUMBER
+LEFT JOIN KAC
+ON KAC.ID_NUMBER = E.ID_NUMBER
+LEFT JOIN PHONE T 
+ON T.ID_NUMBER = E.ID_NUMBER
 ;
