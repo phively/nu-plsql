@@ -1,5 +1,14 @@
 Create Or Replace View vt_ksm_giving_dei As
 
+With
+
+params As (
+  Select
+    to_date('20200601', 'yyyymmdd') -- Time-bound alloc start date
+    As tb_start_dt
+  From DUAL
+)
+
 Select
   gt.*
   , Case
@@ -30,7 +39,7 @@ Select
         , '6506004769701GFT'
         , '6506005013601GFT'
       )
-        And gt.fiscal_year >= 2020
+        And gt.date_of_record >= params.tb_start_dt
         Then 'Y'
       -- Specific gifts/bequests
       When gt.allocation_code = '3203004290301GFT' -- Unrestricted Bequest
@@ -42,6 +51,7 @@ Select
     End
     As dei_flag
 From v_ksm_giving_trans gt
+Cross Join params
 Where gt.allocation_code
 -- Include allocs
 In (
