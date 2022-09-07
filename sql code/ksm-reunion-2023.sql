@@ -425,7 +425,7 @@ WHERE  a.activity_code = 'KCR'
 AND A.ACTIVITY_PARTICIPATION_CODE = 'P')
 
 ,Preferred_address as (Select
-         a.Id_number
+       a.Id_number
       ,  a.addr_type_code
       ,  a.addr_pref_ind
       ,  a.street1
@@ -435,6 +435,9 @@ AND A.ACTIVITY_PARTICIPATION_CODE = 'P')
       ,  a.city
       ,  a.state_code
       ,  a.country_code
+      , a.company_name_1
+      , a.company_name_2
+      , a.business_title
       FROM address a
       WHERE a.addr_pref_IND = 'Y')
       
@@ -503,15 +506,7 @@ GROUP BY id_number
 --- Dean Salutation 
 ,dean as (Select rpt_zrc8929.v_dean_salutation.ID_NUMBER,
        rpt_zrc8929.v_dean_salutation.P_Dean_Salut
-From rpt_zrc8929.v_dean_salutation)
-
-,Phone as (Select t.id_number
-,t.preferred_ind
-,t.telephone_type_code
-,t.area_code
-,t.telephone_number
-From telephone t
-where t.preferred_ind = 'Y'),
+From rpt_zrc8929.v_dean_salutation),
 
 KAC AS (select k.id_number,
        k.committee_code,
@@ -564,20 +559,19 @@ SELECT DISTINCT
   ,FW.short_desc AS INDUSTRY
   ,EMPL.EMPLOYER_NAME1 AS EMPLOYER
   ,EMPL.JOB_TITLE AS BS_POSITION
-  ,p.addr_pref_ind
-  ,p.addr_type_code
-  ,p.street1
-  ,p.street2
-  ,p.street3
-  ,p.zipcode
-  ,p.city
-  ,p.state_code
-  ,p.country_code
+  ,p.addr_pref_ind as preferred_address_indicator
+  ,p.addr_type_code as preferred_address_type
+  ,p.company_name_1 as pref_business_address_company1
+  ,p.company_name_2 as pref_business_address_company2
+  ,p.business_title as pref_business_address_title
+  ,p.street1 as preferred_street1
+  ,p.street2 as preferred_street2
+  ,p.street3 as preferred_street3
+  ,p.zipcode as preferred_street4
+  ,p.city as preferred_city
+  ,p.state_code as preferred_state
+  ,p.country_code as preferred_country
   ,KR.P_GEOCODE_DESC AS GEO_AREA 
-  ,t.telephone_type_code
-  ,t.preferred_ind
-  ,t.area_code
-  ,t.telephone_number 
   ,S.NO_EMAIL_IND AS NO_EMAIL
   ,S.NO_EMAIL_SOL_IND AS NO_EMAIL_SOLICIT
   ,S.NO_MAIL_SOL_IND AS NO_MAIL_SOLICIT
@@ -759,8 +753,6 @@ LEFT JOIN Maiden_Name M
 on m.id_number = e.id_number
 LEFT JOIN DEAN d
 on d.id_number = e.id_number
-LEFT JOIN PHONE P
-on p.id_number = e.id_number
 LEFT JOIN Trustee 
 ON Trustee.id_number = e.ID_NUMBER
 LEFT JOIN GAB 
@@ -768,7 +760,4 @@ ON GAB.id_number = e.ID_NUMBER
 LEFT JOIN phs 
 ON PHS.ID_NUMBER = E.ID_NUMBER
 LEFT JOIN KAC
-ON KAC.ID_NUMBER = E.ID_NUMBER
-LEFT JOIN PHONE T 
-ON T.ID_NUMBER = E.ID_NUMBER
-;
+ON KAC.ID_NUMBER = E.ID_NUMBER;
