@@ -43,7 +43,7 @@ AND A.AFFIL_LEVEL_CODE = 'RG'
 )
 
 ,GIVING_SUMMARY AS (
-Select Distinct house.household_id
+Select Distinct house.id_number
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year     And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_cfy
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 1 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy1
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 2 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy2
@@ -53,9 +53,9 @@ Select Distinct house.household_id
 From house
   Cross Join rpt_pbh634.v_current_calendar cal
   Inner Join rpt_pbh634.v_ksm_giving_trans_hh gfts
-    On gfts.household_id = house.household_id
+    On gfts.ID_NUMBER = house.id_number
   Group By
-house.household_id)
+house.id_number)
 
 ,GIVING_TRANS AS
 ( SELECT HH.*
@@ -732,7 +732,7 @@ LEFT JOIN KSM_SPEAKERS
 LEFT JOIN KSM_CORPORATE_RECRUITERS
      ON KSM_CORPORATE_RECRUITERS.ID_NUMBER = E.ID_NUMBER
 LEFT JOIN GIVING_SUMMARY
-     ON GIVING_SUMMARY.household_id = KR.HOUSEHOLD_ID
+     ON GIVING_SUMMARY.id_number = KR.id_number
 LEFT JOIN KSM_GIVING_MOD KGM
         ON KGM.household_id = KR.HOUSEHOLD_ID
 LEFT JOIN REUNION_18_COMMITTEE RC18
