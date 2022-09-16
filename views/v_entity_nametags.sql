@@ -133,8 +133,15 @@ Select
   , entity.record_status_code
   , entity.institutional_suffix
   , deg.degrees_concat
-  , dean_sals.p_dean_source As first_name_source
-  , p_dean_salut As pref_first_name
+  , dean_sals.p_dean_source As pref_first_name_source
+  , Case
+      When p_dean_salut Is Not Null
+        Then p_dean_salut
+      Else entity.first_name
+      End
+    As pref_first_name
+  , entity.first_name
+  , entity.middle_name
   , entity.last_name As last_name
   , entity.pers_suffix
   , degrees_concat.nu_degrees_string
