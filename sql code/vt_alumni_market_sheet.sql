@@ -104,7 +104,8 @@ Spec AS (Select rpt_pbh634.v_entity_special_handling.ID_NUMBER,
        rpt_pbh634.v_entity_special_handling.NO_PHONE_IND,
        rpt_pbh634.v_entity_special_handling.NO_EMAIL_IND,
        rpt_pbh634.v_entity_special_handling.NO_MAIL_IND,
-       rpt_pbh634.v_entity_special_handling.SPECIAL_HANDLING_CONCAT
+       rpt_pbh634.v_entity_special_handling.SPECIAL_HANDLING_CONCAT,
+       rpt_pbh634.v_entity_special_handling.EBFA
 From rpt_pbh634.v_entity_special_handling),
 
 
@@ -218,6 +219,8 @@ case when KSM_Email.email_address is not null then 'Y' Else 'N' END As pref_emai
 spec.GAB,
 
 spec.TRUSTEE,
+
+spec.EBFA, 
 
 spec.NO_CONTACT,
 
