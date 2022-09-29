@@ -1237,7 +1237,12 @@ ccount as (select  c.id_number,
 from rpt_pbh634.v_nu_committees c
 where (c.ksm_committee = 'Y'
 and c.committee_status_code = 'C')
-group by c.id_number)
+group by c.id_number),
+
+visits as (select  v.id_number,
+        count(v.id_number) as count
+from rpt_pbh634.v_ksm_visits v
+group by v.id_number)
 
 Select distinct
 
@@ -1264,10 +1269,9 @@ e.event_type_desc,
 --- KSM or Just NU Event Indicator 
 p.ksm_event,
 --- Committee Counts
-cc.count as count_committees
+cc.count as count_committees,
 --- Visits: ... 
-
-
+v.count as visit_count
 --- Using Event as Main Table
 From  rpt_pbh634.v_nu_event_participants_fast p
 --- Joining Participants, Registration, Organizer, Event Codes and Entity Table to Event Table
@@ -1277,6 +1281,7 @@ Left Join Entity On Entity.Id_Number = p.Id_Number
 Left Join assign on assign.id_number = p.id_number
 Left Join prospect on prospect.id_number = p.id_number 
 Left Join ccount cc on cc.id_number = p.id_number
+Left Join visits v on v.id_number = p.id_number
 --- Kellogg Alumni Only 
 Inner Join rpt_pbh634.v_entity_ksm_degrees d on d.id_number = p.id_number 
 cross join rpt_pbh634.v_current_calendar cal
