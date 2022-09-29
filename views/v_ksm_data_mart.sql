@@ -1196,3 +1196,96 @@ LEFT JOIN phone p on p.id_number = d.id_number
 Left Join KSM_Spec on KSM_Spec.id_number = d.id_number
 Where (KSM_Spec.NO_CONTACT is null
 and KSM_Spec.ACTIVE_WITH_RESTRICTIONS is null);
+
+
+Create or Replace View v_datamart_events as 
+
+/* 9/29/2022 
+
+Creating a new view for events
+ 
+ 
+1.  Aggregated event attendance + some other columns: 
+
+Sergio will deliver these in a new view
+
+Fields:
+i.  MANAGED_PROSPECT
+ii.  RATED_PROSPECT
+iii.  ANY_ENGAGEMENT_5FY
+iv.  KSM_EVENTS
+v.  NU_EVENTS
+vi.  COMMITTEES_COUNT
+vii.  VISITS_COUNT
+*/  
+
+
+with assign as (select assign.id_number,
+       assign.prospect_manager,
+       assign.lgos,
+       assign.managers,
+       assign.curr_ksm_manager
+from rpt_pbh634.v_assignment_summary assign), 
+
+
+prospect as (Select p.ID_NUMBER,p.evaluation_date, p.officer_rating
+From rpt_pbh634.v_ksm_prospect_pool p
+Where p.degrees_concat Is Null),
+
+ccount as (select  c.id_number,
+        count(c.id_number) as count
+from rpt_pbh634.v_nu_committees c
+where (c.ksm_committee = 'Y'
+and c.committee_status_code = 'C')
+group by c.id_number)
+
+Select distinct
+
+---- Select ID Number
+p.Id_Number,
+--- Managed Prospect
+assign.prospect_manager,
+assign.curr_ksm_manager, 
+assign.lgos,
+assign.managers,
+--- Rated Prospect 
+prospect.evaluation_date,
+prospect.officer_rating, 
+--- Any Engagement 5FY 
+p.Event_Id,
+p.Event_Name,
+--- Event/Kellogg Organizers (Who 
+e.event_organizers,
+e.kellogg_organizers,
+p.start_dt,
+p.stop_dt,
+p.start_fy_calc,
+e.event_type_desc,
+--- KSM or Just NU Event Indicator 
+p.ksm_event,
+--- Committee Counts
+cc.count as count_committees
+--- Visits: ... 
+
+
+--- Using Event as Main Table
+From  rpt_pbh634.v_nu_event_participants_fast p
+--- Joining Participants, Registration, Organizer, Event Codes and Entity Table to Event Table
+
+Left Join rpt_pbh634.v_nu_events e On e.Event_Id = p.Event_Id
+Left Join Entity On Entity.Id_Number = p.Id_Number
+Left Join assign on assign.id_number = p.id_number
+Left Join prospect on prospect.id_number = p.id_number 
+Left Join ccount cc on cc.id_number = p.id_number
+--- Kellogg Alumni Only 
+Inner Join rpt_pbh634.v_entity_ksm_degrees d on d.id_number = p.id_number 
+cross join rpt_pbh634.v_current_calendar cal
+--- Over the Last Five Years 
+where (cal.curr_fy = p.start_fy_calc + 5
+or cal.curr_fy = p.start_fy_calc + 4
+or cal.curr_fy = p.start_fy_calc + 3
+or cal.curr_fy = p.start_fy_calc + 2
+or cal.curr_fy = p.start_fy_calc + 1
+or cal.curr_fy = p.start_fy_calc)
+Order By p.start_dt ASC
+;
