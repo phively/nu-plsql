@@ -16,12 +16,18 @@ Select Distinct
       End
     As event_organizer_name
   , Case
-      When lower(entity.report_name) Like lower('%Kellogg%')
-        And entity.person_or_org = 'O'
-        Then 'Y'
-      When lower(ento.report_name) Like lower('%Kellogg%')
-        And ento.person_or_org = 'O'
-        Then 'Y'
+      When entity.report_name Is Not Null
+      Then Case
+        When lower(entity.report_name) Like lower('%Kellogg%')
+          And entity.person_or_org = 'O'
+          Then 'Y'
+        End
+      When entity.report_name Is Null
+      Then Case
+        When lower(ento.report_name) Like lower('%Kellogg%')
+          And ento.person_or_org = 'O'
+          Then 'Y'
+        End
       End
     As kellogg_club
 From ep_event_organizer eo
