@@ -1276,8 +1276,8 @@ v.count as visit_count
 From  rpt_pbh634.v_nu_event_participants_fast p
 --- Joining Participants, Registration, Organizer, Event Codes and Entity Table to Event Table
 
-Left Join rpt_pbh634.v_nu_events e On e.Event_Id = p.Event_Id
-Left Join Entity On Entity.Id_Number = p.Id_Number
+Inner Join rpt_pbh634.v_nu_events e On e.Event_Id = p.Event_Id
+Inner Join Entity On Entity.Id_Number = p.Id_Number
 Left Join assign on assign.id_number = p.id_number
 Left Join prospect on prospect.id_number = p.id_number 
 Left Join ccount cc on cc.id_number = p.id_number
@@ -1292,5 +1292,6 @@ or cal.curr_fy = p.start_fy_calc + 3
 or cal.curr_fy = p.start_fy_calc + 2
 or cal.curr_fy = p.start_fy_calc + 1
 or cal.curr_fy = p.start_fy_calc)
+and p.ksm_event = 'Y'
 Order By p.start_dt ASC
 ;

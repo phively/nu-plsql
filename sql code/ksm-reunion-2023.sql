@@ -505,7 +505,8 @@ GROUP BY id_number
 
 --- Dean Salutation 
 ,dean as (Select rpt_zrc8929.v_dean_salutation.ID_NUMBER,
-       rpt_zrc8929.v_dean_salutation.P_Dean_Salut
+       rpt_zrc8929.v_dean_salutation.P_Dean_Salut,
+       rpt_zrc8929.v_dean_salutation.P_Dean_Source
 From rpt_zrc8929.v_dean_salutation),
 
 KAC AS (select k.id_number,
@@ -535,6 +536,7 @@ SELECT DISTINCT
   ,E.pref_mail_name
   ,M.maiden_name
   ,d.P_Dean_Salut
+  ,d.P_Dean_Source
   ,E.RECORD_STATUS_CODE
   ,E.GENDER_CODE
   ,KD."PROGRAM" AS DEGREE_PROGRAM
