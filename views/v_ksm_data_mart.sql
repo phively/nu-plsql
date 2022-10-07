@@ -1217,6 +1217,24 @@ iv.  KSM_EVENTS
 v.  NU_EVENTS
 vi.  COMMITTEES_COUNT
 vii.  VISITS_COUNT
+
+EDIT: 10-7-22
+
+--- Checking for Views not in the ADVANCE_NU_RPT
+
+---- rpt_pbh634.v_ksm_visits v
+---- rpt_pbh634.v_nu_committees c
+---- rpt_pbh634.v_assignment_summary assign
+---- rpt_pbh634.v_nu_event_participants_fast
+
+---- Views already in ADVANCE_NU_RPT
+
+--- rpt_pbh634.v_current_calendar
+--- rpt_pbh634.v_entity_ksm_degrees
+
+
+
+
 */  
 
 
