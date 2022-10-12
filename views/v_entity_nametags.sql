@@ -127,12 +127,56 @@ dean_sals As (
     id_number
 )
 
+, children_degs As (
+  Select
+    children.id_number
+    , children.child_id_number
+    , degrees_clean.degree_year
+    , '''' || substr(degrees_clean.degree_year, -2) -- 'YY class year: rightmost 2 digits
+      As year_abbr
+  From children
+  Inner Join degrees_clean -- Intentionally inner join; ignore non-alumni children
+    On degrees_clean.id_number = children.child_id_number
+  Where children.child_relation_code In ('CP', 'SP') -- child/parent, stepchild/parent
+    And trim(children.child_id_number) Is Not Null
+)
+
+, children_deg As (
+  Select
+    cd.id_number
+    , cd.child_id_number
+    , min(cd.year_abbr) keep(dense_rank First Order By cd.degree_year Asc)
+      As child_first_degree_yr_abbr
+    , min(cd.degree_year) keep(dense_rank First Order By cd.degree_year Asc)
+      As child_first_degree_yr
+    , Listagg(cd.year_abbr, ', ') Within Group (Order By cd.degree_year Asc)
+      As child_degrees
+  From children_degs cd
+  Group By cd.id_number
+    , cd.child_id_number
+)
+
+, children_deg_concat As (
+  Select
+    cd.id_number
+    , count(Distinct cd.child_id_number)
+      As children_with_nu_deg
+    , Listagg(child_first_degree_yr, ', ') Within Group (Order By child_first_degree_yr Asc)
+      As children_first_degs_abbr
+    , Listagg(child_first_degree_yr_abbr, ', ') Within Group (Order By child_first_degree_yr Asc)
+      As children_first_degs_concat
+  From children_deg cd
+  Group By cd.id_number
+)
+
 Select
   entity.id_number
   , entity.pref_mail_name
   , entity.record_status_code
   , entity.institutional_suffix
   , deg.degrees_concat
+  , cdc.children_with_nu_deg
+  , cdc.children_first_degs_concat
   , dean_sals.p_dean_source As pref_first_name_source
   , Case
       When p_dean_salut Is Not Null
@@ -152,6 +196,8 @@ Left Join degrees_concat
   On degrees_concat.id_number = entity.id_number
 Left Join rpt_pbh634.v_entity_ksm_degrees deg
   On deg.id_number = entity.id_number
+Left Join children_deg_concat cdc
+  On cdc.id_number = entity.id_number
 Where entity.person_or_org = 'P'
   And entity.record_status_code Not In ('D', 'X', 'I')
 ;
