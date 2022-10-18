@@ -1232,48 +1232,34 @@ EDIT: 10-7-22
 --- rpt_pbh634.v_current_calendar
 --- rpt_pbh634.v_entity_ksm_degrees
 
-
-
-
 */  
 
 
-with assign as (select assign.id_number,
-       assign.prospect_manager,
-       assign.lgos,
-       assign.managers,
-       assign.curr_ksm_manager
-from rpt_pbh634.v_assignment_summary assign), 
+/* Edit 10-13-2022 
 
+We are separating these into two views Events + Prospect View
 
-prospect as (Select p.ID_NUMBER,p.evaluation_date, p.officer_rating
-From rpt_pbh634.v_ksm_prospect_pool p
-Where p.degrees_concat Is Null),
+Event View: This view will provide the raw data on event attendance from the current fiscal year to the last 5 prior fiscal years. 
 
-ccount as (select  c.id_number,
-        count(c.id_number) as count
-from rpt_pbh634.v_nu_committees c
-where (c.ksm_committee = 'Y'
-and c.committee_status_code = 'C')
-group by c.id_number),
+•	ID Number
+•	Event ID
+•	Event Name 
+•	Event Organizers
+•	Start Date
+•	Stop Date
+•	Start FY Calc
+•	Event Type Desc 
+•	KSM Event Flag
+•	NU Event Flag - We want to add back in the NU Events. 
 
-visits as (select  v.id_number,
-        count(v.id_number) as count
-from rpt_pbh634.v_ksm_visits v
-group by v.id_number)
+*/
 
-Select distinct
+Create or Replace View v_datamart_events as 
+
+Select 
 
 ---- Select ID Number
 p.Id_Number,
---- Managed Prospect
-assign.prospect_manager,
-assign.curr_ksm_manager, 
-assign.lgos,
-assign.managers,
---- Rated Prospect 
-prospect.evaluation_date,
-prospect.officer_rating, 
 --- Any Engagement 5FY 
 p.Event_Id,
 p.Event_Name,
@@ -1285,21 +1271,16 @@ p.stop_dt,
 p.start_fy_calc,
 e.event_type_desc,
 --- KSM or Just NU Event Indicator 
-p.ksm_event,
---- Committee Counts
-cc.count as count_committees,
---- Visits: ... 
-v.count as visit_count
+case when p.ksm_event = 'Y' then 'Y' end as ksm_event,
+--- NU Event Indicator   
+case when p.ksm_event is null then 'Y' end as NU_event
+
 --- Using Event as Main Table
 From  rpt_pbh634.v_nu_event_participants_fast p
 --- Joining Participants, Registration, Organizer, Event Codes and Entity Table to Event Table
 
 Inner Join rpt_pbh634.v_nu_events e On e.Event_Id = p.Event_Id
 Inner Join Entity On Entity.Id_Number = p.Id_Number
-Left Join assign on assign.id_number = p.id_number
-Left Join prospect on prospect.id_number = p.id_number 
-Left Join ccount cc on cc.id_number = p.id_number
-Left Join visits v on v.id_number = p.id_number
 --- Kellogg Alumni Only 
 Inner Join rpt_pbh634.v_entity_ksm_degrees d on d.id_number = p.id_number 
 cross join rpt_pbh634.v_current_calendar cal
@@ -1310,6 +1291,118 @@ or cal.curr_fy = p.start_fy_calc + 3
 or cal.curr_fy = p.start_fy_calc + 2
 or cal.curr_fy = p.start_fy_calc + 1
 or cal.curr_fy = p.start_fy_calc)
-and p.ksm_event = 'Y'
 Order By p.start_dt ASC
+;
+
+/*
+
+KSM Prospect View: 
+
+•	ID Number 
+•	Prospect Manager
+•	LGOs
+•	KSM Manager Flag
+•	Managers
+•	Evaluation Date
+•	Officer Rating
+•	Committee Count
+•	Visit Count 
+
+AND Any Engagement, NU Event, and Kellogg Event flags 
+
+*/
+
+create or replace view v_ksm_datamart_prospect as 
+
+with assign as (select assign.id_number,
+       assign.prospect_manager,
+       assign.lgos,
+       assign.managers,
+       assign.curr_ksm_manager
+from rpt_pbh634.v_assignment_summary assign), 
+
+
+prospect as (Select p.ID_NUMBER,p.evaluation_date, p.officer_rating
+From rpt_pbh634.v_ksm_prospect_pool p),
+
+ccount as (select  c.id_number,
+        count(c.id_number) as count
+from rpt_pbh634.v_nu_committees c
+where (c.ksm_committee = 'Y'
+and c.committee_status_code = 'C')
+group by c.id_number),
+
+visits as (select  v.id_number,
+        count(v.id_number) as count
+from rpt_pbh634.v_ksm_visits v
+group by v.id_number),
+
+--- Event flag 
+
+event as (select ev.Id_Number,
+          ev.Event_Id,
+          ev.Event_Name,
+          ev.event_organizers,
+          ev.kellogg_organizers,
+          ev.start_dt,
+          ev.stop_dt,
+          ev.start_fy_calc,
+          ev.event_type_desc,
+          ev.ksm_event,
+          ev.NU_event
+from v_datamart_events ev),
+
+engage as (select distinct event.id_number
+from event),
+
+nu as (select distinct event.id_number
+from event 
+where event.NU_event = 'Y'),
+
+ksm as (select distinct event.id_number
+from event 
+where event.ksm_event = 'Y'),
+
+fin as (
+select distinct event.id_number,
+ ---- Any Engagement Flag in the Last 
+case when engage.id_number is not null then 'Y' End as Engaged_Last_5,
+---- KSM Event Flag
+case when ksm.id_number is not null then 'Y' End as KSM_Event_Last_5,
+--- NU Event (Non Kellogg Event) 
+case when nu.id_number is not null then 'Y' End as NU_Event_Last_5
+from event
+left join engage on engage.id_number = event.id_number
+left join nu on nu.id_number = event.id_number
+left join ksm on ksm.id_number = event.id_number)
+
+Select distinct 
+---- Select ID Number
+e.Id_Number,
+--- Managed Prospect
+assign.prospect_manager,
+assign.curr_ksm_manager, 
+assign.lgos,
+assign.managers,
+--- Rated Prospect 
+prospect.evaluation_date,
+prospect.officer_rating, 
+--- Committee Counts
+cc.count as count_committees,
+--- Visits: ... 
+v.count as visit_count,
+---- Any Engagement Flag in the Last 
+fin.Engaged_Last_5,
+---- KSM Event Flag
+fin.KSM_Event_Last_5,
+--- NU Event (Non Kellogg Event) 
+fin.NU_Event_Last_5
+--- Kellogg Alumni Only 
+From  rpt_pbh634.v_entity_ksm_degrees e
+Left Join assign on assign.id_number = e.id_number
+Left Join prospect on prospect.id_number = e.id_number 
+Left Join ccount cc on cc.id_number = e.id_number
+Left Join visits v on v.id_number = e.id_number
+--- Add in Events Flags for Propsect View
+Left Join fin on fin.id_number = e.id_number
 ;
