@@ -1198,8 +1198,6 @@ Where (KSM_Spec.NO_CONTACT is null
 and KSM_Spec.ACTIVE_WITH_RESTRICTIONS is null);
 
 
-Create or Replace View v_datamart_events as 
-
 /* 9/29/2022 
 
 Creating a new view for events
