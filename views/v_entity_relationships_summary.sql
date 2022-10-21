@@ -76,7 +76,7 @@ salutations As (
     Or trim(entity.spouse_name) Is Not Null
 )
 
--- Children coded under relationship
+-- Children/grandchildren coded under relationship
 , relationship_table As (
   Select
     relationship.id_number
@@ -112,10 +112,10 @@ salutations As (
     On tms_r.relation_type_code = relationship.relation_type_code
   Left Join entity
     On entity.id_number = relationship.relation_id_number
-  Where relationship.relation_type_code In ('CP', 'SP') -- child/parent, stepchild/parent
+  Where relationship.relation_type_code In ('CP', 'SP', 'CL', 'GC') -- child/parent, stepchild/parent, child-in-law (why?), grandchild
 )
 
--- Children coded under children
+-- Children/grandchildren coded under children
 , children_table As (
   Select
     children.id_number
@@ -154,7 +154,7 @@ salutations As (
     On tms_r.relation_type_code = children.child_relation_code
   Left Join entity
     On entity.id_number = children.child_id_number
-  Where children.child_relation_code In ('CP', 'SP') -- child/parent, stepchild/parent
+  Where children.child_relation_code In ('CP', 'SP', 'CL', 'GC') -- child/parent, stepchild/parent, child-in-law (why?), grandchild
 )
 
 -- Combined children
@@ -169,6 +169,7 @@ salutations As (
     , child_name
     , child_institutional_suffix
   From children_table
+  Where child_relation_code In ('CP', 'SP', 'CL')
   Union
   Select 
     id_number
@@ -178,6 +179,31 @@ salutations As (
     , child_name
     , child_institutional_suffix
   From relationship_table
+  Where relation_type_code In ('CP', 'SP', 'CL')
+)
+
+-- Combined grandchildren
+, grandchildren_combined As (
+  -- Select relevant fields
+  Select
+    id_number
+    , child_id_number
+    , child_gender_code
+    , relation_type
+    , child_name
+    , child_institutional_suffix
+  From children_table
+  Where child_relation_code In ('GC')
+  Union
+  Select 
+    id_number
+    , child_id_number
+    , child_gender_code
+    , relation_type
+    , child_name
+    , child_institutional_suffix
+  From relationship_table
+  Where relation_type_code In ('GC')
 )
 
 -- Concatenated children
@@ -186,7 +212,7 @@ salutations As (
     id_number
     , count(child_name)
       As deduped_children_count
-    , sum(Case When child_institutional_suffix Is Not Null Then 1 Else 0 End)
+    , sum(Case When trim(child_institutional_suffix) Is Not Null Then 1 Else 0 End)
       As deduped_children_nu_count
     , Listagg(child_id_number, chr(13)) Within Group (Order By child_id_number Asc, child_name Asc)
       As child_id_numbers
@@ -199,6 +225,29 @@ salutations As (
     , Listagg(child_gender_code, chr(13)) Within Group (Order By child_id_number Asc, child_name Asc)
       As child_gender_codes
   From children_combined
+  Group By
+    id_number
+)
+
+-- Concatenated grandchildren
+, grandchildren_concat As (
+  Select
+    id_number
+    , count(child_name)
+      As deduped_grandchildren_count
+    , sum(Case When trim(child_institutional_suffix) Is Not Null Then 1 Else 0 End)
+      As deduped_grandchildren_nu_count
+    , Listagg(child_id_number, chr(13)) Within Group (Order By child_id_number Asc, child_name Asc)
+      As grandchild_id_numbers
+    , Listagg(child_name, chr(13)) Within Group (Order By child_id_number Asc, child_name Asc)
+      As grandchild_names
+    , Listagg(child_institutional_suffix, chr(13)) Within Group (Order By child_id_number Asc, child_name Asc)
+      As grandchild_inst_suffixes
+    , Listagg(relation_type, chr(13)) Within Group (Order By child_id_number Asc, child_name Asc)
+      As grandchild_relation_types
+    , Listagg(child_gender_code, chr(13)) Within Group (Order By child_id_number Asc, child_name Asc)
+      As grandchild_gender_codes
+  From grandchildren_combined
   Group By
     id_number
 )
@@ -223,6 +272,13 @@ Select
   , children_concat.child_institutional_suffixes
   , children_concat.child_relation_types
   , children_concat.child_gender_codes
+  , grandchildren_concat.deduped_grandchildren_count
+  , grandchildren_concat.deduped_grandchildren_nu_count
+  , grandchildren_concat.grandchild_id_numbers
+  , grandchildren_concat.grandchild_names
+  , grandchildren_concat.grandchild_inst_suffixes
+  , grandchildren_concat.grandchild_relation_types
+  , grandchildren_concat.grandchild_gender_codes
 From entity
 Left Join sal_concat
   On sal_concat.id_number = entity.id_number
@@ -230,5 +286,6 @@ Left Join spouse
   On spouse.id_number = entity.id_number
 Left Join children_concat
   On children_concat.id_number = entity.id_number
+Left Join grandchildren_concat
+  On grandchildren_concat.id_number = entity.id_number
 ;
-
