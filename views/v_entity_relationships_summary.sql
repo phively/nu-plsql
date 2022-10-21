@@ -112,7 +112,7 @@ salutations As (
     On tms_r.relation_type_code = relationship.relation_type_code
   Left Join entity
     On entity.id_number = relationship.relation_id_number
-  Where relationship.relation_type_code In ('CP', 'SP', 'CL', 'GC') -- child/parent, stepchild/parent, child-in-law (why?), grandchild
+  Where relationship.relation_type_code In ('CP', 'SP', 'GC') -- child/parent, stepchild/parent, grandchild
 )
 
 -- Children/grandchildren coded under children
@@ -154,7 +154,7 @@ salutations As (
     On tms_r.relation_type_code = children.child_relation_code
   Left Join entity
     On entity.id_number = children.child_id_number
-  Where children.child_relation_code In ('CP', 'SP', 'CL', 'GC') -- child/parent, stepchild/parent, child-in-law (why?), grandchild
+  Where children.child_relation_code In ('CP', 'SP', 'GC') -- child/parent, stepchild/parent, grandchild
 )
 
 -- Combined children
@@ -169,7 +169,7 @@ salutations As (
     , child_name
     , child_institutional_suffix
   From children_table
-  Where child_relation_code In ('CP', 'SP', 'CL')
+  Where child_relation_code In ('CP', 'SP')
   Union
   Select 
     id_number
@@ -179,7 +179,7 @@ salutations As (
     , child_name
     , child_institutional_suffix
   From relationship_table
-  Where relation_type_code In ('CP', 'SP', 'CL')
+  Where relation_type_code In ('CP', 'SP')
 )
 
 -- Combined grandchildren
