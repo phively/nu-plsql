@@ -15,8 +15,8 @@ Select
 From table(
   rpt_pbh634.ksm_pkg_tmp.tbl_model_af_10k(
     -- Replace these with the most up-to-date modeled score month/year
-    model_year => 2018
-    , model_month => 01
+    model_year => 2022
+    , model_month => 09
   )
 )
 ;
