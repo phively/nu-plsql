@@ -1,4 +1,4 @@
-/* FY21 Kellogg Investor's Report
+/* FY22 Kellogg Investor's Report
     Previously based on Campaign giving through the entire counting period, FY07 through FY19
     -- UPDATE for FY21: counts only the current year's giving
     See Paul's "Investor's Report" folder on the G drive for criteria and notes
@@ -25,6 +25,9 @@
     - Created approved names table for FY19 IR and added additional audits
     - Checked manual householding from FY19
     - Removed Cornerstone and KLC indicators
+    
+    Updates for FY22:
+    - Checked all the <UPDATE THIS> indicators and revised where needed
 */
 
 With
@@ -33,7 +36,7 @@ With
   Also look for <UPDATE THIS> comment */
 params_cfy As (
   Select
-    2021 As params_cfy -- <UPDATE THIS>
+    2022 As params_cfy -- <UPDATE THIS>
   From DUAL
 )
 , params As (
@@ -87,7 +90,7 @@ params_cfy As (
 , ir_names As (
   Select
     id_number
-    , ir19_name --<UPDATE THIS>
+    , ir21_name --<UPDATE THIS>
     , first_name
     , middle_name
     , last_name
@@ -98,7 +101,7 @@ params_cfy As (
           Then 'Y'
         End
       As replace_year_flag
-  From tbl_ir_fy21_approved_names ian --<UPDATE THIS>
+  From tbl_ir_FY22_approved_names ian --<UPDATE THIS>
 )
 
 /* Household data
@@ -171,7 +174,7 @@ params_cfy As (
         ) || (Case When entity.record_status_code = 'D' Then '<DECEASED>' End)
       )
       As constructed_name
-    , ir_names.ir19_name --<UPDATE THIS>
+    , ir_names.ir21_name --<UPDATE THIS>
     , degs.yrs
     , Case
         When entity.record_status_code = 'D'
@@ -364,7 +367,7 @@ params_cfy As (
         Else regexp_replace(hhd.household_spouse_rpt_name, ' ,', ',')
         End
       As snj
-  From rpt_pbh634.tbl_IR_FY21_manual_household ds -- <UPDATE THIS>
+  From rpt_pbh634.tbl_IR_FY22_manual_household ds -- <UPDATE THIS>
   Inner Join hh
     On hh.id_number = ds.id_number
   Inner Join hh hhd
@@ -498,7 +501,7 @@ params_cfy As (
 , fy_klc As (
   Select Distinct
     household_id
-    , '<KLC21>' As klc -- <UPDATE THIS>
+    , '<KLC22>' As klc -- <UPDATE THIS>
   From young_klc
   Cross Join params
   Where fiscal_year = params_cfy
@@ -638,7 +641,7 @@ params_cfy As (
   Inner Join hhs
     On hhs.id_number = gft.id_number
   -- Interface for custom giving levels override; add to the tbl_ir_fy18_custom_level table and they'll show up here
-  Left Join tbl_ir_fy21_custom_level custlvl -- <UPDATE THIS>
+  Left Join tbl_ir_FY22_custom_level custlvl -- <UPDATE THIS>
     On custlvl.id_number = gft.id_number
 )
 
@@ -653,17 +656,17 @@ params_cfy As (
     , hhs.household_spouse
     -- Cash giving for KLC young alumni determination
     , sum(Case When fiscal_year = params_pfy5 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
-      As cash_fy16 -- <UPDATE THIS>
-    , sum(Case When fiscal_year = params_pfy4 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
       As cash_fy17 -- <UPDATE THIS>
-    , sum(Case When fiscal_year = params_pfy3 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
+    , sum(Case When fiscal_year = params_pfy4 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
       As cash_fy18 -- <UPDATE THIS>
-    , sum(Case When fiscal_year = params_pfy2 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
+    , sum(Case When fiscal_year = params_pfy3 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
       As cash_fy19 -- <UPDATE THIS>
-    , sum(Case When fiscal_year = params_pfy1 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
+    , sum(Case When fiscal_year = params_pfy2 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
       As cash_fy20 -- <UPDATE THIS>
-    , sum(Case When fiscal_year = params_cfy And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
+    , sum(Case When fiscal_year = params_pfy1 And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
       As cash_fy21 -- <UPDATE THIS>
+    , sum(Case When fiscal_year = params_cfy And tx_gypm_ind <> 'P' Then hh_credit Else 0 End)
+      As cash_fy22 -- <UPDATE THIS>
   From hhs
   Cross Join params
   Inner Join v_kgth gfts
@@ -841,9 +844,9 @@ Union All (
     On dec_spouse_ids.id_number = donorlist.id_number
   Left Join anon
     On anon.household_id = donorlist.household_id
-  Left Join tbl_IR_FY21_custom_name cust_name -- <UPDATE THIS>
+  Left Join tbl_IR_FY22_custom_name cust_name -- <UPDATE THIS>
     On cust_name.id_number = donorlist.id_number
-  Left Join Tbl_IR_FY21_custom_level custlvl -- <UPDATE THIS>
+  Left Join Tbl_IR_FY22_custom_level custlvl -- <UPDATE THIS>
     On custlvl.id_number = donorlist.id_number
 )
 , rec_name As (
@@ -1000,7 +1003,7 @@ Union All (
     On loyal.household_id = rn.household_id
   Left Join anon
     On anon.household_id = rn.household_id
-  Left Join tbl_IR_FY21_custom_name cust_name -- <UPDATE THIS>
+  Left Join tbl_IR_FY22_custom_name cust_name -- <UPDATE THIS>
     On cust_name.id_number = rn.id_number
   Left Join cornerstone
     On cornerstone.id_number = rn.household_id
@@ -1039,11 +1042,11 @@ Select Distinct
   , rec_name.anon
   --- Check last year's name; drops everything after the first < delimiter
   , Case
-      When ir_names.ir19_name <> regexp_substr(rec_name.proposed_recognition_name, '[^<]*') --<UPDATE THIS>
+      When ir_names.ir21_name <> regexp_substr(rec_name.proposed_recognition_name, '[^<]*') --<UPDATE THIS>
         Then 'Y'
       End
     As name_change_from_pfy
-  , ir_names.ir19_name --<UPDATE THIS>
+  , ir_names.ir21_name --<UPDATE THIS>
   -- Fields
   , donorlist.deceased_past_year
   , donorlist.manual_giving_level

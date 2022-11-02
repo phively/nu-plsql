@@ -1,7 +1,7 @@
-Drop Table tbl_IR_FY21_custom_level --<UPDATE THIS>
+Drop Table tbl_IR_FY22_custom_level --<UPDATE THIS>
 ;
 
-Create Table tbl_IR_FY21_custom_level ( --<UPDATE THIS>
+Create Table tbl_IR_FY22_custom_level ( --<UPDATE THIS>
   -- entity.id_number to link custom level
   id_number varchar2(10)
   -- customized recognition level, one of '10M', '5M', '2.5M', '1M', '500K', '250K', '100K', '50K', '25K', '10K', '5K', '2.5K', 'Org'
@@ -10,9 +10,9 @@ Create Table tbl_IR_FY21_custom_level ( --<UPDATE THIS>
 ;
 
 Insert All --<UPDATE THIS> all years need fixing, but this should really be copy-pasted from the proofing sheet
-  Into tbl_IR_FY21_custom_level Values('1234567890', '5M') -- This person will be shifted from their current to the $5M+ giving level
-  Into tbl_IR_FY21_custom_level Values('1234567891', '5M+') -- This person will also be shifted from their current to the $5M+ giving level
-  Into tbl_IR_FY21_custom_level Values('1234567892', 'B. 5M+') -- This person will also be shifted from their current to the $5M+ giving level
+  Into tbl_IR_FY22_custom_level Values('1234567890', '5M') -- This person will be shifted from their current to the $5M+ giving level
+  Into tbl_IR_FY22_custom_level Values('1234567891', '5M+') -- This person will also be shifted from their current to the $5M+ giving level
+  Into tbl_IR_FY22_custom_level Values('1234567892', 'B. 5M+') -- This person will also be shifted from their current to the $5M+ giving level
 -- Commit table
 Select * From DUAL
 ;
@@ -25,7 +25,7 @@ Select
   , entity.report_name
   , spouse.report_name As spouse_name
   , cust_lvl.custom_level
-From tbl_IR_FY21_custom_level cust_lvl --<UPDATE THIS>
+From tbl_IR_FY22_custom_level cust_lvl --<UPDATE THIS>
 Inner Join entity
   On entity.id_number = cust_lvl.id_number
 Left Join entity spouse
