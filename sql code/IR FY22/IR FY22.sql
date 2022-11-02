@@ -5,6 +5,7 @@
     See GitHub for the complete version history: https://github.com/phively/nu-plsql/tree/master/sql%20code/IR%20FY19
     Shouldn't take more than 5 minutes to run to completion
     (FY19: 8 minutes)
+    (FY22: 3:21)
     
     Updates for FY19:
     - Added 1 to all the years, table names, column names, etc. next to an <UPDATE THIS> tag
@@ -55,17 +56,6 @@ params_cfy As (
   From params_cfy
 )
 
-/* Degree strings
-  Kellogg stewardship degree years as defined by ksm_pkg. For the FY19 IR these are in the format:
-  'YY, 'YY
-  With years listed in chronological order and de-duped (listagg) */
-, degs As (
-  Select
-    id_number
-    , stewardship_years As yrs
-  From table(ksm_pkg.tbl_entity_degrees_concat_ksm) deg
-)
-
 /* Honor roll names
   CATracks honor roll names, where available */
 , hr_names As (
@@ -101,14 +91,26 @@ params_cfy As (
           Then 'Y'
         End
       As replace_year_flag
-  From tbl_ir_FY22_approved_names ian --<UPDATE THIS>
+  From rpt_pbh634.tbl_ir_FY22_approved_names ian --<UPDATE THIS>
+)
+
+/* Degree strings
+  Kellogg and NU strings, according to the updated FY21 degree format.
+  Years and degree types are listed in chronological order and de-duped (listagg) */
+, degs As (
+  Select
+    id_number
+    , nu_degrees_string As yrs
+  From rpt_pbh634.v_entity_nametags
 )
 
 /* Household data
-  Household IDs and definitions as defined by ksm_pkg. Names are based on primary name and personal suffix. */
+  Household IDs and definitions as defined by ksm_pkg_tmp. Names are based on primary name and personal suffix. */
 , hhs As (
-  Select *
-  From table(ksm_pkg.tbl_entity_households_ksm)
+  Select hh.*, degs.yrs
+  From table(rpt_pbh634.ksm_pkg_tmp.tbl_entity_households_ksm) hh
+  Left Join degs
+    On degs.id_number = hh.id_number
 )
 , hh_name As (
   Select
@@ -147,7 +149,7 @@ params_cfy As (
               End
           )
           -- Add class year if replace_year_flag is null
-          || ' ' || (Case When ir_names.replace_year_flag Is Null Then degs.yrs End)
+          || ' ' || (Case When ir_names.replace_year_flag Is Null Then hhs.yrs End)
         -- Check for deceased status
         ) || (Case When entity.record_status_code = 'D' Then '<DECEASED>' End)
       )
@@ -170,12 +172,12 @@ params_cfy As (
                 trim(entity.first_name) || ' ' || trim(entity.middle_name)
               ) || ' ' || trim(entity.last_name)
             ) || ' ' || entity.pers_suffix
-          ) || ' ' || degs.yrs
+          ) || ' ' || hhs.yrs
         ) || (Case When entity.record_status_code = 'D' Then '<DECEASED>' End)
       )
       As constructed_name
     , ir_names.ir21_name --<UPDATE THIS>
-    , degs.yrs
+    , hhs.yrs
     , Case
         When entity.record_status_code = 'D'
           And trunc(entity.status_change_date) Between cal.prev_fy_start And cal.today
@@ -185,9 +187,7 @@ params_cfy As (
   From hhs
   Inner Join entity
     On entity.id_number = hhs.id_number
-  Cross Join v_current_calendar cal
-  Left Join degs
-    On degs.id_number = hhs.id_number
+  Cross Join rpt_pbh634.v_current_calendar cal
   Left Join hr_names
     On hr_names.id_number = hhs.id_number
   Left Join ir_names
@@ -215,7 +215,7 @@ params_cfy As (
     , hh_name_s.primary_name As primary_name_spouse
     , hh_name_s.constructed_name As constructed_name_spouse
     , hh_name_s.primary_name_source As primary_name_source_spouse
-    , hh_name.yrs
+    , hh_name.yrs As yrs_self
     , hh_name_s.yrs As yrs_spouse
     -- Check for entity last name
     , Case
@@ -393,10 +393,10 @@ params_cfy As (
           Then 3
         End
       As assignment_rank
-  From v_assignment_history ah
+  From rpt_pbh634.v_assignment_history ah
   Inner Join hhs
     On hhs.id_number = ah.id_number
-  Left Join v_frontline_ksm_staff ksm
+  Left Join rpt_pbh634.v_frontline_ksm_staff ksm
     On ksm.id_number = ah.assignment_id_number
     And ksm.former_staff Is Null
   Where ah.assignment_active_calc = 'Active' -- Active assignments only
@@ -494,7 +494,7 @@ params_cfy As (
 , young_klc As (
   Select
     klc.*
-  From table(ksm_pkg.tbl_klc_history) klc
+  From table(rpt_pbh634.ksm_pkg_tmp.tbl_klc_history) klc
   Cross Join params
   Where fiscal_year Between params_pfy5 And params_cfy -- KLC member in current or 5 previous FYs
 )
@@ -510,7 +510,7 @@ params_cfy As (
 -- Cache v_ksm_giving_trans_hh for efficiency (test if this is a speedup or not)
 , v_kgth As (
   Select *
-  From v_ksm_giving_trans_hh gfts
+  From rpt_pbh634.v_ksm_giving_trans_hh gfts
 )
 
 /* Loyal households
@@ -641,7 +641,7 @@ params_cfy As (
   Inner Join hhs
     On hhs.id_number = gft.id_number
   -- Interface for custom giving levels override; add to the tbl_ir_fy18_custom_level table and they'll show up here
-  Left Join tbl_ir_FY22_custom_level custlvl -- <UPDATE THIS>
+  Left Join rpt_pbh634.tbl_ir_FY22_custom_level custlvl -- <UPDATE THIS>
     On custlvl.id_number = gft.id_number
 )
 
@@ -689,8 +689,8 @@ params_cfy As (
     , gc.gift_club_start_date
     , gc.gift_club_end_date
     , gc.school_code
-    , rpt_pbh634.ksm_pkg.to_date2(gift_club_end_date) As gift_club_end_dt
-    , extract(year from rpt_pbh634.ksm_pkg.to_date2(gift_club_end_date)) As gift_club_end_fy
+    , rpt_pbh634.ksm_pkg_tmp.to_date2(gift_club_end_date) As gift_club_end_dt
+    , extract(year from rpt_pbh634.ksm_pkg_tmp.to_date2(gift_club_end_date)) As gift_club_end_fy
   From gift_clubs gc
   Inner Join tms_gift_club_table gtt
     On gtt.club_code = gc.gift_club_code
@@ -844,9 +844,9 @@ Union All (
     On dec_spouse_ids.id_number = donorlist.id_number
   Left Join anon
     On anon.household_id = donorlist.household_id
-  Left Join tbl_IR_FY22_custom_name cust_name -- <UPDATE THIS>
+  Left Join rpt_pbh634.tbl_IR_FY22_custom_name cust_name -- <UPDATE THIS>
     On cust_name.id_number = donorlist.id_number
-  Left Join Tbl_IR_FY22_custom_level custlvl -- <UPDATE THIS>
+  Left Join rpt_pbh634.tbl_IR_FY22_custom_level custlvl -- <UPDATE THIS>
     On custlvl.id_number = donorlist.id_number
 )
 , rec_name As (
