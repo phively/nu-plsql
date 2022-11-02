@@ -373,24 +373,26 @@ SELECT
 FROM KSM_REUNION
 )
 
+--- Edit 10.6.2022: Selecting Max to adjust for the duplicate issue with a record. 
 ,AF_SCORES AS (
 SELECT
  AF.ID_NUMBER
- ,AF.DESCRIPTION
- ,AF.SCORE
+ ,max(AF.DESCRIPTION) as AF_10K_MODEL_TIER
+ ,max(AF.SCORE) as AF_10K_MODEL_SCORE
 FROM RPT_PBH634.V_KSM_MODEL_AF_10K AF
-INNER JOIN KSM_REUNION KR
-ON AF.ID_NUMBER = KR.ID_NUMBEr
+GROUP BY AF.ID_NUMBER
 )
 
 --- ADDING ADDTIONAL MODEL SCORES
+--- Edit 10.6.2022: Selecting Max to adjust for the duplicate issue with a record. 
 
-,KSM_Model as (select DISTINCT mg.id_number,
-       mg.id_score,
-       mg.pr_code,
-       mg.pr_segment,
-       mg.pr_score
-From rpt_pbh634.v_ksm_model_mg mg)
+,KSM_Model as (select  mg.id_number,
+       max (mg.id_score) as id_score,
+       max (mg.pr_code) as pr_code,
+       max (mg.pr_segment) as pr_segment,
+       max (mg.pr_score) as pr_score
+From rpt_pbh634.v_ksm_model_mg mg
+group by mg.id_number)
 
 --- ADDING ACTIVITIES (SPEAKERS AND CORPORATE RECRUITERS) 
 
@@ -505,7 +507,8 @@ GROUP BY id_number
 
 --- Dean Salutation 
 ,dean as (Select rpt_zrc8929.v_dean_salutation.ID_NUMBER,
-       rpt_zrc8929.v_dean_salutation.P_Dean_Salut
+       rpt_zrc8929.v_dean_salutation.P_Dean_Salut,
+       rpt_zrc8929.v_dean_salutation.P_Dean_Source
 From rpt_zrc8929.v_dean_salutation),
 
 KAC AS (select k.id_number,
@@ -534,7 +537,10 @@ SELECT DISTINCT
    E.ID_NUMBER
   ,E.pref_mail_name
   ,M.maiden_name
+  --- Adding in first name - That way AF and Reunion Team can use Dean Salutation based on the Dean_Source  
+  ,E.FIRST_NAME
   ,d.P_Dean_Salut
+  ,d.P_Dean_Source
   ,E.RECORD_STATUS_CODE
   ,E.GENDER_CODE
   ,KD."PROGRAM" AS DEGREE_PROGRAM
@@ -650,8 +656,8 @@ SELECT DISTINCT
   ,WT0_PARSE(PROPOSAL_STATUS, 8,  '^') PROPOSAL_DESCRIPTION
   ,WT0_PARSE(PROPOSAL_STATUS, 9,  '^') PROGRAM
   ,WT0_PARSE(PROPOSAL_STATUS, 10, '^') PROPOSAL_ID
-  ,AFS.DESCRIPTION AS AF_10K_MODEL_TIER
-  ,AFS.SCORE AS AF_10K_MODEL_SCORE
+  ,AFS.AF_10K_MODEL_SCORE
+  ,AFS.AF_10K_MODEL_TIER
   ,KSM_MODEL.id_score
   ,KSM_MODEL.pr_segment
   ,KSM_MODEL.pr_score

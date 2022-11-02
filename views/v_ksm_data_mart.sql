@@ -24,16 +24,16 @@ Select
   , interest.interest_code As interest_code
   , tms_interest.short_desc As interest_desc
   , interest.start_dt
-  , rpt_pbh634.ksm_pkg_tmp.to_date2(start_dt) As interest_start_date
+  , ADVANCE_NU_RPT.ksm_pkg.to_date2(start_dt) As interest_start_date
   , interest.stop_dt
-  , rpt_pbh634.ksm_pkg_tmp.to_date2(stop_dt) As interest_stop_date
+  , ADVANCE_NU_RPT.ksm_pkg.to_date2(stop_dt) As interest_stop_date
   , interest.date_added
   , interest.date_modified
   , interest.operator_name
 From interest 
 Inner Join tms_interest
   On tms_interest.interest_code = interest.interest_code --- Produce TMS Codes
-Inner Join rpt_pbh634.v_entity_ksm_degrees deg
+Inner Join ADVANCE_NU_RPT.v_entity_ksm_degrees deg
   On deg.id_number = interest.id_number --- Only Kellogg Alumni
 Where tms_interest.interest_code Like 'L%' --- Any Linkedin Industry Code
   Or tms_Interest.interest_code = '16'  --- KIS also wants the "16" Research Code
@@ -56,7 +56,7 @@ ksm_ids As (
   Select ids_base.id_number
     , ids_base.ids_type_code
     , ids_base.other_id
-  From rpt_pbh634.v_entity_ksm_degrees deg --- Kellogg Alumni Only
+  From ADVANCE_NU_RPT.v_entity_ksm_degrees deg --- Kellogg Alumni Only
   Left Join ids_base
     On ids_base.id_number = deg.id_number
   Where ids_base.ids_type_code In ('SES', 'KSF', 'NET', 'KEX') --- SES = EMPLID + KSF = Salesforce ID + NET = NetID + KEX = KSM EXED ID
@@ -69,7 +69,7 @@ Select Distinct
   , net.other_id As netid
   , kex.other_id AS ksm_exed_id
 From ksm_ids
-Inner Join rpt_pbh634.v_entity_ksm_degrees deg
+Inner Join ADVANCE_NU_RPT.v_entity_ksm_degrees deg
   On deg.id_number = ksm_ids.id_number
 Left Join ksm_ids ses
   On ses.id_number = ksm_ids.id_number
@@ -114,18 +114,18 @@ business_address As (
     , address.addr_type_code
     , address.addr_status_code
     , address.start_dt
-    , rpt_pbh634.ksm_pkg_tmp.to_date2(address.start_dt) As start_date
+    , ADVANCE_NU_RPT.ksm_pkg.to_date2(address.start_dt) As start_date
     , address.date_modified
-    , rpt_pbh634.v_geo_code_primary.geo_codes
-    , rpt_pbh634.v_geo_code_primary.geo_code_primary
-    , rpt_pbh634.v_geo_code_primary.geo_code_primary_desc
+    , ADVANCE_NU_RPT.v_geo_code_primary.geo_codes
+    , ADVANCE_NU_RPT.v_geo_code_primary.geo_code_primary
+    , ADVANCE_NU_RPT.v_geo_code_primary.geo_code_primary_desc
     , geo.LATITUDE
     , geo.LONGITUDE
   From address
-  Left Join rpt_pbh634.v_geo_code_primary
-    On rpt_pbh634.v_geo_code_primary.id_number = address.id_number
-    And rpt_pbh634.v_geo_code_primary.xsequence = address.xsequence --- Joining Paul's New Geocode Table to get Business Address Geocodes 
-  Left Join rpt_pbh634.v_addr_geocoding geo --- Joining Geocode table for latitude and longitude 
+  Left Join ADVANCE_NU_RPT.v_geo_code_primary
+    On ADVANCE_NU_RPT.v_geo_code_primary.id_number = address.id_number
+    And ADVANCE_NU_RPT.v_geo_code_primary.xsequence = address.xsequence --- Joining Paul's New Geocode Table to get Business Address Geocodes 
+  Left Join ADVANCE_NU_RPT.v_addr_geocoding geo --- Joining Geocode table for latitude and longitude 
   On geo.id_number = address.id_number
   And geo.xsequence = address.xsequence
   Where address.addr_type_code = 'B'
@@ -143,18 +143,18 @@ business_address As (
     , address.addr_type_code
     , address.addr_status_code
     , address.start_dt
-    , rpt_pbh634.ksm_pkg_tmp.to_date2(address.start_dt) As start_date
+    , ADVANCE_NU_RPT.ksm_pkg.to_date2(address.start_dt) As start_date
     , address.date_modified
-    , rpt_pbh634.v_geo_code_primary.geo_codes --- KIS Wants Geocodes Home Address
-    , rpt_pbh634.v_geo_code_primary.geo_code_primary
-    , rpt_pbh634.v_geo_code_primary.geo_code_primary_desc
+    , ADVANCE_NU_RPT.v_geo_code_primary.geo_codes --- KIS Wants Geocodes Home Address
+    , ADVANCE_NU_RPT.v_geo_code_primary.geo_code_primary
+    , ADVANCE_NU_RPT.v_geo_code_primary.geo_code_primary_desc
     , geo.LATITUDE
     , geo.LONGITUDE
   From address
-  Left Join rpt_pbh634.v_geo_code_primary
-    On rpt_pbh634.v_geo_code_primary.id_number = address.id_number
-    And rpt_pbh634.v_geo_code_primary.xsequence = address.xsequence --- Joining Paul's New Geocode Table to get Business Address Geocodes
-  Left Join rpt_pbh634.v_addr_geocoding geo --- Joining Geocode table for latitude and longitude
+  Left Join ADVANCE_NU_RPT.v_geo_code_primary
+    On ADVANCE_NU_RPT.v_geo_code_primary.id_number = address.id_number
+    And ADVANCE_NU_RPT.v_geo_code_primary.xsequence = address.xsequence --- Joining Paul's New Geocode Table to get Business Address Geocodes
+  Left Join ADVANCE_NU_RPT.v_addr_geocoding geo --- Joining Geocode table for latitude and longitude
   On geo.id_number = address.id_number
   And geo.xsequence = address.xsequence
   Where address.addr_type_code = 'H'
@@ -193,14 +193,14 @@ Select
   , business_address.start_dt As business_start_dt
   , business_address.start_date As business_start_date
   , business_address.date_modified As business_date_modified
-From rpt_pbh634.v_entity_ksm_degrees deg
+From ADVANCE_NU_RPT.v_entity_ksm_degrees deg
 Left Join business_address
   On business_address.id_number = deg.id_number --- Join Subquery for Business Address
 Left Join home_address
   On home_address.id_number = deg.id_number --- Join Subquery for Home Address
-Left Join rpt_pbh634.v_addr_continents tms_bus
+Left Join ADVANCE_NU_RPT.v_addr_continents tms_bus
   On business_address.country_code = tms_bus.country_code --- Join to get Home Country Description
-Left Join rpt_pbh634.v_addr_continents tms_home
+Left Join ADVANCE_NU_RPT.v_addr_continents tms_home
   On home_address.country_code = tms_home.country_code
 Where deg.record_status_code != 'X' --- Remove Purgable
 Order By deg.id_number Asc
@@ -235,9 +235,9 @@ From dm_ard.dim_employment@catrackstobi)
 Select
   employ.id_Number As catracks_id
   , employ.start_dt
-  , rpt_pbh634.ksm_pkg_tmp.to_date2(employ.start_dt) As employment_start_date
+  , ADVANCE_NU_RPT.ksm_pkg.to_date2(employ.start_dt) As employment_start_date
   , employ.stop_dt
-  , rpt_pbh634.ksm_pkg_tmp.to_date2(employ.stop_dt) As employment_stop_date
+  , ADVANCE_NU_RPT.ksm_pkg.to_date2(employ.stop_dt) As employment_stop_date
   , employ.job_status_code As job_status_code
   , tms_job_status.short_desc As job_status_desc
   , employ.primary_emp_ind As primary_employer_indicator
@@ -258,7 +258,7 @@ Select
   , employ.date_modified
   , employ.operator_name
 From employment employ
-Inner Join rpt_pbh634.v_entity_ksm_degrees deg
+Inner Join ADVANCE_NU_RPT.v_entity_ksm_degrees deg
   On deg.id_number = employ.id_number --- To get KSM alumni 
 Left Join tms_fld_of_work fow
   On employ.fld_of_work_code = fow.fld_of_work_code --- To get FLD of Work Code
@@ -302,7 +302,7 @@ Select
   , degrees.degree_level_code 
   , TMS_DEGREE_LEVEL.short_desc As Degree_Level_Desc
   , degrees.grad_dt
-  , rpt_pbh634.ksm_pkg_tmp.to_date2(degrees.grad_dt) As grad_date
+  , ADVANCE_NU_RPT.ksm_pkg.to_date2(degrees.grad_dt) As grad_date
   , degrees.class_section
   , tms_cs.short_desc As class_section_desc
   , degrees.dept_code
@@ -319,7 +319,7 @@ Select
   , case when deg.FIRST_KSM_YEAR is not null and degrees.school_code = 'KSM' then deg.FIRST_KSM_YEAR End As First_KSM_Year
   , case when deg.FIRST_MASTERS_YEAR is not null and degrees.school_code = 'KSM' then deg.FIRST_MASTERS_YEAR End as First_KSM_Masters_Year
 From degrees
-Inner Join rpt_pbh634.v_entity_ksm_degrees deg -- Alumni only
+Inner Join ADVANCE_NU_RPT.v_entity_ksm_degrees deg -- Alumni only
   On deg.id_number = degrees.id_number
 Left Join institution
   On institution.institution_code = degrees.institution_code
@@ -387,7 +387,7 @@ emp As (
     , empl.employer_id_number
     , empl.ultimate_parent_employer_id
     , empl.ultimate_parent_employer_name
-  From v_datamart_employment empl
+  From ADVANCE_NU_RPT.NU_KSM_V_DATAMART_EMPLOYMENT empl
   Where empl.job_status_code = 'C' -- current only
     And empl.primary_employer_indicator = 'Y' -- primary employer only
 )
@@ -397,7 +397,7 @@ emp As (
     intr.catracks_id
     , Listagg(intr.interest_desc, '; ') Within Group (Order By interest_start_date Asc, interest_desc Asc)
       As interests_concat
-  From v_datamart_career_interests intr
+  From nu_ksm_v_datamart_career_inter intr
   Group By intr.catracks_id
 ),
 
@@ -487,10 +487,10 @@ Group By ec.id_number)
     , addr.business_start_date
     , intr.interests_concat
     , linked.linkedin_address
-  From rpt_pbh634.v_entity_ksm_degrees deg
+  From ADVANCE_NU_RPT.v_entity_ksm_degrees deg
   Left Join tms_record_status tms_rs
     On tms_rs.record_status_code = deg.record_status_code
-  Left Join v_datamart_address addr
+  Left Join ADVANCE_NU_RPT.NU_KSM_V_DATAMART_ADDRESS addr
     On addr.catracks_id = deg.id_number
   Left join emp
     On emp.catracks_id = deg.id_number
@@ -504,7 +504,7 @@ Group By ec.id_number)
     ON TMS_RACE.ethnic_code = entity.ethnic_code
   Left Join Reunion 
     On Reunion.id_number = deg.id_number
-  Left Join rpt_zrc8929.v_dean_salutation p
+  Left Join ADVANCE_NU_RPT.v_dean_salutation p
     On p.id_number = deg.id_number
   Where deg.record_status_code In ('A', 'C', 'L', 'D')
   and deg.record_status_code != 'X' --- Remove Purgable
@@ -614,18 +614,18 @@ EXCLUSIONS:
 
 With a As (
 Select *
-From rpt_pbh634.v_entity_special_handling sh
+From ADVANCE_NU_RPT.v_entity_special_handling sh
 --- Drop all records linked to an entity with the anonymous special handling code
 Where sh.ANONYMOUS_DONOR is not null
 ),
 
 hh as (select *
-from rpt_pbh634.v_ksm_giving_trans_hh
+from ADVANCE_NU_RPT.v_ksm_giving_trans_hh
 --- Drop individual gifts with anonymous type 1, 2, 3 for the purpose of calculating the suggested fields,or alternatively drop all such records
-where trim(rpt_pbh634.v_ksm_giving_trans_hh.ANONYMOUS) is null),
+where trim(ADVANCE_NU_RPT.v_ksm_giving_trans_hh.ANONYMOUS) is null),
 
 degrees as (select *
-from rpt_pbh634.v_entity_ksm_degrees),
+from ADVANCE_NU_RPT.v_entity_ksm_degrees),
 
 --- Subquery for spouse (9/29) where we take out anonymous donor. 
 
@@ -637,13 +637,13 @@ where a_spouse.anonymous_donor is not null),
 
 give as (select give.ID_NUMBER, 
 give.af_status,
-rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(give.LAST_GIFT_DATE) as last_gift_fy
-from RPT_PBH634.v_Ksm_Giving_Summary give), --- stewardship amount
+ADVANCE_NU_RPT.ksm_pkg.get_fiscal_year(give.LAST_GIFT_DATE) as last_gift_fy
+from ADVANCE_NU_RPT.v_Ksm_Giving_Summary give), --- stewardship amount
 
 --- Subquery (9/29) for Most Recent Gift, but takes out anonymous donors
 
 max_date as (select hh.ID_NUMBER,
-rpt_pbh634.ksm_pkg_tmp.get_fiscal_year (max (hh.DATE_OF_RECORD)) as last_gift_fy 
+ADVANCE_NU_RPT.ksm_pkg.get_fiscal_year (max (hh.DATE_OF_RECORD)) as last_gift_fy 
 from hh
 where trim (hh.ANONYMOUS) is null
 group by hh.ID_NUMBER),
@@ -655,7 +655,7 @@ Max(Case When cal.curr_fy = fiscal_year Then hh.FISCAL_YEAR Else NULL End) as KS
 Max(Case When cal.curr_fy = fiscal_year + 1 Then hh.FISCAL_YEAR Else NULL End) as KSM_donor_pfy1
 from hh
 inner join degrees on degrees.ID_NUMBER = hh.ID_NUMBER
-cross join rpt_pbh634.v_current_calendar cal
+cross join ADVANCE_NU_RPT.v_current_calendar cal
 where trim(hh.ANONYMOUS) is null
 Group by hh.ID_NUMBER),
 
@@ -683,7 +683,7 @@ KLC AS (Select distinct
        GIFT_CLUBS.GIFT_CLUB_ID_NUMBER,
        GIFT_CLUBS.GIFT_CLUB_CODE,
        TMS_GIFT_CLUB_TABLE.club_desc,
-       rpt_pbh634.ksm_pkg_tmp.get_fiscal_year (GIFT_CLUBS.GIFT_CLUB_END_DATE) as Club_END_DATE
+       ADVANCE_NU_RPT.ksm_pkg.get_fiscal_year (GIFT_CLUBS.GIFT_CLUB_END_DATE) as Club_END_DATE
 FROM GIFT_CLUBS
 LEFT JOIN TMS_GIFT_CLUB_TABLE ON TMS_GIFT_CLUB_TABLE.club_code = GIFT_CLUBS.GIFT_CLUB_CODE
 Where GIFT_CLUB_CODE = 'LKM'),
@@ -693,7 +693,7 @@ KLC_Give_Ind As (select KLC.GIFT_CLUB_ID_NUMBER,
 Max(Case When cal.curr_fy = Club_END_DATE Then 'Yes' Else NULL End) as KSM_donor_cfy,
 Max(Case When cal.curr_fy = Club_END_DATE + 1 Then 'Yes' Else NULL End) as KSM_donor_pfy1
 from KLC
-cross join rpt_pbh634.v_current_calendar cal
+cross join ADVANCE_NU_RPT.v_current_calendar cal
 group BY KLC.GIFT_CLUB_ID_NUMBER),
 
 --- Count Total KLC Years 
@@ -701,7 +701,7 @@ group BY KLC.GIFT_CLUB_ID_NUMBER),
 KLC_Count As (Select distinct KLC.GIFT_CLUB_ID_NUMBER,
 Count (distinct Club_END_DATE) as klc_fy_count
 from KLC
-cross join rpt_pbh634.v_current_calendar cal
+cross join ADVANCE_NU_RPT.v_current_calendar cal
 GROUP BY KLC.GIFT_CLUB_ID_NUMBER),
 
 --- Count of KLC Years, but in last 5
@@ -709,7 +709,7 @@ GROUP BY KLC.GIFT_CLUB_ID_NUMBER),
 KLC5 AS (Select distinct KLC.GIFT_CLUB_ID_NUMBER,
 Count (distinct Club_END_DATE) as klc_fy_count_5
 from KLC
-cross join rpt_pbh634.v_current_calendar cal
+cross join ADVANCE_NU_RPT.v_current_calendar cal
 Where (KLC.Club_END_DATE = cal.CURR_FY - 1
 or KLC.Club_END_DATE = cal.CURR_FY - 2
 or KLC.Club_END_DATE = cal.CURR_FY - 3 
@@ -731,7 +731,7 @@ from KLC
 left join KLC_Count on KLC_Count.GIFT_CLUB_ID_NUMBER = KLC.GIFT_CLUB_ID_NUMBER
 left join KLC5 ON KLC5.GIFT_CLUB_ID_NUMBER = KLC.GIFT_CLUB_ID_NUMBER 
 left join KLC_Give_Ind on KLC_Give_Ind.GIFT_CLUB_ID_NUMBER = KLC.GIFT_CLUB_ID_NUMBER
-cross join rpt_pbh634.v_current_calendar cal)
+cross join ADVANCE_NU_RPT.v_current_calendar cal)
 
 /* Final Query */
 
@@ -837,9 +837,9 @@ employ As (
 Select
   employ.id_Number As catracks_id
   , employ.start_dt
-  , rpt_pbh634.ksm_pkg_tmp.to_date2(employ.start_dt) As employment_start_date
+  , ADVANCE_NU_RPT.ksm_pkg.to_date2(employ.start_dt) As employment_start_date
   , employ.stop_dt
-  , rpt_pbh634.ksm_pkg_tmp.to_date2(employ.stop_dt) As employment_stop_date
+  , ADVANCE_NU_RPT.ksm_pkg.to_date2(employ.stop_dt) As employment_stop_date
   , employ.job_status_code As job_status_code
   , tms_job_status.short_desc As job_status_desc
   , employ.primary_emp_ind As primary_employer_indicator
@@ -860,7 +860,7 @@ Select
   , employ.date_modified
   , employ.operator_name
 From employment employ
-Left Join rpt_pbh634.v_entity_ksm_households h on h.id_number = employ.id_number
+Left Join ADVANCE_NU_RPT.v_entity_ksm_households h on h.id_number = employ.id_number
 Left Join tms_fld_of_work fow
   On employ.fld_of_work_code = fow.fld_of_work_code --- To get FLD of Work Code
 Left  Join tms_job_status
@@ -876,7 +876,7 @@ Order By employ.id_Number Asc),
 e as (Select
   employ.catracks_id
   , max (employ.start_dt) as start_dt
-  , max (rpt_pbh634.ksm_pkg_tmp.to_date2(employ.start_dt)) As employment_start_date
+  , max (ADVANCE_NU_RPT.ksm_pkg.to_date2(employ.start_dt)) As employment_start_date
   , max (employ.stop_dt) as stop_dt
   , max (employ.job_status_desc) As job_status_code
   , max (job_status_desc) As job_status_desc
@@ -900,7 +900,7 @@ intr As (
     intr.catracks_id
     , Listagg(intr.interest_desc, '; ') Within Group (Order By interest_start_date Asc, interest_desc Asc)
       As interests_concat
-  From v_datamart_career_interests intr
+  From ADVANCE_NU_RPT.NU_KSM_V_DATAMART_CAREER_INTER intr
   Group By intr.catracks_id
 ),
 
@@ -1034,13 +1034,13 @@ emp_chooser As (
       ---- Case when email addresses
     , Case When KSM_Spec.NO_Email_Ind is null then KSM_email.email_address 
       when KSM_Spec.NO_Email_Ind is not null then 'No Email' End as Email
-  From rpt_pbh634.v_entity_ksm_households h
+  From ADVANCE_NU_RPT.v_entity_ksm_households h
     Inner Join A on A.id_number = h.id_number
-  Left Join rpt_pbh634.v_entity_ksm_degrees d 
+  Left Join ADVANCE_NU_RPT.v_entity_ksm_degrees d 
     On d.id_number = h.id_number
   Left Join tms_record_status tms_rs
     On tms_rs.record_status_code = h.record_status_code
-  Left Join v_datamart_address addr
+  Left Join ADVANCE_NU_RPT.NU_KSM_V_DATAMART_ADDRESS addr
     On addr.catracks_id = h.id_number
   Left join e
     On e.catracks_id = h.id_number
@@ -1054,7 +1054,7 @@ emp_chooser As (
     ON TMS_RACE.ethnic_code = entity.ethnic_code
   Left Join Reunion 
     On Reunion.id_number = h.id_number
-  Left Join rpt_zrc8929.v_dean_salutation p
+  Left Join ADVANCE_NU_RPT.v_dean_salutation p
     On p.id_number = h.id_number
   Left Join KSM_Email 
   on KSM_Email.id_number = h.id_number
@@ -1169,7 +1169,7 @@ KSM_Spec AS (Select spec.ID_NUMBER,
        spec.NO_CONTACT,
        spec.NO_EMAIL_IND,
        spec.ACTIVE_WITH_RESTRICTIONS
-From rpt_pbh634.v_entity_special_handling spec)
+From ADVANCE_NU_RPT.v_entity_special_handling spec)
 
 select d.ID_NUMBER,
 --- Use Case Whens to exclude no emails/no phone special handling codes
@@ -1190,9 +1190,231 @@ Case When KSM_Spec.NO_Email_Ind is null then e.email_address
 when KSM_Spec.NO_Email_Ind is not null then 'No Email' End as Email,
 case when KSM_Spec.NO_PHONE_IND is not null then 'No Phone' Else '' End as NO_PHONE_IND,
 case when KSM_Spec.NO_Email_Ind is not null then 'No Email' Else '' End as NO_EMAIL_IND
-from rpt_pbh634.v_entity_ksm_degrees d
+from ADVANCE_NU_RPT.v_entity_ksm_degrees d
 LEFT JOIN KSM_Email e ON e.ID_NUMBER = d.ID_NUMBER
 LEFT JOIN phone p on p.id_number = d.id_number
 Left Join KSM_Spec on KSM_Spec.id_number = d.id_number
 Where (KSM_Spec.NO_CONTACT is null
 and KSM_Spec.ACTIVE_WITH_RESTRICTIONS is null);
+
+
+
+/* 9/29/2022 
+
+Creating a new view for events
+ 
+ 
+1.  Aggregated event attendance + some other columns: 
+
+Sergio will deliver these in a new view
+
+Fields:
+i.  MANAGED_PROSPECT
+ii.  RATED_PROSPECT
+iii.  ANY_ENGAGEMENT_5FY
+iv.  KSM_EVENTS
+v.  NU_EVENTS
+vi.  COMMITTEES_COUNT
+vii.  VISITS_COUNT
+
+EDIT: 10-7-22
+
+--- Checking for Views not in the ADVANCE_NU_RPT
+
+---- rpt_pbh634.v_ksm_visits v
+---- rpt_pbh634.v_nu_committees c
+---- rpt_pbh634.v_assignment_summary assign
+---- rpt_pbh634.v_nu_event_participants_fast
+
+---- Views already in ADVANCE_NU_RPT
+
+--- rpt_pbh634.v_current_calendar
+--- rpt_pbh634.v_entity_ksm_degrees
+
+*/  
+
+
+/* Edit 10-13-2022 
+
+We are separating these into two views Events + Prospect View
+
+Event View: This view will provide the raw data on event attendance from the current fiscal year to the last 5 prior fiscal years. 
+
+� ID Number
+� Event ID
+� Event Name 
+� Event Organizers
+� Start Date
+� Stop Date
+� Start FY Calc
+� Event Type Desc 
+� KSM Event Flag
+� NU Event Flag - We want to add back in the NU Events. 
+
+*/
+
+Create or Replace View v_datamart_events as 
+
+Select 
+
+---- Select ID Number
+p.Id_Number,
+--- Any Engagement 5FY 
+p.Event_Id,
+p.Event_Name,
+--- Event/Kellogg Organizers (Who 
+e.event_organizers,
+e.kellogg_organizers,
+p.start_dt,
+p.stop_dt,
+p.start_fy_calc,
+e.event_type_desc,
+--- KSM or Just NU Event Indicator 
+case when p.ksm_event = 'Y' then 'Y' end as ksm_event,
+--- NU Event Indicator   
+case when p.ksm_event is null then 'Y' end as NU_event
+
+--- Using Event as Main Table
+From  ADVANCE_NU_RPT.v_nu_event_participants_fast p
+--- Joining Participants, Registration, Organizer, Event Codes and Entity Table to Event Table
+
+Inner Join ADVANCE_NU_RPT.v_nu_events e On e.Event_Id = p.Event_Id
+Inner Join Entity On Entity.Id_Number = p.Id_Number
+--- Kellogg Alumni Only 
+Inner Join ADVANCE_NU_RPT.v_entity_ksm_degrees d on d.id_number = p.id_number 
+cross join ADVANCE_NU_RPT.v_current_calendar cal
+--- Over the Last Five Years 
+where (cal.curr_fy = p.start_fy_calc + 5
+or cal.curr_fy = p.start_fy_calc + 4
+or cal.curr_fy = p.start_fy_calc + 3
+or cal.curr_fy = p.start_fy_calc + 2
+or cal.curr_fy = p.start_fy_calc + 1
+or cal.curr_fy = p.start_fy_calc)
+Order By p.start_dt ASC
+;
+
+/*
+
+KSM Prospect View: 
+
+� ID Number 
+� Prospect Manager
+� LGOs
+� KSM Manager Flag
+� Managers
+� Evaluation Date
+� Officer Rating
+� Committee Count
+� Visit Count 
+
+AND Any Engagement, NU Event, and Kellogg Event flags 
+
+*/
+
+create or replace view v_ksm_datamart_prospect as 
+
+with assign as (select assign.id_number,
+       assign.prospect_manager,
+       assign.lgos,
+       assign.managers,
+       assign.curr_ksm_manager
+from ADVANCE_NU_RPT.v_assignment_summary assign), 
+
+
+prospect as (select p.ID_NUMBER,
+        p.evaluation_date,
+        p.officer_rating,
+        p.rating_bin,
+        p.eval_rating_bin,
+        p.nu_lifetime_recognition
+From ADVANCE_NU_RPT.v_ksm_prospect_pool p),
+
+ccount as (select  c.id_number,
+        count(c.id_number) as count
+from ADVANCE_NU_RPT.v_nu_committees c
+where (c.ksm_committee = 'Y'
+and c.committee_status_code = 'C')
+group by c.id_number),
+
+visits as (select  v.id_number,
+        count(v.id_number) as count
+from ADVANCE_NU_RPT.v_ksm_visits v
+group by v.id_number),
+
+--- Event flag 
+
+event as (select ev.Id_Number,
+          ev.Event_Id,
+          ev.Event_Name,
+          ev.event_organizers,
+          ev.kellogg_organizers,
+          ev.start_dt,
+          ev.stop_dt,
+          ev.start_fy_calc,
+          ev.event_type_desc,
+          ev.ksm_event,
+          ev.NU_event
+from v_datamart_events ev),
+
+engage as (select distinct event.id_number
+from event),
+
+nu as (select distinct event.id_number
+from event 
+where event.NU_event = 'Y'),
+
+ksm as (select distinct event.id_number
+from event 
+where event.ksm_event = 'Y'),
+
+fin as (
+select distinct event.id_number,
+ ---- Any Engagement Flag in the Last 
+case when engage.id_number is not null then 'Y' End as Engaged_Last_5,
+---- KSM Event Flag
+case when ksm.id_number is not null then 'Y' End as KSM_Event_Last_5,
+--- NU Event (Non Kellogg Event) 
+case when nu.id_number is not null then 'Y' End as NU_Event_Last_5
+from event
+left join engage on engage.id_number = event.id_number
+left join nu on nu.id_number = event.id_number
+left join ksm on ksm.id_number = event.id_number)
+
+Select distinct 
+---- Select ID Number
+e.Id_Number,
+--- Managed Prospect
+assign.prospect_manager,
+assign.curr_ksm_manager, 
+assign.lgos,
+assign.managers,
+--- Rated Prospect 
+--prospect.evaluation_date,
+--prospect.officer_rating, 
+Case
+When prospect.rating_bin >= 0.1 -- $100K
+Or prospect.eval_rating_bin >= 0.1
+Or prospect.nu_lifetime_recognition >= 100E3
+Then 'Y'
+End
+As rated_prospect,
+--- Committee Counts
+cc.count as count_committees,
+--- Visits: ... 
+v.count as visit_count,
+---- Any Engagement Flag in the Last 
+fin.Engaged_Last_5,
+---- KSM Event Flag
+fin.KSM_Event_Last_5,
+--- NU Event (Non Kellogg Event) 
+fin.NU_Event_Last_5
+--- Kellogg Alumni Only 
+From  ADVANCE_NU_RPT.v_entity_ksm_degrees e
+Left Join assign on assign.id_number = e.id_number
+Left Join prospect on prospect.id_number = e.id_number 
+Left Join ccount cc on cc.id_number = e.id_number
+Left Join visits v on v.id_number = e.id_number
+--- Add in Events Flags for Propsect View
+Left Join fin on fin.id_number = e.id_number
+;
+

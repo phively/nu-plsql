@@ -125,3 +125,44 @@ left join Before_kfn on Before_kfn.id_number = KFN.ID_number
 left join After_kfn on After_kfn.id_number = KFN.ID_number
 left join Year_Joined on Year_Joined.id_number = KFN.ID_number
 ;
+
+--- Tracking KFN Events Over Last 5 Years
+
+Create or Replace View v_ksm_kfn_events as 
+
+Select distinct
+
+---- Select ID Number
+p.Id_Number, 
+--- Any Engagement 5FY 
+p.Event_Id,
+p.Event_Name,
+--- Event/Kellogg Organizers (Who 
+e.event_organizers,
+e.kellogg_organizers,
+p.start_dt,
+p.stop_dt,
+p.start_fy_calc,
+e.event_type_desc,
+--- KSM or Just NU Event Indicator 
+p.ksm_event
+--- Using Event as Main Table
+From  rpt_pbh634.v_nu_event_participants_fast p
+--- Joining Participants, Registration, Organizer, Event Codes and Entity Table to Event Table
+
+Inner Join rpt_pbh634.v_nu_events e On e.Event_Id = p.Event_Id
+Inner Join Entity On Entity.Id_Number = p.Id_Number
+--- Kellogg Alumni Only 
+Inner Join rpt_pbh634.v_entity_ksm_degrees d on d.id_number = p.id_number 
+cross join rpt_pbh634.v_current_calendar cal
+--- Over the Last Five Years 
+where (cal.curr_fy = p.start_fy_calc + 5
+or cal.curr_fy = p.start_fy_calc + 4
+or cal.curr_fy = p.start_fy_calc + 3
+or cal.curr_fy = p.start_fy_calc + 2
+or cal.curr_fy = p.start_fy_calc + 1
+or cal.curr_fy = p.start_fy_calc)
+and p.Event_Name like '%KFN%'
+and p.ksm_event = 'Y'
+Order By p.start_dt ASC
+;
