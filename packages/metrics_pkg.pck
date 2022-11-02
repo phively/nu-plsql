@@ -15,9 +15,11 @@ Public constant declarations
 *************************************************************************/
 
 -- Thresholds for proposals to count toward MGO metrics
-mg_ask_amt Constant number := 100000; -- As of 2018-03-23. Minimum $ to count as ask
-mg_granted_amt Constant number := 48000; -- As of 2018-03-23. Minimum $ to count as granted
-mg_funded_count Constant number := 98000; -- As of 2018-03-23. Minimum $ to count as funded
+mg_ask_amt Constant number := 100E3; -- As of 2018-03-23. Minimum $ to count as ask
+mg_ask_amt_ksm_outright Constant number := 100E3; -- As of 2021-05-01. Minimum KSM outright $ to count as ask.
+mg_ask_amt_ksm_plg Constant number := 250E3; -- As of 2021-05-01. Minimum KSM pledge $ to count as ask.
+mg_granted_amt Constant number := 48E3; -- As of 2018-03-23. Minimum $ to count as granted
+mg_funded_count Constant number := 98E3; -- As of 2018-03-23. Minimum $ to count as funded
 
 /*************************************************************************
 Public type declarations
@@ -29,6 +31,8 @@ Type proposals_data Is Record (
   , assignment_type assignment.assignment_type%type
   , assignment_active_ind assignment.active_ind%type
   , proposal_active_ind proposal.active_ind%type
+  , proposal_type proposal.proposal_type%type
+  , outright_gift_proposal varchar2(1)
   , ask_amt proposal.ask_amt%type
   , granted_amt proposal.granted_amt%type
   , proposal_status_code proposal.proposal_status_code%type
@@ -92,6 +96,15 @@ Type t_contact_count Is Table Of contact_count;
 Type t_ask_assist_credit Is Table Of ask_assist_credit;
 
 /*************************************************************************
+Public function declarations
+*************************************************************************/
+
+/* Function to return public/private constants */
+Function get_constant(
+  const_name In varchar2 -- Name of constant to retrieve
+) Return number Deterministic;
+
+/*************************************************************************
 Public pipelined functions declarations
 *************************************************************************/
 
@@ -111,9 +124,9 @@ to be individually named.
 
 Examples: 
 Select ksm_af.*
-From table(rpt_pbh634.ksm_pkg.tbl_alloc_annual_fund_ksm) ksm_af;
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_alloc_annual_fund_ksm) ksm_af;
 Select cal.*
-From table(rpt_pbh634.ksm_pkg.tbl_current_calendar) cal;
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_current_calendar) cal;
 *************************************************************************/
 
 -- Standardized proposal data table function
@@ -131,6 +144,9 @@ Function tbl_funded_dollars
   Return t_funded_dollars Pipelined;
 
 Function tbl_asked_count
+  Return t_ask_assist_credit Pipelined;
+
+Function tbl_asked_count_ksm
   Return t_ask_assist_credit Pipelined;
 
 Function tbl_contact_reports
@@ -160,6 +176,9 @@ Cursor c_universal_proposals_data Is
     , a.assignment_type
     , a.active_ind As assignment_active_ind
     , p.active_ind As proposal_active_ind
+    , p.proposal_type
+    , Case When p.proposal_type = '01' Then 'Y' End
+      As outright_gift_proposal
     , p.ask_amt
     , p.granted_amt
     , p.proposal_status_code
@@ -382,6 +401,68 @@ Cursor c_asked_count Is
     , assignment_id_number
   ;
 
+-- KSM asked count: asks must be for an outright gift >= mg_ask_amt_ksm_outright
+-- or for a pledge >= mg_ask_amt_ksm_plg
+Cursor c_asked_count_ksm Is
+  -- Must be proposal manager and above the ask credit threshold
+  With
+  proposals_asked_count As (
+    Select *
+    From table(tbl_universal_proposals_data)
+    Where assignment_type = 'PA' -- Proposal Manager
+      And (
+        -- Any gift type above overall threshold
+        ask_amt >= metrics_pkg.mg_ask_amt_ksm_plg
+        -- Outright asks above outright threshold
+        Or (
+          ask_amt >= metrics_pkg.mg_ask_amt_ksm_outright
+          And outright_gift_proposal = 'Y'
+        )
+      )
+  )
+  , asked_count As (
+      -- 1st priority - Look across all proposal managers on a proposal (inactive OR active).
+      -- If there is ONE proposal manager only, credit that for that proposal ID.
+      Select proposal_id
+        , assignment_id_number
+        , initial_contribution_date
+        , proposal_stop_date
+        , 1 As info_rank
+      From proposals_asked_count
+      Where proposalManagerCount = 1 -- only one proposal manager/ credit that PA 
+    Union
+      -- 2nd priority - For #2 if there is more than one active proposal managers on a proposal credit BOTH and exit the process.
+      Select proposal_id
+        , assignment_id_number
+        , initial_contribution_date
+        , proposal_stop_date
+        , 2 As info_rank
+      From proposals_asked_count
+      Where assignment_active_ind = 'Y'
+    Union
+      -- 3rd priority - For #3, Credit all inactive proposal managers where proposal stop date and assignment stop date within 24 hours
+      Select proposal_id
+        , assignment_id_number
+        , initial_contribution_date
+        , proposal_stop_date
+        , 3 As info_rank
+      From proposals_asked_count
+      Where proposal_active_ind = 'N' -- Inactives on the proposal.
+        And proposal_stop_date - assignment_stop_date <= 1
+    Order By info_rank
+  )
+  Select proposal_id
+    , assignment_id_number
+    , min(initial_contribution_date) keep(dense_rank First Order By info_rank Asc)  -- initial_contribution_date is 'ask_date'
+      As initial_contribution_date
+    -- Replace null initial_contribution_date with proposal_stop_date
+    , min(nvl(initial_contribution_date, proposal_stop_date)) keep(dense_rank First Order By info_rank Asc)
+      As ask_or_stop_dt
+  From asked_count
+  Group By proposal_id
+    , assignment_id_number
+  ;
+
 -- Contact report data
 -- Fields to recreate contact report calculations used in goals 4 and 5
 -- Corresponds to subqueries in lines 1392-1448
@@ -391,15 +472,15 @@ Cursor c_contact_reports Is
     , contact_purpose_code
     , extract(year From contact_date)
       As cal_year
-    , rpt_pbh634.ksm_pkg.get_fiscal_year(contact_date)
+    , rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(contact_date)
       As fiscal_year
     , extract(month From contact_date)
       As cal_month
-    , rpt_pbh634.ksm_pkg.get_quarter(contact_date, 'fisc')
+    , rpt_pbh634.ksm_pkg_tmp.get_quarter(contact_date, 'fisc')
       As fiscal_qtr
-    , rpt_pbh634.ksm_pkg.get_quarter(contact_date, 'perf')
+    , rpt_pbh634.ksm_pkg_tmp.get_quarter(contact_date, 'perf')
       As perf_quarter
-    , rpt_pbh634.ksm_pkg.get_performance_year(contact_date)
+    , rpt_pbh634.ksm_pkg_tmp.get_performance_year(contact_date)
       As perf_year -- performance year
   From contact_report
   Where contact_type = 'V' -- Only count visits
@@ -461,6 +542,30 @@ Cursor c_assist_count Is
   Group By proposal_id
     , assignment_id_number
   ;
+
+/*************************************************************************
+Functions
+*************************************************************************/
+
+Function get_constant(const_name In varchar2)
+  Return number Deterministic Is
+  -- Declarations
+  val number;
+  var varchar2(100);
+  
+  Begin
+    -- If const_name doesn't include metrics_pkg, prepend it
+    If substr(lower(const_name), 1, 12) <> 'metrics_pkg.'
+      Then var := 'metrics_pkg.' || const_name;
+    Else
+      var := const_name;
+    End If;
+    -- Run command
+    Execute Immediate
+      'Begin :val := ' || var || '; End;'
+      Using Out val;
+      Return val;
+  End;
 
 /*************************************************************************
 Pipelined functions
@@ -544,6 +649,22 @@ Function tbl_asked_count
     Open c_asked_count; -- Annual Fund allocations cursor
       Fetch c_asked_count Bulk Collect Into pd;
     Close c_asked_count;
+    -- Pipe out the data
+    For i in 1..(pd.count) Loop
+      Pipe row(pd(i));
+    End Loop;
+    Return;
+  End;
+  
+Function tbl_asked_count_ksm
+  Return t_ask_assist_credit Pipelined As
+    -- Declarations
+    pd t_ask_assist_credit;
+
+  Begin
+    Open c_asked_count_ksm; -- Annual Fund allocations cursor
+      Fetch c_asked_count_ksm Bulk Collect Into pd;
+    Close c_asked_count_ksm;
     -- Pipe out the data
     For i in 1..(pd.count) Loop
       Pipe row(pd(i));

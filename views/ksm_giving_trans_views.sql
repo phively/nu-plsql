@@ -8,8 +8,8 @@ Select
   , cal.today
   , cal.yesterday
   , cal.curr_fy
-From table(ksm_pkg.tbl_gift_credit_ksm) g
-Cross Join table(ksm_pkg.tbl_current_calendar) cal
+From table(ksm_pkg_tmp.tbl_gift_credit_ksm) g
+Cross Join table(ksm_pkg_tmp.tbl_current_calendar) cal
 ;
 
 /*************************************************
@@ -22,8 +22,8 @@ Select
   , cal.today
   , cal.yesterday
   , cal.curr_fy
-From table(ksm_pkg.tbl_gift_credit_hh_ksm) g
-Cross Join table(ksm_pkg.tbl_current_calendar) cal
+From table(ksm_pkg_tmp.tbl_gift_credit_hh_ksm) g
+Cross Join table(ksm_pkg_tmp.tbl_current_calendar) cal
 ;
 
 /*************************************************
@@ -121,6 +121,7 @@ params As (
       As ngc_lifetime_full_rec
     , sum(Case When tx_gypm_ind != 'Y' And anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
       As ngc_lifetime_nonanon_full_rec
+    , max(nu_giving.lifetime_giving) As nu_max_hh_lifetime_giving
     , sum(Case When tx_gypm_ind != 'P' Then hh_credit Else 0 End) As cash_lifetime
     , sum(Case When tx_gypm_ind != 'Y' And cal.curr_fy = fiscal_year     Then hh_credit Else 0 End) As ngc_cfy
     , sum(Case When tx_gypm_ind != 'Y' And cal.curr_fy = fiscal_year + 1 Then hh_credit Else 0 End) As ngc_pfy1
@@ -167,20 +168,23 @@ params As (
     , sum(Case When tx_gypm_ind != 'P' And cru_flag = 'Y' And (
         (cal.curr_fy = fiscal_year + 5 And tx_gypm_ind != 'M') Or (cal.curr_fy = matched_fiscal_year + 5 And tx_gypm_ind = 'M')
       ) Then hh_credit Else 0 End) As klc_pfy5
+    -- Stewardship giving, defined as new gifts and commitments plus pledge payments where the NGC was not already counted
+    -- in the current year.
     -- WARNING: includes new gifts and commitments as well as cash
-    , sum(Case When cal.curr_fy = fiscal_year     Then hh_credit Else 0 End) As stewardship_cfy
-    , sum(Case When cal.curr_fy = fiscal_year + 1 Then hh_credit Else 0 End) As stewardship_pfy1
-    , sum(Case When cal.curr_fy = fiscal_year + 2 Then hh_credit Else 0 End) As stewardship_pfy2
-    , sum(Case When cal.curr_fy = fiscal_year + 3 Then hh_credit Else 0 End) As stewardship_pfy3
-    , sum(Case When cal.curr_fy = fiscal_year + 4 Then hh_credit Else 0 End) As stewardship_pfy4
-    , sum(Case When cal.curr_fy = fiscal_year + 5 Then hh_credit Else 0 End) As stewardship_pfy5
+    , sum(Case When cal.curr_fy = fiscal_year     Then hh_stewardship_credit Else 0 End) As stewardship_cfy
+    , sum(Case When cal.curr_fy = fiscal_year + 1 Then hh_stewardship_credit Else 0 End) As stewardship_pfy1
+    , sum(Case When cal.curr_fy = fiscal_year + 2 Then hh_stewardship_credit Else 0 End) As stewardship_pfy2
+    , sum(Case When cal.curr_fy = fiscal_year + 3 Then hh_stewardship_credit Else 0 End) As stewardship_pfy3
+    , sum(Case When cal.curr_fy = fiscal_year + 4 Then hh_stewardship_credit Else 0 End) As stewardship_pfy4
+    , sum(Case When cal.curr_fy = fiscal_year + 5 Then hh_stewardship_credit Else 0 End) As stewardship_pfy5
     -- Anonymous stewardship giving per FY
-    , sum(Case When cal.curr_fy = fiscal_year     And anonymous <> ' ' Then hh_credit Else 0 End) As anonymous_cfy
-    , sum(Case When cal.curr_fy = fiscal_year + 1 And anonymous <> ' ' Then hh_credit Else 0 End) As anonymous_pfy1
-    , sum(Case When cal.curr_fy = fiscal_year + 2 And anonymous <> ' ' Then hh_credit Else 0 End) As anonymous_pfy2
-    , sum(Case When cal.curr_fy = fiscal_year + 3 And anonymous <> ' ' Then hh_credit Else 0 End) As anonymous_pfy3
-    , sum(Case When cal.curr_fy = fiscal_year + 4 And anonymous <> ' ' Then hh_credit Else 0 End) As anonymous_pfy4
-    , sum(Case When cal.curr_fy = fiscal_year + 5 And anonymous <> ' ' Then hh_credit Else 0 End) As anonymous_pfy5
+    -- WARNING: includes new gifts and commitments as well as cash
+    , sum(Case When cal.curr_fy = fiscal_year     And anonymous <> ' ' Then hh_stewardship_credit Else 0 End) As anonymous_cfy
+    , sum(Case When cal.curr_fy = fiscal_year + 1 And anonymous <> ' ' Then hh_stewardship_credit Else 0 End) As anonymous_pfy1
+    , sum(Case When cal.curr_fy = fiscal_year + 2 And anonymous <> ' ' Then hh_stewardship_credit Else 0 End) As anonymous_pfy2
+    , sum(Case When cal.curr_fy = fiscal_year + 3 And anonymous <> ' ' Then hh_stewardship_credit Else 0 End) As anonymous_pfy3
+    , sum(Case When cal.curr_fy = fiscal_year + 4 And anonymous <> ' ' Then hh_stewardship_credit Else 0 End) As anonymous_pfy4
+    , sum(Case When cal.curr_fy = fiscal_year + 5 And anonymous <> ' ' Then hh_stewardship_credit Else 0 End) As anonymous_pfy5
     -- Giving history
     , min(gfts.fiscal_year) As fy_giving_first_yr
     , max(gfts.fiscal_year) As fy_giving_last_yr
@@ -206,6 +210,8 @@ params As (
   Cross Join params
   Inner Join hh_giving gfts
     On gfts.household_id = hh.household_id
+  Left Join nu_rpt_t_lifetime_giving nu_giving
+    On nu_giving.id_number = hh.id_number
   Group By
     hh.id_number
     , hh.household_id
@@ -412,7 +418,7 @@ Select
   , Case When anonymous_pfy5 > 0 Then 'Y' End As anonymous_pfy5_flag
 From trans
 Cross Join params
-Left Join table(ksm_pkg.tbl_special_handling_concat) shc
+Left Join table(ksm_pkg_tmp.tbl_special_handling_concat) shc
   On shc.id_number = trans.id_number
 ;
 
@@ -437,7 +443,7 @@ Kellogg Transforming Together Campaign giving transactions
 Create Or Replace View v_ksm_giving_campaign_trans As
 -- Campaign transactions
 Select *
-From table(ksm_pkg.tbl_gift_credit_campaign)
+From table(ksm_pkg_tmp.tbl_gift_credit_campaign)
 ;
 
 /*************************************************
@@ -446,7 +452,7 @@ Householded Kellogg campaign giving transactions
 Create Or Replace View v_ksm_giving_campaign_trans_hh As
 -- Householded campaign transactions
 Select *
-From table(ksm_pkg.tbl_gift_credit_hh_campaign)
+From table(ksm_pkg_tmp.tbl_gift_credit_hh_campaign)
 ;
 
 /*************************************************
@@ -454,9 +460,13 @@ Kellogg Campaign giving summaries
 *************************************************/
 Create or Replace View v_ksm_giving_campaign As
 With
-hh As (
+manual_dates As (
+  Select to_date('20210630', 'yyyymmdd') As transforming_together_end_dt
+  From DUAL
+)
+, hh As (
   Select *
-  From table(ksm_pkg.tbl_entity_households_ksm)
+  From table(ksm_pkg_tmp.tbl_entity_households_ksm)
 )
 , cgft As (
   Select *
@@ -531,6 +541,7 @@ hh As (
     , sum(Case When fiscal_year = 2018 Then hh_credit Else 0 End) As campaign_fy18
     , sum(Case When fiscal_year = 2019 Then hh_credit Else 0 End) As campaign_fy19
     , sum(Case When fiscal_year = 2020 Then hh_credit Else 0 End) As campaign_fy20
+    , sum(Case When fiscal_year = 2021 And date_of_record <= manual_dates.transforming_together_end_dt Then hh_credit Else 0 End) As campaign_fy21
     -- Recognition amounts for stewardship purposes; includes face value of bequests and life expectancy intentions
     , sum(cgft.hh_recognition_credit - cgft.hh_credit) As campaign_discounted_bequests
     , sum(cgft.hh_recognition_credit) As campaign_steward_giving
@@ -566,8 +577,15 @@ hh As (
       As anon_steward_thru_fy20
     , sum(Case When fiscal_year <= 2020 And cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
       As nonanon_steward_thru_fy20
+    , sum(Case When fiscal_year <= 2021 And cgft.date_of_record <= manual_dates.transforming_together_end_dt Then hh_recognition_credit Else 0 End)
+      As campaign_steward_thru_fy21
+    , sum(Case When fiscal_year <= 2021 And cgft.date_of_record <= manual_dates.transforming_together_end_dt And cgft.anonymous In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
+      As anon_steward_thru_fy21
+    , sum(Case When fiscal_year <= 2021 And cgft.date_of_record <= manual_dates.transforming_together_end_dt And cgft.anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
+      As nonanon_steward_thru_fy21
   From hh
   Cross Join v_current_calendar cal
+  Cross Join manual_dates
   Inner Join cgft On cgft.household_id = hh.household_id
   Left Join legal On legal.id_number = hh.id_number
   Inner Join top_allocs On top_allocs.household_id = hh.household_id
@@ -610,7 +628,7 @@ cal As (
 )
 , ytd_dts As (
   Select to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1 As dt,
-    ksm_pkg.fytd_indicator(to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1) As ytd_ind
+    ksm_pkg_tmp.fytd_indicator(to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1) As ytd_ind
   From cal
   Connect By
     rownum <= (to_date('09/01/' || cal.curr_fy, 'mm/dd/yyyy') - to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy'))
@@ -641,6 +659,119 @@ Select
       Else 0
     End As gift_bin
 From v_ksm_giving_campaign_trans gft
+Cross Join v_current_calendar cal
+Inner Join ytd_dts On ytd_dts.dt = trunc(gft.date_of_record)
+Inner Join entity On entity.id_number = gft.id_number
+Inner Join allocation On allocation.allocation_code = gft.alloc_code
+Left Join deg On deg.id_number = entity.id_number
+Left Join nu_prs_trp_prospect prs On prs.id_number = entity.id_number
+;
+
+/*************************************************
+Same as v_ksm_giving_campaign_ytd but includes gifts after the close of the campaign
+*************************************************/
+Create Or Replace View v_ksm_giving_post_campaign_ytd As
+With
+-- View implementing YTD KSM Campaign giving
+-- Year-to-date calculator
+cal As (
+  Select
+    -- FY 2007 and 2020 as first and last campaign gift dates
+    2007 As prev_fy
+    , curr_fy As curr_fy
+    , yesterday
+    , to_date('20210630', 'yyyymmdd') As campaign_end_dt
+  From v_current_calendar
+)
+, ytd_dts As (
+  Select to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1 As dt,
+    ksm_pkg_tmp.fytd_indicator(to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1) As ytd_ind
+  From cal
+  Connect By
+    rownum <= (to_date('09/01/' || cal.curr_fy, 'mm/dd/yyyy') - to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy'))
+)
+-- Kellogg degrees
+, deg As (
+  Select id_number, degrees_concat
+  From v_entity_ksm_degrees
+)
+-- Unsplit amount - from ksm_pkg
+, unsplit As (
+  Select
+    gt.tx_number
+    , sum(legal_amount)
+      As unsplit_amount
+  From v_ksm_giving_trans gt
+  Cross Join cal
+  Where gt.date_of_record > campaign_end_dt
+  Group By gt.tx_number
+)
+-- Union
+, gift_union As (
+  Select
+    cgft.*
+  From v_ksm_giving_campaign_trans cgft
+  Union
+  Select
+    gt.id_number
+    , entity.record_type_code
+    , entity.person_or_org
+    , entity.birth_dt
+    , gt.tx_number
+    , gt.tx_sequence
+    , gt.anonymous
+    , gt.legal_amount
+    , gt.credit_amount
+    , unsplit.unsplit_amount
+    , to_char(gt.fiscal_year)
+    , gt.date_of_record
+    , gt.allocation_code
+    , allocation.alloc_school
+    , allocation.alloc_purpose
+    , allocation.annual_sw
+    , allocation.restrict_code
+    , gt.transaction_type_code
+    , gt.transaction_type
+    , gt.pledge_status
+    , gt.tx_gypm_ind
+    , 'CHECK' As matched_donor_id
+    , gt.matched_tx_number
+    , NULL
+    , NULL
+    , 'KM'
+    , NULL
+  From v_ksm_giving_trans gt
+  Cross Join cal
+  Inner Join entity
+    On entity.id_number = gt.id_number
+  Inner Join allocation
+    On allocation.allocation_code = gt.allocation_code
+  Left Join unsplit
+    On unsplit.tx_number = gt.tx_number
+  Where gt.date_of_record > campaign_end_dt
+    And gt.tx_gypm_ind <> 'Y'
+)
+-- Main query
+Select
+  gft.*
+  , cal.curr_fy
+  , ytd_dts.ytd_ind
+  , entity.report_name
+  , entity.institutional_suffix
+  , deg.degrees_concat
+  , prs.prospect_manager
+  , allocation.short_name As allocation_name
+  , Case
+      When unsplit_amount >= 10E6 Then 10
+      When unsplit_amount >= 5E6 Then 5
+      When unsplit_amount >= 2E6 Then 2
+      When unsplit_amount >= 1E6 Then 1
+      When unsplit_amount >= 500E3 Then .5
+      When unsplit_amount >= 250E3 Then .25
+      When unsplit_amount >= 100E3 Then .1
+      Else 0
+    End As gift_bin
+From gift_union gft
 Cross Join v_current_calendar cal
 Inner Join ytd_dts On ytd_dts.dt = trunc(gft.date_of_record)
 Inner Join entity On entity.id_number = gft.id_number

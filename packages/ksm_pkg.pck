@@ -1,4 +1,4 @@
-Create Or Replace Package rpt_pbh634.ksm_pkg Is
+CREATE OR REPLACE Package ksm_pkg_tmp Is
 
 /*************************************************************************
 Author  : PBH634
@@ -33,6 +33,8 @@ Type allocation_info Is Record (
   , status_code allocation.status_code%type
   , short_name allocation.short_name%type
   , af_flag allocation.annual_sw%type
+  , sweepable allocation.annual_sw%type
+  , budget_relieving allocation.annual_sw%type 
 );
 
 Type calendar Is Record (
@@ -97,6 +99,19 @@ Type committee_member Is Record (
   , date_modified committee.date_modified%type
   , operator_name committee.operator_name%type
   , spouse_id_number entity.spouse_id_number%type
+);
+
+Type committee_agg Is Record (
+    id_number committee.id_number%type
+    , report_name entity.report_name%type
+    , committee_code committee.committee_code%type
+    , short_desc committee_header.short_desc%type
+    , start_dt varchar2(512)
+    , stop_dt varchar2(512)
+    , status tms_committee_status.short_desc%type
+    , role varchar2(1024)
+    , committee_title varchar2(1024)
+    , committee_short_desc varchar2(40)
 );
 
 /* Geo code primary, for addresses */
@@ -312,6 +327,7 @@ Type trans_entity Is Record (
   , associated_code tms_association.associated_code%type
   , associated_desc tms_association.short_desc%type
   , pledge_number pledge.pledge_pledge_number%type
+  , pledge_fiscal_year pledge.pledge_year_of_giving%type
   , matched_tx_number matching_gift.match_gift_matched_receipt%type
   , matched_fiscal_year number
   , payment_type tms_payment_type.short_desc%type
@@ -328,6 +344,7 @@ Type trans_entity Is Record (
   , legal_amount gift.gift_associated_amount%type
   , credit_amount gift.gift_associated_amount%type
   , recognition_credit gift.gift_associated_amount%type
+  , stewardship_credit_amount gift.gift_associated_amount%type
 );
 
 /* Householdable transaction for credit */
@@ -345,6 +362,7 @@ Type trans_household Is Record (
   , associated_code tms_association.associated_code%type
   , associated_desc tms_association.short_desc%type
   , pledge_number pledge.pledge_pledge_number%type
+  , pledge_fiscal_year pledge.pledge_year_of_giving%type
   , matched_tx_number matching_gift.match_gift_matched_receipt%type
   , matched_fiscal_year number
   , payment_type tms_payment_type.short_desc%type
@@ -361,8 +379,10 @@ Type trans_household Is Record (
   , legal_amount gift.gift_associated_amount%type
   , credit_amount gift.gift_associated_amount%type
   , recognition_credit gift.gift_associated_amount%type
+  , stewardship_credit_amount gift.gift_associated_amount%type
   , hh_credit gift.gift_associated_amount%type
   , hh_recognition_credit gift.gift_associated_amount%type
+  , hh_stewardship_credit gift.gift_associated_amount%type
 );
 
 /* Campaign transactions */
@@ -404,6 +424,10 @@ Type special_handling Is Record (
      , spec_hnd_codes varchar2(1024)
      , mailing_list_concat varchar2(1024)
      , ml_codes varchar2(1024)
+     , record_status_code entity.record_status_code%type
+     , gab varchar2(16)
+     , trustee varchar2(16)
+     , ebfa varchar2(16)
      , no_contact varchar2(1)
      , no_solicit varchar2(1)
      , no_release varchar2(1)
@@ -414,6 +438,9 @@ Type special_handling Is Record (
      , anonymous_donor varchar2(1)
      , exc_all_comm varchar2(1)
      , exc_all_sols varchar2(1)
+     , exc_surveys varchar2(1)
+     , last_survey_dt date
+     , no_survey_ind varchar2(1)
      , no_phone_ind varchar2(1)
      , no_phone_sol_ind varchar2(1)
      , no_email_ind varchar2(1)
@@ -435,6 +462,7 @@ Type t_calendar Is Table Of calendar;
 Type t_random_id Is Table Of random_id;
 Type t_degreed_alumni Is Table Of degreed_alumni;
 Type t_committee_members Is Table Of committee_member;
+Type t_committee_agg Is Table Of committee_agg;
 Type t_geo_code_primary Is Table Of geo_code_primary;
 Type t_households Is Table Of household;
 Type t_src_donors Is Table Of src_donor;
@@ -459,8 +487,8 @@ Public constant declarations
 
 /* Start months */
 fy_start_month Constant number := 9; -- fiscal start month, 9 = September
-py_start_month Constant number := 6; -- performance start month, 5 = May
-py_start_month_pre_py21 Constant number := 5; -- performance start month was 5 = May until PY2021
+py_start_month Constant number := 5; -- performance start month, 5 = May
+py_start_month_py21 Constant number := 6; -- performance start month, 6 = June in PY2021
 
 /* Committees */
 committee_gab Constant committee.committee_code%type := 'U'; -- Kellogg Global Advisory Board committee code
@@ -477,6 +505,9 @@ committee_healthcare Constant committee.committee_code%type := 'HAK'; -- Healthc
 committee_WomensLeadership Constant committee.committee_code%type := 'KWLC'; -- Women's Leadership Advisory Council
 committee_KALC Constant committee.committee_code%type := 'KALC'; -- Kellogg Admissions Leadership Council
 committee_kic Constant committee.committee_code%type := 'KIC'; -- Kellogg Inclusion Coalition
+committee_privateequity Constant committee.committee_code%type := 'KPETC'; -- Kellogg Private Equity Taskforce Council
+committee_pe_asia Constant committee.committee_code%type := 'APEAC'; -- KSM Asia Private Equity Advisory Council
+committee_asia Constant committee.committee_code%type := 'KEBA'; -- Kellogg Executive Board for Asia
 
 /*************************************************************************
 Public variable declarations
@@ -526,6 +557,11 @@ Function fytd_indicator(
 Function get_numeric_constant(
   const_name In varchar2 -- Name of constant to retrieve
 ) Return number Deterministic;
+
+/* Function to return string constants */
+Function get_string_constant(
+  const_name In varchar2 -- Name of constant to retrieve
+) Return varchar2 Deterministic;
 
 /* Compute fiscal or performance quarter from date */
 Function get_quarter(
@@ -711,6 +747,13 @@ Function tbl_special_handling_concat
     Return t_special_handling Pipelined;
 
 /* Return pipelined table of committee members */
+-- All roles listagged to one per line
+Function tbl_committee_agg (
+  my_committee_cd In varchar2
+  , shortname In varchar2 Default NULL
+) Return t_committee_agg Pipelined;
+
+-- Individual committees
 Function tbl_committee_gab
   Return t_committee_members Pipelined;
 
@@ -752,14 +795,23 @@ Function tbl_committee_KALC
 
 Function tbl_committee_kic
   Return t_committee_members Pipelined;
+  
+Function tbl_committee_privateequity
+  Return t_committee_members Pipelined;
+
+Function tbl_committee_pe_asia
+  Return t_committee_members Pipelined;
+  
+Function tbl_committee_asia
+  Return t_committee_members Pipelined;
 
 /*************************************************************************
 End of package
 *************************************************************************/
 
-End ksm_pkg;
+End ksm_pkg_tmp;
 /
-Create Or Replace Package Body rpt_pbh634.ksm_pkg Is
+Create Or Replace Package Body ksm_pkg_tmp Is
 
 /*************************************************************************
 Private cursor tables -- data definitions; update indicated sections as needed
@@ -773,6 +825,8 @@ Cursor ct_alloc_annual_fund_ksm Is
     , status_code
     , short_name
     , 'Y' As af_flag
+    , NULL
+    , NULL
   From allocation
   Where
     -- KSM af-flagged allocations
@@ -796,6 +850,13 @@ Cursor ct_alloc_annual_fund_ksm Is
       , '3203005228501GFT' -- KFN Scholarship
       , '3203005334201GFT' -- KSM 1Y Class of 2019 Scholar
       , '3203005590301GFT' -- KSM Student Assistance Fund
+      , '3203005848101GFT' -- KSM DEI PE Scholarship
+      , '3203005797501GFT' -- KSM DEI Scholarship Fund
+      , '3203005795201GFT' -- KSM DEI Programmatic Fund
+      , '3203005856201GFT' -- John R. Flanagan Scholarship
+      , '3203002858501GFT' -- Cox-Cohen Scholarship
+      , '3203004600201GFT' -- Woodsum Student Travel
+      , '3203005990501GFT' -- Finance Fellows Program
       /************ UPDATE ABOVE HERE ************/
     )
   ;
@@ -848,7 +909,7 @@ Cursor ct_numeric_capacity_ratings Is
       , short_desc As rating_desc
       , Case
           When rating_code = 0 Then 0
-          Else rpt_pbh634.ksm_pkg.get_number_from_dollar(short_desc) / 1000000
+          Else rpt_pbh634.ksm_pkg_tmp.get_number_from_dollar(short_desc) / 1000000
         End As numeric_rating
     From tms_rating
   )
@@ -878,13 +939,111 @@ Cursor c_alloc_curr_use_ksm Is
     Select *
     From table(tbl_alloc_annual_fund_ksm)
   )
+  , sweepable As (
+    Select
+      allocation.allocation_code
+      , allocation.short_name
+      , allocation.long_name
+      , Case
+          -- Unrestricted scholarships
+          When allocation.alloc_purpose In (
+              'SFO' -- Scholarships/Fellowships: General
+            , 'SFG' -- Scholarships/Fellowships: Graduate
+          )
+            Then 'Y'
+          -- Allocation name contains
+          When lower(allocation.long_name) Like '%excellence%'
+            Or lower(allocation.long_name) Like '%kellogg%annual%fund%'
+            Or lower(allocation.long_name) Like '%discretionary%'
+            Or lower(allocation.long_name) Like '%dean%innovation%'
+            Or lower(allocation.long_name) Like '%to%be%designated%'
+            Or lower(allocation.long_name) Like '%unrestricted%bequest%'
+            Or lower(allocation.long_name) Like '%provost%fund%kellogg%'
+            Then 'Y'
+          -- Fallback: not sweepable
+          Else 'N'
+          End
+        As sweepable
+    From allocation
+  )
+  , br As (
+    Select
+      allocation.allocation_code
+      , allocation.short_name
+      , allocation.long_name
+      , sweepable.sweepable
+      , Case
+          -- Is sweepable
+          When sweepable.sweepable = 'Y'
+            Then 'Y'
+          -- Fund name contains
+          When lower(allocation.long_name) Like '%class of%'
+            Or lower(allocation.long_name) Like '%class%gift%'
+            Then 'Y'
+          -- Fund name exclude
+          When lower(allocation.long_name) Like '%event%'
+            Or lower(allocation.long_name) Like '%conference%'
+            Or lower(allocation.long_name) Like '%summit%'
+            Or lower(allocation.long_name) Like '%challenge%'
+            Or lower(allocation.long_name) Like '%competition%'
+            Then 'N'
+          -- Alloc purpose is:
+          -- Lectures & Seminars - Women's Summit only
+          When allocation.alloc_purpose = 'LSM'
+            Then Case
+              When lower(allocation.long_name) Like '%women%leadership%'
+                Then 'Y'
+              Else 'N'
+              End
+          -- Alloc purpose is:
+          When allocation.alloc_purpose In (
+                'MNT' -- Maintenance
+              , 'CIS' -- Center & Institute Support
+              , 'SLF' -- Student Life
+            )
+            Then 'Y'
+          -- Alloc purpose exclude
+          When allocation.alloc_purpose In (
+              'NAA' -- Non-Academic Administration
+            , 'NCP' -- Named Chairs & Professorships
+            , 'PRZ' -- Prizes
+            , 'SFU' -- Scholarships/Fellowships: Undergraduate
+            , 'TBD' -- TBD/Miscellaneous
+          )
+            Then 'N'
+          -- Center/priority, but flagged department
+          When allocation.allocation_code In (
+              '3203000855901GFT' -- HCAK
+            , '3203000860901GFT' -- AMP
+            , '3203004013501GFT' -- KIEI
+            , '3203005114401GFT' -- GPRL
+            , '3203005795201GFT' -- DEI
+            , '3203004957901GFT' -- Ward Center
+          )
+            Then 'Y'
+          -- CFAE purpose is
+          When allocation.cfae_purpose_code In (
+            'CU' -- Current Operations - Unrestricted
+          )
+            Then 'Y'
+          -- Fallback
+          Else 'N'
+          End
+        As budget_relieving
+    From allocation
+    Inner Join sweepable
+      On sweepable.allocation_code = allocation.allocation_code
+  )
   Select Distinct
     alloc.allocation_code
     , alloc.status_code
     , alloc.short_name
     , nvl(af_flag, 'N') As af_flag
+    , br.sweepable
+    , br.budget_relieving
   From allocation alloc
   Left Join ksm_af On ksm_af.allocation_code = alloc.allocation_code
+  Left Join br On br.allocation_code = alloc.allocation_code
   Where (agency = 'CRU' And alloc_school = 'KM'
       And alloc.allocation_code <> '3303002283701GFT' -- Exclude Envision building gifts
     )
@@ -936,22 +1095,22 @@ Cursor c_current_calendar (fy_start_month In integer, py_start_month In integer)
     -- Current performance year
     , curr_date.perf_yr As curr_py
     -- Start of performance year objects
-    -- Previous PY correction for 2020
+    -- Previous PY correction for 2021
     , Case
-        When perf_yr - 1 <= 2020
-          Then to_date(py_start_month_pre_py21 || '/01/' || (curr_date.perf_yr - yr_dif - 1), 'mm/dd/yyyy')
+        When perf_yr - 1 = 2021
+          Then to_date(py_start_month_py21 || '/01/' || (curr_date.perf_yr - yr_dif - 1), 'mm/dd/yyyy')
         Else to_date(py_start_month || '/01/' || (curr_date.perf_yr - yr_dif - 1), 'mm/dd/yyyy')
         End
       As prev_py_start
     , Case
-        When perf_yr <= 2020
-          Then to_date(py_start_month_pre_py21 || '/01/' || (curr_date.perf_yr - yr_dif + 0), 'mm/dd/yyyy')
+        When perf_yr = 2021
+          Then to_date(py_start_month_py21 || '/01/' || (curr_date.perf_yr - yr_dif + 0), 'mm/dd/yyyy')
         Else to_date(py_start_month || '/01/' || (curr_date.perf_yr - yr_dif + 0), 'mm/dd/yyyy')
         End
       As curr_py_start
     , Case
-        When perf_yr + 1 <= 2020
-          Then to_date(py_start_month_pre_py21 || '/01/' || (curr_date.perf_yr - yr_dif + 1), 'mm/dd/yyyy')
+        When perf_yr + 1 = 2021
+          Then to_date(py_start_month_py21 || '/01/' || (curr_date.perf_yr - yr_dif + 1), 'mm/dd/yyyy')
         Else to_date(py_start_month || '/01/' || (curr_date.perf_yr - yr_dif + 1), 'mm/dd/yyyy')
         End
       As next_py_start
@@ -1091,6 +1250,7 @@ Cursor c_cypher_vignere(phrase In varchar2, key In varchar2, wordlength In integ
 /* Definition of current Kellogg committee members
    2017-03-01 */
 Cursor c_committee_members (my_committee_cd In varchar2) Is
+  -- Same as comm subquery in c_committee_agg, below
   Select
     comm.id_number
     , comm.committee_code
@@ -1112,6 +1272,66 @@ Cursor c_committee_members (my_committee_cd In varchar2) Is
   Left Join committee_header hdr On comm.committee_code = hdr.committee_code
   Where comm.committee_code = my_committee_cd
     And comm.committee_status_code In ('C', 'A') -- 'C'urrent or 'A'ctive; 'A' is deprecated
+  ;
+
+/* Definition of current Kellogg committee members aggregated
+   2021-06-08 */
+Cursor c_committee_agg (
+    my_committee_cd In varchar2
+    , shortname In varchar2
+  ) Is
+  With
+  c As (
+    -- Same as c_committee_members, above
+      Select
+        comm.id_number
+        , comm.committee_code
+        , hdr.short_desc
+        , comm.start_dt
+        , comm.stop_dt
+        , tms_status.short_desc As status
+        , tms_role.short_desc As role
+        , comm.committee_title
+        , comm.xcomment
+        , comm.date_modified
+        , comm.operator_name
+        , trim(entity.spouse_id_number) As spouse_id_number
+        , shortname As committee_short_desc
+      From committee comm
+      Inner Join entity
+        On entity.id_number = comm.id_number
+      Left Join tms_committee_status tms_status On comm.committee_status_code = tms_status.committee_status_code
+      Left Join tms_committee_role tms_role On comm.committee_role_code = tms_role.committee_role_code
+      Left Join committee_header hdr On comm.committee_code = hdr.committee_code
+      Where comm.committee_code = my_committee_cd
+        And comm.committee_status_code In ('C', 'A') -- 'C'urrent or 'A'ctive; 'A' is deprecated
+  )
+  -- Main query
+  Select
+    c.id_number
+    , entity.report_name
+    , c.committee_code
+    , c.short_desc
+    , listagg(c.start_dt, '; ') Within Group (Order By c.start_dt Asc, c.stop_dt Asc, c.role Asc)
+      As start_dt
+    , listagg(c.stop_dt, '; ') Within Group (Order By c.start_dt Asc, c.stop_dt Asc, c.role Asc)
+      As stop_dt
+    , c.status
+    , listagg(c.role, '; ') Within Group (Order By c.start_dt Asc, c.stop_dt Asc, c.role Asc)
+      As role
+    , listagg(c.committee_title, '; ') Within Group (Order By c.start_dt Asc, c.stop_dt Asc, c.role Asc)
+      As committee_title
+    , shortname
+      As committee_short_desc
+  From c
+  Inner Join entity
+    On entity.id_number = c.id_number
+  Group By
+    c.id_number
+    , entity.report_name
+    , c.committee_code
+    , c.short_desc
+    , c.status
   ;
 
 /* Definition of Kellogg degrees concatenated
@@ -1557,7 +1777,7 @@ With
     From table(tbl_geo_code_primary)
     Where addr_pref_ind = 'Y'
   )
-
+  -- Individual preferred addresses
   , pref_addr As (
     Select
       addr.id_number
@@ -1719,19 +1939,30 @@ With
     , household.household_last_masters_year
     , couples.program As household_program
     , couples.program_group As household_program_group
-    , pref_addr.xsequence
-    , pref_addr.pref_city
-    , pref_addr.pref_state
-    , pref_addr.zipcode
-    , pref_addr.geo_codes
-    , pref_addr.geo_code_primary
-    , pref_addr.geo_code_primary_desc
-    , pref_addr.pref_country
-    , pref_addr.pref_continent
+    -- HH preferred address logic
+    , Case When pa_prim.xsequence Is Not Null Then pa_prim.xsequence Else pa_sp.xsequence End
+      As xsequence
+    , Case When pa_prim.xsequence Is Not Null Then pa_prim.pref_city Else pa_sp.pref_city End
+      As pref_city
+    , Case When pa_prim.xsequence Is Not Null Then pa_prim.pref_state Else pa_sp.pref_state End
+      As pref_state
+    , Case When pa_prim.xsequence Is Not Null Then pa_prim.zipcode Else pa_sp.zipcode End
+      As zipcode
+    , Case When pa_prim.xsequence Is Not Null Then pa_prim.geo_codes Else pa_sp.geo_codes End
+      As geo_codes
+    , Case When pa_prim.xsequence Is Not Null Then pa_prim.geo_code_primary Else pa_sp.geo_code_primary End
+      As geo_code_primary
+    , Case When pa_prim.xsequence Is Not Null Then pa_prim.geo_code_primary_desc Else pa_sp.geo_code_primary_desc End
+      As geo_code_primary_desc
+    , Case When pa_prim.xsequence Is Not Null Then pa_prim.pref_country Else pa_sp.pref_country End
+      As pref_country
+    , Case When pa_prim.xsequence Is Not Null Then pa_prim.pref_continent Else pa_sp.pref_continent End
+      As pref_continent
   From household
   Inner Join couples On household.household_id = couples.id_number
   Left Join mailing_order On household.household_id = mailing_order.household_id
-  Left Join pref_addr On household.id_number = pref_addr.id_number
+  Left Join pref_addr pa_prim On household.household_id = pa_prim.id_number
+  Left Join pref_addr pa_sp On couples.spouse_id_number = pa_sp.id_number
   Left Join fmr_spouse On household.id_number = fmr_spouse.id_number
   ;
 
@@ -1891,7 +2122,7 @@ Cursor c_university_strategy Is
         Else uos.university_strategy
       End As university_strategy
     , Case
-        When prs.strategy_description Is Not Null Then ksm_pkg.to_date2(prs.strategy_date, 'mm/dd/yyyy')
+        When prs.strategy_description Is Not Null Then ksm_pkg_tmp.to_date2(prs.strategy_date, 'mm/dd/yyyy')
         Else uos.strategy_sched_date
       End As strategy_sched_date
     , Case
@@ -2168,6 +2399,7 @@ Cursor c_gift_credit Is
       , 'MG' As associated_code
       , 'Matching Gift' As associated_desc
       , NULL As pledge_number
+      , NULL As pledge_fiscal_year
       , match_gift_matched_receipt As matched_tx_number
       , to_number(gift.gift_year_of_giving) As matched_fiscal_year
       , tms_pmt_type.payment_type
@@ -2185,6 +2417,7 @@ Cursor c_gift_credit Is
       , match_gift_amount
       , match_gift_amount
       , match_gift_amount
+      , match_gift_amount As stewardship_credit_amount
     From matching_gift
     Inner Join entity On entity.id_number = matching_gift.match_gift_company_id
     -- Matched gift data
@@ -2216,6 +2449,7 @@ Cursor c_gift_credit Is
       , 'MG' As associated_code
       , 'Matching Gift' As associated_desc
       , NULL As pledge_number
+      , NULL As pledge_fiscal_year
       , match_gift_matched_receipt As matched_tx_number
       , to_number(gift.gift_year_of_giving) As matched_fiscal_year
       , tms_pmt_type.payment_type
@@ -2233,6 +2467,7 @@ Cursor c_gift_credit Is
       , Case When gft.id_number = match_gift_company_id Then match_gift_amount Else 0 End As legal_amount
       , match_gift_amount
       , match_gift_amount
+      , match_gift_amount As stewardship_credit_amount
     From matching_gift
     -- Matched gift data
     Left Join gift On gift.gift_receipt_number = match_gift_matched_receipt
@@ -2276,7 +2511,8 @@ Cursor c_gift_credit Is
         As tx_gypm_ind
       , gift.gift_associated_code
       , tms_assoc.associated_desc
-      , primary_gift.prim_gift_pledge_number As pledge_number
+      , trim(primary_gift.prim_gift_pledge_number) As pledge_number
+      , primary_pledge.prim_pledge_year_of_giving As pledge_fiscal_year
       , NULL As matched_tx_number
       , NULL As matched_fiscal_year
       , tms_pmt_type.payment_type
@@ -2299,12 +2535,32 @@ Cursor c_gift_credit Is
             Then get_number_from_dollar(primary_gift.prim_gift_comment)
           Else gift.gift_associated_credit_amt
         End As recognition_credit
+      -- Stewardship credit, where pledge payments are counted at face value provided the pledge
+      -- was made in an earlier fiscal year
+      , Case
+          -- Internal transfers logic
+          When tms_pmt_type.payment_type = 'Internal Transfer'
+            And gift.gift_associated_credit_amt = 0
+            Then get_number_from_dollar(primary_gift.prim_gift_comment)
+          -- When no associated pledge use credit amount
+          When primary_pledge.prim_pledge_number Is Null
+            Then gift.gift_associated_credit_amt
+          -- When a pledge transaction type, check the year
+          Else Case
+            -- Zero out when pledge fiscal year and payment fiscal year are the same
+            When primary_pledge.prim_pledge_year_of_giving = get_fiscal_year(gift.gift_date_of_record)
+              Then 0
+            Else gift.gift_associated_credit_amt
+            End
+        End As stewardship_credit_amount
     From gift
     Inner Join entity On entity.id_number = gift.gift_donor_id
     -- Allocation
     Inner Join allocation On allocation.allocation_code = gift.gift_associated_allocation
     -- Anonymous association and linked proposal
     Inner Join primary_gift On primary_gift.prim_gift_receipt_number = gift.gift_receipt_number
+    -- Primary pledge fiscal year
+    Left Join primary_pledge On primary_pledge.prim_pledge_number = primary_gift.prim_gift_pledge_number
     -- Trans type descriptions
     Left Join tms_trans On tms_trans.transaction_type_code = gift.gift_transaction_type
     Left Join tms_pmt_type On tms_pmt_type.payment_type_code = gift.gift_payment_type
@@ -2325,6 +2581,7 @@ Cursor c_gift_credit Is
       , pledge.pledge_associated_code
       , tms_assoc.associated_desc
       , pledge.pledge_pledge_number As pledge_number
+      , pledge.pledge_year_of_giving As pledge_fiscal_year
       , NULL As matched_tx_number
       , NULL As matched_fiscal_year
       , NULL As payment_type
@@ -2351,6 +2608,7 @@ Cursor c_gift_credit Is
       , plgd.legal
       , plgd.credit
       , plgd.recognition_credit
+      , plgd.recognition_credit As stewardship_credit_amount
     From pledge
     Inner Join entity On entity.id_number = pledge.pledge_donor_id
     -- Trans type descriptions
@@ -2432,6 +2690,7 @@ Cursor c_gift_credit_ksm Is
       , 'MG' As associated_code
       , 'Matching Gift' As associated_desc
       , NULL As pledge_number
+      , NULL As pledge_fiscal_year
       , match_gift_matched_receipt As matched_tx_number
       , to_number(gift.gift_year_of_giving) As matched_fiscal_year
       , tms_pmt_type.payment_type
@@ -2449,6 +2708,7 @@ Cursor c_gift_credit_ksm Is
       , match_gift_amount
       , match_gift_amount
       , match_gift_amount
+      , match_gift_amount As stewardship_credit_amount
     From matching_gift
     Inner Join entity On entity.id_number = matching_gift.match_gift_company_id
     -- Matched gift data
@@ -2480,6 +2740,7 @@ Cursor c_gift_credit_ksm Is
       , 'MG' As associated_code
       , 'Matching Gift' As associated_desc
       , NULL As pledge_number
+      , NULL As pledge_fiscal_year
       , match_gift_matched_receipt As matched_tx_number
       , to_number(gift.gift_year_of_giving) As matched_fiscal_year
       , tms_pmt_type.payment_type
@@ -2497,6 +2758,7 @@ Cursor c_gift_credit_ksm Is
       , Case When gft.id_number = match_gift_company_id Then match_gift_amount Else 0 End As legal_amount
       , match_gift_amount
       , match_gift_amount
+      , match_gift_amount As stewardship_credit_amount
     From matching_gift
     -- Matched gift data
     Left Join gift On gift.gift_receipt_number = match_gift_matched_receipt
@@ -2540,7 +2802,8 @@ Cursor c_gift_credit_ksm Is
         As tx_gypm_ind
       , tms_assoc.associated_code
       , tms_assoc.associated_desc
-      , primary_gift.prim_gift_pledge_number As pledge_number
+      , trim(primary_gift.prim_gift_pledge_number) As pledge_number
+      , primary_pledge.prim_pledge_year_of_giving As pledge_fiscal_year
       , NULL As matched_tx_number
       , NULL As matched_fiscal_year
       , tms_pmt_type.payment_type
@@ -2563,12 +2826,32 @@ Cursor c_gift_credit_ksm Is
             Then get_number_from_dollar(primary_gift.prim_gift_comment)
           Else gift.gift_associated_credit_amt
         End As recognition_credit
+      -- Stewardship credit, where pledge payments are counted at face value provided the pledge
+      -- was made in an earlier fiscal year
+      , Case
+          -- Internal transfers logic
+          When tms_pmt_type.payment_type = 'Internal Transfer'
+            And gift.gift_associated_credit_amt = 0
+            Then get_number_from_dollar(primary_gift.prim_gift_comment)
+          -- When no associated pledge use credit amount
+          When primary_pledge.prim_pledge_number Is Null
+            Then gift.gift_associated_credit_amt
+          -- When a pledge transaction type, check the year
+          Else Case
+            -- Zero out when pledge fiscal year and payment fiscal year are the same
+            When primary_pledge.prim_pledge_year_of_giving = get_fiscal_year(gift.gift_date_of_record)
+              Then 0
+            Else gift.gift_associated_credit_amt
+            End
+        End As stewardship_credit_amount
     From gift
     Inner Join entity On entity.id_number = gift.gift_donor_id
     -- Allocation
     Inner Join allocation On allocation.allocation_code = gift.gift_associated_allocation
     -- Anonymous association and linked proposal
     Inner Join primary_gift On primary_gift.prim_gift_receipt_number = gift.gift_receipt_number
+    -- Primary pledge fiscal year
+    Left Join primary_pledge On primary_pledge.prim_pledge_number = primary_gift.prim_gift_pledge_number
     -- Trans type descriptions
     Left Join tms_trans On tms_trans.transaction_type_code = gift.gift_transaction_type
     Left Join tms_pmt_type On tms_pmt_type.payment_type_code = gift.gift_payment_type
@@ -2590,6 +2873,7 @@ Cursor c_gift_credit_ksm Is
       , tms_assoc.associated_code
       , tms_assoc.associated_desc
       , pledge.pledge_pledge_number As pledge_number
+      , pledge.pledge_year_of_giving As pledge_fiscal_year
       , NULL As matched_tx_number
       , NULL As matched_fiscal_year
       , NULL As payment_type
@@ -2609,6 +2893,7 @@ Cursor c_gift_credit_ksm Is
       , plgd.legal
       , plgd.credit
       , plgd.recognition_credit
+      , plgd.recognition_credit As stewardship_credit_amount
     From pledge
     Inner Join entity On entity.id_number = pledge.pledge_donor_id
     -- Trans type descriptions
@@ -2666,6 +2951,12 @@ Cursor c_gift_credit_hh_ksm Is
         When id_cnt = 1 Then hhid.recognition_credit
         Else 0
       End As hh_recognition_credit
+    -- Household stewardship credit
+    , Case
+        When hhid.id_number = hhid.household_id Then hhid.stewardship_credit_amount
+        When id_cnt = 1 Then hhid.stewardship_credit_amount
+        Else 0
+      End As hh_stewardship_credit
   From hhid
   Inner Join giftcount gc On gc.household_id = hhid.household_id
     And gc.tx_number = hhid.tx_number
@@ -2818,6 +3109,7 @@ Cursor c_gift_credit_hh_campaign_2008 Is
     , associated_code
     , associated_desc
     , pledge_number
+    , pledge_fiscal_year
     , matched_tx_number
     , matched_fiscal_year
     , payment_type
@@ -2834,8 +3126,10 @@ Cursor c_gift_credit_hh_campaign_2008 Is
     , legal_amount
     , credit_amount
     , recognition_credit
+    , stewardship_credit_amount
     , hh_credit
     , hh_recognition_credit
+    , hh_stewardship_credit
   From table(tbl_gift_credit_hh_ksm) hh_cred
   Inner Join (Select Distinct rcpt_or_plg_number From nu_rpt_t_cmmt_dtl_daily) daily
     On hh_cred.tx_number = daily.rcpt_or_plg_number
@@ -2855,6 +3149,7 @@ Cursor c_gift_credit_hh_campaign_2008 Is
     , 'IT' As associated_code
     , 'Internal Transfer' As associated_desc
     , NULL As pledge_number
+    , NULL As pledge_fiscal_year
     , NULL As matched_tx_number
     , NULL As matched_fiscal_year
     , 'Internal Transfer'
@@ -2871,8 +3166,10 @@ Cursor c_gift_credit_hh_campaign_2008 Is
     , 344303 As legal_amount
     , 344303 As credit_amount
     , 344303 As recognition_amount
+    , 344303 As stewardship_credit_amount
     , 344303 As hh_credit
     , 344303 As hh_recognition_credit
+    , 344303 As hh_stewardship_credit
   From nu_rpt_t_cmmt_dtl_daily daily
   Inner Join entity On entity.id_number = daily.id_number
   Inner Join allocation On allocation.allocation_code = daily.alloc_code
@@ -2961,6 +3258,39 @@ Cursor c_special_handling_concat Is
       h.id_number
       , e.spouse_id_number
   )
+  -- Survey appeals
+  , surveys As (
+    Select
+      ah.appeal_group
+      , ah.appeal_code
+      , ah.description
+      , a.id_number
+      , a.appeal_month
+      , a.appeal_year
+      , to_date2(a.appeal_year || a.appeal_month || '01', 'yyyymmdd')
+        As appeal_date
+    From appeals a
+    Inner Join appeal_header ah
+      On ah.appeal_code = a.appeal_code
+      And ah.appeal_group = 'SY' -- Survey
+  )
+  , last_survey As (
+    Select
+      id_number
+      , count(appeal_date)
+        As past_surveys
+      , max(appeal_date)
+        As last_survey_dt
+      , Case
+          When add_months(max(appeal_date), 4) >= max(cal.today)
+            Then 'Y'
+          End
+        As surveyed_last_4_months
+    From surveys
+    Cross Join table(tbl_current_calendar) cal
+    Where appeal_date <= cal.today
+    Group By id_number
+  )
   -- Mailing list entities
   , mailing_lists As (
     Select
@@ -2988,6 +3318,9 @@ Cursor c_special_handling_concat Is
       -- All solicitation
       , max(Case When ml.mail_list_code = 'AS' And ml.mail_list_ctrl_code = 'EXC' Then 'Y' End)
         As exc_all_sols
+      -- Surveys
+      , max(Case When ml.mail_list_code = 'SURV' And ml.mail_list_ctrl_code = 'EXC' Then 'Y' End)
+        As exc_surveys
       -- Phonathon communication
       , max(Case When ml.mail_list_code = 'PC' And ml.mail_list_ctrl_code = 'EXC' Then 'Y' End)
         As exc_phone_comm
@@ -3017,7 +3350,7 @@ Cursor c_special_handling_concat Is
          ml.unit_code = 'KM'
          Or (
           ml.unit_code = ' '
-          And ml.mail_list_code In ('AC', 'AS', 'PC', 'PS', 'EC', 'ES', 'MC', 'MS')
+          And ml.mail_list_code In ('AC', 'AS', 'PC', 'PS', 'EC', 'ES', 'MC', 'MS', 'SURV')
          )
        )
     Group By
@@ -3055,6 +3388,44 @@ Cursor c_special_handling_concat Is
       ksm_stewardship_issue = 'Y'
       -- Or other indicators, if ever added
   )
+  -- Committees
+  , gab As (
+    Select
+      gab.id_number
+      , e.spouse_id_number
+      , 'Y' As flag
+    From table(ksm_pkg_tmp.tbl_committee_gab) gab
+    Inner Join entity e
+      On e.id_number = gab.id_number
+  )
+  , trustee As (
+    Select
+      tr.id_number
+      , e.spouse_id_number
+      , 'Y' As flag
+    From table(ksm_pkg_tmp.tbl_committee_trustee) tr
+    Inner Join entity e
+      On e.id_number = tr.id_number
+  )
+  , ebfa As (
+    Select
+      ebfa.id_number
+      , e.spouse_id_number
+      , 'Y' As flag
+    From table(ksm_pkg_tmp.tbl_committee_asia) ebfa
+    Inner Join entity e
+      On e.id_number = ebfa.id_number
+  )
+  , committees_merged As (
+    Select id_number, spouse_id_number
+    From gab
+    Union
+    Select id_number, spouse_id_number
+    From trustee
+    Union
+    Select id_number, spouse_id_number
+    From ebfa
+  )
   -- All IDs
   , ids As (
     Select id_number, spouse_id_number
@@ -3065,6 +3436,9 @@ Cursor c_special_handling_concat Is
     Union
     Select id_number, spouse_id_number
     From alerts
+    Union
+    Select id_number, spouse_id_number
+    From committees_merged
   )
   -- Universal no contact or no solicit
   -- Anyone with one of a few select codes should NEVER be contacted or solicited
@@ -3100,6 +3474,26 @@ Cursor c_special_handling_concat Is
     , spec_hnd.spec_hnd_codes
     , mailing_lists.mailing_list_concat
     , mailing_lists.ml_codes
+    -- Entity flags
+    , entity.record_status_code
+    , Case
+        When gab.flag = 'Y'
+          Then 'GAB'
+        When gab_s.flag = 'Y'
+          Then 'GAB Spouse'
+      End As gab
+    , Case
+        When trustee.flag = 'Y'
+          Then 'Trustee'
+        When trustee_s.flag = 'Y'
+          Then 'Trustee Spouse'
+      End As trustee
+    , Case
+        When ebfa.flag = 'Y'
+          Then 'EBFA'
+        When ebfa_s.flag = 'Y'
+          Then 'EBFA Spouse'
+      End As ebfa
     -- Overall special handling indicators
     , spec_hnd.no_contact
     , spec_hnd.no_solicit
@@ -3112,6 +3506,18 @@ Cursor c_special_handling_concat Is
     -- Overall mailing list indicators
     , exc_all_comm
     , exc_all_sols
+    , exc_surveys
+    , last_survey.last_survey_dt
+    -- No surveys combined
+    -- Based on p. 7 of Alumni Survey Request Guidelines and Procedures
+    -- (v0.7 updated 6/24/2015)
+    , Case
+        When univ_no_contact = 'Y'
+          Or spec_hnd.no_release = 'Y'
+          Or exc_surveys = 'Y'
+          Or last_survey.surveyed_last_4_months = 'Y' 
+          Then 'Y'
+      End As no_survey_ind
     -- No phone combined
     , Case
         When univ_no_contact = 'Y'
@@ -3177,9 +3583,17 @@ Cursor c_special_handling_concat Is
     -- Alerts
     , alerts.ksm_stewardship_issue
   From unc_ids ids
+  Inner Join entity On entity.id_number = ids.id_number
   Left Join spec_hnd On spec_hnd.id_number = ids.id_number
   Left Join mailing_lists On mailing_lists.id_number = ids.id_number
   Left Join alerts On alerts.id_number = ids.id_number
+  Left Join last_survey On last_survey.id_number = ids.id_number
+  Left Join gab On gab.id_number = ids.id_number
+  Left Join gab gab_s On gab_s.id_number = ids.spouse_id_number
+  Left Join trustee On trustee.id_number = ids.id_number
+  Left Join trustee trustee_s On trustee_s.id_number = ids.spouse_id_number
+  Left Join ebfa On ebfa.id_number = ids.id_number
+  Left Join ebfa ebfa_s On ebfa_s.id_number = ids.spouse_id_number
   ;
 
 /*************************************************************************
@@ -3365,8 +3779,32 @@ Function get_numeric_constant(const_name In varchar2)
   
   Begin
     -- If const_name doesn't include ksm_pkg, prepend it
-    If substr(lower(const_name), 1, 8) <> 'ksm_pkg.'
-      Then var := 'ksm_pkg.' || const_name;
+    If substr(lower(const_name), 1, 8) <> 'ksm_pkg_tmp.'
+      Then var := 'ksm_pkg_tmp.' || const_name;
+    Else
+      var := const_name;
+    End If;
+    -- Run command
+    Execute Immediate
+      'Begin :val := ' || var || '; End;'
+      Using Out val;
+      Return val;
+  End;
+
+/* Function to return string constants from the package
+   Requires a quoted constant name
+   2021-06-08 */
+Function get_string_constant(const_name In varchar2)
+  Return varchar2 Deterministic Is
+  -- Declarations
+    -- Declarations
+  val varchar2(100);
+  var varchar2(100);
+  
+  Begin
+    -- If const_name doesn't include ksm_pkg, prepend it
+    If substr(lower(const_name), 1, 8) <> 'ksm_pkg_tmp.'
+      Then var := 'ksm_pkg_tmp.' || const_name;
     Else
       var := const_name;
     End If;
@@ -3417,15 +3855,15 @@ Function get_fiscal_year(dt In date)
     Return (this_year + 1);
   End;
 -- String version
-Function get_fiscal_year(dt In varchar2, format In varchar2)
+Function get_fiscal_year(dt In varchar2, format In varchar2 Default 'yyyy/mm/dd')
   Return number Is
   -- Declarations
   this_year number;
   
   Begin
-    this_year := extract(year from to_date(dt, format));
+    this_year := extract(year from to_date2(dt, format));
     -- If month is before fy_start_month, return this_year
-    If extract(month from to_date(dt, format)) < fy_start_month
+    If extract(month from to_date2(dt, format)) < fy_start_month
       Or fy_start_month = 1 Then
       Return this_year;
     End If;
@@ -3443,9 +3881,9 @@ Function get_performance_year(dt In date)
   
   Begin
     this_year := extract(year from dt);
-    -- If year is pre 2020 use the old start month
-    If this_year < 2020 Then
-      If extract(month from dt) < py_start_month_pre_py21 Then
+    -- If year is 2020, check for py_start_month_py21
+    If this_year = 2020 Then
+      If extract(month from dt) < py_start_month_py21 Then
         Return this_year;
       End If;
       Return (this_year + 1);
@@ -4263,6 +4701,45 @@ Function tbl_special_handling_concat
       Return committees;
     End;
 
+    
+  /* Generic committee_agg function, similar to committee_members
+     2021-06-08 */
+  Function committee_agg_members (
+    my_committee_cd In varchar2
+    , shortname In varchar2 Default NULL
+  )
+  Return t_committee_agg As
+  -- Declarations
+  committees_agg t_committee_agg;
+  
+  -- Return table results
+  Begin
+    Open c_committee_agg (my_committee_cd => my_committee_cd
+      , shortname => shortname
+    );
+      Fetch c_committee_agg Bulk Collect Into committees_agg;
+      Close c_committee_agg;
+      Return committees_agg;
+    End;
+    
+  -- All roles listagged to one per line
+  Function tbl_committee_agg (
+    my_committee_cd In varchar2
+    , shortname In varchar2
+  ) Return t_committee_agg Pipelined As
+  committees_agg t_committee_agg;
+  
+    Begin
+      committees_agg := committee_agg_members (
+        my_committee_cd => my_committee_cd
+        , shortname => shortname
+      );
+      For i in 1..committees_agg.count Loop
+        Pipe row(committees_agg(i));
+      End Loop;
+      Return;
+    End;
+
   -- GAB
   Function tbl_committee_gab
     Return t_committee_members Pipelined As
@@ -4444,6 +4921,45 @@ Function tbl_special_handling_concat
         End Loop;
         Return;
       End;
+      
+    --  Kellogg Private Equity Taskforce Council
+    Function tbl_committee_privateequity
+      Return t_committee_members Pipelined As
+      committees t_committee_members;
+        
+      Begin
+        committees := committee_members (my_committee_cd => committee_privateequity);
+        For i in 1..committees.count Loop
+          Pipe row(committees(i));
+        End Loop;
+        Return;
+      End;
 
-End ksm_pkg;
+    --  Kellogg Private Equity Taskforce Council
+    Function tbl_committee_pe_asia
+      Return t_committee_members Pipelined As
+      committees t_committee_members;
+        
+      Begin
+        committees := committee_members (my_committee_cd => committee_pe_asia);
+        For i in 1..committees.count Loop
+          Pipe row(committees(i));
+        End Loop;
+        Return;
+      End;
+
+    --  Kellogg Executive Board for Asia
+    Function tbl_committee_asia
+      Return t_committee_members Pipelined As
+      committees t_committee_members;
+        
+      Begin
+        committees := committee_members (my_committee_cd => committee_asia);
+        For i in 1..committees.count Loop
+          Pipe row(committees(i));
+        End Loop;
+        Return;
+      End;
+
+End ksm_pkg_tmp;
 /

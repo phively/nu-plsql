@@ -12,7 +12,7 @@ params As (
 
 , ksm_data As (
   Select *
-  From table(rpt_pbh634.ksm_pkg.tbl_gift_credit_campaign)
+  From table(rpt_pbh634.ksm_pkg_tmp.tbl_gift_credit_campaign)
 )
 
 -- Allocation-priority assignment, taken from RPT_BTAYLOR_WT09931_EXTRACTTRANSACTIONS

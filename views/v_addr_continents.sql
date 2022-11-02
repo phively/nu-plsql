@@ -348,7 +348,7 @@ From tms_country
 -- Add a row for USA
 Union All
 -- USA is blank country code
-Select ' ', 'United States', 'North America'
+Select ' ', 'United States', 'North America', NULL
 From DUAL
 /
 

@@ -14,7 +14,7 @@ assign As (
     , Case When gos.id_number Is Not Null Then 'Y' End
       As curr_ksm_assignment
   From v_assignment_history ah
-  Left Join table(ksm_pkg.tbl_frontline_ksm_staff) gos
+  Left Join table(ksm_pkg_tmp.tbl_frontline_ksm_staff) gos
     On gos.id_number = ah.assignment_id_number
     And gos.former_staff Is Null
   Where ah.assignment_active_calc = 'Active' -- Active assignments only

@@ -28,7 +28,7 @@ tms_trans As (
   Select
     allocation_code
     , af_flag
-  From table(rpt_pbh634.ksm_pkg.tbl_alloc_curr_use_ksm)
+  From table(rpt_pbh634.ksm_pkg_tmp.tbl_alloc_curr_use_ksm)
 )
 
 -- Pledge numbers of interest
@@ -163,7 +163,7 @@ tms_trans As (
     ksm_pledges.pledge_pledge_number
     , psched.payment_schedule_status
     , psched.payment_schedule_date
-    , rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(psched.payment_schedule_date, 'YYYYMMDD'))
+    , rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(psched.payment_schedule_date, 'YYYYMMDD'))
       As pay_sch_fy
     , psched.payment_schedule_amount
     , psched.payment_schedule_balance
@@ -216,11 +216,11 @@ tms_trans As (
       As paid_pfy1
     , sum(plg.prop * Case When sc.pay_sch_fy = cal.curr_fy - 1 Then sc.payment_schedule_balance Else 0 End)
       As balance_pfy1
-    , min(ksm_pkg.to_date2(sc.payment_schedule_date))
+    , min(ksm_pkg_tmp.to_date2(sc.payment_schedule_date))
       As first_sched_dt
-    , max(ksm_pkg.to_date2(sc.payment_schedule_date))
+    , max(ksm_pkg_tmp.to_date2(sc.payment_schedule_date))
       As last_sched_dt
-    , min(ksm_pkg.to_date2(
+    , min(ksm_pkg_tmp.to_date2(
         -- Only unpaid status
         Case When payment_schedule_status = 'U' Then sc.payment_schedule_date End
       ))

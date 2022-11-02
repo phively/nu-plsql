@@ -22,7 +22,7 @@ cal As (
     , gift_bin As bin
     , 'Booked' As cat
     , 'Campaign Giving' As src
-  From v_ksm_giving_campaign_ytd ytd
+  From v_ksm_giving_post_campaign_ytd ytd
   Cross Join cal
   Where year_of_giving Between 2007 And cal.curr_fy -- FY 2007 and 2020 as first and last campaign gift dates
     And amount > 0
@@ -683,7 +683,7 @@ cal As (
     id_number
     , household_id
     , household_rpt_name
-  From table(ksm_pkg.tbl_entity_households_ksm)
+  From table(ksm_pkg_tmp.tbl_entity_households_ksm)
 )
 
 -- Prospect entity deduped
@@ -703,7 +703,7 @@ cal As (
     , tl.id_number
     , report_name
     , primary_ind
-    , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(tl.id_number) As rating_bin
+    , rpt_pbh634.ksm_pkg_tmp.get_prospect_rating_bin(tl.id_number) As rating_bin
     -- Data point description
     , type
     -- Additional description detail
@@ -787,7 +787,7 @@ cal As (
     , pe.id_number
     , entity.report_name
     , pe.primary_ind
-    , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(pe.id_number) As rating_bin
+    , rpt_pbh634.ksm_pkg_tmp.get_prospect_rating_bin(pe.id_number) As rating_bin
     -- Data point description
     , proposal_status
     , ksm_or_univ_orig_ask
@@ -951,7 +951,7 @@ cal As (
     , gft.id_number
     , entity.report_name
     , pe.primary_ind
-    , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(pe.prospect_id) As rating_bin
+    , rpt_pbh634.ksm_pkg_tmp.get_prospect_rating_bin(pe.prospect_id) As rating_bin
     , gft.transaction_type As type
     , to_char(gft.recognition_credit, '$999,999,999,999') As recognition_credit
     , gft.tx_gypm_ind
@@ -1136,7 +1136,7 @@ cal As (
     , t.id_number
     , entity.report_name
     , pe.primary_ind
-    , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(pe.prospect_id) As rating_bin
+    , rpt_pbh634.ksm_pkg_tmp.get_prospect_rating_bin(pe.prospect_id) As rating_bin
     -- Data point description
     , 'Task' As type
     -- Additional description detail

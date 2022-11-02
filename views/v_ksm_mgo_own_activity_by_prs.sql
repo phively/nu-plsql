@@ -8,7 +8,7 @@ ksm_staff As (
     id_number
     , report_name
     , last_name
-  From table(ksm_pkg.tbl_frontline_ksm_staff)
+  From table(ksm_pkg_tmp.tbl_frontline_ksm_staff)
   Where former_staff Is Null
   Order By report_name Asc
 )

@@ -1198,6 +1198,7 @@ Where (KSM_Spec.NO_CONTACT is null
 and KSM_Spec.ACTIVE_WITH_RESTRICTIONS is null);
 
 
+
 /* 9/29/2022 
 
 Creating a new view for events
@@ -1239,16 +1240,16 @@ We are separating these into two views Events + Prospect View
 
 Event View: This view will provide the raw data on event attendance from the current fiscal year to the last 5 prior fiscal years. 
 
-• ID Number
-• Event ID
-• Event Name 
-• Event Organizers
-• Start Date
-• Stop Date
-• Start FY Calc
-• Event Type Desc 
-• KSM Event Flag
-• NU Event Flag - We want to add back in the NU Events. 
+ï¿½ ID Number
+ï¿½ Event ID
+ï¿½ Event Name 
+ï¿½ Event Organizers
+ï¿½ Start Date
+ï¿½ Stop Date
+ï¿½ Start FY Calc
+ï¿½ Event Type Desc 
+ï¿½ KSM Event Flag
+ï¿½ NU Event Flag - We want to add back in the NU Events. 
 
 */
 
@@ -1296,15 +1297,15 @@ Order By p.start_dt ASC
 
 KSM Prospect View: 
 
-• ID Number 
-• Prospect Manager
-• LGOs
-• KSM Manager Flag
-• Managers
-• Evaluation Date
-• Officer Rating
-• Committee Count
-• Visit Count 
+ï¿½ ID Number 
+ï¿½ Prospect Manager
+ï¿½ LGOs
+ï¿½ KSM Manager Flag
+ï¿½ Managers
+ï¿½ Evaluation Date
+ï¿½ Officer Rating
+ï¿½ Committee Count
+ï¿½ Visit Count 
 
 AND Any Engagement, NU Event, and Kellogg Event flags 
 
@@ -1416,3 +1417,4 @@ Left Join visits v on v.id_number = e.id_number
 --- Add in Events Flags for Propsect View
 Left Join fin on fin.id_number = e.id_number
 ;
+
