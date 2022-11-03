@@ -8,7 +8,7 @@ WHERE ALLOC_SCHOOL = 'KM'),
 
 AF_Allocations AS (
 SELECT allocation_code
-From table(rpt_pbh634.ksm_pkg.tbl_alloc_annual_fund_ksm)),
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_alloc_annual_fund_ksm)),
 
 KSM_Campaign_Giving AS (
 SELECT *
@@ -70,12 +70,12 @@ GROUP BY ID_number),
 
 GAB AS (
   SELECT *
-  FROM table(rpt_pbh634.ksm_pkg.tbl_committee_gab)
+  FROM table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_gab)
 ),
 
 KSMdegree AS (
   SELECT id_number, degrees_concat
-  FROM table(rpt_pbh634.ksm_pkg.tbl_entity_degrees_concat_ksm)
+  FROM table(rpt_pbh634.ksm_pkg_tmp.tbl_entity_degrees_concat_ksm)
 ),
 
 NU_LT_Giving AS (

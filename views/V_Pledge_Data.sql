@@ -19,7 +19,7 @@ tms_trans As (
   Select
     allocation_code
     , af_flag
-  From table(rpt_pbh634.ksm_pkg.tbl_alloc_curr_use_ksm)
+  From table(rpt_pbh634.ksm_pkg_tmp.tbl_alloc_curr_use_ksm)
 )
 
 
@@ -79,7 +79,7 @@ tms_trans As (
     On ksm_pledges.pledge_pledge_number = pledge.pledge_pledge_number
   Inner Join allocation
     On allocation.allocation_code = pledge.pledge_allocation_name
-  Inner Join table(RPT_PBH634.ksm_pkg.plg_discount) plgd
+  Inner Join table(RPT_PBH634.ksm_pkg_tmp.plg_discount) plgd
     On plgd.pledge_number = pledge.pledge_pledge_number
       AND plgd.pledge_sequence = pledge.pledge_sequence
   Group By pledge.pledge_pledge_number,pledge.pledge_allocation_name
@@ -89,7 +89,7 @@ tms_trans As (
     ksm_pledges.pledge_pledge_number
     , psched.payment_schedule_status
     , psched.payment_schedule_date
-    , rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(psched.payment_schedule_date, 'YYYYMMDD'))
+    , rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(psched.payment_schedule_date, 'YYYYMMDD'))
       As pay_sch_fy
     --ADDED CASE TO USE MATERIALIZED VIEW FOR SPECIAL EXCEPTIONS REGARDING CUSTOM PAYMENT SCHEDULES
     , CASE WHEN KSM_PLEDGES.PLEDGE_PLEDGE_NUMBER IN (SELECT PLEDGE_NUMBER FROM RPT_ABM1914.MV_KSM_PLEDGE_PAY) THEN MV_PLG.AMOUNT 
@@ -100,7 +100,7 @@ tms_trans As (
     On ksm_pledges.pledge_pledge_number = psched.payment_schedule_pledge_nbr
   LEFT JOIN rpt_abm1914.mv_ksm_pledge_pay MV_PLG
     ON KSM_PLEDGES.PLEDGE_PLEDGE_NUMBER = MV_PLG.PLEDGE_NUMBER
-    AND rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(psched.payment_schedule_date, 'YYYYMMDD')) = MV_PLG.FISCAL_YEAR
+    AND rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(psched.payment_schedule_date, 'YYYYMMDD')) = MV_PLG.FISCAL_YEAR
 )
 
 
@@ -155,7 +155,7 @@ tms_trans As (
     ,PS.PLEDGE_PLEDGE_NUMBER
     ,plg.alloc
     ,MIN(PS.PAYMENT_SCHEDULE_DATE) AS NEXT_PAYMENT_DATE
-    ,MIN(rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NEXT_PAY_FY
+    ,MIN(rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NEXT_PAY_FY
     --changed this to split the amount owed to each allocation
     ,CASE WHEN PS.PLEDGE_PLEDGE_NUMBER IN (SELECT PLEDGE_NUMBER FROM RPT_ABM1914.MV_KSM_PLEDGE_PAY) 
          THEN MIN(MV_PLG.AMOUNT) KEEP(DENSE_RANK FIRST ORDER BY MV_PLG.FISCAL_YEAR ASC)
@@ -166,7 +166,7 @@ tms_trans As (
    ON PS.pledge_pledge_number = PLG.PLG
    LEFT JOIN rpt_abm1914.mv_ksm_pledge_pay MV_PLG
     ON PS.PLEDGE_PLEDGE_NUMBER = MV_PLG.PLEDGE_NUMBER
-    AND rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD')) = MV_PLG.FISCAL_YEAR
+    AND rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'YYYYMMDD')) = MV_PLG.FISCAL_YEAR
    WHERE PS.PAYMENT_SCHEDULE_STATUS = 'U'
    GROUP BY plg.id,PS.PLEDGE_PLEDGE_NUMBER,plg.alloc
 )
@@ -189,14 +189,14 @@ tms_trans As (
     PLG.ID
     ,PS.PLEDGE_PLEDGE_NUMBER
     ,PLG.ALLOC
-    ,MIN(rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_PAY
+    ,MIN(rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_PAY
     ,CASE WHEN PS.PLEDGE_PLEDGE_NUMBER IN (SELECT PLEDGE_NUMBER FROM RPT_ABM1914.MV_KSM_PLEDGE_PAY) 
          THEN MIN(MV_PLG.AMOUNT) KEEP(DENSE_RANK FIRST ORDER BY MV_PLG.FISCAL_YEAR ASC)
          ELSE sum(plg.prop * PS.payment_schedule_balance) --Else 0 End)
       END As balance_cfy
   FROM PAY_SCH PS
   INNER JOIN RPT_PBH634.v_Current_Calendar CAL
-    ON rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD'))= CAL."CURR_FY"
+    ON rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'YYYYMMDD'))= CAL."CURR_FY"
    INNER JOIN PLG 
    ON PS.pledge_pledge_number = PLG.PLG
    LEFT JOIN rpt_abm1914.mv_ksm_pledge_pay MV_PLG
@@ -211,14 +211,14 @@ tms_trans As (
     PLG.ID
     ,PS.PLEDGE_PLEDGE_NUMBER
     ,PLG.ALLOC
-    ,MIN(rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_PAY
+    ,MIN(rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_PAY
     ,CASE WHEN PS.PLEDGE_PLEDGE_NUMBER IN (SELECT PLEDGE_NUMBER FROM RPT_ABM1914.MV_KSM_PLEDGE_PAY) 
          THEN MIN(MV_PLG.AMOUNT) KEEP(DENSE_RANK FIRST ORDER BY MV_PLG.FISCAL_YEAR ASC)
          ELSE sum(plg.prop * PS.payment_schedule_balance) --Else 0 End)
       END As balance_nfy
   FROM PAY_SCH PS
   INNER JOIN RPT_PBH634.v_Current_Calendar CAL
-    ON rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD'))= CAL."CURR_FY"+1
+    ON rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'YYYYMMDD'))= CAL."CURR_FY"+1
    INNER JOIN PLG 
    ON PS.pledge_pledge_number = PLG.PLG
    LEFT JOIN rpt_abm1914.mv_ksm_pledge_pay MV_PLG
@@ -233,14 +233,14 @@ tms_trans As (
     PLG.ID
     ,PS.PLEDGE_PLEDGE_NUMBER
     ,PLG.ALLOC
-    ,MIN(rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_PAY
+    ,MIN(rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_PAY
     ,CASE WHEN PS.PLEDGE_PLEDGE_NUMBER IN (SELECT PLEDGE_NUMBER FROM RPT_ABM1914.MV_KSM_PLEDGE_PAY) 
          THEN MIN(MV_PLG.AMOUNT) KEEP(DENSE_RANK FIRST ORDER BY MV_PLG.FISCAL_YEAR ASC)
          ELSE sum(plg.prop * PS.payment_schedule_balance) --Else 0 End)
       END As balance_nfy1
   FROM PAY_SCH PS
   INNER JOIN RPT_PBH634.v_Current_Calendar CAL
-    ON rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD'))= CAL."CURR_FY"+2
+    ON rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'YYYYMMDD'))= CAL."CURR_FY"+2
    INNER JOIN PLG 
    ON PS.pledge_pledge_number = PLG.PLG
    LEFT JOIN rpt_abm1914.mv_ksm_pledge_pay MV_PLG
@@ -255,14 +255,14 @@ tms_trans As (
     PLG.ID
     ,PS.PLEDGE_PLEDGE_NUMBER
     ,PLG.ALLOC
-    ,MIN(rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_PAY
+    ,MIN(rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_PAY
     ,CASE WHEN PS.PLEDGE_PLEDGE_NUMBER IN (SELECT PLEDGE_NUMBER FROM RPT_ABM1914.MV_KSM_PLEDGE_PAY) 
          THEN MIN(MV_PLG.AMOUNT) KEEP(DENSE_RANK FIRST ORDER BY MV_PLG.FISCAL_YEAR ASC)
          ELSE sum(plg.prop * PS.payment_schedule_balance) --Else 0 End)
       END As balance_nfy2
   FROM PAY_SCH PS
   INNER JOIN RPT_PBH634.v_Current_Calendar CAL
-    ON rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD'))= CAL."CURR_FY"+3
+    ON rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'YYYYMMDD'))= CAL."CURR_FY"+3
    INNER JOIN PLG 
    ON PS.pledge_pledge_number = PLG.PLG
    LEFT JOIN rpt_abm1914.mv_ksm_pledge_pay MV_PLG
@@ -277,14 +277,14 @@ tms_trans As (
     PLG.ID
     ,PS.PLEDGE_PLEDGE_NUMBER
     ,PLG.ALLOC
-    ,MIN(rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_PAY
+    ,MIN(rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_PAY
     ,CASE WHEN PS.PLEDGE_PLEDGE_NUMBER IN (SELECT PLEDGE_NUMBER FROM RPT_ABM1914.MV_KSM_PLEDGE_PAY) 
          THEN MIN(MV_PLG.AMOUNT) KEEP(DENSE_RANK FIRST ORDER BY MV_PLG.FISCAL_YEAR ASC)
          ELSE sum(plg.prop * PS.payment_schedule_balance) --Else 0 End)
       END As balance_nfy3
   FROM PAY_SCH PS
   INNER JOIN RPT_PBH634.v_Current_Calendar CAL
-    ON rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD'))= CAL."CURR_FY"+4
+    ON rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'YYYYMMDD'))= CAL."CURR_FY"+4
    INNER JOIN PLG 
    ON PS.pledge_pledge_number = PLG.PLG
    LEFT JOIN rpt_abm1914.mv_ksm_pledge_pay MV_PLG
@@ -299,14 +299,14 @@ tms_trans As (
     PLG.ID
     ,PS.PLEDGE_PLEDGE_NUMBER
     ,PLG.ALLOC
-    ,MIN(rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_PAY
+    ,MIN(rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_PAY
     ,CASE WHEN PS.PLEDGE_PLEDGE_NUMBER IN (SELECT PLEDGE_NUMBER FROM RPT_ABM1914.MV_KSM_PLEDGE_PAY) 
          THEN MIN(MV_PLG.AMOUNT) KEEP(DENSE_RANK FIRST ORDER BY MV_PLG.FISCAL_YEAR ASC)
          ELSE sum(plg.prop * PS.payment_schedule_balance) --Else 0 End)
       END As balance_nfy4
   FROM PAY_SCH PS
   INNER JOIN RPT_PBH634.v_Current_Calendar CAL
-    ON rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD'))= CAL."CURR_FY"+5
+    ON rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'YYYYMMDD'))= CAL."CURR_FY"+5
    INNER JOIN PLG 
    ON PS.pledge_pledge_number = PLG.PLG
    LEFT JOIN rpt_abm1914.mv_ksm_pledge_pay MV_PLG
@@ -321,14 +321,14 @@ tms_trans As (
     PLG.ID
     ,PS.PLEDGE_PLEDGE_NUMBER
     ,PLG.ALLOC
-    ,MIN(rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_PAY
+    ,MIN(rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_PAY
     ,CASE WHEN PS.PLEDGE_PLEDGE_NUMBER IN (SELECT PLEDGE_NUMBER FROM RPT_ABM1914.MV_KSM_PLEDGE_PAY) 
          THEN MIN(MV_PLG.AMOUNT) KEEP(DENSE_RANK FIRST ORDER BY MV_PLG.FISCAL_YEAR ASC)
          ELSE sum(plg.prop * PS.payment_schedule_balance) --Else 0 End)
       END As balance_nfy5
   FROM PAY_SCH PS
   INNER JOIN RPT_PBH634.v_Current_Calendar CAL
-    ON rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD'))= CAL."CURR_FY"+6
+    ON rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'YYYYMMDD'))= CAL."CURR_FY"+6
    INNER JOIN PLG 
    ON PS.pledge_pledge_number = PLG.PLG
    LEFT JOIN rpt_abm1914.mv_ksm_pledge_pay MV_PLG
@@ -343,8 +343,8 @@ tms_trans As (
     PLG.ID
     ,PS.PLEDGE_PLEDGE_NUMBER
     ,PLG.ALLOC
-    ,MIN(rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_PAY
-    ,MAX(rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_LAST_PAY
+    ,MIN(rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_PAY
+    ,MAX(rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_LAST_PAY
     ,CASE WHEN PS.PLEDGE_PLEDGE_NUMBER IN (SELECT PLEDGE_NUMBER FROM RPT_ABM1914.MV_KSM_PLEDGE_PAY) -- Not sure what this does, may leaed to issues
          THEN SUM(CASE WHEN mv_plg.fiscal_year >= CAL."CURR_FY" + 7 THEN MV_PLG.AMOUNT ELSE 0 END)
          ELSE sum(plg.prop * PS.payment_schedule_balance) --Else 0 End)
@@ -357,7 +357,7 @@ tms_trans As (
     ON PS.PLEDGE_PLEDGE_NUMBER = MV_PLG.PLEDGE_NUMBER
     AND MV_PLG.FISCAL_YEAR >= CAL."CURR_FY"+7
    WHERE PS.PAYMENT_SCHEDULE_STATUS = 'U'
-    AND rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD'))>= (CAL."CURR_FY"+7)
+    AND rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'YYYYMMDD'))>= (CAL."CURR_FY"+7)
    GROUP BY plg.id,PS.PLEDGE_PLEDGE_NUMBER,plg.alloc
 )
 
@@ -366,14 +366,14 @@ tms_trans As (
     PLG.ID
     ,PS.PLEDGE_PLEDGE_NUMBER
     ,PLG.ALLOC
-    ,MIN(rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_PAY
+    ,MIN(rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'YYYYMMDD')))AS NFY_PAY
     ,CASE WHEN PS.PLEDGE_PLEDGE_NUMBER IN (SELECT PLEDGE_NUMBER FROM RPT_ABM1914.MV_KSM_PLEDGE_PAY) 
          THEN MIN(MV_PLG.AMOUNT) KEEP(DENSE_RANK FIRST ORDER BY MV_PLG.FISCAL_YEAR ASC)
          ELSE sum(plg.prop * PS.payment_schedule_balance) --Else 0 End)
       END As balance_pfy1
   FROM PAY_SCH PS
   INNER JOIN RPT_PBH634.v_Current_Calendar CAL
-    ON rpt_pbh634.ksm_pkg.get_fiscal_year(rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'YYYYMMDD'))= CAL."CURR_FY"-1
+    ON rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'YYYYMMDD'))= CAL."CURR_FY"-1
    INNER JOIN PLG 
    ON PS.pledge_pledge_number = PLG.PLG
    LEFT JOIN rpt_abm1914.mv_ksm_pledge_pay MV_PLG
@@ -528,12 +528,12 @@ SELECT DISTINCT
  -- , pledge_counts.pledge_balance AS PLEDGE_BALANCE   
   ,PB.NEW_PLEDGE_BALANCE AS PLEDGE_BALANCE
   ,PF.short_desc AS PAYMENT_FREQUENCY
-  ,CASE WHEN pp.prim_PLEDGE_STATUS = 'A' AND RPT_PBH634.KSM_PKG.to_date2(NP.NEXT_PAYMENT_DATE,'YYYYMMDD') > CC."TODAY" THEN 0 
-     WHEN pp.prim_PLEDGE_STATUS = 'A' AND RPT_PBH634.KSM_PKG.to_date2(NP.NEXT_PAYMENT_DATE,'YYYYMMDD') < CC."TODAY" 
-       THEN ROUND(MONTHS_BETWEEN(CC.TODAY,RPT_PBH634.KSM_PKG.to_date2(NP.NEXT_PAYMENT_DATE,'YYYYMMDD'))) END AS MONTHS_OVERDUE1
-  ,CASE WHEN pp.prim_PLEDGE_STATUS = 'A' AND RPT_PBH634.KSM_PKG.to_date2(NP.NEXT_PAYMENT_DATE,'YYYYMMDD') > CC."TODAY" THEN 0
+  ,CASE WHEN pp.prim_PLEDGE_STATUS = 'A' AND RPT_PBH634.ksm_pkg_tmp.to_date2(NP.NEXT_PAYMENT_DATE,'YYYYMMDD') > CC."TODAY" THEN 0 
+     WHEN pp.prim_PLEDGE_STATUS = 'A' AND RPT_PBH634.ksm_pkg_tmp.to_date2(NP.NEXT_PAYMENT_DATE,'YYYYMMDD') < CC."TODAY" 
+       THEN ROUND(MONTHS_BETWEEN(CC.TODAY,RPT_PBH634.ksm_pkg_tmp.to_date2(NP.NEXT_PAYMENT_DATE,'YYYYMMDD'))) END AS MONTHS_OVERDUE1
+  ,CASE WHEN pp.prim_PLEDGE_STATUS = 'A' AND RPT_PBH634.ksm_pkg_tmp.to_date2(NP.NEXT_PAYMENT_DATE,'YYYYMMDD') > CC."TODAY" THEN 0
         WHEN pp.prim_PLEDGE_STATUS = 'A' THEN ROUND(MONTHS_BETWEEN(CC.TODAY, LP.LAST_PAYMENT_DATE)) END AS NEW_MONTHS_OVERDUE      
-  ,RPT_PBH634.KSM_PKG.to_date2(NP.NEXT_PAYMENT_DATE,'YYYYMMDD') AS NEXT_PAYMENT_DATE         
+  ,RPT_PBH634.ksm_pkg_tmp.to_date2(NP.NEXT_PAYMENT_DATE,'YYYYMMDD') AS NEXT_PAYMENT_DATE         
   ,NP.NEXT_PAYMENT_AMOUNT       
   ,LP.LAST_PAYMENT_DATE
   ,LP.LAST_PAYMENT AS LAST_PAYMENT_AMOUNT
@@ -577,7 +577,7 @@ SELECT DISTINCT
   , KGS.LAST_GIFT_RECOGNITION_CREDIT
 From entity e
 CROSS JOIN RPT_PBH634.V_CURRENT_CALENDAR CC
-LEFT JOIN TABLE(RPT_PBH634.KSM_PKG.tbl_committee_trustee) CT
+LEFT JOIN TABLE(RPT_PBH634.ksm_pkg_tmp.tbl_committee_trustee) CT
 ON E.ID_NUMBER = CT.ID_NUMBER
 Inner Join pledge p
   On e.id_number = p.pledge_donor_id
@@ -614,7 +614,7 @@ LEFT JOIN LAST_PAYMENTS LP
  AND P.PLEDGE_ALLOCATION_NAME = LP.ALLOCATION_CODE
 LEFT JOIN RPT_PBH634.V_ASSIGNMENT_SUMMARY ASUM
  ON E.ID_NUMBER = ASUM.ID_NUMBER
-LEFT JOIN TABLE(RPT_PBH634.KSM_PKG.tbl_special_handling_concat) SH
+LEFT JOIN TABLE(RPT_PBH634.ksm_pkg_tmp.tbl_special_handling_concat) SH
 ON E.ID_NUMBER = SH.ID_NUMBER
 LEFT JOIN  KSM_LAST_GIFT KGS
 ON E.ID_NUMBER = KGS.ID_NUMBER

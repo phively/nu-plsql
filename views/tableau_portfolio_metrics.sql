@@ -89,7 +89,7 @@ proposals As (
 , numeric_evals As (
   Select
     short_desc As rating
-    , rpt_pbh634.ksm_pkg.get_number_from_dollar(short_desc) As rating_numeric
+    , rpt_pbh634.ksm_pkg_tmp.get_number_from_dollar(short_desc) As rating_numeric
   From tms_rating
 )
 
@@ -249,11 +249,11 @@ proposals As (
     , yesterday
     , curr_fy
     , performance_year
-    , rpt_pbh634.ksm_pkg.get_performance_year(start_date)
+    , rpt_pbh634.ksm_pkg_tmp.get_performance_year(start_date)
       As start_py
-    , rpt_pbh634.ksm_pkg.get_performance_year(ask_date)
+    , rpt_pbh634.ksm_pkg_tmp.get_performance_year(ask_date)
       As ask_py
-    , rpt_pbh634.ksm_pkg.get_performance_year(close_date)
+    , rpt_pbh634.ksm_pkg_tmp.get_performance_year(close_date)
       As close_py
     , curr_py_start
     , next_py_start
@@ -473,7 +473,7 @@ params As (
     -- Numeric value of lower end of eval rating range, using regular expressions
     , Case
         When trt.rating_code = 0 Then 0 -- Under $10K becomes 0
-        Else rpt_pbh634.ksm_pkg.get_number_from_dollar(trt.short_desc)
+        Else rpt_pbh634.ksm_pkg_tmp.get_number_from_dollar(trt.short_desc)
       End As rating_lower_bound
   From evaluation e
   Cross Join rpt_pbh634.v_current_calendar cal
@@ -497,7 +497,7 @@ params As (
     , contact_type_category
     , visit_type
   From rpt_pbh634.v_contact_reports_fast vcrf
-  Left Join table(ksm_pkg.tbl_prospect_entity_active) pe
+  Left Join table(ksm_pkg_tmp.tbl_prospect_entity_active) pe
     On pe.id_number = vcrf.id_number
   Where ard_staff = 'Y'
     And (
@@ -520,7 +520,7 @@ params As (
     , pd.prim_pledge_original_amount
   From rpt_pbh634.v_ksm_giving_trans_hh gt
   -- Include discounted pledge original amounts
-  Left Join table(rpt_pbh634.ksm_pkg.plg_discount) pd On pd.pledge_number = gt.tx_number
+  Left Join table(rpt_pbh634.ksm_pkg_tmp.plg_discount) pd On pd.pledge_number = gt.tx_number
   Where gt.tx_gypm_ind <> 'Y' -- NGC excludes payments
     And gt.hh_recognition_credit = gt.recognition_credit -- Exclude spouses
 )

@@ -187,7 +187,7 @@ AND P.ACTIVE_IND = 'Y'
 AND PE.PRIMARY_IND = 'Y'
 Left join cat
 on cat.prospect_id = pp.prospect_ID
-Left Join table(rpt_pbh634.ksm_pkg.tbl_frontline_ksm_staff) KSM_staff
+Left Join table(rpt_pbh634.ksm_pkg_tmp.tbl_frontline_ksm_staff) KSM_staff
 On KSM_staff.id_number = task_detail.task_responsible_ID
 Left Join entity e
 ON e.ID_number = task_detail.owner_ID_number

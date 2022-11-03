@@ -53,7 +53,7 @@ manual_exclusions_pre As (
     , never_engaged_reunion
     , exc_all_comm
     , exc_all_sols
-  From table(ksm_pkg.tbl_special_handling_concat) shc
+  From table(ksm_pkg_tmp.tbl_special_handling_concat) shc
   Where no_contact = 'Y'
     Or no_solicit = 'Y'
     Or never_engaged_forever = 'Y'
@@ -70,7 +70,7 @@ manual_exclusions_pre As (
         trim('GAB ' || role)
       , '; ') Within Group (Order By tcg.role Asc)
       As gab
-  From table(ksm_pkg.tbl_committee_gab) tcg
+  From table(ksm_pkg_tmp.tbl_committee_gab) tcg
   Group By id_number
 )
 

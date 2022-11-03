@@ -29,15 +29,15 @@ Select
   -- Parse dates
   , committee.start_dt
   -- Start date fallback is date added
-  , ksm_pkg.date_parse(committee.start_dt, committee.date_added)
+  , ksm_pkg_tmp.date_parse(committee.start_dt, committee.date_added)
     As start_dt_calc
   , committee.stop_dt
   -- Stop date fallback is date modified for past committees, and end of the FY for current ones
   , Case
       When committee.committee_status_code Not In ('A', 'C')
-        Then ksm_pkg.date_parse(committee.stop_dt, committee.date_modified)
+        Then ksm_pkg_tmp.date_parse(committee.stop_dt, committee.date_modified)
       When committee.committee_status_code In ('A', 'C')
-        Then ksm_pkg.date_parse(committee.stop_dt, cal.next_fy_start - 1)
+        Then ksm_pkg_tmp.date_parse(committee.stop_dt, cal.next_fy_start - 1)
       End
     As stop_dt_calc
   , trunc(committee.date_added)

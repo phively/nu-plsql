@@ -230,7 +230,7 @@ Inner Join task_detail
   And pe.primary_ind = 'Y'
 Left Join cat
   On cat.prospect_id = pp.prospect_id -- Keep as pp.prospect_id, not p.prospect_id; DQed prospects should not be in top 150/300
-Left Join table(rpt_pbh634.ksm_pkg.tbl_frontline_ksm_staff) ksm_staff
+Left Join table(rpt_pbh634.ksm_pkg_tmp.tbl_frontline_ksm_staff) ksm_staff
   On ksm_staff.id_number = task_detail.task_responsible_id
 Left Join entity e
   On e.id_number = task_detail.owner_id_number
@@ -257,7 +257,7 @@ Left Join disqualified d
   On d.prospect_id = p.prospect_id
 Left Join rpt_pbh634.v_ksm_model_mg mgo
   On mgo.id_number = pp.id_number
-Where pr.program_code = 'KM'
+--Where pr.program_code = 'KM'
 ;
 
 -- Outreach tasks view used in the KSM Prospect Task Dashboard
@@ -357,7 +357,7 @@ da As (
         Else NULL
         End
       As ksm_current_staff
-  From table(rpt_pbh634.ksm_pkg.tbl_frontline_ksm_staff) st
+  From table(rpt_pbh634.ksm_pkg_tmp.tbl_frontline_ksm_staff) st
 )
 
 Select Distinct

@@ -10,7 +10,7 @@ With
 /* KSM-specific campaign new gifts & commitments definition */
 ksm_data As (
   Select *
-  From table(ksm_pkg.tbl_gift_credit_campaign)
+  From table(ksm_pkg_tmp.tbl_gift_credit_campaign)
 )
 
 /* Additional KSM-specific derived fields */
@@ -27,7 +27,7 @@ Select
   , prs.evaluation_date
   , prs.officer_rating
   -- Fiscal year-to-date indicator
-  , ksm_pkg.fytd_indicator(date_of_record) As ftyd_ind
+  , ksm_pkg_tmp.fytd_indicator(date_of_record) As ftyd_ind
   -- Calendar objects
   , cal.curr_fy
   -- Giving bin
@@ -41,7 +41,7 @@ Select
   -- Campaign priority coding
   , priorities.ksm_campaign_category
   -- Replace null ksm_source_donor with id_number
-  , NVL(ksm_pkg.get_gift_source_donor_ksm(ksm_data.rcpt_or_plg_number), ksm_data.id_number) As ksm_source_donor
+  , NVL(ksm_pkg_tmp.get_gift_source_donor_ksm(ksm_data.rcpt_or_plg_number), ksm_data.id_number) As ksm_source_donor
 From ksm_data
 Cross Join v_current_calendar cal
 Inner Join entity On ksm_data.id_number = entity.id_number

@@ -20,10 +20,10 @@ Select fcd.assignment_id_number As id_number
   , 'MG Closes' As goal_desc
   , extract(year From pd.date_of_record) As cal_year
   , extract(month From pd.date_of_record) As cal_month
-  , rpt_pbh634.ksm_pkg.get_fiscal_year(pd.date_of_record) As fiscal_year
-  , rpt_pbh634.ksm_pkg.get_quarter(pd.date_of_record, 'fisc') As fiscal_quarter
-  , rpt_pbh634.ksm_pkg.get_performance_year(pd.date_of_record) As perf_year
-  , rpt_pbh634.ksm_pkg.get_quarter(pd.date_of_record, 'perf') As perf_quarter
+  , rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(pd.date_of_record) As fiscal_year
+  , rpt_pbh634.ksm_pkg_tmp.get_quarter(pd.date_of_record, 'fisc') As fiscal_quarter
+  , rpt_pbh634.ksm_pkg_tmp.get_performance_year(pd.date_of_record) As perf_year
+  , rpt_pbh634.ksm_pkg_tmp.get_quarter(pd.date_of_record, 'perf') As perf_quarter
   , g.goal_1 As fy_goal
   , pyg.goal_1 As py_goal
   , Count(Distinct fcd.proposal_id) As progress
@@ -36,19 +36,19 @@ Inner Join proposal_dates pd
 -- Fiscal year goals
 Left Join goal g
   On fcd.assignment_id_number = g.id_number
-    And g.year = rpt_pbh634.ksm_pkg.get_fiscal_year(pd.date_of_record)
+    And g.year = rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(pd.date_of_record)
 -- Performance year goals
 Left Join goal pyg
   On fcd.assignment_id_number = pyg.id_number
-    And pyg.year = rpt_pbh634.ksm_pkg.get_performance_year(pd.date_of_record)
-Group By rpt_pbh634.ksm_pkg.get_fiscal_year(pd.date_of_record)
+    And pyg.year = rpt_pbh634.ksm_pkg_tmp.get_performance_year(pd.date_of_record)
+Group By rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(pd.date_of_record)
   , fcd.assignment_id_number
   , e.report_name
   , extract(year From pd.date_of_record)
   , extract(month From pd.date_of_record)
-  , rpt_pbh634.ksm_pkg.get_quarter(pd.date_of_record, 'fisc')
-  , rpt_pbh634.ksm_pkg.get_quarter(pd.date_of_record, 'perf')
-  , rpt_pbh634.ksm_pkg.get_performance_year(pd.date_of_record)
+  , rpt_pbh634.ksm_pkg_tmp.get_quarter(pd.date_of_record, 'fisc')
+  , rpt_pbh634.ksm_pkg_tmp.get_quarter(pd.date_of_record, 'perf')
+  , rpt_pbh634.ksm_pkg_tmp.get_performance_year(pd.date_of_record)
   , g.goal_1
   , pyg.goal_1
 Union
@@ -59,10 +59,10 @@ Select acr.assignment_id_number As id_number
   , 'MG Sols' As goal_desc
   , extract(year From acr.ask_or_stop_dt) As cal_year
   , extract(month From acr.ask_or_stop_dt) As cal_month
-  , rpt_pbh634.ksm_pkg.get_fiscal_year(acr.ask_or_stop_dt) As fiscal_year
-  , rpt_pbh634.ksm_pkg.get_quarter(acr.ask_or_stop_dt, 'fisc') As fiscal_quarter
-  , rpt_pbh634.ksm_pkg.get_performance_year(acr.ask_or_stop_dt) As perf_year
-  , rpt_pbh634.ksm_pkg.get_quarter(acr.ask_or_stop_dt, 'perf') As perf_quarter
+  , rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(acr.ask_or_stop_dt) As fiscal_year
+  , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'fisc') As fiscal_quarter
+  , rpt_pbh634.ksm_pkg_tmp.get_performance_year(acr.ask_or_stop_dt) As perf_year
+  , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'perf') As perf_quarter
   , g.goal_2 As fy_goal
   , pyg.goal_2 As py_goal
   -- Original definition: count only if ask date is filled in
@@ -76,19 +76,59 @@ Inner Join entity e On e.id_number = acr.assignment_id_number
 -- Fiscal year goals
 Left Join goal g
   On acr.assignment_id_number = g.id_number
-    And g.year = rpt_pbh634.ksm_pkg.get_fiscal_year(acr.ask_or_stop_dt)
+    And g.year = rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(acr.ask_or_stop_dt)
 -- Performance year goals
 Left Join goal pyg
   On acr.assignment_id_number = pyg.id_number
-    And pyg.year = rpt_pbh634.ksm_pkg.get_performance_year(acr.ask_or_stop_dt)
-Group By rpt_pbh634.ksm_pkg.get_fiscal_year(acr.ask_or_stop_dt)
+    And pyg.year = rpt_pbh634.ksm_pkg_tmp.get_performance_year(acr.ask_or_stop_dt)
+Group By rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(acr.ask_or_stop_dt)
   , acr.assignment_id_number
   , e.report_name
   , extract(year From acr.ask_or_stop_dt)
   , extract(month From acr.ask_or_stop_dt)
-  , rpt_pbh634.ksm_pkg.get_quarter(acr.ask_or_stop_dt, 'fisc')
-  , rpt_pbh634.ksm_pkg.get_quarter(acr.ask_or_stop_dt, 'perf')
-  , rpt_pbh634.ksm_pkg.get_performance_year(acr.ask_or_stop_dt)
+  , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'fisc')
+  , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'perf')
+  , rpt_pbh634.ksm_pkg_tmp.get_performance_year(acr.ask_or_stop_dt)
+  , g.goal_2
+  , pyg.goal_2
+Union
+----- KSM supplement - Kellogg asks
+Select ack.assignment_id_number As id_number
+  , e.report_name
+  , 'KGS' As goal_type
+  , 'KSM Sols' As goal_desc
+  , extract(year From ack.ask_or_stop_dt) As cal_year
+  , extract(month From ack.ask_or_stop_dt) As cal_month
+  , rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(ack.ask_or_stop_dt) As fiscal_year
+  , rpt_pbh634.ksm_pkg_tmp.get_quarter(ack.ask_or_stop_dt, 'fisc') As fiscal_quarter
+  , rpt_pbh634.ksm_pkg_tmp.get_performance_year(ack.ask_or_stop_dt) As perf_year
+  , rpt_pbh634.ksm_pkg_tmp.get_quarter(ack.ask_or_stop_dt, 'perf') As perf_quarter
+  , g.goal_2 As fy_goal
+  , pyg.goal_2 As py_goal
+  -- Original definition: count only if ask date is filled in
+  , Count(Distinct Case When ack.initial_contribution_date Is Not Null Then ack.proposal_id End)
+    As progress
+  -- Alternate definition: count if either ask date or stop date is filled in
+  , Count(Distinct ack.proposal_id) As adjusted_progress
+  , NULL As addl_progress_detail
+From table(rpt_pbh634.metrics_pkg.tbl_asked_count_ksm) ack
+Inner Join entity e On e.id_number = ack.assignment_id_number
+-- Fiscal year goals
+Left Join goal g
+  On ack.assignment_id_number = g.id_number
+    And g.year = rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(ack.ask_or_stop_dt)
+-- Performance year goals
+Left Join goal pyg
+  On ack.assignment_id_number = pyg.id_number
+    And pyg.year = rpt_pbh634.ksm_pkg_tmp.get_performance_year(ack.ask_or_stop_dt)
+Group By rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(ack.ask_or_stop_dt)
+  , ack.assignment_id_number
+  , e.report_name
+  , extract(year From ack.ask_or_stop_dt)
+  , extract(month From ack.ask_or_stop_dt)
+  , rpt_pbh634.ksm_pkg_tmp.get_quarter(ack.ask_or_stop_dt, 'fisc')
+  , rpt_pbh634.ksm_pkg_tmp.get_quarter(ack.ask_or_stop_dt, 'perf')
+  , rpt_pbh634.ksm_pkg_tmp.get_performance_year(ack.ask_or_stop_dt)
   , g.goal_2
   , pyg.goal_2
 Union
@@ -99,10 +139,10 @@ Select fr.assignment_id_number As id_number
   , 'MG Dollars Raised' As goal_desc
   , extract(year From pd.date_of_record) As cal_year
   , extract(month From pd.date_of_record) As cal_month
-  , rpt_pbh634.ksm_pkg.get_fiscal_year(pd.date_of_record) As fiscal_year
-  , rpt_pbh634.ksm_pkg.get_quarter(pd.date_of_record, 'fisc') As fiscal_quarter
-  , rpt_pbh634.ksm_pkg.get_performance_year(pd.date_of_record) As perf_year
-  , rpt_pbh634.ksm_pkg.get_quarter(pd.date_of_record, 'perf') As perf_quarter
+  , rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(pd.date_of_record) As fiscal_year
+  , rpt_pbh634.ksm_pkg_tmp.get_quarter(pd.date_of_record, 'fisc') As fiscal_quarter
+  , rpt_pbh634.ksm_pkg_tmp.get_performance_year(pd.date_of_record) As perf_year
+  , rpt_pbh634.ksm_pkg_tmp.get_quarter(pd.date_of_record, 'perf') As perf_quarter
   , g.goal_3 As fy_goal
   , pyg.goal_3 As py_goal
   , sum(Case When funded_credit_flag = 'Y' Then fr.granted_amt End) As progress
@@ -115,19 +155,19 @@ Inner Join proposal_dates pd
 -- Fiscal year goals
 Left Join goal g
   On fr.assignment_id_number = g.id_number
-    And g.year = rpt_pbh634.ksm_pkg.get_fiscal_year(pd.date_of_record)
+    And g.year = rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(pd.date_of_record)
 -- Performance year goals
 Left Join goal pyg
   On fr.assignment_id_number = pyg.id_number
-    And pyg.year = rpt_pbh634.ksm_pkg.get_performance_year(pd.date_of_record)
-Group By rpt_pbh634.ksm_pkg.get_fiscal_year(pd.date_of_record)
+    And pyg.year = rpt_pbh634.ksm_pkg_tmp.get_performance_year(pd.date_of_record)
+Group By rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(pd.date_of_record)
   , fr.assignment_id_number
   , e.report_name
   , extract(year From pd.date_of_record)
   , extract(month From pd.date_of_record)
-  , rpt_pbh634.ksm_pkg.get_quarter(pd.date_of_record, 'fisc')
-  , rpt_pbh634.ksm_pkg.get_quarter(pd.date_of_record, 'perf')
-  , rpt_pbh634.ksm_pkg.get_performance_year(pd.date_of_record)
+  , rpt_pbh634.ksm_pkg_tmp.get_quarter(pd.date_of_record, 'fisc')
+  , rpt_pbh634.ksm_pkg_tmp.get_quarter(pd.date_of_record, 'perf')
+  , rpt_pbh634.ksm_pkg_tmp.get_performance_year(pd.date_of_record)
   , g.goal_3
   , pyg.goal_3
 Union
@@ -217,10 +257,10 @@ Select acr.assignment_id_number As id_number
   , 'Proposal Assists' As goal_desc
   , extract(year From acr.ask_or_stop_dt) As cal_year
   , extract(month From acr.ask_or_stop_dt) As cal_month
-  , rpt_pbh634.ksm_pkg.get_fiscal_year(acr.ask_or_stop_dt) As fiscal_year
-  , rpt_pbh634.ksm_pkg.get_quarter(acr.ask_or_stop_dt, 'fisc') As fiscal_quarter
-  , rpt_pbh634.ksm_pkg.get_performance_year(acr.ask_or_stop_dt) As perf_year
-  , rpt_pbh634.ksm_pkg.get_quarter(acr.ask_or_stop_dt, 'perf') As perf_quarter
+  , rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(acr.ask_or_stop_dt) As fiscal_year
+  , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'fisc') As fiscal_quarter
+  , rpt_pbh634.ksm_pkg_tmp.get_performance_year(acr.ask_or_stop_dt) As perf_year
+  , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'perf') As perf_quarter
   , g.goal_6 As fy_goal
   , pyg.goal_6 As py_goal
   -- Original definition: count only if ask date is filled in
@@ -234,19 +274,19 @@ Inner Join entity e On e.id_number = acr.assignment_id_number
 -- Fiscal year goals
 Left Join goal g
   On acr.assignment_id_number = g.id_number
-    And g.year = rpt_pbh634.ksm_pkg.get_fiscal_year(acr.ask_or_stop_dt) -- initial_contribution_date is 'ask_date'
+    And g.year = rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(acr.ask_or_stop_dt) -- initial_contribution_date is 'ask_date'
 -- Performance year goals
 Left Join goal pyg
   On acr.assignment_id_number = pyg.id_number
-    And pyg.year = rpt_pbh634.ksm_pkg.get_performance_year(acr.ask_or_stop_dt)
-Group By rpt_pbh634.ksm_pkg.get_fiscal_year(acr.ask_or_stop_dt)
+    And pyg.year = rpt_pbh634.ksm_pkg_tmp.get_performance_year(acr.ask_or_stop_dt)
+Group By rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(acr.ask_or_stop_dt)
   , acr.assignment_id_number
   , e.report_name
   , extract(year From acr.ask_or_stop_dt)
   , extract(month From acr.ask_or_stop_dt)
-  , rpt_pbh634.ksm_pkg.get_quarter(acr.ask_or_stop_dt, 'fisc')
-  , rpt_pbh634.ksm_pkg.get_quarter(acr.ask_or_stop_dt, 'perf')
-  , rpt_pbh634.ksm_pkg.get_performance_year(acr.ask_or_stop_dt)
+  , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'fisc')
+  , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'perf')
+  , rpt_pbh634.ksm_pkg_tmp.get_performance_year(acr.ask_or_stop_dt)
   , g.goal_6
   , pyg.goal_6
 ;
@@ -285,6 +325,27 @@ With goals As (
     , entity.report_name
     , 'MGS' As goal_type
     , 'MG Sols' As goal_desc
+    , goal.year As cal_year
+    , 1 As cal_month
+    , goal.year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.year As perf_year
+    , 1 As perf_quarter
+    , goal_2 As fy_goal
+    , goal_2 As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+    , NULL As addl_progress_detail
+  From entity
+  Inner Join goal
+    On entity.id_number = goal.id_number
+  Union All
+  -- Goal 2 KSM
+  Select
+    goal.id_number
+    , entity.report_name
+    , 'KGS' As goal_type
+    , 'KSM Sols' As goal_desc
     , goal.year As cal_year
     , 1 As cal_month
     , goal.year As fiscal_year

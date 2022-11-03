@@ -37,7 +37,7 @@ vips As (
 /* Numeric rating bins */
 , rating_bins As (
   Select *
-  From table(ksm_pkg.tbl_numeric_capacity_ratings)
+  From table(ksm_pkg_tmp.tbl_numeric_capacity_ratings)
 )
 
 /* Main query */
@@ -53,7 +53,7 @@ Select
   , contact_report.contacted_name
   , prs.prospect_id
   , contact_report.contact_date
-  , rpt_pbh634.ksm_pkg.get_fiscal_year(contact_report.contact_date) As fiscal_year
+  , rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(contact_report.contact_date) As fiscal_year
   , contact_report.description
   , dbms_lob.substr(contact_report.summary, 2000, 1) As summary
   -- Prospect fields
@@ -88,7 +88,7 @@ Inner Join entity staff
   On staff.id_number = contact_rpt_credit.id_number
 Left Join tms_contact_rpt_credit_type tms_crc On tms_crc.contact_credit_type = contact_rpt_credit.contact_credit_type
 Left Join nu_prs_trp_prospect prs On prs.id_number = contact_report.id_number
-Left Join table(ksm_pkg.tbl_university_strategy) strat On strat.prospect_id = contact_report.prospect_id
+Left Join table(ksm_pkg_tmp.tbl_university_strategy) strat On strat.prospect_id = contact_report.prospect_id
 Left Join vips On vips.id_number = contact_rpt_credit.id_number
 Left Join rating_bins eval On eval.rating_desc = prs.evaluation_rating
 Left Join rating_bins uor On uor.rating_desc = prs.officer_rating
@@ -126,6 +126,6 @@ Select
   , cal.curr_fy
 From v_nu_visits
 Cross Join v_current_calendar cal
-Inner Join table(ksm_pkg.tbl_frontline_ksm_staff) staff On staff.id_number = v_nu_visits.credited
+Inner Join table(ksm_pkg_tmp.tbl_frontline_ksm_staff) staff On staff.id_number = v_nu_visits.credited
 Where contact_date Between cal.prev_fy_start And cal.yesterday
 ;
