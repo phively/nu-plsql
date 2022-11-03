@@ -25,7 +25,7 @@ Disaggregated interests view for data mart
 Updated 2019-11-12
 - Includes only career-related interests
 ************************************************************************/
-Create Or Replace View NU_KSM_V_DATAMART_CAREER_INTER As
+Create Or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_CAREER_INTER As
 -- View of INTEREST (Alumni List) v-datamart_interests
 Select
   interest.id_number As catracks_id
@@ -56,7 +56,7 @@ Updated 2019-11-12
 Updated 2019-11-20
 - Added KSM Exec Ed ID
 ************************************************************************/
-Create Or Replace View NU_KSM_V_DATAMART_IDS As
+Create Or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_IDS As
 -- View of KSM alumni with least a EMPLID, NETID, EXED, Salesforce ID along with a Catracks ID: v_datamart_ids
 With
 
@@ -104,7 +104,7 @@ Updated 2019-11-12
 Updated 2021-08-11
 -Includes Home and Business Zipcodes and Foreign Zipcodes
 ************************************************************************/
-Create Or Replace View NU_KSM_V_DATAMART_ADDRESS As
+Create Or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_ADDRESS As
 -- View for Address (Business + Home) v_data_mart_address
 With
 business_address As (
@@ -224,7 +224,7 @@ Updated 2019-11-12
 Updated 2021-08-11
 - Includes Employer ID Number
 ************************************************************************/
-Create or Replace View NU_KSM_V_DATAMART_EMPLOYMENT As
+Create or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_EMPLOYMENT As
 --- View for Employer: v_data_mart_employer
 With
 org_employer As (
@@ -293,7 +293,7 @@ Updated 2022-05-05
 - Adding degree level
 ************************************************************************/
 
-Create Or Replace View NU_KSM_V_DATAMART_DEGREES As
+Create Or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_DEGREES As
 -- KSM degrees view
 -- Includes Kellogg degrees
 Select
@@ -378,7 +378,7 @@ Updated 2019-11-12
 - Adding in Pref Mail Name and Dean Salutation (Nickname)
 ************************************************************************/
 
-Create Or Replace View NU_KSM_V_DATAMART_ENTITIES As
+Create Or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_ENTITIES As
 -- KSM entity view
 -- Core alumni table which includes summary information and current fields from the other views
 -- Aggregated to return one unique alum per line
@@ -609,7 +609,7 @@ Fields to include, ALWAYS excluding the transactions above:
 
 ****/
 
-Create or Replace View NU_KSM_V_DATAMART_GIVING as 
+Create or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_GIVING as 
 
 
 
@@ -792,7 +792,7 @@ Your query looks good!
 
 */
 
-Create or Replace View NU_KSM_V_DATAMART_STUDENTS as
+Create or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_STUDENTS as
 
 With ksm_ids As (
   Select ids_base.id_number
@@ -1150,7 +1150,7 @@ From emp_chooser
   
 --- View to Pull Primary Email and Phones Number with consideration of special handling codes
 
-Create or Replace View NU_KSM_V_DATAMART_CONTACT as
+Create or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_CONTACT as
 
 With KSM_Email AS (select email.id_number,
        TMS_EMAIL_TYPE.short_desc,
@@ -1261,7 +1261,7 @@ Event View: This view will provide the raw data on event attendance from the cur
 
 */
 
-Create or Replace View NU_KSM_V_DATAMART_EVENTS as 
+Create or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_EVENTS as 
 
 Select 
 
@@ -1319,7 +1319,7 @@ AND Any Engagement, NU Event, and Kellogg Event flags
 
 */
 
-create or replace view NU_KSM_V_DATAMART_PROSPECT as 
+create or replace view ADVANCE_NU_RPT.NU_KSM_V_DATAMART_PROSPECT as 
 
 with assign as (select assign.id_number,
        assign.prospect_manager,
