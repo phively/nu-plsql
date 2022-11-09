@@ -9,6 +9,14 @@ Conventions:
   E.g. interest_start_dt
 - Fields ending in _dt are strings and those ending in _date are dates
 - Always include date added and modified in the disaggregated data views
+
+
+PLEASE READ THE NEWEST UPDATE BELOW 
+
+UPDATE 11-3-2022: The views below are now updated in the ADVANCE_NU_RPT schema. 
+
+Please use the ADVANCE_NU_RPT schema when consuming the views. 
+
 ************************************************************************/
 
 /************************************************************************
@@ -17,7 +25,7 @@ Disaggregated interests view for data mart
 Updated 2019-11-12
 - Includes only career-related interests
 ************************************************************************/
-Create Or Replace View v_datamart_career_interests As
+Create Or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_CAREER_INTER As
 -- View of INTEREST (Alumni List) v-datamart_interests
 Select
   interest.id_number As catracks_id
@@ -48,7 +56,7 @@ Updated 2019-11-12
 Updated 2019-11-20
 - Added KSM Exec Ed ID
 ************************************************************************/
-Create Or Replace View v_datamart_ids As
+Create Or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_IDS As
 -- View of KSM alumni with least a EMPLID, NETID, EXED, Salesforce ID along with a Catracks ID: v_datamart_ids
 With
 
@@ -96,7 +104,7 @@ Updated 2019-11-12
 Updated 2021-08-11
 -Includes Home and Business Zipcodes and Foreign Zipcodes
 ************************************************************************/
-Create Or Replace View v_datamart_address As
+Create Or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_ADDRESS As
 -- View for Address (Business + Home) v_data_mart_address
 With
 business_address As (
@@ -216,7 +224,7 @@ Updated 2019-11-12
 Updated 2021-08-11
 - Includes Employer ID Number
 ************************************************************************/
-Create or Replace View v_datamart_employment As
+Create or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_EMPLOYMENT As
 --- View for Employer: v_data_mart_employer
 With
 org_employer As (
@@ -285,7 +293,7 @@ Updated 2022-05-05
 - Adding degree level
 ************************************************************************/
 
-Create Or Replace View v_datamart_degrees As
+Create Or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_DEGREES As
 -- KSM degrees view
 -- Includes Kellogg degrees
 Select
@@ -370,7 +378,7 @@ Updated 2019-11-12
 - Adding in Pref Mail Name and Dean Salutation (Nickname)
 ************************************************************************/
 
-Create Or Replace View v_datamart_entities As
+Create Or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_ENTITIES As
 -- KSM entity view
 -- Core alumni table which includes summary information and current fields from the other views
 -- Aggregated to return one unique alum per line
@@ -601,7 +609,7 @@ Fields to include, ALWAYS excluding the transactions above:
 
 ****/
 
-Create or Replace View v_datamart_giving as 
+Create or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_GIVING as 
 
 
 
@@ -784,7 +792,7 @@ Your query looks good!
 
 */
 
-Create or Replace View v_datamart_students as
+Create or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_STUDENTS as
 
 With ksm_ids As (
   Select ids_base.id_number
@@ -1142,7 +1150,7 @@ From emp_chooser
   
 --- View to Pull Primary Email and Phones Number with consideration of special handling codes
 
-Create or Replace View v_datamart_contact as
+Create or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_CONTACT as
 
 With KSM_Email AS (select email.id_number,
        TMS_EMAIL_TYPE.short_desc,
@@ -1253,7 +1261,7 @@ Event View: This view will provide the raw data on event attendance from the cur
 
 */
 
-Create or Replace View v_datamart_events as 
+Create or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_EVENTS as 
 
 Select 
 
@@ -1311,7 +1319,7 @@ AND Any Engagement, NU Event, and Kellogg Event flags
 
 */
 
-create or replace view v_ksm_datamart_prospect as 
+create or replace view ADVANCE_NU_RPT.NU_KSM_V_DATAMART_PROSPECT as 
 
 with assign as (select assign.id_number,
        assign.prospect_manager,
