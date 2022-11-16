@@ -1,3 +1,5 @@
+/* This view will create a giving analysis on PE and Asia PE councils */
+
 create or replace view v_ksm_pe_analysis as
 With pe AS (select k.id_number,
        k.role,
@@ -6,7 +8,18 @@ With pe AS (select k.id_number,
        rpt_pbh634.ksm_pkg_tmp.get_fiscal_year (k.start_dt) as FY_Joined_pe,
        k.start_dt,
        k.stop_dt
-From table (rpt_pbh634.ksm_pkg_tmp.tbl_committee_privateequity) k),
+From table (rpt_pbh634.ksm_pkg_tmp.tbl_committee_privateequity) k
+--- Add in the Private Equity Group for Asia as well
+Union
+select k.id_number,
+       k.role,
+       k.committee_title,
+       k.short_desc,
+       rpt_pbh634.ksm_pkg_tmp.get_fiscal_year (k.start_dt) as FY_Joined_pe,
+       k.start_dt,
+       k.stop_dt
+From table (rpt_pbh634.ksm_pkg_tmp.tbl_committee_pe_asia) k
+),
 
 --- Giving Summary
 
@@ -100,11 +113,11 @@ Select distinct pe.ID_NUMBER,
 entity.first_name,
 entity.last_name,
 --- Start of PE Fiscal Year Date
---- CASH
-pe.FY_Joined_PE,
-before_pe.Cash_Year_Before_pe,
-after_pe.Cash_Year_After_pe,
---- CRU
+--- CASH - Years Before, Joined and After they joined PE
+Before_pe.Cash_Year_Before_pe,
+Year_Joined.cash_Year_Joined_pe,
+After_pe.Cash_Year_After_pe,
+--- CRU - Years Before, Joined and After they joined PE
 Before_pe.cru_Year_Before_PE,
 Year_Joined.cru_Year_Joined_PE,
 After_pe.cru_Year_After_PE,
@@ -114,7 +127,8 @@ pe_Give_Ind.joined_pe_pfy2,
 pe_Give_Ind.joined_pe_pfy3,
 pe_Give_Ind.joined_pe_pfy4,
 pe_Give_Ind.joined_pe_pfy5,
---- KLC Total Years on Record
+pe.FY_Joined_pe,
+--- Total Years on the PE Council
 pe_COUNT.years_in_pe
 from pe
 left join entity on entity.id_number = pe.id_number
