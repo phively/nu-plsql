@@ -9,6 +9,11 @@ Inner Join address
 On address.id_number = gc.id_number
 And address.xsequence = gc.xsequence),
 
+--- Continent 
+
+C as (select *
+from RPT_PBH634.v_addr_continents),
+
 
 prime as (Select DISTINCT
          a.Id_number
@@ -16,12 +21,13 @@ prime as (Select DISTINCT
       ,  tms_address_type.short_desc AS Address_Type
       ,  a.city
       ,  a.state_code
-      ,  tms_country.short_desc as country
+      ,  c.country as country
       ,  G.GEO_CODE_PRIMARY_DESC AS PRIMARY_GEO_CODE
       FROM address a
       LEFT JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
       LEFT JOIN tms_address_type ON tms_address_type.addr_type_code = a.addr_type_code
       LEFT JOIN tms_country ON tms_country.country_code = a.country_code
+      LEFT JOIN C ON C.country_code = A.COUNTRY_CODE
       LEFT JOIN g ON g.id_number = A.ID_NUMBER
       AND g.xsequence = a.xsequence
       WHERE a.addr_status_code = 'A'
@@ -35,13 +41,14 @@ Business As(Select DISTINCT
       ,  max(tms_address_type.short_desc) AS Address_Type
       ,  max(a.city) as city
       ,  max (a.state_code) as state_code
-      ,  max (tms_country.short_desc) as country
+      ,  max (c.country) as country
       ,  max (a.start_dt)
       ,  max (G.GEO_CODE_PRIMARY_DESC) AS BUSINESS_GEO_CODE
       FROM address a
       LEFT JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
       LEFT JOIN tms_address_type ON tms_address_type.addr_type_code = a.addr_type_code
       LEFT JOIN tms_country ON tms_country.country_code = a.country_code
+      LEFT JOIN C ON C.country_code = A.COUNTRY_CODE
       LEFT JOIN g ON g.id_number = A.ID_NUMBER
       AND g.xsequence = a.xsequence
       WHERE (a.addr_status_code = 'A'
@@ -55,13 +62,14 @@ Home as (Select DISTINCT
       ,  max(tms_address_type.short_desc) AS Address_Type
       ,  max(a.city) as city
       ,  max (a.state_code) as state_code
-      ,  max (tms_country.short_desc) as country 
+      ,  max (c.country) as country 
       ,  max (a.start_dt)
       ,  max (G.GEO_CODE_PRIMARY_DESC) AS home_GEO_CODE
       FROM address a
       LEFT JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
       LEFT JOIN tms_address_type ON tms_address_type.addr_type_code = a.addr_type_code
       LEFT JOIN tms_country ON tms_country.country_code = a.country_code
+      LEFT JOIN C ON C.country_code = A.COUNTRY_CODE
       LEFT JOIN g ON g.id_number = A.ID_NUMBER
       AND g.xsequence = a.xsequence
       WHERE (a.addr_status_code = 'A'
@@ -74,13 +82,14 @@ Alt_Home As  (Select DISTINCT
       ,  max(tms_address_type.short_desc) AS Address_Type
       ,  max(a.city) as city
       ,  max (a.state_code) as state_code
-      ,  max (tms_country.short_desc) as country
+      ,  max (c.country) as country
       ,  max (a.start_dt)
       ,  max (G.GEO_CODE_PRIMARY_DESC) AS alt_home_GEO_CODE
       FROM address a
       LEFT JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
       LEFT JOIN tms_address_type ON tms_address_type.addr_type_code = a.addr_type_code
       LEFT JOIN tms_country ON tms_country.country_code = a.country_code
+      LEFT JOIN C ON C.country_code = A.COUNTRY_CODE
       LEFT JOIN g ON g.id_number = A.ID_NUMBER
       AND g.xsequence = a.xsequence
       WHERE (a.addr_pref_IND = 'N'
@@ -93,13 +102,14 @@ Alt_Bus As  (Select DISTINCT
       ,  max(tms_address_type.short_desc) AS Address_Type
       ,  max(a.city) as city
       ,  max (a.state_code) as state_code
-      ,  max (tms_country.short_desc) as country
+      ,  max (c.country) as country
       ,  max (a.start_dt)
       ,  max (G.GEO_CODE_PRIMARY_DESC) AS alt_bus_GEO_CODE
       FROM address a
       LEFT JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
       LEFT JOIN tms_address_type ON tms_address_type.addr_type_code = a.addr_type_code
       LEFT JOIN tms_country ON tms_country.country_code = a.country_code
+      LEFT JOIN C ON C.country_code = A.COUNTRY_CODE
       LEFT JOIN g ON g.id_number = A.ID_NUMBER
       AND g.xsequence = a.xsequence
       WHERE (a.addr_pref_IND = 'N'
@@ -113,13 +123,14 @@ Seasonal as (
       ,  max(tms_address_type.short_desc) AS Address_Type
       ,  max(a.city) as city
       ,  max (a.state_code) as state_code
-      ,  max (tms_country.short_desc) as country 
+      ,  max (c.country) as country 
       ,  max (a.start_dt)
       ,  max (G.GEO_CODE_PRIMARY_DESC) AS SEASONAL_GEO_CODE
       FROM address a
       LEFT JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
       LEFT JOIN tms_address_type ON tms_address_type.addr_type_code = a.addr_type_code
       LEFT JOIN tms_country ON tms_country.country_code = a.country_code
+      LEFT JOIN C ON C.country_code = A.COUNTRY_CODE
       LEFT JOIN g ON g.id_number = A.ID_NUMBER
       AND g.xsequence = a.xsequence
       WHERE (a.addr_pref_IND = 'N'
