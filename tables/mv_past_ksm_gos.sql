@@ -1,8 +1,8 @@
 -- Drop old materialized view
-Drop Materialized View mv_past_ksm_gos;
+Drop Materialized View rpt_pbh634.mv_past_ksm_gos;
 
 -- Create new materialized view
-Create Materialized View mv_past_ksm_gos As
+Create Materialized View rpt_pbh634.mv_past_ksm_gos As
 
 With
 
@@ -66,6 +66,7 @@ adv_dates As (
   Union All Select '0000860423', 'AF', to_date('20220404', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000819851', 'AF', to_date('20190930', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000887951', 'AF', to_date('20220919', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000889141', 'AF', to_date('20221128', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
 )
 
 Select
@@ -82,6 +83,6 @@ Order By entity.report_name Asc
 
 -- Check results
 Select *
-From mv_past_ksm_gos
+From rpt_pbh634.mv_past_ksm_gos
 ;
 
