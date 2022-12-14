@@ -109,33 +109,14 @@ Gift officer contact report metrics audit
 
 Create Or Replace View rpt_dgz654.mgo_contact_reports As
 
-With
-
-Prospect_Manager As (
-  Select
-    A.prospect_ID
-    , PE.ID_Number
-    , PE.Primary_Ind
-    , A.assignment_ID_Number As Prospect_Manager_ID
-    , E.Pref_Mail_Name As Prospect_Manager
-  From assignment A
-  Inner Join prospect_entity PE
-    On A.prospect_ID = PE.prospect_Id
-  Inner Join entity E
-    On A.assignment_id_number = E.id_number
-  Where A.assignment_type = 'PM'
-    And A.active_IND = 'Y'
-    And PE.Primary_Ind = 'Y'
-)
-
 Select
   CR.*
-  , PP.prospect_manager_id
-  , PP.prospect_manager
+  , assign.prospect_manager_id
+  , assign.prospect_manager
   , assign.manager_ids
   , assign.managers
   , assign.curr_ksm_manager
-  , E.Institutional_Suffix
+  , hh.institutional_suffix
   , hh.degrees_concat
   , hh.household_city
   , hh.household_geo_primary_desc
@@ -145,10 +126,6 @@ Select
 From rpt_pbh634.v_contact_reports_fast CR
 Inner Join rpt_pbh634.v_entity_ksm_households hh
   On hh.id_number = CR.id_number
-Left Join Prospect_manager PP
-  On PP.ID_NUMBER = CR.id_number
-Inner Join entity e
-  On E.Id_number = CR.Id_number
 Left Join rpt_pbh634.v_assignment_summary assign
   On assign.id_number = cr.id_number
 ;
