@@ -857,6 +857,10 @@ Cursor ct_alloc_annual_fund_ksm Is
       , '3203002858501GFT' -- Cox-Cohen Scholarship
       , '3203004600201GFT' -- Woodsum Student Travel
       , '3203005990501GFT' -- Finance Fellows Program
+      , '3203003655701GFT' -- KSM PT Program Annual Fund
+      , '3203004334701GFT' -- Non Profit Program Scholarship
+      , '3203005261001GFT' -- Kellogg-Recanati EMBA AF
+      , '3203006289601GFT' -- E/W Scholarship (expendable)
       /************ UPDATE ABOVE HERE ************/
     )
   ;
