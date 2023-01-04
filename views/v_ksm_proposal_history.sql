@@ -148,6 +148,12 @@ cal As (
   Left Join other_purp On other_purp.proposal_id = proposal.proposal_id
 )
 
+-- Granted dates (from metrics_pkg)
+, granted_dts As (
+  Select *
+  From table(rpt_pbh634.metrics_pkg.tbl_proposal_dates)
+)
+
 -- Main query
 Select Distinct
   proposal.prospect_id
@@ -207,6 +213,7 @@ Select Distinct
       When proposal.active_ind <> 'Y' And tms_ps.hierarchy_order < 70 Then trunc(proposal.date_modified)
       Else NULL
     End As close_dt_calc
+  , granted_dts.date_of_record As granted_date_of_record
   , trunc(date_modified) As date_modified
   , original_ask_amt As total_original_ask_amt
   , ask_amt As total_ask_amt
@@ -267,6 +274,8 @@ Left Join table(ksm_pkg_tmp.tbl_frontline_ksm_staff) gos
   And gos.former_staff Is Null
 Left Join proposal_credit_concat pcc
   On pcc.proposal_id = proposal.proposal_id
+Left Join granted_dts
+  On granted_dts.proposal_id = proposal.proposal_id
 -- Prospect info
 Left Join (Select prospect_id, prospect_name, prospect_name_sort From prospect) prs
   On prs.prospect_id = proposal.prospect_id

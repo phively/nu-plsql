@@ -52,6 +52,7 @@ Select Distinct
   , Phf.total_ask_amt
   , Phf.total_anticipated_amt
   , Phf.total_granted_amt
+  , Phf.granted_date_of_record
   , Phf.ksm_ask
   , Phf.ksm_anticipated
   , Phf.ksm_af_ask
@@ -67,14 +68,14 @@ Select Distinct
       When ksm_or_univ_ask >= 100000 
         And total_granted_amt >= 98000
         And proposal_Status_code = '7'
-        Then rpt_pbh634.ksm_pkg_tmp.get_performance_year(close_date)
+        Then rpt_pbh634.ksm_pkg_tmp.get_performance_year(phf.granted_date_of_record)
       Else NULL
       End
     As MG_Commitments
   , Case
       When ksm_or_univ_ask >= 100000 
         And proposal_status_code In ('5', 'C', 'B', '8', '7')
-        Then rpt_pbh634.ksm_pkg_tmp.get_performance_year(ask_date)
+        Then rpt_pbh634.ksm_pkg_tmp.get_performance_year(phf.ask_date)
       Else NULL
       End
     As MG_Solicitations
@@ -82,7 +83,7 @@ Select Distinct
       When ksm_or_univ_ask >= 100000 
         And total_granted_amt >= 48000
         And proposal_status_code = '7'
-        Then rpt_pbh634.ksm_pkg_tmp.get_performance_year(close_date)
+        Then rpt_pbh634.ksm_pkg_tmp.get_performance_year(phf.granted_date_of_record)
       Else NULL
       End
     As MG_Dollars_Raised
