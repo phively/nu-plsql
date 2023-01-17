@@ -6,7 +6,7 @@ Create or replace view v_ksm_faculty_events
 
 */
 
-Create or replace view v_ksm_faculty_events 
+Create or replace view v_ksm_faculty_events as
 
 --- Using affiliation to identify KSM Faculty members
 --- School code KM = Kellogg School of Management 
@@ -70,7 +70,7 @@ select s.id_number,
        fe.Faculty_Job_Title,
        fe.Faculty_Employer,
        fe.Faculty_job_status_code as faculty_job_status,
-       fe.Faculty_start_dt as faculty_start_dt_employment,     
+       rpt_pbh634.ksm_pkg_tmp.to_date2(fe.Faculty_start_dt, 'YYYYMMDD') as faculty_start_date_employment,     
        tms_event_role.short_desc as Volunteer_role_of_event,
        n.event_id,
        n.event_name,
