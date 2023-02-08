@@ -1042,6 +1042,11 @@ Select Distinct
   , rec_name.anon
   --- Check last year's name; drops everything after the first < delimiter
   , Case
+      When pfy_custom_names.custom_name Is Not Null
+        Then 'Y'
+      End
+    As name_exception_in_pfy
+  , Case
       When ir_names.ir21_name <> regexp_substr(rec_name.proposed_recognition_name, '[^<]*') --<UPDATE THIS>
         Then 'Y'
       End
@@ -1147,8 +1152,10 @@ Left Join hr_names
   On hr_names.id_number = donorlist.household_id
 Left Join hr_names hr_names_s
   On hr_names_s.id_number = donorlist.household_spouse_id
-  Left Join ir_names
-    On ir_names.id_number = donorlist.id_number
+Left Join ir_names
+  On ir_names.id_number = donorlist.id_number
+Left Join tbl_ir_fy21_custom_name pfy_custom_names --<UPDATE THIS>
+  On pfy_custom_names.id_number = donorlist.id_number
 Order By
   proposed_giving_level Asc
   , lower(proposed_sort_name) Asc

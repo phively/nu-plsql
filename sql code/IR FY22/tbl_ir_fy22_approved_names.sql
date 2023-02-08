@@ -1,4 +1,4 @@
--- IR FY19 names table definition
+-- IR FY21 names table definition
 Create Table tbl_ir_fy22_approved_names ( --<UPDATE THIS>
   ID_NUMBER varchar2(10)
   , PROPOSED_SORT_NAME varchar2(500)
