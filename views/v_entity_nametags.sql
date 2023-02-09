@@ -199,7 +199,7 @@ Left Join rpt_pbh634.v_entity_ksm_degrees deg
 Left Join children_deg_concat cdc
   On cdc.id_number = entity.id_number
 Where entity.person_or_org = 'P'
-  And entity.record_status_code Not In ('D', 'X', 'I')
+  And entity.record_status_code Not In ('X', 'I')
 ;
 
 /*
