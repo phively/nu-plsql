@@ -864,6 +864,9 @@ Cursor ct_alloc_annual_fund_ksm Is
       , '3203003083401GFT' -- MMM Program General Fund
       , '3203003805101GFT' -- KSM MMM Scholarships
       , '3203002775901GFT' -- GM Minority/Women Scholarship
+      , '3203006233401GFT' -- Fund for Inclusion (similar to GIM/LS)
+      , '3203006379001GFT' -- KSM Expendable Scholarship (RG)
+      , '3203006386201GFT' -- KSM Expendable Scholarship (JM)
       /************ UPDATE ABOVE HERE ************/
     )
   ;
