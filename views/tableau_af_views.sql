@@ -10,8 +10,18 @@ With
    level, e.g. Kellogg-specific giving source donor, then householded for married entities.
    2017-07-17: added ytd_dts; removing function call from select led to ~32x speed-up! */
 
+-- Thresholded allocations: count up to max_gift dollars
+thresh_allocs As (
+  Select
+    allocation.allocation_code
+    , allocation.short_name
+    , 100E3 As max_gift
+  From allocation
+  Where allocation_code = '3203006213301GFT' -- KEC Fund
+)
+
 -- Kellogg Annual Fund allocations as defined in ksm_pkg
-ksm_cru_allocs As (
+, ksm_cru_allocs As (
   Select *
   From table(ksm_pkg_tmp.tbl_alloc_curr_use_ksm)
 )
@@ -76,6 +86,24 @@ ksm_cru_allocs As (
     , gft.legal_amount
     , gft.credit_amount
     , gft.nwu_af_amount
+    , Case
+        When thresh_allocs.allocation_code Is Not Null
+          And gft.legal_amount > thresh_allocs.max_gift
+          Then thresh_allocs.max_gift
+        When cru.af_flag = 'Y'
+          Then gft.legal_amount
+        Else 0
+        End
+      As ksm_af_amount_legal
+    , Case
+        When thresh_allocs.allocation_code Is Not Null
+          And gft.credit_amount > thresh_allocs.max_gift
+          Then thresh_allocs.max_gift
+        When cru.af_flag = 'Y'
+          Then gft.credit_amount
+        Else 0
+        End
+      As ksm_af_amount_credit
     , gft.id_number As legal_dnr_id
     , trans.id_src_dnr
     , households.household_id As id_hh_src_dnr
@@ -85,6 +113,7 @@ ksm_cru_allocs As (
   Inner Join ksm_cru_allocs cru On cru.allocation_code = gft.allocation_code
   Inner Join ksm_cru_trans trans On trans.tx_number = gft.tx_number
   Inner Join households On households.id_number = trans.id_src_dnr
+  Left Join thresh_allocs On thresh_allocs.allocation_code = gft.allocation_code
 )
 
 -- Gift receipts and biographic information
@@ -106,6 +135,12 @@ Select
   , af.legal_amount
   , af.credit_amount
   , af.nwu_af_amount
+  , af.ksm_af_amount_legal
+  , af.ksm_af_amount_credit
+  , af.legal_amount - af.ksm_af_amount_legal
+    As ksm_cru_amount_legal
+  , af.credit_amount - af.ksm_af_amount_credit
+    As ksm_cru_amount_credit
   -- Household source donor entity fields
   , af.id_hh_src_dnr
   , hh.pref_mail_name
