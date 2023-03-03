@@ -508,6 +508,7 @@ committee_kic Constant committee.committee_code%type := 'KIC'; -- Kellogg Inclus
 committee_privateequity Constant committee.committee_code%type := 'KPETC'; -- Kellogg Private Equity Taskforce Council
 committee_pe_asia Constant committee.committee_code%type := 'APEAC'; -- KSM Asia Private Equity Advisory Council
 committee_asia Constant committee.committee_code%type := 'KEBA'; -- Kellogg Executive Board for Asia
+committee_mbai Constant committee.committee_code%type := 'MBAAC'; -- MBAi Advisory Council 
 
 /*************************************************************************
 Public variable declarations
@@ -803,6 +804,9 @@ Function tbl_committee_pe_asia
   Return t_committee_members Pipelined;
   
 Function tbl_committee_asia
+  Return t_committee_members Pipelined;
+  
+Function tbl_committee_mbai
   Return t_committee_members Pipelined;
 
 /*************************************************************************
@@ -4965,6 +4969,19 @@ Function tbl_special_handling_concat
         
       Begin
         committees := committee_members (my_committee_cd => committee_asia);
+        For i in 1..committees.count Loop
+          Pipe row(committees(i));
+        End Loop;
+        Return;
+      End;
+      
+    --  Kellogg Executive Board for Asia
+    Function tbl_committee_mbai
+      Return t_committee_members Pipelined As
+      committees t_committee_members;
+        
+      Begin
+        committees := committee_members (my_committee_cd => committee_mbai);
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;
