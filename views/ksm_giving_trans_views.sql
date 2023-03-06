@@ -186,8 +186,13 @@ params As (
     , sum(Case When cal.curr_fy = fiscal_year + 4 And anonymous <> ' ' Then hh_stewardship_credit Else 0 End) As anonymous_pfy4
     , sum(Case When cal.curr_fy = fiscal_year + 5 And anonymous <> ' ' Then hh_stewardship_credit Else 0 End) As anonymous_pfy5
     -- Giving history
+    , max(cal.curr_fy) As curr_fy
     , min(gfts.fiscal_year) As fy_giving_first_yr
     , max(gfts.fiscal_year) As fy_giving_last_yr
+    , min(Case When tx_gypm_ind != 'P' And af_flag = 'Y' Then fiscal_year End) As fy_giving_first_yr_af
+    , max(Case When tx_gypm_ind != 'P' And af_flag = 'Y' Then fiscal_year End) As fy_giving_last_yr_af
+    , min(Case When tx_gypm_ind != 'P' And cru_flag = 'Y' Then fiscal_year End) As fy_giving_first_yr_cru
+    , max(Case When tx_gypm_ind != 'P' And cru_flag = 'Y' Then fiscal_year End) As fy_giving_last_yr_cru
     , count(Distinct gfts.fiscal_year) As fy_giving_yr_count
     , min(Case When tx_gypm_ind != 'P' Then gfts.fiscal_year Else NULL End) As fy_giving_first_cash_yr
     , max(Case When tx_gypm_ind != 'P' Then gfts.fiscal_year Else NULL End) As fy_giving_last_cash_yr
@@ -228,13 +233,17 @@ Select
       When af_cfy > 0 Then 'Donor'
       When af_pfy1 > 0 Then 'LYBUNT'
       When af_pfy2 + af_pfy3 + af_pfy4 > 0 Then 'PYBUNT'
-      When af_cfy + af_pfy1 + af_pfy2 + af_pfy3 + af_pfy4 = 0 Then 'Lapsed/Non'
+      When af_cfy + af_pfy1 + af_pfy2 + af_pfy3 + af_pfy4 = 0 Then 'Lapsed'
+      When fy_giving_first_yr_af Is Null Then 'Non'
     End As af_status
   -- AF status last year
   , Case
       When af_pfy1 > 0 Then 'LYBUNT'
       When af_pfy2 + af_pfy3 + af_pfy4 > 0 Then 'PYBUNT'
-      When af_pfy1 + af_pfy2 + af_pfy3 + af_pfy4 = 0 Then 'Lapsed/Non'
+      When af_pfy1 + af_pfy2 + af_pfy3 + af_pfy4 = 0 Then 'Lapsed'
+      When fy_giving_first_yr_af Is Null
+        Or fy_giving_first_yr_af = curr_fy
+        Then 'Non'
     End As af_status_fy_start
   -- AF KLC flag
   , Case
@@ -402,8 +411,10 @@ Select
       When cru_pfy4 > 0
         Then 'PYBUNT-4'
       When cru_pfy1 + cru_pfy2 + cru_pfy3 + cru_pfy4 = 0
-        Then 'Lapsed/Non'
-      Else 'Never'
+        And fy_giving_first_yr_cru Is Not Null
+        And fy_giving_first_yr_cru < curr_fy
+        Then 'Lapsed'
+      Else 'Non'
       End
     As af_giving_segment
   -- Stewardship flags
