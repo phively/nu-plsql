@@ -259,7 +259,6 @@ Functions
 Function get_string_constant(const_name In varchar2)
   Return varchar2 Deterministic Is
   -- Declarations
-    -- Declarations
   val varchar2(100);
   var varchar2(100);
   
