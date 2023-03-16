@@ -77,88 +77,16 @@ Function get_string_constant(
 Public pipelined functions declarations
 *************************************************************************/
 
-/*********************** About pipelined functions ***********************
-Q: What is a pipelined function?
+-- Return committee members by committee code
+Function tbl_committee_members(
+  my_committee_cd In varchar2
+) Return t_committee_members Pipelined;
 
-A: Pipelined functions are used to return the results of a cursor row by row.
-This is an efficient way to re-use a cursor between multiple programs. Pipelined
-tables can be queried in SQL exactly like a table when embedded in the table()
-function. My experience has been that thanks to the magic of the Oracle compiler,
-joining on a table() function scales hugely better than running a function once
-on each element of a returned column. Note that the exact columns returned need
-to be specified as a public type, which I did in the type and table declarations
-above, or the pipelined function can't be run in pure SQL. Alternately, the
-pipelined function could return a generic table, but the columns would still need
-to be individually named.
-
-Examples: 
-Select ksm_af.*
-From table(rpt_pbh634.ksm_pkg.tbl_alloc_annual_fund_ksm) ksm_af;
-Select cal.*
-From table(rpt_pbh634.ksm_pkg.tbl_current_calendar) cal;
-*************************************************************************/
-
--- Return pipelined table of committee members
 -- All roles listagged to one per line
-Function tbl_committee_agg (
+Function tbl_committee_agg(
   my_committee_cd In varchar2
   , shortname In varchar2 Default NULL
 ) Return t_committee_agg Pipelined;
-
--- Individual committees
-Function tbl_committee_gab
-  Return t_committee_members Pipelined;
-
-Function tbl_committee_phs
-  Return t_committee_members Pipelined;
-    
-Function tbl_committee_kac
-  Return t_committee_members Pipelined;
-
-Function tbl_committee_KFN
-  Return t_committee_members Pipelined;
-  
- Function tbl_committee_CorpGov
-  Return t_committee_members Pipelined;
-  
- Function tbl_committee_WomenSummit
-  Return t_committee_members Pipelined;
-  
- Function tbl_committee_DivSummit
-  Return t_committee_members Pipelined;
-  
- Function tbl_committee_RealEstCouncil
-  Return t_committee_members Pipelined;
-  
- Function tbl_committee_AMP
-  Return t_committee_members Pipelined;
-
-Function tbl_committee_trustee
-  Return t_committee_members Pipelined;
-
-Function tbl_committee_healthcare
-  Return t_committee_members Pipelined;
-  
-Function tbl_committee_WomensLeadership
-  Return t_committee_members Pipelined;
-
-Function tbl_committee_KALC
-  Return t_committee_members Pipelined;
-
-Function tbl_committee_kic
-  Return t_committee_members Pipelined;
-  
-Function tbl_committee_privateequity
-  Return t_committee_members Pipelined;
-
-Function tbl_committee_pe_asia
-  Return t_committee_members Pipelined;
-  
-Function tbl_committee_asia
-  Return t_committee_members Pipelined;
-  
-Function tbl_committee_mbai
-  Return t_committee_members Pipelined;
 
 End ksm_pkg_committee;
 /
@@ -281,8 +209,8 @@ Pipelined functions
 *************************************************************************/
 
   -- Generic function returning 'C'urrent or 'A'ctive (deprecated) committee members
-  Function committee_members (my_committee_cd In varchar2)
-    Return t_committee_members As
+  Function tbl_committee_members(my_committee_cd In varchar2)
+    Return t_committee_members Pipelined As
     -- Declarations
     committees t_committee_members;
     
@@ -291,10 +219,13 @@ Pipelined functions
       Open c_committee_members (my_committee_cd => my_committee_cd);
         Fetch c_committee_members Bulk Collect Into committees;
       Close c_committee_members;
-      Return committees;
+
+      For i in 1..committees.count Loop
+        Pipe row(committees(i));
+      End Loop;
+      Return;
     End;
 
-    
   -- Generic committee_agg function, similar to committee_members
   Function committee_agg_members (
     my_committee_cd In varchar2
@@ -331,240 +262,6 @@ Pipelined functions
       End Loop;
       Return;
     End;
-
-  -- GAB
-  Function tbl_committee_gab
-    Return t_committee_members Pipelined As
-    committees t_committee_members;
-    
-    Begin
-      committees := committee_members (my_committee_cd => committee_gab);
-      For i in 1..committees.count Loop
-        Pipe row(committees(i));
-      End Loop;
-      Return;
-    End;
-  
-  -- KAC
-  Function tbl_committee_kac
-    Return t_committee_members Pipelined As
-    committees t_committee_members;
-    
-    Begin
-      committees := committee_members (my_committee_cd => committee_kac);
-      For i in 1..committees.count Loop
-        Pipe row(committees(i));
-      End Loop;
-      Return;
-    End;
-
-  -- PHS
-  Function tbl_committee_phs
-    Return t_committee_members Pipelined As
-    committees t_committee_members;
-    
-    Begin
-      committees := committee_members (my_committee_cd => committee_phs);
-      For i in 1..committees.count Loop
-        Pipe row(committees(i));
-      End Loop;
-      Return;
-    End;
-
-  -- KFN
-  Function tbl_committee_KFN
-    Return t_committee_members Pipelined As
-    committees t_committee_members;
-    
-    Begin
-      committees := committee_members (my_committee_cd => committee_KFN);
-      For i in 1..committees.count Loop
-        Pipe row(committees(i));
-      End Loop;
-      Return;
-    End;
-
-  -- CorpGov
-  Function tbl_committee_CorpGov
-    Return t_committee_members Pipelined As
-    committees t_committee_members;
-    
-    Begin
-      committees := committee_members (my_committee_cd => committee_CorpGov);
-      For i in 1..committees.count Loop
-        Pipe row(committees(i));
-      End Loop;
-      Return;
-    End;
-    
-  -- GlobalWomenSummit
-  Function tbl_committee_WomenSummit
-    Return t_committee_members Pipelined As
-    committees t_committee_members;
-    
-    Begin
-      committees := committee_members (my_committee_cd => committee_WomenSummit);
-      For i in 1..committees.count Loop
-        Pipe row(committees(i));
-      End Loop;
-      Return;
-    End;
-    
-  -- DivSummit
-  Function tbl_committee_DivSummit
-    Return t_committee_members Pipelined As
-    committees t_committee_members;
-    
-    Begin
-      committees := committee_members (my_committee_cd => committee_DivSummit);
-      For i in 1..committees.count Loop
-        Pipe row(committees(i));
-      End Loop;
-      Return;
-    End;
-    
-  -- RealEstCouncil
-  Function tbl_committee_RealEstCouncil
-    Return t_committee_members Pipelined As
-    committees t_committee_members;
-    
-    Begin
-      committees := committee_members (my_committee_cd => committee_RealEstCouncil);
-      For i in 1..committees.count Loop
-        Pipe row(committees(i));
-      End Loop;
-      Return;
-    End;
-
-  -- AMP
-  Function tbl_committee_AMP
-    Return t_committee_members Pipelined As
-    committees t_committee_members;
-    
-    Begin
-      committees := committee_members (my_committee_cd => committee_AMP);
-      For i in 1..committees.count Loop
-        Pipe row(committees(i));
-      End Loop;
-      Return;
-    End;
-
-  -- Trustees
-  Function tbl_committee_trustee
-    Return t_committee_members Pipelined As
-    committees t_committee_members;
-    
-    Begin
-      committees := committee_members (my_committee_cd => committee_trustee);
-      For i in 1..committees.count Loop
-        Pipe row(committees(i));
-      End Loop;
-      Return;
-    End;
-
-    -- Healthcare
-    Function tbl_committee_healthcare
-      Return t_committee_members Pipelined As
-      committees t_committee_members;
-      
-      Begin
-        committees := committee_members (my_committee_cd => committee_healthcare);
-        For i in 1..committees.count Loop
-          Pipe row(committees(i));
-        End Loop;
-        Return;
-      End;
-
-    -- Women's leadership
-    Function tbl_committee_WomensLeadership
-      Return t_committee_members Pipelined As
-      committees t_committee_members;
-      
-      Begin
-        committees := committee_members (my_committee_cd => committee_WomensLeadership);
-        For i in 1..committees.count Loop
-          Pipe row(committees(i));
-        End Loop;
-        Return;
-      End;
-      
-    -- Kellogg Admissions Leadership Council
-    Function tbl_committee_KALC
-      Return t_committee_members Pipelined As
-      committees t_committee_members;
-      
-      Begin
-        committees := committee_members (my_committee_cd => committee_KALC);
-        For i in 1..committees.count Loop
-          Pipe row(committees(i));
-        End Loop;
-        Return;
-      End;
-    
-    -- Kellogg Inclusion Coalition
-    Function tbl_committee_kic
-      Return t_committee_members Pipelined As
-      committees t_committee_members;
-      
-      Begin
-        committees := committee_members (my_committee_cd => committee_kic);
-        For i in 1..committees.count Loop
-          Pipe row(committees(i));
-        End Loop;
-        Return;
-      End;
-      
-    --  Kellogg Private Equity Taskforce Council
-    Function tbl_committee_privateequity
-      Return t_committee_members Pipelined As
-      committees t_committee_members;
-        
-      Begin
-        committees := committee_members (my_committee_cd => committee_privateEquity);
-        For i in 1..committees.count Loop
-          Pipe row(committees(i));
-        End Loop;
-        Return;
-      End;
-
-    --  Kellogg Private Equity Taskforce Council
-    Function tbl_committee_pe_asia
-      Return t_committee_members Pipelined As
-      committees t_committee_members;
-        
-      Begin
-        committees := committee_members (my_committee_cd => committee_pe_asia);
-        For i in 1..committees.count Loop
-          Pipe row(committees(i));
-        End Loop;
-        Return;
-      End;
-
-    --  Kellogg Executive Board for Asia
-    Function tbl_committee_asia
-      Return t_committee_members Pipelined As
-      committees t_committee_members;
-        
-      Begin
-        committees := committee_members (my_committee_cd => committee_asia);
-        For i in 1..committees.count Loop
-          Pipe row(committees(i));
-        End Loop;
-        Return;
-      End;
-      
-    --  Kellogg Executive Board for Asia
-    Function tbl_committee_mbai
-      Return t_committee_members Pipelined As
-      committees t_committee_members;
-        
-      Begin
-        committees := committee_members (my_committee_cd => committee_mbai);
-        For i in 1..committees.count Loop
-          Pipe row(committees(i));
-        End Loop;
-        Return;
-      End;
 
 End ksm_pkg_committee;
 /
