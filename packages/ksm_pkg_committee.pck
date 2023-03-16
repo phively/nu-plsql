@@ -1,10 +1,6 @@
 Create Or Replace Package ksm_pkg_committee Is
 
 /*************************************************************************
-Initial procedures
-*************************************************************************/
-
-/*************************************************************************
 Public type declarations
 *************************************************************************/
 
@@ -48,7 +44,7 @@ Type t_committee_agg Is Table Of committee_agg;
 Public constant declarations
 *************************************************************************/
 
-/* Committees */
+-- Committees
 committee_gab Constant committee.committee_code%type := 'U'; -- Kellogg Global Advisory Board committee code
 committee_kac Constant committee.committee_code%type := 'KACNA'; -- Kellogg Alumni Council committee code
 committee_phs Constant committee.committee_code%type := 'KPH'; -- KSM Pete Henderson Society
@@ -69,12 +65,13 @@ committee_asia Constant committee.committee_code%type := 'KEBA'; -- Kellogg Exec
 committee_mbai Constant committee.committee_code%type := 'MBAAC'; -- MBAi Advisory Council 
 
 /*************************************************************************
-Public variable declarations
-*************************************************************************/
-
-/*************************************************************************
 Public function declarations
 *************************************************************************/
+
+-- Returns public constants
+Function get_string_constant(
+  const_name In varchar2 -- Quoted name of constant to retrieve
+) Return varchar2 Deterministic;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -163,17 +160,10 @@ Function tbl_committee_asia
 Function tbl_committee_mbai
   Return t_committee_members Pipelined;
 
-/*************************************************************************
-End of package
-*************************************************************************/
-
 End ksm_pkg_committee;
 /
-Create Or Replace Package Body ksm_pkg_committee Is
 
-/*************************************************************************
-Private cursor tables -- data definitions; update indicated sections as needed
-*************************************************************************/
+Create Or Replace Package Body ksm_pkg_committee Is
 
 /*************************************************************************
 Private cursors -- data definitions
@@ -263,24 +253,29 @@ Cursor c_committee_agg (
   ;
 
 /*************************************************************************
-Private type declarations
-*************************************************************************/
-
-/*************************************************************************
-Private table declarations
-*************************************************************************/
-
-/*************************************************************************
-Private constant declarations
-*************************************************************************/
-
-/*************************************************************************
-Private variable declarations
-*************************************************************************/
-
-/*************************************************************************
 Functions
 *************************************************************************/
+
+Function get_string_constant(const_name In varchar2)
+  Return varchar2 Deterministic Is
+  -- Declarations
+    -- Declarations
+  val varchar2(100);
+  var varchar2(100);
+  
+  Begin
+    -- If const_name doesn't include ksm_pkg_committee, prepend it
+    If substr(lower(const_name), 1, 8) <> 'ksm_pkg_committee.'
+      Then var := 'ksm_pkg_committee.' || const_name;
+    Else
+      var := const_name;
+    End If;
+    -- Run command
+    Execute Immediate
+      'Begin :val := ' || var || '; End;'
+      Using Out val;
+      Return val;
+  End;
 
 /*************************************************************************
 Pipelined functions
@@ -526,7 +521,7 @@ Pipelined functions
       committees t_committee_members;
         
       Begin
-        committees := committee_members (my_committee_cd => committee_privateequity);
+        committees := committee_members (my_committee_cd => committee_privateEquity);
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;
