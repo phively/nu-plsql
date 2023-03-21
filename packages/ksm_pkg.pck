@@ -4326,7 +4326,7 @@ Function tbl_special_handling_concat
     committees ksm_pkg_committee.t_committee_members;
     
     Begin
-    committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_gab'));
+    committees := ksm_pkg_committee.c_committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_gab'));
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
@@ -4339,7 +4339,7 @@ Function tbl_special_handling_concat
     committees ksm_pkg_committee.t_committee_members;
     
     Begin
-      committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_kac'));
+      committees := ksm_pkg_committee.c_committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_kac'));
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
@@ -4352,7 +4352,7 @@ Function tbl_special_handling_concat
     committees ksm_pkg_committee.t_committee_members;
     
     Begin
-      committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_phs'));
+      committees := ksm_pkg_committee.c_committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_phs'));
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
@@ -4365,7 +4365,7 @@ Function tbl_special_handling_concat
     committees ksm_pkg_committee.t_committee_members;
     
     Begin
-      committees := ksm_pkg_committee.committee_members(my_committee_cd =>ksm_pkg_committee.get_string_constant('committee_kfn'));
+      committees := ksm_pkg_committee.c_committee_members(my_committee_cd =>ksm_pkg_committee.get_string_constant('committee_kfn'));
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
@@ -4378,7 +4378,7 @@ Function tbl_special_handling_concat
     committees ksm_pkg_committee.t_committee_members;
     
     Begin
-      committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_corpGov'));
+      committees := ksm_pkg_committee.c_committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_corpGov'));
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
@@ -4391,7 +4391,7 @@ Function tbl_special_handling_concat
     committees ksm_pkg_committee.t_committee_members;
     
     Begin
-      committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_womenSummit'));
+      committees := ksm_pkg_committee.c_committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_womenSummit'));
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
@@ -4404,7 +4404,7 @@ Function tbl_special_handling_concat
     committees ksm_pkg_committee.t_committee_members;
     
     Begin
-      committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_divSummit'));
+      committees := ksm_pkg_committee.c_committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_divSummit'));
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
@@ -4417,7 +4417,7 @@ Function tbl_special_handling_concat
     committees ksm_pkg_committee.t_committee_members;
     
     Begin
-      committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_realEstCouncil'));
+      committees := ksm_pkg_committee.c_committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_realEstCouncil'));
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
@@ -4430,7 +4430,7 @@ Function tbl_special_handling_concat
     committees ksm_pkg_committee.t_committee_members;
     
     Begin
-      committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_amp'));
+      committees := ksm_pkg_committee.c_committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_amp'));
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
@@ -4443,7 +4443,7 @@ Function tbl_special_handling_concat
     committees ksm_pkg_committee.t_committee_members;
     
     Begin
-      committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_trustee'));
+      committees := ksm_pkg_committee.c_committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_trustee'));
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
@@ -4456,7 +4456,7 @@ Function tbl_special_handling_concat
       committees ksm_pkg_committee.t_committee_members;
       
       Begin
-        committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_healthcare'));
+        committees := ksm_pkg_committee.c_committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_healthcare'));
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;
@@ -4469,7 +4469,7 @@ Function tbl_special_handling_concat
       committees ksm_pkg_committee.t_committee_members;
       
       Begin
-        committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_womensLeadership'));
+        committees := ksm_pkg_committee.c_committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_womensLeadership'));
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;
@@ -4482,7 +4482,7 @@ Function tbl_special_handling_concat
       committees ksm_pkg_committee.t_committee_members;
       
       Begin
-        committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_kalc'));
+        committees := ksm_pkg_committee.c_committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_kalc'));
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;
@@ -4495,7 +4495,7 @@ Function tbl_special_handling_concat
       committees ksm_pkg_committee.t_committee_members;
       
       Begin
-        committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_kic'));
+        committees := ksm_pkg_committee.c_committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_kic'));
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;
@@ -4508,7 +4508,7 @@ Function tbl_special_handling_concat
       committees ksm_pkg_committee.t_committee_members;
         
       Begin
-        committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_privateEquity'));
+        committees := ksm_pkg_committee.c_committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_privateEquity'));
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;
@@ -4521,7 +4521,7 @@ Function tbl_special_handling_concat
       committees ksm_pkg_committee.t_committee_members;
         
       Begin
-        committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_pe_asia'));
+        committees := ksm_pkg_committee.c_committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_pe_asia'));
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;
@@ -4534,7 +4534,7 @@ Function tbl_special_handling_concat
       committees ksm_pkg_committee.t_committee_members;
         
       Begin
-        committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_asia'));
+        committees := ksm_pkg_committee.c_committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_asia'));
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;
@@ -4547,7 +4547,7 @@ Function tbl_special_handling_concat
       committees ksm_pkg_committee.t_committee_members;
         
       Begin
-        committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_mbai'));
+        committees := ksm_pkg_committee.c_committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_mbai'));
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;

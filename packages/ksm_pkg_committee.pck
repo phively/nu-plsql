@@ -75,14 +75,14 @@ Function get_string_constant(
   const_name In varchar2 -- Quoted name of constant to retrieve
 ) Return varchar2 Deterministic;
 
--- Returns committee members as a collection
-Function committee_members(
-  my_committee_cd In varchar2
-) Return t_committee_members;
-
 /*************************************************************************
 Public pipelined functions declarations
 *************************************************************************/
+
+-- Returns committee members as a collection
+Function c_committee_members(
+  my_committee_cd In varchar2
+) Return t_committee_members;
 
 -- Return committee members by committee code
 Function tbl_committee_members(
@@ -103,7 +103,7 @@ Create Or Replace Package Body ksm_pkg_committee Is
 Private cursors -- data definitions
 *************************************************************************/
 
-Cursor c_committee_members (my_committee_cd In varchar2) Is
+Cursor c_committee_member(my_committee_cd In varchar2) Is
   -- Same as comm subquery in c_committee_agg, below
   Select
     comm.id_number
@@ -128,13 +128,13 @@ Cursor c_committee_members (my_committee_cd In varchar2) Is
     And comm.committee_status_code In ('C', 'A') -- 'C'urrent or 'A'ctive; 'A' is deprecated
   ;
 
-Cursor c_committee_agg (
+Cursor c_committee_agg(
     my_committee_cd In varchar2
     , shortname In varchar2
   ) Is
   With
   c As (
-    -- Same as c_committee_members, above
+    -- Same as c_committee_member, above
       Select
         comm.id_number
         , comm.committee_code
@@ -210,23 +210,24 @@ Function get_string_constant(const_name In varchar2)
       Return val;
   End;
 
+/*************************************************************************
+Pipelined functions
+*************************************************************************/
+
   -- Generic function returning 'C'urrent or 'A'ctive (deprecated) committee members
-  Function committee_members(my_committee_cd In varchar2)
+  -- Returns a collection
+  Function c_committee_members(my_committee_cd In varchar2)
     Return t_committee_members As
     -- Declarations
     committees t_committee_members;
     
     -- Return table results
     Begin
-      Open c_committee_members(my_committee_cd => my_committee_cd);
-        Fetch c_committee_members Bulk Collect Into committees;
-      Close c_committee_members;
+      Open c_committee_member(my_committee_cd => my_committee_cd);
+        Fetch c_committee_member Bulk Collect Into committees;
+      Close c_committee_member;
       Return committees;
     End;
-
-/*************************************************************************
-Pipelined functions
-*************************************************************************/
 
   -- Generic pipelined function returning 'C'urrent or 'A'ctive (deprecated) committee members
   Function tbl_committee_members(my_committee_cd In varchar2)
@@ -235,7 +236,7 @@ Pipelined functions
     committees t_committee_members;
     
     Begin
-      committees := committee_members (my_committee_cd => my_committee_cd);
+      committees := c_committee_members(my_committee_cd => my_committee_cd);
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
@@ -253,7 +254,7 @@ Pipelined functions
   
   -- Return table results
   Begin
-    Open c_committee_agg (my_committee_cd => my_committee_cd
+    Open c_committee_agg(my_committee_cd => my_committee_cd
       , shortname => shortname
     );
       Fetch c_committee_agg Bulk Collect Into committees_agg;
