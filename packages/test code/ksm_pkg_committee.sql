@@ -1,3 +1,10 @@
+-- Constant retrieval
+Select
+    ksm_pkg_committee.get_string_constant('committee_gab') As gab_no_pkg
+  , ksm_pkg_committee.get_string_constant('ksm_pkg_committee.committee_gab') As gab_with_pkg
+From DUAL
+;
+
 -- Direct cursor test
 Select * From table(ksm_pkg_committee.tbl_committee_agg('U', 'GAB'))
 ;

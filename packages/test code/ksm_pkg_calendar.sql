@@ -7,6 +7,9 @@ Select
     ksm_pkg_calendar.get_numeric_constant('fy_start_month') As fy_start_month -- 9
   , ksm_pkg_calendar.get_numeric_constant('py_start_month') As py_start_month -- 5
   , ksm_pkg_calendar.get_numeric_constant('py_start_month_py21') As py_start_month_py21 -- 6
+  , ksm_pkg_calendar.get_numeric_constant('ksm_pkg_calendar.fy_start_month') As fy_start_month -- 9
+  , ksm_pkg_calendar.get_numeric_constant('ksm_pkg_calendar.py_start_month') As py_start_month -- 5
+  , ksm_pkg_calendar.get_numeric_constant('ksm_pkg_calendar.py_start_month_py21') As py_start_month_py21 -- 6
 From DUAL
 ;
 
