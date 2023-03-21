@@ -85,35 +85,6 @@ Type degreed_alumni Is Record (
   , majors_concat varchar2(512)
 );
 
-/* Committee member list, for committee results */
-Type committee_member Is Record (
-  id_number committee.id_number%type
-  , committee_code committee_header.committee_code%type
-  , short_desc committee_header.short_desc%type
-  , start_dt committee.start_dt%type
-  , stop_dt committee.stop_dt%type
-  , status tms_committee_status.short_desc%type
-  , role tms_committee_role.short_desc%type
-  , committee_title committee.committee_title%type
-  , xcomment committee.xcomment%type
-  , date_modified committee.date_modified%type
-  , operator_name committee.operator_name%type
-  , spouse_id_number entity.spouse_id_number%type
-);
-
-Type committee_agg Is Record (
-    id_number committee.id_number%type
-    , report_name entity.report_name%type
-    , committee_code committee.committee_code%type
-    , short_desc committee_header.short_desc%type
-    , start_dt varchar2(512)
-    , stop_dt varchar2(512)
-    , status tms_committee_status.short_desc%type
-    , role varchar2(1024)
-    , committee_title varchar2(1024)
-    , committee_short_desc varchar2(40)
-);
-
 /* Geo code primary, for addresses */
 Type geo_code_primary Is Record (
   id_number address.id_number%type
@@ -461,8 +432,6 @@ Type t_allocation Is Table Of allocation_info;
 Type t_calendar Is Table Of calendar;
 Type t_random_id Is Table Of random_id;
 Type t_degreed_alumni Is Table Of degreed_alumni;
-Type t_committee_members Is Table Of committee_member;
-Type t_committee_agg Is Table Of committee_agg;
 Type t_geo_code_primary Is Table Of geo_code_primary;
 Type t_households Is Table Of household;
 Type t_src_donors Is Table Of src_donor;
@@ -489,26 +458,6 @@ Public constant declarations
 fy_start_month Constant number := 9; -- fiscal start month, 9 = September
 py_start_month Constant number := 5; -- performance start month, 5 = May
 py_start_month_py21 Constant number := 6; -- performance start month, 6 = June in PY2021
-
-/* Committees */
-committee_gab Constant committee.committee_code%type := 'U'; -- Kellogg Global Advisory Board committee code
-committee_kac Constant committee.committee_code%type := 'KACNA'; -- Kellogg Alumni Council committee code
-committee_phs Constant committee.committee_code%type := 'KPH'; -- KSM Pete Henderson Society
-committee_KFN Constant committee.committee_code%type := 'KFN'; -- Kellogg Finance Network code
-committee_CorpGov Constant committee.committee_code%type := 'KCGN'; -- KSM Corporate Governance Network code
-committee_WomenSummit Constant committee.committee_code%type := 'KGWS'; -- KSM Global Women's Summit code
-committee_DivSummit Constant committee.committee_code%type := 'KCDO'; -- KSM chief Diversity Officer Summit code
-committee_RealEstCouncil Constant committee.committee_code%type := 'KREAC'; -- Real Estate Advisory Council code
-committee_AMP Constant committee.committee_code%type := 'KAMP'; -- AMP Advisory Council code
-committee_trustee Constant committee.committee_code%type := 'TBOT'; -- NU Board of Trustees code
-committee_healthcare Constant committee.committee_code%type := 'HAK'; -- Healthcare at Kellogg Advisory Council
-committee_WomensLeadership Constant committee.committee_code%type := 'KWLC'; -- Women's Leadership Advisory Council
-committee_KALC Constant committee.committee_code%type := 'KALC'; -- Kellogg Admissions Leadership Council
-committee_kic Constant committee.committee_code%type := 'KIC'; -- Kellogg Inclusion Coalition
-committee_privateequity Constant committee.committee_code%type := 'KPETC'; -- Kellogg Private Equity Taskforce Council
-committee_pe_asia Constant committee.committee_code%type := 'APEAC'; -- KSM Asia Private Equity Advisory Council
-committee_asia Constant committee.committee_code%type := 'KEBA'; -- Kellogg Executive Board for Asia
-committee_mbai Constant committee.committee_code%type := 'MBAAC'; -- MBAi Advisory Council 
 
 /*************************************************************************
 Public variable declarations
@@ -747,67 +696,60 @@ Function tbl_model_mg_prioritization (
 Function tbl_special_handling_concat
     Return t_special_handling Pipelined;
 
-/* Return pipelined table of committee members */
--- All roles listagged to one per line
-Function tbl_committee_agg (
-  my_committee_cd In varchar2
-  , shortname In varchar2 Default NULL
-) Return t_committee_agg Pipelined;
-
 -- Individual committees
 Function tbl_committee_gab
-  Return t_committee_members Pipelined;
+  Return ksm_pkg_committee.t_committee_members Pipelined;
 
 Function tbl_committee_phs
-  Return t_committee_members Pipelined;
+  Return ksm_pkg_committee.t_committee_members Pipelined;
     
 Function tbl_committee_kac
-  Return t_committee_members Pipelined;
+  Return ksm_pkg_committee.t_committee_members Pipelined;
 
-Function tbl_committee_KFN
-  Return t_committee_members Pipelined;
+Function tbl_committee_kfn
+  Return ksm_pkg_committee.t_committee_members Pipelined;
   
- Function tbl_committee_CorpGov
-  Return t_committee_members Pipelined;
+Function tbl_committee_corpGov
+  Return ksm_pkg_committee.t_committee_members Pipelined;
   
- Function tbl_committee_WomenSummit
-  Return t_committee_members Pipelined;
+Function tbl_committee_womenSummit
+  Return ksm_pkg_committee.t_committee_members Pipelined;
   
- Function tbl_committee_DivSummit
-  Return t_committee_members Pipelined;
+Function tbl_committee_divSummit
+  Return ksm_pkg_committee.t_committee_members Pipelined;
   
- Function tbl_committee_RealEstCouncil
-  Return t_committee_members Pipelined;
+Function tbl_committee_realEstCouncil
+  Return ksm_pkg_committee.t_committee_members Pipelined;
   
- Function tbl_committee_AMP
-  Return t_committee_members Pipelined;
+Function tbl_committee_amp
+  Return ksm_pkg_committee.t_committee_members Pipelined;
 
 Function tbl_committee_trustee
-  Return t_committee_members Pipelined;
+  Return ksm_pkg_committee.t_committee_members Pipelined;
 
 Function tbl_committee_healthcare
-  Return t_committee_members Pipelined;
+  Return ksm_pkg_committee.t_committee_members Pipelined;
   
-Function tbl_committee_WomensLeadership
-  Return t_committee_members Pipelined;
+Function tbl_committee_womensLeadership
+  Return ksm_pkg_committee.t_committee_members Pipelined;
 
-Function tbl_committee_KALC
-  Return t_committee_members Pipelined;
+Function tbl_committee_kalc
+  Return ksm_pkg_committee.t_committee_members Pipelined;
 
 Function tbl_committee_kic
-  Return t_committee_members Pipelined;
+  Return ksm_pkg_committee.t_committee_members Pipelined;
   
-Function tbl_committee_privateequity
-  Return t_committee_members Pipelined;
+Function tbl_committee_privateEquity
+  Return ksm_pkg_committee.t_committee_members Pipelined;
 
 Function tbl_committee_pe_asia
-  Return t_committee_members Pipelined;
+  Return ksm_pkg_committee.t_committee_members Pipelined;
   
 Function tbl_committee_asia
-  Return t_committee_members Pipelined;
+  Return ksm_pkg_committee.t_committee_members Pipelined;
   
 Function tbl_committee_mbai
-  Return t_committee_members Pipelined;
+  Return ksm_pkg_committee.t_committee_members Pipelined;
 
 /*************************************************************************
 End of package
@@ -1259,93 +1201,6 @@ Cursor c_cypher_vignere(phrase In varchar2, key In varchar2, wordlength In integ
   From cypher_table
   Connect By rn = prior rn + 1
   Start With rn = 1
-  ;
-
-/* Definition of current Kellogg committee members
-   2017-03-01 */
-Cursor c_committee_members (my_committee_cd In varchar2) Is
-  -- Same as comm subquery in c_committee_agg, below
-  Select
-    comm.id_number
-    , comm.committee_code
-    , hdr.short_desc
-    , comm.start_dt
-    , comm.stop_dt
-    , tms_status.short_desc As status
-    , tms_role.short_desc As role
-    , comm.committee_title
-    , comm.xcomment
-    , comm.date_modified
-    , comm.operator_name
-    , trim(entity.spouse_id_number) As spouse_id_number
-  From committee comm
-  Inner Join entity
-    On entity.id_number = comm.id_number
-  Left Join tms_committee_status tms_status On comm.committee_status_code = tms_status.committee_status_code
-  Left Join tms_committee_role tms_role On comm.committee_role_code = tms_role.committee_role_code
-  Left Join committee_header hdr On comm.committee_code = hdr.committee_code
-  Where comm.committee_code = my_committee_cd
-    And comm.committee_status_code In ('C', 'A') -- 'C'urrent or 'A'ctive; 'A' is deprecated
-  ;
-
-/* Definition of current Kellogg committee members aggregated
-   2021-06-08 */
-Cursor c_committee_agg (
-    my_committee_cd In varchar2
-    , shortname In varchar2
-  ) Is
-  With
-  c As (
-    -- Same as c_committee_members, above
-      Select
-        comm.id_number
-        , comm.committee_code
-        , hdr.short_desc
-        , comm.start_dt
-        , comm.stop_dt
-        , tms_status.short_desc As status
-        , tms_role.short_desc As role
-        , comm.committee_title
-        , comm.xcomment
-        , comm.date_modified
-        , comm.operator_name
-        , trim(entity.spouse_id_number) As spouse_id_number
-        , shortname As committee_short_desc
-      From committee comm
-      Inner Join entity
-        On entity.id_number = comm.id_number
-      Left Join tms_committee_status tms_status On comm.committee_status_code = tms_status.committee_status_code
-      Left Join tms_committee_role tms_role On comm.committee_role_code = tms_role.committee_role_code
-      Left Join committee_header hdr On comm.committee_code = hdr.committee_code
-      Where comm.committee_code = my_committee_cd
-        And comm.committee_status_code In ('C', 'A') -- 'C'urrent or 'A'ctive; 'A' is deprecated
-  )
-  -- Main query
-  Select
-    c.id_number
-    , entity.report_name
-    , c.committee_code
-    , c.short_desc
-    , listagg(c.start_dt, '; ') Within Group (Order By c.start_dt Asc, c.stop_dt Asc, c.role Asc)
-      As start_dt
-    , listagg(c.stop_dt, '; ') Within Group (Order By c.start_dt Asc, c.stop_dt Asc, c.role Asc)
-      As stop_dt
-    , c.status
-    , listagg(c.role, '; ') Within Group (Order By c.start_dt Asc, c.stop_dt Asc, c.role Asc)
-      As role
-    , listagg(c.committee_title, '; ') Within Group (Order By c.start_dt Asc, c.stop_dt Asc, c.role Asc)
-      As committee_title
-    , shortname
-      As committee_short_desc
-  From c
-  Inner Join entity
-    On entity.id_number = c.id_number
-  Group By
-    c.id_number
-    , entity.report_name
-    , c.committee_code
-    , c.short_desc
-    , c.status
   ;
 
 /* Definition of Kellogg degrees concatenated
@@ -3408,7 +3263,9 @@ Cursor c_special_handling_concat Is
       gab.id_number
       , e.spouse_id_number
       , 'Y' As flag
-    From table(ksm_pkg_tmp.tbl_committee_gab) gab
+    From table(ksm_pkg_committee.tbl_committee_members(
+      ksm_pkg_committee.get_string_constant('committee_gab')
+    )) gab
     Inner Join entity e
       On e.id_number = gab.id_number
   )
@@ -3417,7 +3274,9 @@ Cursor c_special_handling_concat Is
       tr.id_number
       , e.spouse_id_number
       , 'Y' As flag
-    From table(ksm_pkg_tmp.tbl_committee_trustee) tr
+    From table(ksm_pkg_committee.tbl_committee_members(
+      ksm_pkg_committee.get_string_constant('committee_trustee')
+    )) tr
     Inner Join entity e
       On e.id_number = tr.id_number
   )
@@ -3426,7 +3285,9 @@ Cursor c_special_handling_concat Is
       ebfa.id_number
       , e.spouse_id_number
       , 'Y' As flag
-    From table(ksm_pkg_tmp.tbl_committee_asia) ebfa
+    From table(ksm_pkg_committee.tbl_committee_members(
+      ksm_pkg_committee.get_string_constant('committee_asia')
+    )) ebfa
     Inner Join entity e
       On e.id_number = ebfa.id_number
   )
@@ -4699,68 +4560,13 @@ Function tbl_special_handling_concat
     End;
 
 /* Pipelined function for Kellogg committees */
-  
-  /* Generic function returning 'C'urrent or 'A'ctive (deprecated) committee members
-     2017-03-01 */
-  Function committee_members (my_committee_cd In varchar2)
-    Return t_committee_members As
-    -- Declarations
-    committees t_committee_members;
-    
-    -- Return table results
-    Begin
-      Open c_committee_members (my_committee_cd => my_committee_cd);
-        Fetch c_committee_members Bulk Collect Into committees;
-      Close c_committee_members;
-      Return committees;
-    End;
-
-    
-  /* Generic committee_agg function, similar to committee_members
-     2021-06-08 */
-  Function committee_agg_members (
-    my_committee_cd In varchar2
-    , shortname In varchar2 Default NULL
-  )
-  Return t_committee_agg As
-  -- Declarations
-  committees_agg t_committee_agg;
-  
-  -- Return table results
-  Begin
-    Open c_committee_agg (my_committee_cd => my_committee_cd
-      , shortname => shortname
-    );
-      Fetch c_committee_agg Bulk Collect Into committees_agg;
-      Close c_committee_agg;
-      Return committees_agg;
-    End;
-    
-  -- All roles listagged to one per line
-  Function tbl_committee_agg (
-    my_committee_cd In varchar2
-    , shortname In varchar2
-  ) Return t_committee_agg Pipelined As
-  committees_agg t_committee_agg;
-  
-    Begin
-      committees_agg := committee_agg_members (
-        my_committee_cd => my_committee_cd
-        , shortname => shortname
-      );
-      For i in 1..committees_agg.count Loop
-        Pipe row(committees_agg(i));
-      End Loop;
-      Return;
-    End;
-
   -- GAB
   Function tbl_committee_gab
-    Return t_committee_members Pipelined As
-    committees t_committee_members;
+    Return ksm_pkg_committee.t_committee_members Pipelined As
+    committees ksm_pkg_committee.t_committee_members;
     
     Begin
-      committees := committee_members (my_committee_cd => committee_gab);
+    committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_gab'));
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
@@ -4769,11 +4575,11 @@ Function tbl_special_handling_concat
   
   -- KAC
   Function tbl_committee_kac
-    Return t_committee_members Pipelined As
-    committees t_committee_members;
+    Return ksm_pkg_committee.t_committee_members Pipelined As
+    committees ksm_pkg_committee.t_committee_members;
     
     Begin
-      committees := committee_members (my_committee_cd => committee_kac);
+      committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_kac'));
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
@@ -4782,11 +4588,11 @@ Function tbl_special_handling_concat
 
   -- PHS
   Function tbl_committee_phs
-    Return t_committee_members Pipelined As
-    committees t_committee_members;
+    Return ksm_pkg_committee.t_committee_members Pipelined As
+    committees ksm_pkg_committee.t_committee_members;
     
     Begin
-      committees := committee_members (my_committee_cd => committee_phs);
+      committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_phs'));
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
@@ -4794,12 +4600,12 @@ Function tbl_special_handling_concat
     End;
 
   -- KFN
-  Function tbl_committee_KFN
-    Return t_committee_members Pipelined As
-    committees t_committee_members;
+  Function tbl_committee_kfn
+    Return ksm_pkg_committee.t_committee_members Pipelined As
+    committees ksm_pkg_committee.t_committee_members;
     
     Begin
-      committees := committee_members (my_committee_cd => committee_KFN);
+      committees := ksm_pkg_committee.committee_members(my_committee_cd =>ksm_pkg_committee.get_string_constant('committee_kfn'));
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
@@ -4807,12 +4613,12 @@ Function tbl_special_handling_concat
     End;
 
   -- CorpGov
-  Function tbl_committee_CorpGov
-    Return t_committee_members Pipelined As
-    committees t_committee_members;
+  Function tbl_committee_corpGov
+    Return ksm_pkg_committee.t_committee_members Pipelined As
+    committees ksm_pkg_committee.t_committee_members;
     
     Begin
-      committees := committee_members (my_committee_cd => committee_CorpGov);
+      committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_corpGov'));
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
@@ -4820,12 +4626,12 @@ Function tbl_special_handling_concat
     End;
     
   -- GlobalWomenSummit
-  Function tbl_committee_WomenSummit
-    Return t_committee_members Pipelined As
-    committees t_committee_members;
+  Function tbl_committee_womenSummit
+    Return ksm_pkg_committee.t_committee_members Pipelined As
+    committees ksm_pkg_committee.t_committee_members;
     
     Begin
-      committees := committee_members (my_committee_cd => committee_WomenSummit);
+      committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_womenSummit'));
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
@@ -4833,12 +4639,12 @@ Function tbl_special_handling_concat
     End;
     
   -- DivSummit
-  Function tbl_committee_DivSummit
-    Return t_committee_members Pipelined As
-    committees t_committee_members;
+  Function tbl_committee_divSummit
+    Return ksm_pkg_committee.t_committee_members Pipelined As
+    committees ksm_pkg_committee.t_committee_members;
     
     Begin
-      committees := committee_members (my_committee_cd => committee_DivSummit);
+      committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_divSummit'));
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
@@ -4846,12 +4652,12 @@ Function tbl_special_handling_concat
     End;
     
   -- RealEstCouncil
-  Function tbl_committee_RealEstCouncil
-    Return t_committee_members Pipelined As
-    committees t_committee_members;
+  Function tbl_committee_realEstCouncil
+    Return ksm_pkg_committee.t_committee_members Pipelined As
+    committees ksm_pkg_committee.t_committee_members;
     
     Begin
-      committees := committee_members (my_committee_cd => committee_RealEstCouncil);
+      committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_realEstCouncil'));
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
@@ -4859,12 +4665,12 @@ Function tbl_special_handling_concat
     End;
 
   -- AMP
-  Function tbl_committee_AMP
-    Return t_committee_members Pipelined As
-    committees t_committee_members;
+  Function tbl_committee_amp
+    Return ksm_pkg_committee.t_committee_members Pipelined As
+    committees ksm_pkg_committee.t_committee_members;
     
     Begin
-      committees := committee_members (my_committee_cd => committee_AMP);
+      committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_amp'));
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
@@ -4873,11 +4679,11 @@ Function tbl_special_handling_concat
 
   -- Trustees
   Function tbl_committee_trustee
-    Return t_committee_members Pipelined As
-    committees t_committee_members;
+    Return ksm_pkg_committee.t_committee_members Pipelined As
+    committees ksm_pkg_committee.t_committee_members;
     
     Begin
-      committees := committee_members (my_committee_cd => committee_trustee);
+      committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_trustee'));
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
@@ -4886,11 +4692,11 @@ Function tbl_special_handling_concat
 
     -- Healthcare
     Function tbl_committee_healthcare
-      Return t_committee_members Pipelined As
-      committees t_committee_members;
+      Return ksm_pkg_committee.t_committee_members Pipelined As
+      committees ksm_pkg_committee.t_committee_members;
       
       Begin
-        committees := committee_members (my_committee_cd => committee_healthcare);
+        committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_healthcare'));
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;
@@ -4898,12 +4704,12 @@ Function tbl_special_handling_concat
       End;
 
     -- Women's leadership
-    Function tbl_committee_WomensLeadership
-      Return t_committee_members Pipelined As
-      committees t_committee_members;
+    Function tbl_committee_womensLeadership
+      Return ksm_pkg_committee.t_committee_members Pipelined As
+      committees ksm_pkg_committee.t_committee_members;
       
       Begin
-        committees := committee_members (my_committee_cd => committee_WomensLeadership);
+        committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_womensLeadership'));
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;
@@ -4911,12 +4717,12 @@ Function tbl_special_handling_concat
       End;
       
     -- Kellogg Admissions Leadership Council
-    Function tbl_committee_KALC
-      Return t_committee_members Pipelined As
-      committees t_committee_members;
+    Function tbl_committee_kalc
+      Return ksm_pkg_committee.t_committee_members Pipelined As
+      committees ksm_pkg_committee.t_committee_members;
       
       Begin
-        committees := committee_members (my_committee_cd => committee_KALC);
+        committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_kalc'));
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;
@@ -4925,11 +4731,11 @@ Function tbl_special_handling_concat
     
     -- Kellogg Inclusion Coalition
     Function tbl_committee_kic
-      Return t_committee_members Pipelined As
-      committees t_committee_members;
+      Return ksm_pkg_committee.t_committee_members Pipelined As
+      committees ksm_pkg_committee.t_committee_members;
       
       Begin
-        committees := committee_members (my_committee_cd => committee_kic);
+        committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_kic'));
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;
@@ -4937,12 +4743,12 @@ Function tbl_special_handling_concat
       End;
       
     --  Kellogg Private Equity Taskforce Council
-    Function tbl_committee_privateequity
-      Return t_committee_members Pipelined As
-      committees t_committee_members;
+    Function tbl_committee_privateEquity
+      Return ksm_pkg_committee.t_committee_members Pipelined As
+      committees ksm_pkg_committee.t_committee_members;
         
       Begin
-        committees := committee_members (my_committee_cd => committee_privateequity);
+        committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_privateEquity'));
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;
@@ -4951,11 +4757,11 @@ Function tbl_special_handling_concat
 
     --  Kellogg Private Equity Taskforce Council
     Function tbl_committee_pe_asia
-      Return t_committee_members Pipelined As
-      committees t_committee_members;
+      Return ksm_pkg_committee.t_committee_members Pipelined As
+      committees ksm_pkg_committee.t_committee_members;
         
       Begin
-        committees := committee_members (my_committee_cd => committee_pe_asia);
+        committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_pe_asia'));
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;
@@ -4964,11 +4770,11 @@ Function tbl_special_handling_concat
 
     --  Kellogg Executive Board for Asia
     Function tbl_committee_asia
-      Return t_committee_members Pipelined As
-      committees t_committee_members;
+      Return ksm_pkg_committee.t_committee_members Pipelined As
+      committees ksm_pkg_committee.t_committee_members;
         
       Begin
-        committees := committee_members (my_committee_cd => committee_asia);
+        committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_asia'));
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;
@@ -4977,11 +4783,11 @@ Function tbl_special_handling_concat
       
     --  Kellogg Executive Board for Asia
     Function tbl_committee_mbai
-      Return t_committee_members Pipelined As
-      committees t_committee_members;
+      Return ksm_pkg_committee.t_committee_members Pipelined As
+      committees ksm_pkg_committee.t_committee_members;
         
       Begin
-        committees := committee_members (my_committee_cd => committee_mbai);
+        committees := ksm_pkg_committee.committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_mbai'));
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;

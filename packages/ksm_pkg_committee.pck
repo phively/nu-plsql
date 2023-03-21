@@ -73,6 +73,11 @@ Function get_string_constant(
   const_name In varchar2 -- Quoted name of constant to retrieve
 ) Return varchar2 Deterministic;
 
+-- Returns committee members as a collection
+Function committee_members(
+  my_committee_cd In varchar2
+) Return t_committee_members;
+
 /*************************************************************************
 Public pipelined functions declarations
 *************************************************************************/
@@ -90,7 +95,6 @@ Function tbl_committee_agg(
 
 End ksm_pkg_committee;
 /
-
 Create Or Replace Package Body ksm_pkg_committee Is
 
 /*************************************************************************
@@ -204,22 +208,32 @@ Function get_string_constant(const_name In varchar2)
       Return val;
   End;
 
-/*************************************************************************
-Pipelined functions
-*************************************************************************/
-
   -- Generic function returning 'C'urrent or 'A'ctive (deprecated) committee members
-  Function tbl_committee_members(my_committee_cd In varchar2)
-    Return t_committee_members Pipelined As
+  Function committee_members(my_committee_cd In varchar2)
+    Return t_committee_members As
     -- Declarations
     committees t_committee_members;
     
     -- Return table results
     Begin
-      Open c_committee_members (my_committee_cd => my_committee_cd);
+      Open c_committee_members(my_committee_cd => my_committee_cd);
         Fetch c_committee_members Bulk Collect Into committees;
       Close c_committee_members;
+      Return committees;
+    End;
 
+/*************************************************************************
+Pipelined functions
+*************************************************************************/
+
+  -- Generic pipelined function returning 'C'urrent or 'A'ctive (deprecated) committee members
+  Function tbl_committee_members(my_committee_cd In varchar2)
+    Return t_committee_members Pipelined As
+    -- Declarations
+    committees t_committee_members;
+    
+    Begin
+      committees := committee_members (my_committee_cd => my_committee_cd);
       For i in 1..committees.count Loop
         Pipe row(committees(i));
       End Loop;
