@@ -1,6 +1,32 @@
 Create Or Replace Package ksm_pkg_committee Is
 
 /*************************************************************************
+Public constant declarations
+*************************************************************************/
+
+pkg_name Constant varchar2(64) := 'ksm_pkg_committee';
+
+-- Committees
+committee_gab Constant committee.committee_code%type := 'U'; -- Kellogg Global Advisory Board committee code
+committee_kac Constant committee.committee_code%type := 'KACNA'; -- Kellogg Alumni Council committee code
+committee_phs Constant committee.committee_code%type := 'KPH'; -- KSM Pete Henderson Society
+committee_kfn Constant committee.committee_code%type := 'KFN'; -- Kellogg Finance Network code
+committee_corpGov Constant committee.committee_code%type := 'KCGN'; -- KSM Corporate Governance Network code
+committee_womenSummit Constant committee.committee_code%type := 'KGWS'; -- KSM Global Women's Summit code
+committee_divSummit Constant committee.committee_code%type := 'KCDO'; -- KSM chief Diversity Officer Summit code
+committee_realEstCouncil Constant committee.committee_code%type := 'KREAC'; -- Real Estate Advisory Council code
+committee_amp Constant committee.committee_code%type := 'KAMP'; -- AMP Advisory Council code
+committee_trustee Constant committee.committee_code%type := 'TBOT'; -- NU Board of Trustees code
+committee_healthcare Constant committee.committee_code%type := 'HAK'; -- Healthcare at Kellogg Advisory Council
+committee_womensLeadership Constant committee.committee_code%type := 'KWLC'; -- Women's Leadership Advisory Council
+committee_kalc Constant committee.committee_code%type := 'KALC'; -- Kellogg Admissions Leadership Council
+committee_kic Constant committee.committee_code%type := 'KIC'; -- Kellogg Inclusion Coalition
+committee_privateEquity Constant committee.committee_code%type := 'KPETC'; -- Kellogg Private Equity Taskforce Council
+committee_pe_asia Constant committee.committee_code%type := 'APEAC'; -- KSM Asia Private Equity Advisory Council
+committee_asia Constant committee.committee_code%type := 'KEBA'; -- Kellogg Executive Board for Asia
+committee_mbai Constant committee.committee_code%type := 'MBAAC'; -- MBAi Advisory Council 
+
+/*************************************************************************
 Public type declarations
 *************************************************************************/
 
@@ -39,30 +65,6 @@ Public table declarations
 
 Type t_committee_members Is Table Of committee_member;
 Type t_committee_agg Is Table Of committee_agg;
-
-/*************************************************************************
-Public constant declarations
-*************************************************************************/
-
--- Committees
-committee_gab Constant committee.committee_code%type := 'U'; -- Kellogg Global Advisory Board committee code
-committee_kac Constant committee.committee_code%type := 'KACNA'; -- Kellogg Alumni Council committee code
-committee_phs Constant committee.committee_code%type := 'KPH'; -- KSM Pete Henderson Society
-committee_kfn Constant committee.committee_code%type := 'KFN'; -- Kellogg Finance Network code
-committee_corpGov Constant committee.committee_code%type := 'KCGN'; -- KSM Corporate Governance Network code
-committee_womenSummit Constant committee.committee_code%type := 'KGWS'; -- KSM Global Women's Summit code
-committee_divSummit Constant committee.committee_code%type := 'KCDO'; -- KSM chief Diversity Officer Summit code
-committee_realEstCouncil Constant committee.committee_code%type := 'KREAC'; -- Real Estate Advisory Council code
-committee_amp Constant committee.committee_code%type := 'KAMP'; -- AMP Advisory Council code
-committee_trustee Constant committee.committee_code%type := 'TBOT'; -- NU Board of Trustees code
-committee_healthcare Constant committee.committee_code%type := 'HAK'; -- Healthcare at Kellogg Advisory Council
-committee_womensLeadership Constant committee.committee_code%type := 'KWLC'; -- Women's Leadership Advisory Council
-committee_kalc Constant committee.committee_code%type := 'KALC'; -- Kellogg Admissions Leadership Council
-committee_kic Constant committee.committee_code%type := 'KIC'; -- Kellogg Inclusion Coalition
-committee_privateEquity Constant committee.committee_code%type := 'KPETC'; -- Kellogg Private Equity Taskforce Council
-committee_pe_asia Constant committee.committee_code%type := 'APEAC'; -- KSM Asia Private Equity Advisory Council
-committee_asia Constant committee.committee_code%type := 'KEBA'; -- Kellogg Executive Board for Asia
-committee_mbai Constant committee.committee_code%type := 'MBAAC'; -- MBAi Advisory Council 
 
 /*************************************************************************
 Public function declarations
@@ -195,9 +197,9 @@ Function get_string_constant(const_name In varchar2)
   var varchar2(100);
   
   Begin
-    -- If const_name doesn't include ksm_pkg_committee, prepend it
-    If substr(lower(const_name), 1, 8) <> 'ksm_pkg_committee.'
-      Then var := 'ksm_pkg_committee.' || const_name;
+    -- If const_name doesn't include ksm_pkg, prepend it
+    If substr(lower(const_name), 1, length(pkg_name)) <> pkg_name
+      Then var := pkg_name || '.' || const_name;
     Else
       var := const_name;
     End If;

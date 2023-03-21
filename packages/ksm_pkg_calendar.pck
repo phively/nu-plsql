@@ -1,6 +1,17 @@
 Create Or Replace Package ksm_pkg_calendar Is
 
 /*************************************************************************
+Public constant declarations
+*************************************************************************/
+
+pkg_name Constant varchar2(64) := 'ksm_pkg_calendar';
+
+-- Fiscal and performance start months
+fy_start_month Constant number := 9; -- fiscal start month, 9 = September
+py_start_month Constant number := 5; -- performance start month, 5 = May
+py_start_month_py21 Constant number := 6; -- performance start month, 6 = June in PY2021 (COVID adjustment)
+
+/*************************************************************************
 Public type declarations
 *************************************************************************/
 
@@ -32,15 +43,6 @@ Public table declarations
 *************************************************************************/
 
 Type t_calendar Is Table Of calendar;
-
-/*************************************************************************
-Public constant declarations
-*************************************************************************/
-
--- Fiscal and performance start months
-fy_start_month Constant number := 9; -- fiscal start month, 9 = September
-py_start_month Constant number := 5; -- performance start month, 5 = May
-py_start_month_py21 Constant number := 6; -- performance start month, 6 = June in PY2021 (COVID adjustment)
 
 /*************************************************************************
 Public function declarations
@@ -201,8 +203,8 @@ Function get_numeric_constant(const_name In varchar2)
   
   Begin
     -- If const_name doesn't include ksm_pkg, prepend it
-    If substr(lower(const_name), 1, 8) <> 'ksm_pkg_tmp.'
-      Then var := 'ksm_pkg_tmp.' || const_name;
+    If substr(lower(const_name), 1, length(pkg_name)) <> pkg_name
+      Then var := pkg_name || '.' || const_name;
     Else
       var := const_name;
     End If;
