@@ -40,7 +40,7 @@ Public constant declarations
 -- Fiscal and performance start months
 fy_start_month Constant number := 9; -- fiscal start month, 9 = September
 py_start_month Constant number := 5; -- performance start month, 5 = May
-py_start_month_py21 Constant number := 6; -- performance start month, 6 = June in PY2021
+py_start_month_py21 Constant number := 6; -- performance start month, 6 = June in PY2021 (COVID adjustment)
 
 /*************************************************************************
 Public function declarations
@@ -51,10 +51,11 @@ Function get_numeric_constant(
   const_name In varchar2 -- Name of constant to retrieve
 ) Return number Deterministic;
 
--- Parse yyyymmdd string into a date after checking for invalid terms
+-- Parse yyyymmdd string into a date
+-- If there are invalid date parts, overwrite with the corresponding element from fallback_dt
 Function date_parse(
-  str In varchar2
-  , dt In date Default current_date()
+  date_str In varchar2
+  , fallback_dt In date Default current_date()
 ) Return date;
 
 -- Based on fy_start_month
