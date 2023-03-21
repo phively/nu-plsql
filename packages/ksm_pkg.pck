@@ -1,4 +1,4 @@
-CREATE OR REPLACE Package ksm_pkg_tst Is
+CREATE OR REPLACE Package ksm_pkg_tmp Is
 
 /*************************************************************************
 Author  : PBH634
@@ -717,9 +717,10 @@ Function tbl_committee_mbai
 End of package
 *************************************************************************/
 
-End ksm_pkg_tst;
+End ksm_pkg_tmp;
 /
-Create Or Replace Package Body ksm_pkg_tst Is
+
+CREATE OR REPLACE Package Body ksm_pkg_tmp Is
 
 /*************************************************************************
 Private cursor tables -- data definitions; update indicated sections as needed
@@ -4554,5 +4555,4 @@ Function tbl_special_handling_concat
         Return;
       End;
 
-End ksm_pkg_tst;
-/
+End ksm_pkg_tmp;
