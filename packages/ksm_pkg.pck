@@ -549,10 +549,10 @@ From table(rpt_pbh634.ksm_pkg.tbl_current_calendar) cal;
 
 /* Return allocations, both active and historical, as a pipelined function */
 Function tbl_alloc_annual_fund_ksm
-  Return ksm_pkg_allocation.t_allocation Pipelined; -- returns list of matching values
+  Return ksm_pkg_allocation.t_alloc_list Pipelined; -- returns list of matching values
 
 Function tbl_alloc_curr_use_ksm
-  Return ksm_pkg_allocation.t_allocation Pipelined; -- returns list of matching values
+  Return ksm_pkg_allocation.t_alloc_info Pipelined; -- returns list of matching values
 
 /* Return current calendar object */
 Function tbl_current_calendar
@@ -3693,9 +3693,9 @@ Pipelined functions
 
 -- Pipelined function returning Kellogg Annual Fund allocations, both active and historical
 Function tbl_alloc_annual_fund_ksm
-  Return ksm_pkg_allocation.t_allocation Pipelined As
+  Return ksm_pkg_allocation.t_alloc_list Pipelined As
     -- Declarations
-    allocs ksm_pkg_allocation.t_allocation;
+    allocs ksm_pkg_allocation.t_alloc_list;
 
   Begin
     allocs := ksm_pkg_allocation.c_alloc_annual_fund_ksm; -- Annual Fund allocations cursor
@@ -3708,9 +3708,9 @@ Function tbl_alloc_annual_fund_ksm
 
 -- Pipelined function returning Kellogg current use allocations
 Function tbl_alloc_curr_use_ksm
-  Return ksm_pkg_allocation.t_allocation Pipelined As
+  Return ksm_pkg_allocation.t_alloc_info Pipelined As
     -- Declarations
-    allocs ksm_pkg_allocation.t_allocation;
+    allocs ksm_pkg_allocation.t_alloc_info;
 
   Begin
     allocs := ksm_pkg_allocation.c_alloc_curr_use_ksm; -- Annual Fund allocations cursor

@@ -10,6 +10,13 @@ pkg_name Constant varchar2(64) := 'ksm_pkg_allocation';
 Public type declarations
 *************************************************************************/
 
+Type alloc_list Is Record (
+  allocation_code allocation.allocation_code%type
+  , status_code allocation.status_code%type
+  , short_name allocation.short_name%type
+  , af_flag allocation.annual_sw%type
+);
+
 Type alloc_info Is Record (
   allocation_code allocation.allocation_code%type
   , status_code allocation.status_code%type
@@ -23,7 +30,8 @@ Type alloc_info Is Record (
 Public table declarations
 *************************************************************************/
 
-Type t_allocation Is Table Of alloc_info;
+Type t_alloc_list Is Table Of alloc_list;
+Type t_alloc_info Is Table Of alloc_info;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -31,17 +39,17 @@ Public pipelined functions declarations
 
 -- Collections
 Function c_alloc_annual_fund_ksm
-  Return t_allocation;
+  Return t_alloc_list;
 
 Function c_alloc_curr_use_ksm
-  Return t_allocation;
+  Return t_alloc_info;
 
 -- Table functions
 Function tbl_alloc_annual_fund_ksm
-  Return t_allocation Pipelined;
+  Return t_alloc_list Pipelined;
 
 Function tbl_alloc_curr_use_ksm
-  Return t_allocation Pipelined;
+  Return t_alloc_info Pipelined;
 
 End ksm_pkg_allocation;
 /
@@ -60,8 +68,6 @@ Cursor alloc_annual_fund_ksm Is
     , status_code
     , short_name
     , 'Y' As af_flag
-    , NULL
-    , NULL
   From allocation
   Where
     -- KSM af-flagged allocations
@@ -230,9 +236,9 @@ Pipelined functions
 
 -- Returns a collection
 Function c_alloc_annual_fund_ksm
-  Return t_allocation As
+  Return t_alloc_list As
     -- Declarations
-    allocs t_allocation;
+    allocs t_alloc_list;
 
   Begin
     Open alloc_annual_fund_ksm; -- Annual Fund allocations cursor
@@ -243,9 +249,9 @@ Function c_alloc_annual_fund_ksm
 
 -- Returns a collection
 Function c_alloc_curr_use_ksm
-  Return t_allocation As
+  Return t_alloc_info As
     -- Declarations
-    allocs t_allocation;
+    allocs t_alloc_info;
 
   Begin
     Open alloc_curr_use_ksm; -- Annual Fund allocations cursor
@@ -257,9 +263,9 @@ Function c_alloc_curr_use_ksm
 
 -- Returns a pipelined table
 Function tbl_alloc_annual_fund_ksm
-  Return t_allocation Pipelined As
+  Return t_alloc_list Pipelined As
     -- Declarations
-    allocs t_allocation;
+    allocs t_alloc_list;
 
   Begin
     Open alloc_annual_fund_ksm; -- Annual Fund allocations cursor
@@ -274,9 +280,9 @@ Function tbl_alloc_annual_fund_ksm
 
 -- Returns a pipelined table
 Function tbl_alloc_curr_use_ksm
-  Return t_allocation Pipelined As
+  Return t_alloc_info Pipelined As
     -- Declarations
-    allocs t_allocation;
+    allocs t_alloc_info;
 
   Begin
     Open alloc_curr_use_ksm; -- Annual Fund allocations cursor
