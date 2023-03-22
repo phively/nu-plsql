@@ -10,7 +10,7 @@ pkg_name Constant varchar2(64) := 'ksm_pkg_allocation';
 Public type declarations
 *************************************************************************/
 
-Type allocation Is Record (
+Type alloc_info Is Record (
   allocation_code allocation.allocation_code%type
   , status_code allocation.status_code%type
   , short_name allocation.short_name%type
@@ -23,12 +23,20 @@ Type allocation Is Record (
 Public table declarations
 *************************************************************************/
 
-Type t_allocation Is Table Of allocation;
+Type t_allocation Is Table Of alloc_info;
 
 /*************************************************************************
 Public pipelined functions declarations
 *************************************************************************/
 
+-- Collections
+Function c_alloc_annual_fund_ksm
+  Return t_allocation;
+
+Function c_alloc_curr_use_ksm
+  Return t_allocation;
+
+-- Table functions
 Function tbl_alloc_annual_fund_ksm
   Return t_allocation Pipelined;
 
@@ -221,9 +229,30 @@ Pipelined functions
 *************************************************************************/
 
 -- Returns a collection
+Function c_alloc_annual_fund_ksm
+  Return t_allocation As
+    -- Declarations
+    allocs t_allocation;
 
+  Begin
+    Open alloc_annual_fund_ksm; -- Annual Fund allocations cursor
+      Fetch alloc_annual_fund_ksm Bulk Collect Into allocs;
+    Close alloc_annual_fund_ksm;
+    Return allocs;
+  End;
 
 -- Returns a collection
+Function c_alloc_curr_use_ksm
+  Return t_allocation As
+    -- Declarations
+    allocs t_allocation;
+
+  Begin
+    Open alloc_curr_use_ksm; -- Annual Fund allocations cursor
+      Fetch alloc_curr_use_ksm Bulk Collect Into allocs;
+    Close alloc_curr_use_ksm;
+    Return allocs;
+  End;
 
 
 -- Returns a pipelined table
@@ -233,9 +262,9 @@ Function tbl_alloc_annual_fund_ksm
     allocs t_allocation;
 
   Begin
-    Open ct_alloc_annual_fund_ksm; -- Annual Fund allocations cursor
-      Fetch ct_alloc_annual_fund_ksm Bulk Collect Into allocs;
-    Close ct_alloc_annual_fund_ksm;
+    Open alloc_annual_fund_ksm; -- Annual Fund allocations cursor
+      Fetch alloc_annual_fund_ksm Bulk Collect Into allocs;
+    Close alloc_annual_fund_ksm;
     -- Pipe out the allocations
     For i in 1..(allocs.count) Loop
       Pipe row(allocs(i));
@@ -250,9 +279,9 @@ Function tbl_alloc_curr_use_ksm
     allocs t_allocation;
 
   Begin
-    Open c_alloc_curr_use_ksm; -- Annual Fund allocations cursor
-      Fetch c_alloc_curr_use_ksm Bulk Collect Into allocs;
-    Close c_alloc_curr_use_ksm;
+    Open alloc_curr_use_ksm; -- Annual Fund allocations cursor
+      Fetch alloc_curr_use_ksm Bulk Collect Into allocs;
+    Close alloc_curr_use_ksm;
     -- Pipe out the allocations
     For i in 1..(allocs.count) Loop
       Pipe row(allocs(i));
