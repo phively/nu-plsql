@@ -73,6 +73,14 @@ params As (
         Case
           When contact_date Between task_detail.date_added And task_detail.sched_date
             And task_code = 'CO'
+            And task_status_code In ('3', '4', '5')
+            Then report_id
+          End
+    ) As contacts_during_task_inactive
+    , count(Distinct
+        Case
+          When contact_date Between task_detail.date_added And task_detail.sched_date
+            And task_code = 'CO'
             And task_status_code In ('1', '2')
             And contact_type <> 'Visit'
             Then report_id
@@ -191,6 +199,8 @@ Select Distinct
   , lr.latest_contact
   , nvl(cc.nonvisit_contacts_during_task, 0)
     As nonvisit_contacts_during_task
+  , nvl(cc.contacts_during_task_inactive, 0)
+    As contacts_during_task_inactive
   , nvl(cc.total_visits, 0)
     As total_visits
   , nvl(d.total_disqual, 0)
