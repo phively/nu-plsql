@@ -20,13 +20,6 @@ From table(ksm_pkg_calendar.tbl_current_calendar)
 
 -- Functions
 Select
-    ksm_pkg_calendar.date_parse('20220801') As aug_01_2022
-  , ksm_pkg_calendar.date_parse('zzzz0909', to_date('20200108', 'yyyymmdd')) As sep_09_2020
-  , ksm_pkg_calendar.date_parse('2022zzzz', to_date('20200108', 'yyyymmdd')) As jan_08_2022
-From DUAL
-;
-
-Select
   ksm_pkg_calendar.fytd_indicator(trunc(sysdate)) As N
   , ksm_pkg_calendar.fytd_indicator(trunc(sysdate), day_offset => 0) As Y
 From DUAL
@@ -72,12 +65,6 @@ From table(ksm_pkg_tst.tbl_current_calendar)
 ;
 
 -- Functions
-Select
-    ksm_pkg_tst.date_parse('20220801') As aug_01_2022
-  , ksm_pkg_tst.date_parse('zzzz0909', to_date('20200108', 'yyyymmdd')) As sep_09_2020
-  , ksm_pkg_tst.date_parse('2022zzzz', to_date('20200108', 'yyyymmdd')) As jan_08_2022
-From DUAL
-;
 
 Select
   ksm_pkg_tst.fytd_indicator(trunc(sysdate)) As N

@@ -16,16 +16,23 @@ Function math_mod(
   , n In number
 ) Return number; -- m % n
 
+-- Rewritten to_number to return NULL for invalid strings
+Function to_number2(
+  str In varchar2
+) Return number;
+
 -- Rewritten to_date to return NULL for invalid dates
 Function to_date2(
   str In varchar2
   , format In varchar2 Default 'yyyymmdd'
 ) Return date;
 
--- Rewritten to_number to return NULL for invalid strings
-Function to_number2(
-  str In varchar2
-) Return number;
+-- Parse yyyymmdd string into a date
+-- If there are invalid date parts, overwrite with the corresponding element from fallback_dt
+Function date_parse(
+  date_str In varchar2
+  , fallback_dt In date Default current_date()
+) Return date;
 
 -- Take a string containing a dollar amount and extract the (first) numeric value
 Function get_number_from_dollar(
@@ -55,14 +62,6 @@ Function math_mod(m In number, n In number)
         Return NULL;
   End;
 
--- Check whether a passed yyyymmdd string can be parsed sucessfully as a date 
-Function to_date2(str In varchar2, format In varchar2)
-  Return date Is
-
-  Begin
-    Return ksm_pkg_calendar.to_date2(str, format);
-  End;
-
 -- Check whether a passed string can be parsed sucessfully as a number
 Function to_number2(str In varchar2)
   Return number Is
@@ -72,6 +71,71 @@ Function to_number2(str In varchar2)
     Exception
       When Others Then
         Return NULL;
+  End;
+
+-- Check whether a passed yyyymmdd string can be parsed sucessfully as a date
+Function to_date2(str In varchar2, format In varchar2)
+  Return date Is
+  
+  Begin
+    Return to_date(str, format);
+    Exception
+      When Others Then
+        Return NULL;
+  End;
+
+-- Takes a yyyymmdd string and an optional fallback date argument and produces a date type
+Function date_parse(date_str In varchar2, fallback_dt In date)
+  Return date Is
+  -- Declarations
+  dt_out date;
+  -- Parsed from string
+  y varchar2(4);
+  m varchar2(2);
+  d varchar2(2);
+  -- Parsed from fallback date
+  fy varchar2(4);
+  fm varchar2(2);
+  fd varchar2(2);
+  
+  Begin
+    -- Try returning str as-is (y-m-d) as a date
+    dt_out := to_date2(date_str);
+    If dt_out Is Not Null Then
+      Return(dt_out);
+    End If;
+    
+    -- Extract ymd
+    y    := substr(date_str, 1, 4);
+    m    := substr(date_str, 5, 2);
+    d    := substr(date_str, 7, 2);
+    fy   := lpad(extract(year from fallback_dt), 4, '0');
+    fm   := lpad(extract(month from fallback_dt), 2, '0');
+    fd   := lpad(extract(day from fallback_dt), 2, '0');
+    
+    -- Try returning y-m-01
+    dt_out := to_date2(y || m || '01');
+    If dt_out Is Not Null Then
+      Return(dt_out);
+    End If;
+    -- Try returning y-fm-fd
+    dt_out := to_date2(y || fm || fd);
+    If dt_out Is Not Null Then
+      Return(dt_out);
+    End If;
+    -- Try returning fy-m-d
+    dt_out := to_date2(fy || m || d);
+    If dt_out Is Not Null Then
+      Return(dt_out);
+    End If;
+    -- Try returning fy-m-01
+    dt_out := to_date2(fy || m || '01');
+    If dt_out Is Not Null Then
+      Return(dt_out);
+    End If;
+    -- If all else fails return the fallback date
+    Return(trunc(fallback_dt));
+    
   End;
 
 -- Take a string containing a dollar amount and extract the (first) numeric value

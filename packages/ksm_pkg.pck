@@ -2899,7 +2899,7 @@ Function math_mod(m In number, n In number)
 Function to_date2(str In varchar2, format In varchar2)
   Return date Is
   Begin
-    Return ksm_pkg_calendar.to_date2(str, format);
+    Return ksm_pkg_utility.to_date2(str, format);
   End;
 
 /* Check whether a passed string can be parsed sucessfully as a number
@@ -2937,7 +2937,7 @@ Function to_cypher_vignere(
 Function date_parse(date_str In varchar2, fallback_dt In date)
   Return date Is
   Begin
-    Return ksm_pkg_calendar.date_parse(date_str, fallback_dt);
+    Return ksm_pkg_utility.date_parse(date_str, fallback_dt);
   End;
 
 

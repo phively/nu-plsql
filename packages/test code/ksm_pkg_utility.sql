@@ -33,6 +33,15 @@ Select
     , ksm_pkg_utility.to_number2('4E3') As "4000"
     , ksm_pkg_utility.to_number2('4B3') As "NULL: letters"
     , ksm_pkg_utility.to_number2('3/3') As "NULL: symbols"
+    , ksm_pkg_utility.to_number2('') As "NULL: empty string"
+From DUAL
+;
+
+-- date_parse
+Select
+    ksm_pkg_utility.date_parse('20220801') As aug_01_2022
+  , ksm_pkg_utility.date_parse('zzzz0909', to_date('20200108', 'yyyymmdd')) As sep_09_2020
+  , ksm_pkg_utility.date_parse('2022zzzz', to_date('20200108', 'yyyymmdd')) As jan_08_2022
 From DUAL
 ;
 
@@ -86,6 +95,15 @@ Select
     , ksm_pkg_tst.to_number2('4E3') As "4000"
     , ksm_pkg_tst.to_number2('4B3') As "NULL: letters"
     , ksm_pkg_tst.to_number2('3/3') As "NULL: symbols"
+    , ksm_pkg_tst.to_number2('') As "NULL: empty string"
+From DUAL
+;
+
+-- date_parse
+Select
+    ksm_pkg_tst.date_parse('20220801') As aug_01_2022
+  , ksm_pkg_tst.date_parse('zzzz0909', to_date('20200108', 'yyyymmdd')) As sep_09_2020
+  , ksm_pkg_tst.date_parse('2022zzzz', to_date('20200108', 'yyyymmdd')) As jan_08_2022
 From DUAL
 ;
 

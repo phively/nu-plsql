@@ -53,19 +53,6 @@ Function get_numeric_constant(
   const_name In varchar2 -- Name of constant to retrieve
 ) Return number Deterministic;
 
--- Rewritten to_date to return NULL for invalid dates
-Function to_date2(
-  str In varchar2
-  , format In varchar2 Default 'yyyymmdd'
-) Return date;
-
--- Parse yyyymmdd string into a date
--- If there are invalid date parts, overwrite with the corresponding element from fallback_dt
-Function date_parse(
-  date_str In varchar2
-  , fallback_dt In date Default current_date()
-) Return date;
-
 -- Based on fy_start_month
 Function fytd_indicator(
   dt In date
@@ -219,71 +206,6 @@ Function get_numeric_constant(const_name In varchar2)
       Return val;
   End;
 
--- Check whether a passed yyyymmdd string can be parsed sucessfully as a date
-Function to_date2(str In varchar2, format In varchar2)
-  Return date Is
-  
-  Begin
-    Return to_date(str, format);
-    Exception
-      When Others Then
-        Return NULL;
-  End;
-
--- Takes a yyyymmdd string and an optional fallback date argument and produces a date type
-Function date_parse(date_str In varchar2, fallback_dt In date)
-  Return date Is
-  -- Declarations
-  dt_out date;
-  -- Parsed from string
-  y varchar2(4);
-  m varchar2(2);
-  d varchar2(2);
-  -- Parsed from fallback date
-  fy varchar2(4);
-  fm varchar2(2);
-  fd varchar2(2);
-  
-  Begin
-    -- Try returning str as-is (y-m-d) as a date
-    dt_out := to_date2(date_str);
-    If dt_out Is Not Null Then
-      Return(dt_out);
-    End If;
-    
-    -- Extract ymd
-    y    := substr(date_str, 1, 4);
-    m    := substr(date_str, 5, 2);
-    d    := substr(date_str, 7, 2);
-    fy   := lpad(extract(year from fallback_dt), 4, '0');
-    fm   := lpad(extract(month from fallback_dt), 2, '0');
-    fd   := lpad(extract(day from fallback_dt), 2, '0');
-    
-    -- Try returning y-m-01
-    dt_out := to_date2(y || m || '01');
-    If dt_out Is Not Null Then
-      Return(dt_out);
-    End If;
-    -- Try returning y-fm-fd
-    dt_out := to_date2(y || fm || fd);
-    If dt_out Is Not Null Then
-      Return(dt_out);
-    End If;
-    -- Try returning fy-m-d
-    dt_out := to_date2(fy || m || d);
-    If dt_out Is Not Null Then
-      Return(dt_out);
-    End If;
-    -- Try returning fy-m-01
-    dt_out := to_date2(fy || m || '01');
-    If dt_out Is Not Null Then
-      Return(dt_out);
-    End If;
-    -- If all else fails return the fallback date
-    Return(trunc(fallback_dt));
-    
-  End;
-
 -- Fiscal year to date indicator: Takes as an argument any date object and returns Y/N
 Function fytd_indicator(dt In date, day_offset In number)
   Return character Is
@@ -364,9 +286,9 @@ Function get_fiscal_year(dt In varchar2, format In varchar2 Default 'yyyy/mm/dd'
   this_year number;
   
   Begin
-    this_year := extract(year from to_date2(dt, format));
+    this_year := extract(year from ksm_pkg_utility.to_date2(dt, format));
     -- If month is before fy_start_month, return this_year
-    If extract(month from to_date2(dt, format)) < fy_start_month
+    If extract(month from ksm_pkg_utility.to_date2(dt, format)) < fy_start_month
       Or fy_start_month = 1 Then
       Return this_year;
     End If;
