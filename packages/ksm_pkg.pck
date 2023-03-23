@@ -1,4 +1,4 @@
-Create Or Replace Package ksm_pkg_tst Is
+Create Or Replace Package ksm_pkg_tmp Is
 
 /*************************************************************************
 Author  : PBH634
@@ -686,10 +686,10 @@ Function tbl_committee_mbai
 End of package
 *************************************************************************/
 
-End ksm_pkg_tst;
+End ksm_pkg_tmp;
 /
 
-Create Or Replace Package Body ksm_pkg_tst Is
+Create Or Replace Package Body ksm_pkg_tmp Is
 
 /*************************************************************************
 Private cursor tables -- data definitions; update indicated sections as needed
@@ -1381,7 +1381,7 @@ Cursor c_university_strategy Is
         Else uos.university_strategy
       End As university_strategy
     , Case
-        When prs.strategy_description Is Not Null Then ksm_pkg_tmp.to_date2(prs.strategy_date, 'mm/dd/yyyy')
+        When prs.strategy_description Is Not Null Then to_date2(prs.strategy_date, 'mm/dd/yyyy')
         Else uos.strategy_sched_date
       End As strategy_sched_date
     , Case
@@ -2906,12 +2906,8 @@ Function to_date2(str In varchar2, format In varchar2)
    2019-08-02 */
 Function to_number2(str In varchar2)
   Return number Is
-  
   Begin
-    Return to_number(str);
-    Exception
-      When Others Then
-        Return NULL;
+    Return ksm_pkg_utility.to_number2(str);
   End;
 
 /* Run the Vignere cypher on input text
@@ -3150,43 +3146,8 @@ Function get_entity_address(id In varchar2, field In varchar2, debug In Boolean 
 /* Take a string containing a dollar amount and extract the (first) numeric value */
 Function get_number_from_dollar(str In varchar2) 
   Return number Is
-  -- Delcarations
-  trimmed varchar2(32);
-  mult number;
-  amt number;
-  
   Begin
-    -- Regular expression: extract string starting with $ up to the last digit, period, or comma,
-    Select
-      -- Target substring starts with a dollar sign and may contain 0-9,.KMB
-      regexp_substr(upper(str), '\$[0-9,KMB\.]*')
-    Into trimmed
-    From DUAL;
-    
-    -- Look for suffixes K and M and B and calculate the appropriate multiplier
-    Select
-      Case
-        When trimmed Like '%K%' Then 1E3 -- K = thousand = 1,000
-        When trimmed Like '%M%' Then 1E6 -- M = million = 1,000,000
-        When trimmed Like '%B%' Then 1E9 -- B = billion = 1,000,000,000
-        Else 1
-      End As mult
-    Into mult
-    From DUAL;
-    
-    -- Strip the $ and commas and letters and treat as numeric
-    Select
-      -- Convert string to numeric
-      to_number(
-        regexp_replace(
-          trimmed
-          , '[^0-9\.]' -- Remove non-numeric characters
-          , '') -- Replace non-numeric characters with null
-        )
-    Into amt
-    From DUAL;
-    
-    Return amt * mult;
+    Return ksm_pkg_utility.get_number_from_dollar(str);
   End;
 
 /* Convert rating to numeric amount */
@@ -4023,4 +3984,4 @@ Function tbl_special_handling_concat
         Return;
       End;
 
-End ksm_pkg_tst;
+End ksm_pkg_tmp;
