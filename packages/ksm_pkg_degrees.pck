@@ -75,7 +75,10 @@ Cursor entity_degrees_concat_ksm Is
       , trim('''' || substr(trim(degree_year), -2)) As degree_yr
     From degrees
     Where institution_code = '31173' -- Northwestern institution code
-      And school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
+      And (
+        degrees.school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
+        Or degrees.dept_code = '01MBI' -- MBAi
+      )
       And degree_year <> ' ' -- Exclude rows with blank year
       And non_grad_code <> 'N' -- Exclude non-grads
   )
@@ -90,7 +93,7 @@ Cursor entity_degrees_concat_ksm Is
   -- Concatenated degrees subqueries
   , deg_data As (
     Select
-      id_number
+      degrees.id_number
       , degree_year
       , non_grad_code
       , Case When non_grad_code = 'N' Then 'Nongrad ' End As nongrad
@@ -113,6 +116,7 @@ Cursor entity_degrees_concat_ksm Is
           When degrees.dept_code = '95BCH' Then 'BCH'
           When degrees.dept_code = '96BEV' Then 'BEV'
           When degrees.dept_code In ('AMP', 'AMPI', 'EDP', 'KSMEE') Then degrees.dept_code
+          When degrees.dept_code = '01MBI' Then 'MBAi'
           When degrees.dept_code = '0000000' Then ''
           Else tms_dept_code.short_desc
         End As dept_short_desc
@@ -147,7 +151,10 @@ Cursor entity_degrees_concat_ksm Is
     Left Join tms_majors m3
       On m3.major_code = degrees.major_code3
     Where institution_code = '31173' -- Northwestern institution code
-      And degrees.school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
+      And (
+        degrees.school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
+        Or degrees.dept_code = '01MBI' -- MBAi
+      )
   )
   -- Listagg all degrees, including incomplete
   , concat As (
@@ -249,6 +256,7 @@ Cursor entity_degrees_concat_ksm Is
             When clean_degrees_concat Like '%JDMBA%' Then 'FT-JDMBA'
             When clean_degrees_concat Like '%MMM%' Then 'FT-MMM'
             When clean_degrees_concat Like '%MDMBA%' Then 'FT-MDMBA'
+            When clean_degrees_concat Like '%MBAI%' Then 'FT-MBAi'
             When clean_degrees_concat Like '%KSM KEN%' Then 'FT-KENNEDY'
             When clean_degrees_concat Like '%KSM TMP%' Then 'TMP'
             When clean_degrees_concat Like '%KSM PTS%' Then 'TMP-SAT'
@@ -283,6 +291,7 @@ Cursor entity_degrees_concat_ksm Is
             When degrees_concat Like '%JDMBA%' Then 'FT-JDMBA NONGRD'
             When degrees_concat Like '%MMM%' Then 'FT-MMM NONGRD'
             When degrees_concat Like '%MDMBA%' Then 'FT-MDMBA NONGRD'
+            When degrees_concat Like '%MBAI%' Then 'FT-MBAi NONGRD'
             When degrees_concat Like '%KSM KEN%' Then 'FT-KENNEDY NONGRD'
             When degrees_concat Like '%KSM TMP%' Then 'TMP NONGRD'
             When degrees_concat Like '%KSM PTS%' Then 'TMP-SAT NONGRD'
