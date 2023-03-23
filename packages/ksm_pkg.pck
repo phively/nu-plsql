@@ -2890,15 +2890,8 @@ Functions
    2017-02-08 */
 Function math_mod(m In number, n In number)
   Return number Is
-  -- Declarations
-  remainder number;
-
   Begin
-    remainder := mod(m - n * floor(m/n), n);
-    Return(remainder);
-    Exception
-      When Others Then
-        Return NULL;
+    Return ksm_pkg_utility.math_mod(m, n);
   End;
 
 /* Check whether a passed yyyymmdd string can be parsed sucessfully as a date 
