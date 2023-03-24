@@ -24,7 +24,32 @@ Create Materialized View test_ksm_pkg_households As
 -- ksm_pkg_households tests
 ---------------------------
 
-
+Select
+    hh.household_id
+  , test_hh.expected_hhid
+  , Case
+      When hh.household_id = test_hh.expected_hhid
+        Then 'true'
+        Else 'FALSE'
+        End
+    As passed
+  , test_hh.explanation
+  , hh.id_number
+  , hh.report_name
+  , hh.spouse_report_name
+  , hh.fmr_spouse_name
+  , hh.household_primary
+  , hh.household_rpt_name
+  , hh.household_spouse
+  , hh.degrees_concat
+  , hh.spouse_degrees_concat
+  , hh.program
+  , hh.spouse_program
+From table(ksm_pkg_households.tbl_entity_households_ksm) hh
+Inner Join test_ksm_pkg_households test_hh
+  On test_hh.id_number = hh.id_number
+Order By household_id
+;
 
 ---------------------------
 -- ksm_pkg tests
