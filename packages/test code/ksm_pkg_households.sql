@@ -51,6 +51,22 @@ Inner Join test_ksm_pkg_households test_hh
 Order By household_id
 ;
 
+Select
+    hh.household_id
+  , test_hh.expected_hhid
+  , Case
+      When hh.household_id = test_hh.expected_hhid
+        Then 'true'
+        Else 'FALSE'
+        End
+    As passed
+  , test_hh.explanation
+From table(ksm_pkg_households.tbl_households_fast) hh
+Inner Join test_ksm_pkg_households test_hh
+  On test_hh.id_number = hh.id_number
+Order By household_id
+;
+
 ---------------------------
 -- ksm_pkg tests
 ---------------------------
