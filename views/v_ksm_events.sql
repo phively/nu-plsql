@@ -165,6 +165,9 @@ Select
   -- Organizers
   , organizers_concat.event_organizers
   , organizers_concat.kellogg_organizers
+  -- Location
+  , event.venue_state
+  , event.note
   -- Event codes
   , event_codes_concat.event_codes_concat
   -- Master event information
