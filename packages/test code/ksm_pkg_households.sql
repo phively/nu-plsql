@@ -45,8 +45,8 @@ Select
   , hh.spouse_degrees_concat
   , hh.program
   , hh.spouse_program
-From table(ksm_pkg_households.tbl_entity_households_ksm) hh
-Inner Join test_ksm_pkg_households test_hh
+From test_ksm_pkg_households test_hh
+Left Join table(ksm_pkg_households.tbl_entity_households_ksm) hh
   On test_hh.id_number = hh.id_number
 Order By household_id
 ;
@@ -61,8 +61,8 @@ Select
         End
     As passed
   , test_hh.explanation
-From table(ksm_pkg_households.tbl_households_fast) hh
-Inner Join test_ksm_pkg_households test_hh
+From test_ksm_pkg_households test_hh
+Left Join table(ksm_pkg_households.tbl_households_fast) hh
   On test_hh.id_number = hh.id_number
 Order By household_id
 ;
@@ -92,8 +92,8 @@ Select
   , hh.spouse_degrees_concat
   , hh.program
   , hh.spouse_program
-From table(ksm_pkg_tst.tbl_entity_households_ksm) hh
-Inner Join test_ksm_pkg_households test_hh
+From test_ksm_pkg_households test_hh
+Left Join table(ksm_pkg_tst.tbl_entity_households_ksm) hh
   On test_hh.id_number = hh.id_number
 Order By household_id
 ;
