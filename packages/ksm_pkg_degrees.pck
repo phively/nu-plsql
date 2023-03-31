@@ -5,6 +5,7 @@ Public constant declarations
 *************************************************************************/
 
 pkg_name Constant varchar2(64) := 'ksm_pkg_degrees';
+collect_default_limit Constant pls_integer := 50;
 
 /*************************************************************************
 Public type declarations
@@ -52,7 +53,9 @@ Function c_entity_degrees_concat_ksm
   Return t_degreed_alumni;
 
 -- Table functions
-Function tbl_entity_degrees_concat_ksm
+Function tbl_entity_degrees_concat_ksm(
+    limit_size In pls_integer Default collect_default_limit
+  )
   Return t_degreed_alumni Pipelined;
 
 End ksm_pkg_degrees;
@@ -410,17 +413,24 @@ Function c_entity_degrees_concat_ksm
   End;
 
 -- Table function
-Function tbl_entity_degrees_concat_ksm
+Function tbl_entity_degrees_concat_ksm(
+    limit_size In pls_integer Default collect_default_limit
+  )
   Return t_degreed_alumni Pipelined As
   -- Declarations
   degrees t_degreed_alumni;
     
   Begin
     Open entity_degrees_concat_ksm;
-      Fetch entity_degrees_concat_ksm Bulk Collect Into degrees;
-    Close entity_degrees_concat_ksm;
-    For i in 1..(degrees.count) Loop
-      Pipe row(degrees(i));
+    Loop
+      Fetch entity_degrees_concat_ksm Bulk Collect Into degrees Limit limit_size;
+      If degrees.count = 0 Then
+        Close entity_degrees_concat_ksm;
+        Exit;
+      End If;
+      For i in 1..(degrees.count) Loop
+        Pipe row(degrees(i));
+      End Loop;
     End Loop;
     Return;
   End;

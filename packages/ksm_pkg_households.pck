@@ -5,6 +5,7 @@ Public constant declarations
 *************************************************************************/
 
 pkg_name Constant varchar2(64) := 'ksm_pkg_households';
+collect_default_limit Constant pls_integer := 100;
 
 /*************************************************************************
 Public type declarations
@@ -101,10 +102,14 @@ Function c_entity_households_ksm
   Return t_household;
 
 -- Table functions
-Function tbl_households_fast
+Function tbl_households_fast(
+    limit_size In pls_integer Default collect_default_limit
+  )
     Return t_household_fast Pipelined;
 
-Function tbl_entity_households_ksm
+Function tbl_entity_households_ksm(
+    limit_size In pls_integer Default collect_default_limit
+  )
   Return t_household Pipelined;
 
 End ksm_pkg_households;
@@ -494,33 +499,43 @@ Function c_entity_households_ksm
   End;
 
 -- Returns a pipelined table
-Function tbl_households_fast
+Function tbl_households_fast(
+    limit_size In pls_integer Default collect_default_limit
+  )
     Return t_household_fast Pipelined As
     -- Declarations
     households t_household_fast;
 
   Begin
     Open households_fast;
-      Fetch households_fast Bulk Collect Into households;
-    Close households_fast;
-    For i in 1..(households.count) Loop
-      Pipe row(households(i));
+    Loop
+      Fetch households_fast Bulk Collect Into households Limit limit_size;
+      Exit When households.count = 0;
+      For i in 1..(households.count) Loop
+        Pipe row(households(i));
+      End Loop;
     End Loop;
+    Close households_fast;
     Return;
   End;
 
-Function tbl_entity_households_ksm
+Function tbl_entity_households_ksm(
+    limit_size In pls_integer Default collect_default_limit
+  )
   Return t_household Pipelined As
   -- Declarations
   households t_household;
-  
+
   Begin
     Open entity_households;
-      Fetch entity_households Bulk Collect Into households;
-    Close entity_households;
-    For i in 1..(households.count) Loop
-      Pipe row(households(i));
+    Loop
+      Fetch entity_households Bulk Collect Into households Limit limit_size;
+      Exit When households.count = 0;
+      For i in 1..(households.count) Loop
+        Pipe row(households(i));
+      End Loop;
     End Loop;
+    Close entity_households;
     Return;
   End;
 
