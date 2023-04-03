@@ -97,10 +97,6 @@ Type t_household Is Table Of household;
 Public pipelined functions declarations
 *************************************************************************/
 
--- Collections
-Function c_entity_households_ksm
-  Return t_household;
-
 -- Table functions
 Function tbl_households_fast(
     limit_size In pls_integer Default collect_default_limit
@@ -112,95 +108,11 @@ Function tbl_entity_households_ksm(
   )
   Return t_household Pipelined;
 
-End ksm_pkg_households;
-/
-Create Or Replace Package Body ksm_pkg_households Is
-
 /*************************************************************************
-Private cursors -- data definitions
+Public cursors -- data definitions
 *************************************************************************/
 
--- Kellogg householding definition
-Cursor households_fast Is
-With
-  -- Entities and spouses, with Kellogg degrees concat fields
-  degs As (
-    Select deg.*
-    From table(ksm_pkg_degrees.tbl_entity_degrees_concat_ksm) deg
-  )
-  , couples As (
-    Select
-      -- Entity fields
-      entity.id_number
-      , entity.pref_mail_name
-      , entity.report_name
-      , entity.record_type_code
-      , entity.gender_code
-      , entity.person_or_org
-      , entity.record_status_code
-      , entity.institutional_suffix
-      , edc.degrees_concat
-      , edc.first_ksm_year
-      , edc.first_masters_year
-      , edc.last_masters_year
-      , edc.last_noncert_year
-      , edc.program
-      , edc.program_group
-      , edc.program_group_rank
-      -- Spouse fields
-      , entity.spouse_id_number
-      , spouse.pref_mail_name As spouse_pref_mail_name
-      , spouse.report_name As spouse_report_name
-      , spouse.gender_code As spouse_gender_code
-      , spouse.institutional_suffix As spouse_suffix
-      , sdc.degrees_concat As spouse_degrees_concat
-      , sdc.first_ksm_year As spouse_first_ksm_year
-      , sdc.first_masters_year As spouse_first_masters_year
-      , sdc.last_masters_year As spouse_last_masters_year
-      , sdc.last_noncert_year As spouse_last_noncert_year
-      , sdc.program As spouse_program
-      , sdc.program_group As spouse_program_group
-      , sdc.program_group_rank As spouse_program_group_rank
-    From entity
-    Left Join degs edc On entity.id_number = edc.id_number
-    Left Join degs sdc On entity.spouse_id_number = sdc.id_number
-    Left Join entity spouse On entity.spouse_id_number = spouse.id_number
-  )
-  Select
-    id_number
-    , report_name
-    , pref_mail_name
-    , record_status_code
-    , degrees_concat
-    , first_ksm_year
-    , last_noncert_year
-    , program
-    , program_group
-    , institutional_suffix
-    , spouse_id_number
-    , spouse_report_name
-    , spouse_pref_mail_name
-    , spouse_suffix
-    , spouse_degrees_concat
-    , spouse_first_ksm_year
-    , spouse_program
-    , spouse_program_group
-    , spouse_last_noncert_year
-    -- Choose which spouse is primary based on program_group
-    , Case
-        When length(spouse_id_number) < 10 Or spouse_id_number Is Null Then id_number -- if no spouse, use id_number
-        -- if same program (or both null), use lower id_number
-        When program_group = spouse_program_group Or program_group Is Null And spouse_program_group Is Null Then
-        Case When id_number < spouse_id_number Then id_number Else spouse_id_number End
-        When spouse_program_group Is Null Then id_number -- if no spouse program, use id_number
-        When program_group Is Null Then spouse_id_number -- if no self program, use spouse_id_number
-        When program_group_rank < spouse_program_group_rank Then id_number
-        When spouse_program_group_rank < program_group_rank Then spouse_id_number
-    End As household_id
-  From couples
-;
-
-Cursor entity_households Is
+Cursor c_entity_households Is
 With
   -- Entities and spouses, with Kellogg degrees concat fields
   degs As (
@@ -479,24 +391,99 @@ With
   Left Join pref_addr pa_prim On household.household_id = pa_prim.id_number
   Left Join pref_addr pa_sp On couples.spouse_id_number = pa_sp.id_number
   Left Join fmr_spouse On household.id_number = fmr_spouse.id_number
-  ;
+;
+
+End ksm_pkg_households;
+/
+Create Or Replace Package Body ksm_pkg_households Is
+
+/*************************************************************************
+Private cursors -- data definitions
+*************************************************************************/
+
+-- Kellogg householding definition
+Cursor households_fast Is
+With
+  -- Entities and spouses, with Kellogg degrees concat fields
+  degs As (
+    Select deg.*
+    From table(ksm_pkg_degrees.tbl_entity_degrees_concat_ksm) deg
+  )
+  , couples As (
+    Select
+      -- Entity fields
+      entity.id_number
+      , entity.pref_mail_name
+      , entity.report_name
+      , entity.record_type_code
+      , entity.gender_code
+      , entity.person_or_org
+      , entity.record_status_code
+      , entity.institutional_suffix
+      , edc.degrees_concat
+      , edc.first_ksm_year
+      , edc.first_masters_year
+      , edc.last_masters_year
+      , edc.last_noncert_year
+      , edc.program
+      , edc.program_group
+      , edc.program_group_rank
+      -- Spouse fields
+      , entity.spouse_id_number
+      , spouse.pref_mail_name As spouse_pref_mail_name
+      , spouse.report_name As spouse_report_name
+      , spouse.gender_code As spouse_gender_code
+      , spouse.institutional_suffix As spouse_suffix
+      , sdc.degrees_concat As spouse_degrees_concat
+      , sdc.first_ksm_year As spouse_first_ksm_year
+      , sdc.first_masters_year As spouse_first_masters_year
+      , sdc.last_masters_year As spouse_last_masters_year
+      , sdc.last_noncert_year As spouse_last_noncert_year
+      , sdc.program As spouse_program
+      , sdc.program_group As spouse_program_group
+      , sdc.program_group_rank As spouse_program_group_rank
+    From entity
+    Left Join degs edc On entity.id_number = edc.id_number
+    Left Join degs sdc On entity.spouse_id_number = sdc.id_number
+    Left Join entity spouse On entity.spouse_id_number = spouse.id_number
+  )
+  Select
+    id_number
+    , report_name
+    , pref_mail_name
+    , record_status_code
+    , degrees_concat
+    , first_ksm_year
+    , last_noncert_year
+    , program
+    , program_group
+    , institutional_suffix
+    , spouse_id_number
+    , spouse_report_name
+    , spouse_pref_mail_name
+    , spouse_suffix
+    , spouse_degrees_concat
+    , spouse_first_ksm_year
+    , spouse_program
+    , spouse_program_group
+    , spouse_last_noncert_year
+    -- Choose which spouse is primary based on program_group
+    , Case
+        When length(spouse_id_number) < 10 Or spouse_id_number Is Null Then id_number -- if no spouse, use id_number
+        -- if same program (or both null), use lower id_number
+        When program_group = spouse_program_group Or program_group Is Null And spouse_program_group Is Null Then
+        Case When id_number < spouse_id_number Then id_number Else spouse_id_number End
+        When spouse_program_group Is Null Then id_number -- if no spouse program, use id_number
+        When program_group Is Null Then spouse_id_number -- if no self program, use spouse_id_number
+        When program_group_rank < spouse_program_group_rank Then id_number
+        When spouse_program_group_rank < program_group_rank Then spouse_id_number
+    End As household_id
+  From couples
+;
 
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
-
--- Returns a collection
-Function c_entity_households_ksm
-  Return t_household As
-  -- Declarations
-  households t_household;
-  
-  Begin
-    Open entity_households;
-      Fetch entity_households Bulk Collect Into households;
-    Close entity_households;
-    Return households;
-  End;
 
 -- Returns a pipelined table
 Function tbl_households_fast(
@@ -530,18 +517,18 @@ Function tbl_entity_households_ksm(
   households t_household;
 
   Begin
-    If entity_households %ISOPEN then
-      Close entity_households;
+    If c_entity_households %ISOPEN then
+      Close c_entity_households;
     End If;
-    Open entity_households;
+    Open c_entity_households;
     Loop
-      Fetch entity_households Bulk Collect Into households Limit limit_size;
+      Fetch c_entity_households Bulk Collect Into households Limit limit_size;
       Exit When households.count = 0;
       For i in 1..(households.count) Loop
         Pipe row(households(i));
       End Loop;
     End Loop;
-    Close entity_households;
+    Close c_entity_households;
     Return;
   End;
 
