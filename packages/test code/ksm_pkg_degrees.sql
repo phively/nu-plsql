@@ -2,7 +2,7 @@
 -- ksm_pkg_degrees tests
 ---------------------------
 
-Select *
+Select count(*)
 From table(ksm_pkg_degrees.tbl_entity_degrees_concat_ksm)
 ;
 
@@ -18,6 +18,6 @@ From table(ksm_pkg_degrees.tbl_entity_degrees_concat_ksm) deg
 -- ksm_pkg tests
 ---------------------------
 
-Select *
+Select count(*)
 From table(ksm_pkg_tst.tbl_entity_degrees_concat_ksm)
 ;

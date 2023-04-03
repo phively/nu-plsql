@@ -507,6 +507,9 @@ Function tbl_households_fast(
     households t_household_fast;
 
   Begin
+    If households_fast %ISOPEN then
+      Close households_fast;
+    End If;
     Open households_fast;
     Loop
       Fetch households_fast Bulk Collect Into households Limit limit_size;
@@ -527,6 +530,9 @@ Function tbl_entity_households_ksm(
   households t_household;
 
   Begin
+    If entity_households %ISOPEN then
+      Close entity_households;
+    End If;
     Open entity_households;
     Loop
       Fetch entity_households Bulk Collect Into households Limit limit_size;

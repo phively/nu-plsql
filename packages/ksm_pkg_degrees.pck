@@ -406,6 +406,9 @@ Function c_entity_degrees_concat_ksm
   degrees t_degreed_alumni;
     
   Begin
+    If entity_degrees_concat_ksm %ISOPEN then
+      Close entity_degrees_concat_ksm;
+    End If;
     Open entity_degrees_concat_ksm;
       Fetch entity_degrees_concat_ksm Bulk Collect Into degrees;
     Close entity_degrees_concat_ksm;
@@ -421,17 +424,18 @@ Function tbl_entity_degrees_concat_ksm(
   degrees t_degreed_alumni;
     
   Begin
+    If entity_degrees_concat_ksm %ISOPEN then
+      Close entity_degrees_concat_ksm;
+    End If;
     Open entity_degrees_concat_ksm;
     Loop
       Fetch entity_degrees_concat_ksm Bulk Collect Into degrees Limit limit_size;
-      If degrees.count = 0 Then
-        Close entity_degrees_concat_ksm;
-        Exit;
-      End If;
+      Exit When degrees.count = 0;
       For i in 1..(degrees.count) Loop
         Pipe row(degrees(i));
       End Loop;
     End Loop;
+    Close entity_degrees_concat_ksm;
     Return;
   End;
 
