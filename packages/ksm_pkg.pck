@@ -688,7 +688,7 @@ Cursor ct_numeric_capacity_ratings Is
       , short_desc As rating_desc
       , Case
           When rating_code = 0 Then 0
-          Else rpt_pbh634.ksm_pkg_tmp.get_number_from_dollar(short_desc) / 1000000
+          Else rpt_pbh634.ksm_pkg_tst.get_number_from_dollar(short_desc) / 1000000
         End As numeric_rating
     From tms_rating
   )
@@ -2618,8 +2618,8 @@ Function get_numeric_constant(const_name In varchar2)
   
   Begin
     -- If const_name doesn't include ksm_pkg, prepend it
-    If substr(lower(const_name), 1, 8) <> 'ksm_pkg_tmp.'
-      Then var := 'ksm_pkg_tmp.' || const_name;
+    If substr(lower(const_name), 1, 8) <> 'ksm_pkg_tst.'
+      Then var := 'ksm_pkg_tst.' || const_name;
     Else
       var := const_name;
     End If;
@@ -2642,8 +2642,8 @@ Function get_string_constant(const_name In varchar2)
   
   Begin
     -- If const_name doesn't include ksm_pkg, prepend it
-    If substr(lower(const_name), 1, 8) <> 'ksm_pkg_tmp.'
-      Then var := 'ksm_pkg_tmp.' || const_name;
+    If substr(lower(const_name), 1, 8) <> 'ksm_pkg_tst.'
+      Then var := 'ksm_pkg_tst.' || const_name;
     Else
       var := const_name;
     End If;
@@ -3014,9 +3014,15 @@ Function tbl_current_calendar
   Return ksm_pkg_calendar.t_calendar Pipelined As
   -- Declarations
   cal ksm_pkg_calendar.t_calendar;
+  fy_start_month number;
+  py_start_month number;
     
   Begin
-    cal := ksm_pkg_calendar.c_current_calendar;
+    fy_start_month := ksm_pkg_calendar.get_numeric_constant('fy_start_month');
+    py_start_month := ksm_pkg_calendar.get_numeric_constant('py_start_month');
+    Open ksm_pkg_calendar.c_current_calendar(fy_start_month, py_start_month);
+      Fetch ksm_pkg_calendar.c_current_calendar Bulk Collect Into cal;
+    Close ksm_pkg_calendar.c_current_calendar;
     For i in 1..(cal.count) Loop
       Pipe row(cal(i));
     End Loop;

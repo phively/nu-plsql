@@ -87,20 +87,12 @@ Public pipelined functions declarations
 *************************************************************************/
 
 -- Returns a 1-row table with selectable date objects (safe to cross join)
--- Collection version
-Function c_current_calendar
-  Return t_calendar;
 -- Pipelined version
 Function tbl_current_calendar
   Return t_calendar Pipelined;
 
-End ksm_pkg_calendar;
-/
-
-Create Or Replace Package Body ksm_pkg_calendar Is
-
 /*************************************************************************
-Private cursors -- data definitions
+Public cursors -- data definitions
 *************************************************************************/
 
 -- Compiles useful dates together for use in other functions.
@@ -108,17 +100,20 @@ Private cursors -- data definitions
 --  curr_, or no prefix, for current year, e.g. today, curr_fy
 --  prev_fy, prev_fy2, prev_fy3, etc. for 1, 2, 3 years ago, e.g. prev_fy_today
 --  next_fy, next_fy2, next_fy3, etc. for 1, 2, 3 years in the future, e.g. next_fy_today
-Cursor c_current_calendar (fy_start_month In integer, py_start_month In integer) Is
+Cursor c_current_calendar (
+  fy_start_month In integer
+  , py_start_month In integer
+  ) Is
   With
   -- Store today from sysdate and calculate current fiscal year, always year + 1 unless the FY starts in Jan
   curr_date As (
     Select
       trunc(sysdate) As today
       -- Current fiscal year, uses fy_start_month constant
-      , get_fiscal_year(sysdate)
+      , ksm_pkg_calendar.get_fiscal_year(sysdate)
         As yr
       -- Current performance year, uses py_start_month constant
-      , get_performance_year(sysdate)
+      , ksm_pkg_calendar.get_performance_year(sysdate)
         As perf_yr
       -- Correction for starting after January
       , Case
@@ -179,6 +174,10 @@ Cursor c_current_calendar (fy_start_month In integer, py_start_month In integer)
     , add_months(trunc(sysdate, 'Month'), 1) As next_month_start
   From curr_date
   ;
+
+End ksm_pkg_calendar;
+/
+Create Or Replace Package Body ksm_pkg_calendar Is
 
 /*************************************************************************
 Functions
@@ -324,19 +323,6 @@ Function get_performance_year(dt In date)
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
-
--- Returns a collection
-Function c_current_calendar
-  Return t_calendar As
-  -- Declarations
-  cal t_calendar;
-
-  Begin
-    Open c_current_calendar(fy_start_month, py_start_month);
-      Fetch c_current_calendar Bulk Collect Into cal;
-    Close c_current_calendar;
-    Return cal;
-  End;
 
 -- Pipelined function returning the current calendar definition
 Function tbl_current_calendar
