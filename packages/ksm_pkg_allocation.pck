@@ -37,13 +37,6 @@ Type t_alloc_info Is Table Of alloc_info;
 Public pipelined functions declarations
 *************************************************************************/
 
--- Collections
-Function c_alloc_annual_fund_ksm
-  Return t_alloc_list;
-
-Function c_alloc_curr_use_ksm
-  Return t_alloc_info;
-
 -- Table functions
 Function tbl_alloc_annual_fund_ksm
   Return t_alloc_list Pipelined;
@@ -51,18 +44,13 @@ Function tbl_alloc_annual_fund_ksm
 Function tbl_alloc_curr_use_ksm
   Return t_alloc_info Pipelined;
 
-End ksm_pkg_allocation;
-/
-
-Create Or Replace Package Body ksm_pkg_allocation Is
-
 /*************************************************************************
-Private cursors -- data definitions
+Public cursors -- data definitions
 *************************************************************************/
 
 -- Definition of current and historical Kellogg Annual Fund allocations
 -- Add any custom allocations in the indicated section below
-Cursor alloc_annual_fund_ksm Is
+Cursor c_alloc_annual_fund_ksm Is
   Select Distinct
     allocation_code
     , status_code
@@ -108,16 +96,19 @@ Cursor alloc_annual_fund_ksm Is
       , '3203006233401GFT' -- Fund for Inclusion (similar to GIM/LS)
       , '3203006379001GFT' -- KSM Expendable Scholarship (RG)
       , '3203006386201GFT' -- KSM Expendable Scholarship (JM)
+      , '3203006453601GFT' -- Lowry DEI
+      , '3203006469401GFT' -- Scholarship Fund (RS)
+      , '3203006114401GFT' -- Finance Scholarship (MS)
       /************ UPDATE ABOVE HERE ************/
     )
   ;
 
 -- Definition of Kellogg Current Use allocations for Annual Giving
-Cursor alloc_curr_use_ksm Is
+Cursor c_alloc_curr_use_ksm Is
   With
   ksm_af As (
     Select *
-    From table(tbl_alloc_annual_fund_ksm)
+    From table(ksm_pkg_allocation.tbl_alloc_annual_fund_ksm)
   )
   , sweepable As (
     Select
@@ -230,36 +221,13 @@ Cursor alloc_curr_use_ksm Is
     Or alloc.allocation_code In ksm_af.allocation_code -- Include AF allocations that happen to not match criteria
   ;
 
+End ksm_pkg_allocation;
+/
+
+Create Or Replace Package Body ksm_pkg_allocation Is
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
-
--- Returns a collection
-Function c_alloc_annual_fund_ksm
-  Return t_alloc_list As
-    -- Declarations
-    allocs t_alloc_list;
-
-  Begin
-    Open alloc_annual_fund_ksm; -- Annual Fund allocations cursor
-      Fetch alloc_annual_fund_ksm Bulk Collect Into allocs;
-    Close alloc_annual_fund_ksm;
-    Return allocs;
-  End;
-
--- Returns a collection
-Function c_alloc_curr_use_ksm
-  Return t_alloc_info As
-    -- Declarations
-    allocs t_alloc_info;
-
-  Begin
-    Open alloc_curr_use_ksm; -- Annual Fund allocations cursor
-      Fetch alloc_curr_use_ksm Bulk Collect Into allocs;
-    Close alloc_curr_use_ksm;
-    Return allocs;
-  End;
-
 
 -- Returns a pipelined table
 Function tbl_alloc_annual_fund_ksm
@@ -268,9 +236,9 @@ Function tbl_alloc_annual_fund_ksm
     allocs t_alloc_list;
 
   Begin
-    Open alloc_annual_fund_ksm; -- Annual Fund allocations cursor
-      Fetch alloc_annual_fund_ksm Bulk Collect Into allocs;
-    Close alloc_annual_fund_ksm;
+    Open c_alloc_annual_fund_ksm; -- Annual Fund allocations cursor
+      Fetch c_alloc_annual_fund_ksm Bulk Collect Into allocs;
+    Close c_alloc_annual_fund_ksm;
     -- Pipe out the allocations
     For i in 1..(allocs.count) Loop
       Pipe row(allocs(i));
@@ -285,9 +253,9 @@ Function tbl_alloc_curr_use_ksm
     allocs t_alloc_info;
 
   Begin
-    Open alloc_curr_use_ksm; -- Annual Fund allocations cursor
-      Fetch alloc_curr_use_ksm Bulk Collect Into allocs;
-    Close alloc_curr_use_ksm;
+    Open c_alloc_curr_use_ksm; -- Annual Fund allocations cursor
+      Fetch c_alloc_curr_use_ksm Bulk Collect Into allocs;
+    Close c_alloc_curr_use_ksm;
     -- Pipe out the allocations
     For i in 1..(allocs.count) Loop
       Pipe row(allocs(i));

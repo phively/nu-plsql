@@ -2981,7 +2981,9 @@ Function tbl_alloc_annual_fund_ksm
     allocs ksm_pkg_allocation.t_alloc_list;
 
   Begin
-    allocs := ksm_pkg_allocation.c_alloc_annual_fund_ksm; -- Annual Fund allocations cursor
+    Open ksm_pkg_allocation.c_alloc_annual_fund_ksm; -- Annual Fund allocations cursor
+      Fetch ksm_pkg_allocation.c_alloc_annual_fund_ksm Bulk Collect Into allocs;
+    Close ksm_pkg_allocation.c_alloc_annual_fund_ksm;
     -- Pipe out the allocations
     For i in 1..(allocs.count) Loop
       Pipe row(allocs(i));
@@ -2996,7 +2998,9 @@ Function tbl_alloc_curr_use_ksm
     allocs ksm_pkg_allocation.t_alloc_info;
 
   Begin
-    allocs := ksm_pkg_allocation.c_alloc_curr_use_ksm; -- Annual Fund allocations cursor
+    Open ksm_pkg_allocation.c_alloc_curr_use_ksm; -- Annual Fund allocations cursor
+      Fetch ksm_pkg_allocation.c_alloc_curr_use_ksm Bulk Collect Into allocs;
+    Close ksm_pkg_allocation.c_alloc_curr_use_ksm;
     -- Pipe out the allocations
     For i in 1..(allocs.count) Loop
       Pipe row(allocs(i));
