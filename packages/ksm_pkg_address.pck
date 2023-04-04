@@ -95,6 +95,65 @@ Create Or Replace Package Body ksm_pkg_address Is
 Functions
 *************************************************************************/
 
+-- Takes an ID and returns xsequence of master address, defined as preferred if available, else home,
+-- else business.
+Function get_entity_address_master_xseq(id In varchar2, debug In Boolean Default FALSE)
+  Return number Is
+  -- Declarations
+  xseq number(6); -- final xsequence of address to retrieve
+  
+  -- Address types available for consideration as master/primary address
+  Cursor c_address_types Is
+    With
+    pref As (
+      Select id_number, xsequence As pref_xseq
+      From address
+      Where addr_status_code = 'A' And addr_pref_ind = 'Y'
+    ),
+    home As (
+      Select id_number, xsequence As home_xseq
+      From address
+      Where addr_status_code = 'A' And addr_type_code = 'H'
+    ),
+    bus As (
+      Select id_number, xsequence As bus_xseq
+      From address
+      Where addr_status_code = 'A' And addr_type_code = 'B'
+    )
+    -- Combine preferred, home, and business xseq into a row
+    Select pref_xseq, home_xseq, bus_xseq
+    From entity
+      Left Join pref On entity.id_number = pref.id_number
+      Left Join home On entity.id_number = home.id_number
+      Left Join bus On entity.id_number = bus.id_number
+    Where entity.id_number = id;
+
+  -- Table to hold address xsequence numbers
+  Type t_number Is Table Of c_address_types%rowtype;
+    t_xseq t_number;
+  
+  Begin
+    -- Determine which xsequence to use for master address
+    Open c_address_types;
+      Fetch c_address_types Bulk Collect Into t_xseq;
+    Close c_address_types;
+    
+    -- Debug -- print the retrieved address xsequence numbers
+    If debug Then
+      dbms_output.put_line('P: ' || t_xseq(1).pref_xseq || '; H: ' || t_xseq(1).home_xseq ||
+        '; B: ' || t_xseq(1).bus_xseq);
+    End If;
+    
+    -- Store best choice in xseq
+    If t_xseq(1).pref_xseq Is Not Null Then xseq := t_xseq(1).pref_xseq;
+    ElsIf t_xseq(1).home_xseq Is Not Null Then xseq := t_xseq(1).home_xseq;
+    ElsIf t_xseq(1).bus_xseq Is Not Null Then xseq := t_xseq(1).bus_xseq;
+    Else xseq := 0;
+    End If;
+    
+    Return xseq;
+  End;
+
 -- Takes an ID and field and returns active address part from master address. Standardizes input
 --   fields to lower-case.
 Function get_entity_address(id In varchar2, field In varchar2, debug In Boolean Default FALSE)
