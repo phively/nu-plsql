@@ -199,12 +199,12 @@ With
     From couples
   )
   -- Address info
-/*  , geo As (
+  , geo As (
     Select *
-    From table(ksm_pkg_tmp.tbl_geo_code_primary)
+    From table(ksm_pkg_address.tbl_geo_code_primary)
     Where addr_pref_ind = 'Y'
   )
-*/  -- Individual preferred addresses
+  -- Individual preferred addresses
   , pref_addr As (
     Select
       addr.id_number
@@ -212,14 +212,14 @@ With
       , addr.city As pref_city
       , addr.state_code As pref_state
       , addr.zipcode
-      , NULL as geo_codes -- geo.geo_codes
-      , NULL as geo_code_primary -- geo.geo_code_primary
-      , NULL as geo_code_primary_desc -- geo.geo_code_primary_desc
+      , geo.geo_codes
+      , geo.geo_code_primary
+      , geo.geo_code_primary_desc
       , cont.country As pref_country
       , cont.continent As pref_continent
     From address addr
     Left Join v_addr_continents cont On addr.country_code = cont.country_code
---    Left Join geo On geo.id_number = addr.id_number
+    Left Join geo On geo.id_number = addr.id_number
     Where addr.addr_pref_ind = 'Y'
       And addr.addr_status_code = 'A'
   )
