@@ -5,6 +5,7 @@ Public constant declarations
 *************************************************************************/
 
 pkg_name Constant varchar2(64) := 'ksm_pkg_address';
+collect_default_limit Constant pls_integer := 100;
 
 /*************************************************************************
 Public type declarations
@@ -42,7 +43,9 @@ Function get_entity_address(
 Public pipelined functions declarations
 *************************************************************************/
 
-Function tbl_geo_code_primary
+Function tbl_geo_code_primary(
+  limit_size In pls_integer Default collect_default_limit
+)
   Return t_geo_code_primary Pipelined;
 
 /*************************************************************************
@@ -208,18 +211,26 @@ Pipelined functions
 *************************************************************************/
 
 -- Pipelined function returning concatenated geo codes for all addresses
-Function tbl_geo_code_primary
+Function tbl_geo_code_primary(
+  limit_size In pls_integer Default collect_default_limit
+)
   Return t_geo_code_primary Pipelined As
   -- Declarations
   geo t_geo_code_primary;
   
   Begin
+    If c_geo_code_primary %ISOPEN then
+      Close c_geo_code_primary;
+    End If;
     Open c_geo_code_primary;
-      Fetch c_geo_code_primary Bulk Collect Into geo;
-    Close c_geo_code_primary;
-    For i in 1..(geo.count) Loop
-      Pipe row(geo(i));
+    Loop
+      Fetch c_geo_code_primary Bulk Collect Into geo Limit limit_size;
+      Exit When geo.count = 0;
+      For i in 1..(geo.count) Loop
+        Pipe row(geo(i));
+      End Loop;
     End Loop;
+    Close c_geo_code_primary;
     Return;
   End;
 
