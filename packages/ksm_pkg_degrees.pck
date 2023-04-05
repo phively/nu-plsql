@@ -48,27 +48,18 @@ Function get_entity_degrees_concat_fast(
 Public pipelined functions declarations
 *************************************************************************/
 
--- Collections
-Function c_entity_degrees_concat_ksm
-  Return t_degreed_alumni;
-
 -- Table functions
 Function tbl_entity_degrees_concat_ksm(
     limit_size In pls_integer Default collect_default_limit
   )
   Return t_degreed_alumni Pipelined;
 
-End ksm_pkg_degrees;
-/
-
-Create Or Replace Package Body ksm_pkg_degrees Is
-
 /*************************************************************************
-Private cursors -- data definitions
+Public cursors -- data definitions
 *************************************************************************/
 
 -- Kellogg degrees concatenated
-Cursor entity_degrees_concat_ksm Is
+Cursor c_entity_degrees_concat_ksm Is
   With
   -- Stewardship concatenated years; uses Distinct to de-dupe multiple degrees in one year
   stwrd_yrs As (
@@ -366,6 +357,11 @@ Cursor entity_degrees_concat_ksm Is
     Left Join stwrd_deg On stwrd_deg.id_number = concat.id_number
     ;
 
+End ksm_pkg_degrees;
+/
+
+Create Or Replace Package Body ksm_pkg_degrees Is
+
 /*************************************************************************
 Functions
 *************************************************************************/
@@ -399,22 +395,6 @@ Function get_entity_degrees_concat_fast(id In varchar2)
 Pipelined functions
 *************************************************************************/
 
--- Collection
-Function c_entity_degrees_concat_ksm
-  Return t_degreed_alumni As
-  -- Declarations
-  degrees t_degreed_alumni;
-    
-  Begin
-    If entity_degrees_concat_ksm %ISOPEN then
-      Close entity_degrees_concat_ksm;
-    End If;
-    Open entity_degrees_concat_ksm;
-      Fetch entity_degrees_concat_ksm Bulk Collect Into degrees;
-    Close entity_degrees_concat_ksm;
-    Return degrees;
-  End;
-
 -- Table function
 Function tbl_entity_degrees_concat_ksm(
     limit_size In pls_integer Default collect_default_limit
@@ -424,18 +404,18 @@ Function tbl_entity_degrees_concat_ksm(
   degrees t_degreed_alumni;
     
   Begin
-    If entity_degrees_concat_ksm %ISOPEN then
-      Close entity_degrees_concat_ksm;
+    If c_entity_degrees_concat_ksm %ISOPEN then
+      Close c_entity_degrees_concat_ksm;
     End If;
-    Open entity_degrees_concat_ksm;
+    Open c_entity_degrees_concat_ksm;
     Loop
-      Fetch entity_degrees_concat_ksm Bulk Collect Into degrees Limit limit_size;
+      Fetch c_entity_degrees_concat_ksm Bulk Collect Into degrees Limit limit_size;
       Exit When degrees.count = 0;
       For i in 1..(degrees.count) Loop
         Pipe row(degrees(i));
       End Loop;
     End Loop;
-    Close entity_degrees_concat_ksm;
+    Close c_entity_degrees_concat_ksm;
     Return;
   End;
 

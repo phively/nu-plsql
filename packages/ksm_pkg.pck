@@ -2909,7 +2909,9 @@ Function tbl_entity_degrees_concat_ksm
   degrees ksm_pkg_degrees.t_degreed_alumni;
     
   Begin
-    degrees := ksm_pkg_degrees.c_entity_degrees_concat_ksm;
+    Open ksm_pkg_degrees.c_entity_degrees_concat_ksm;
+      Fetch ksm_pkg_degrees.c_entity_degrees_concat_ksm Bulk Collect Into degrees;
+    Close ksm_pkg_degrees.c_entity_degrees_concat_ksm;
     For i in 1..(degrees.count) Loop
       Pipe row(degrees(i));
     End Loop;
