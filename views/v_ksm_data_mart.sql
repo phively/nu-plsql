@@ -45,6 +45,7 @@ Inner Join ADVANCE_NU_RPT.v_entity_ksm_degrees deg
   On deg.id_number = interest.id_number --- Only Kellogg Alumni
 Where tms_interest.interest_code Like 'L%' --- Any Linkedin Industry Code
   Or tms_Interest.interest_code = '16'  --- KIS also wants the "16" Research Code
+  Or tms_Interest.interest_code = 'SOC' --- Adding in social interest code
 and deg.record_status_code != 'X' --- Remove Purgable
 Order By interest_code Asc
 ;
