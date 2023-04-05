@@ -75,7 +75,7 @@ Function tbl_nu_ard_staff
 
 -- Return pipelined table of company employees with Kellogg degrees
 --   N.B. uses matches pattern, user beware!
-Function tbl_entity_employees_ksm (company In varchar2)
+Function tbl_entity_employees_ksm(company In varchar2)
   Return t_employees Pipelined;
 
 /*************************************************************************
@@ -239,7 +239,7 @@ Cursor c_entity_employees_ksm (company In varchar2) Is
     -- Prospect fields
     , prs.prospect_manager
     , prs.team
-  From table(tbl_entity_degrees_concat_ksm) deg -- KSM alumni definition
+  From table(ksm_pkg_degrees.tbl_entity_degrees_concat_ksm) deg -- KSM alumni definition
   Inner Join entity On deg.id_number = entity.id_number
   Inner Join tms_rec_status On tms_rec_status.record_status_code = entity.record_status_code
   Left Join employ On deg.id_number = employ.id_number
@@ -294,7 +294,7 @@ Function tbl_nu_ard_staff
 
 -- Pipelined function returning Kellogg alumni (per c_entity_degrees_concat_ksm) who
 -- work for the specified company
-Function tbl_entity_employees_ksm (company In varchar2)
+Function tbl_entity_employees_ksm(company In varchar2)
   Return t_employees Pipelined As
   -- Declarations
   employees t_employees;
