@@ -5,7 +5,7 @@ Create Or Replace View v_current_calendar As
   -- prev_fy, prev_fy2, prev_fy3, etc. for 1, 2, 3 years ago, e.g. prev_fy_today
   -- next_fy, next_fy2, next_fy3, etc. for 1, 2, 3 years in the future, e.g. next_fy_today
   Select cal.*
-  From table(ksm_pkg_tmp.tbl_current_calendar) cal
+  From table(ksm_pkg_calendar.tbl_current_calendar) cal
 ;
 
 Create Or Replace View v_random_id As
@@ -17,20 +17,20 @@ Create Or Replace View v_random_id As
 Create Or Replace View v_alloc_curr_use As
 -- View implementing KSM Current Use allocations (including AF flag) from ksm_pkg
   Select cru.*
-  From table(ksm_pkg_tmp.tbl_alloc_curr_use_ksm) cru
+  From table(ksm_pkg_allocation.tbl_alloc_curr_use_ksm) cru
 ;
 
 Create Or Replace View v_entity_ksm_degrees As
 -- View implementing KSM degree/certificate definitions, including concatenated degree strings, from ksm_pkg
   Select deg.*
-  From table(ksm_pkg_tmp.tbl_entity_degrees_concat_ksm) deg
+  From table(ksm_pkg_degrees.tbl_entity_degrees_concat_ksm) deg
 ;
 
 Create Or Replace View v_entity_ksm_households As
 -- View implementing the Kellogg householding definition from ksm_pkg
 -- Do not try to load all rows as this households every entity record in the database
   Select hh.*
-  From table(ksm_pkg_tmp.tbl_entity_households_ksm) hh
+  From table(ksm_pkg_households.tbl_entity_households_ksm) hh
 ;
 
 Create Or Replace View v_frontline_ksm_staff As
@@ -51,7 +51,7 @@ Create Or Replace View v_geo_code_primary As
 -- View defining primary geo code for each active address
 -- Primary key is id_number + xsequence
   Select *
-  From table(ksm_pkg_tmp.tbl_geo_code_primary)
+  From table(ksm_pkg_address.tbl_geo_code_primary)
 ;
 
 Create Or Replace View v_ksm_committees As 
