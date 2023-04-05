@@ -83,7 +83,7 @@ Public cursors -- data definitions
 *************************************************************************/
 
 -- Definition of frontline gift officers
-Cursor ct_frontline_ksm_staff Is
+Cursor c_frontline_ksm_staff Is
   With
   staff As (
     -- First query block pulls from past KSM staff materialized view
@@ -185,7 +185,7 @@ Cursor c_nu_ard_staff Is
   ;
 
 -- Definition of a Kellogg alum employed by a company
-Cursor c_entity_employees_ksm (company In varchar2) Is
+Cursor c_entity_employees_ksm(company In varchar2) Is
   With
   -- Employment table subquery
   employ As (
@@ -267,9 +267,9 @@ Function tbl_frontline_ksm_staff
   staff t_ksm_staff;
     
   Begin
-    Open ct_frontline_ksm_staff;
-      Fetch ct_frontline_ksm_staff Bulk Collect Into staff;
-    Close ct_frontline_ksm_staff;
+    Open c_frontline_ksm_staff;
+      Fetch c_frontline_ksm_staff Bulk Collect Into staff;
+    Close c_frontline_ksm_staff;
     For i in 1..(staff.count) Loop
       Pipe row(staff(i));
     End Loop;
@@ -300,7 +300,7 @@ Function tbl_entity_employees_ksm(company In varchar2)
   employees t_employees;
   
   Begin
-    Open c_entity_employees_ksm (company => company);
+    Open c_entity_employees_ksm(company => company);
       Fetch c_entity_employees_ksm Bulk Collect Into employees;
     Close c_entity_employees_ksm;
     For i in 1..(employees.count) Loop
