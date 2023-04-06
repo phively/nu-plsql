@@ -63,7 +63,7 @@ params As (
     , task_responsible_id
     , count(Distinct
         Case
-          When contact_date Between task_detail.date_added And task_detail.sched_date
+          When contact_date Between task_detail.date_added And cal.yesterday
             And task_code = 'CO'
             And task_status_code In ('1', '2')
             Then report_id
@@ -71,7 +71,7 @@ params As (
       ) As contacts_during_task
     , count(Distinct
         Case
-          When contact_date Between task_detail.date_added And task_detail.sched_date
+          When contact_date Between task_detail.date_added And cal.yesterday
             And task_code = 'CO'
             And task_status_code In ('3', '4', '5')
             Then report_id
@@ -79,7 +79,7 @@ params As (
     ) As contacts_during_task_inactive
     , count(Distinct
         Case
-          When contact_date Between task_detail.date_added And task_detail.sched_date
+          When contact_date Between task_detail.date_added And cal.yesterday
             And task_code = 'CO'
             And task_status_code In ('1', '2')
             And contact_type <> 'Visit'
@@ -94,6 +94,7 @@ params As (
           End
       ) As total_visits
   From task_detail
+  Cross Join rpt_pbh634.v_current_calendar cal
   Inner Join contact_reports cr
     On cr.prospect_id = task_detail.prospect_id2
   And cr.credited = task_detail.task_responsible_id
@@ -105,7 +106,10 @@ params As (
 , latest_contact As (
   Select Distinct 
     cr.id_number
-    , max(cr.contact_date) As latest_contact
+    , max(cr.contact_date) keep(dense_rank First Order By cr.contact_date Desc, cr.report_id Asc)
+      As latest_contact
+    , max(cr.credited_name) keep(dense_rank First Order By cr.contact_date Desc, cr.report_id Asc)
+      As latest_contact_author
   From contact_reports cr
   Group By cr.id_number
 )
@@ -142,6 +146,16 @@ params As (
   Where prospect_category_code In ('KT3','KT1')
 )
 
+, uor As (
+  Select
+    prospect_id
+    , evaluation_date As officer_rating_date
+    , rating_code
+  From evaluation
+  Where evaluation_type = 'UR'
+    And active_ind = 'Y'
+)
+
 -- Main query
 Select Distinct
   entity.id_number
@@ -156,6 +170,7 @@ Select Distinct
   , pp.evaluation_rating
   , pp.evaluation_date
   , pp.officer_rating
+  , uor.officer_rating_date
   , mgo.id_segment
   , mgo.id_score
   , mgo.pr_segment
@@ -223,6 +238,14 @@ Select Distinct
         Then 'Y'
       Else 'N'
       End
+    As current_kellogg_ind
+  , Case
+      When ksm_staff.former_staff Is Null
+        And ksm_staff.id_number Is Not Null
+        And ksm_staff.team = 'MG'
+        Then 'Y'
+      Else 'N'
+      End
     As current_mgo_ind
 From prospect p
 Inner Join prospect_entity pe
@@ -233,6 +256,8 @@ Inner Join rpt_pbh634.v_entity_ksm_households hh
   On hh.id_number = pe.id_number
 Left Join nu_prs_trp_prospect pp
   On pe.id_number = pp.id_number
+Left Join uor
+  On uor.prospect_id = pe.prospect_id
 Left Join program_prospect pr
   On pr.prospect_id = p.prospect_id
 Inner Join task_detail
