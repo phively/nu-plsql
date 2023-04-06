@@ -577,6 +577,7 @@ End of package
 
 End ksm_pkg_tst;
 /
+
 Create Or Replace Package Body ksm_pkg_tst Is
 
 /*************************************************************************
