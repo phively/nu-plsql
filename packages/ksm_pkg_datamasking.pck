@@ -27,7 +27,7 @@ Public function declarations
 *************************************************************************/
 
 -- Run the Vignere cypher on input text
-Function to_cypher_vignere(
+Function to_cypher_vigenere(
   phrase In varchar2
   , key In varchar2
   , wordlength In integer Default 5
@@ -94,7 +94,7 @@ Private cursors -- data definitions
 *************************************************************************/
 
 -- Vigenere cypher implementation adapted from http://www.orafaq.com/forum/t/156830/
-Cursor c_cypher_vignere(phrase In varchar2, key In varchar2, wordlength In integer Default 5) Is
+Cursor c_cypher_vigenere(phrase In varchar2, key In varchar2, wordlength In integer Default 5) Is
   With
   -- Input and key
   phrase_key As (
@@ -169,7 +169,7 @@ Functions
 *************************************************************************/
 
 -- Run the Vignere cypher on input text
-Function to_cypher_vignere(
+Function to_cypher_vigenere(
   phrase In varchar2
   , key In varchar2
   , wordlength In integer Default 5
@@ -179,9 +179,9 @@ Function to_cypher_vignere(
   cyphertext varchar2(1024);
   -- Run cypher
   Begin
-    Open c_cypher_vignere(phrase => phrase, key => key, wordlength => wordlength);
-    Fetch c_cypher_vignere Into cyphertext;
-    Close c_cypher_vignere;
+    Open c_cypher_vigenere(phrase => phrase, key => key, wordlength => wordlength);
+    Fetch c_cypher_vigenere Into cyphertext;
+    Close c_cypher_vigenere;
   Return cyphertext;
   End;
 
