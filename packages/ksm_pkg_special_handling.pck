@@ -152,7 +152,7 @@ Cursor c_special_handling_concat Is
       , a.id_number
       , a.appeal_month
       , a.appeal_year
-      , to_date2(a.appeal_year || a.appeal_month || '01', 'yyyymmdd')
+      , ksm_pkg_utility.to_date2(a.appeal_year || a.appeal_month || '01', 'yyyymmdd')
         As appeal_date
     From appeals a
     Inner Join appeal_header ah
@@ -172,7 +172,7 @@ Cursor c_special_handling_concat Is
           End
         As surveyed_last_4_months
     From surveys
-    Cross Join table(tbl_current_calendar) cal
+    Cross Join table(ksm_pkg_calendar.tbl_current_calendar) cal
     Where appeal_date <= cal.today
     Group By id_number
   )
