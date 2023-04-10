@@ -39,9 +39,9 @@ Left Join table2
 
 -- Vigenere
 Select
-  ksm_pkg_tst.to_cypher_vignere('hello', 'abc') As trzxb
-  , ksm_pkg_tst.to_cypher_vignere('hello', 'abcde') As trzae
-  , ksm_pkg_tst.to_cypher_vignere('this time', 'nowandthen') As "SHQEM INFU"
+  ksm_pkg_tst.to_cypher_vigenere('hello', 'abc') As trzxb
+  , ksm_pkg_tst.to_cypher_vigenere('hello', 'abcde') As trzae
+  , ksm_pkg_tst.to_cypher_vigenere('this time', 'nowandthen') As "SHQEM INFU"
 From DUAL
 ;
 

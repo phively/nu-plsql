@@ -46,6 +46,7 @@ Function tbl_random_id(
 Public cursors -- data definitions
 *************************************************************************/
 
+-- Random ID generator using dbms_random
 Cursor c_random_id Is
   With
   -- Random sort of entity table
