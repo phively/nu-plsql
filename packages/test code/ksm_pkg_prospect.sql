@@ -127,3 +127,45 @@ Cross Join mg_dates
 -- ksm_pkg tests
 ---------------------------
 
+-- Functions
+Select
+  id_number
+  , Case
+      When extracted_rating = ksm_pkg_tmp.get_prospect_rating_numeric(id_number) * 1E6
+        Then 'true'
+      Else 'FALSE'
+      End
+    As expected
+  , evaluation_rating
+  , officer_rating
+  , extracted_rating
+  , ksm_pkg_tmp.get_prospect_rating_numeric(id_number) As get_pr_num
+  , ksm_pkg_tmp.get_prospect_rating_bin(id_number) As get_pr_bin
+From test_ksm_pkg_prospect
+;
+
+-- Table functions
+Select *
+From table(ksm_pkg_tmp.tbl_prospect_entity_active)
+;
+
+Select *
+From table(ksm_pkg_tmp.tbl_university_strategy)
+;
+
+Select *
+From table(ksm_pkg_tmp.tbl_numeric_capacity_ratings)
+;
+
+-- Segment table functions
+Select *
+From table(ksm_pkg_tmp.tbl_model_af_10k)
+;
+
+Select *
+From table(ksm_pkg_tmp.tbl_model_mg_identification)
+;
+
+Select *
+From table(ksm_pkg_tmp.tbl_model_mg_prioritization)
+;
