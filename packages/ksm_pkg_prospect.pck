@@ -11,6 +11,12 @@ seg_af_10k Constant segment.segment_code%type := 'KMAA_'; -- AF $10K model patte
 seg_mg_id Constant segment.segment_code%type := 'KMID_'; -- MG identification model pattern
 seg_mg_pr Constant segment.segment_code%type := 'KMPR_'; -- MG prioritization model
 
+-- Most recent models
+seg_af_10k_mo Constant integer := 9;
+seg_af_10k_yr Constant integer := 2022;
+seg_mg_mo Constant integer := 10;
+seg_mg_yr Constant Integer := 2019;
+
 /*************************************************************************
 Public type declarations
 *************************************************************************/
@@ -71,10 +77,15 @@ Type t_prospect_categories Is Table Of prospect_categories;
 Public function declarations
 *************************************************************************/
 
--- Returns numeric constants
+-- Returns package constants
+Function get_string_constant(
+  const_name In varchar2 -- Name of constant to retrieve
+) Return varchar2 Deterministic;
+
 Function get_numeric_constant(
   const_name In varchar2 -- Name of constant to retrieve
 ) Return number Deterministic;
+
 
 -- Take entity ID and return officer or evaluation rating bin from nu_prs_trp_prospect
 Function get_prospect_rating_numeric(
@@ -108,18 +119,18 @@ Function tbl_numeric_capacity_ratings
 
 -- Return pipelined model scores
 Function tbl_model_af_10k(
-  model_year In integer
-  , model_month In integer
+  model_year In integer Default seg_af_10k_yr
+  , model_month In integer Default seg_af_10k_mo
 ) Return t_modeled_score Pipelined;
 
 Function tbl_model_mg_identification(
-  model_year In integer
-  , model_month In integer
+  model_year In integer Default seg_mg_yr
+  , model_month In integer Default seg_mg_mo
 ) Return t_modeled_score Pipelined;
 
 Function tbl_model_mg_prioritization(
-  model_year In integer
-  , model_month In integer
+  model_year In integer Default seg_mg_yr
+  , model_month In integer Default seg_mg_mo
 ) Return t_modeled_score Pipelined;
 
 /*************************************************************************
@@ -136,7 +147,7 @@ Cursor ct_numeric_capacity_ratings Is
       , short_desc As rating_desc
       , Case
           When rating_code = 0 Then 0
-          Else rpt_pbh634.ksm_pkg_tst.get_number_from_dollar(short_desc) / 1000000
+          Else ksm_pkg_utility.get_number_from_dollar(short_desc) / 1000000
         End As numeric_rating
     From tms_rating
   )
@@ -243,7 +254,7 @@ Cursor c_university_strategy Is
         Else uos.university_strategy
       End As university_strategy
     , Case
-        When prs.strategy_description Is Not Null Then to_date2(prs.strategy_date, 'mm/dd/yyyy')
+        When prs.strategy_description Is Not Null Then ksm_pkg_utility.to_date2(prs.strategy_date, 'mm/dd/yyyy')
         Else uos.strategy_sched_date
       End As strategy_sched_date
     , Case
@@ -289,8 +300,8 @@ Cursor c_segment_extract(year In integer, month In integer, code In varchar2) Is
   From segment s
   Inner Join segment_header sh On sh.segment_code = s.segment_code
   Where s.segment_code Like code
-    And to_number2(s.segment_year) = year
-    And to_number2(s.segment_month) = month
+    And ksm_pkg_utility.to_number2(s.segment_year) = year
+    And ksm_pkg_utility.to_number2(s.segment_month) = month
   ;
 
 /*************************************************************************
@@ -299,6 +310,26 @@ Functions
 
 -- Retrieve one of the named constants from the package 
 -- Requires a quoted constant name
+Function get_string_constant(const_name In varchar2)
+  Return varchar2 Deterministic Is
+  -- Declarations
+  val varchar2(100);
+  var varchar2(100);
+  
+  Begin
+    -- If const_name doesn't include ksm_pkg, prepend it
+    If substr(lower(const_name), 1, length(pkg_name)) <> pkg_name
+      Then var := pkg_name || '.' || const_name;
+    Else
+      var := const_name;
+    End If;
+    -- Run command
+    Execute Immediate
+      'Begin :val := ' || var || '; End;'
+      Using Out val;
+      Return val;
+  End;
+
 Function get_numeric_constant(const_name In varchar2)
   Return number Deterministic Is
   -- Declarations
@@ -333,13 +364,13 @@ Function get_prospect_rating_numeric(id In varchar2)
         When officer_rating <> ' ' Then
           Case
             When trim(substr(officer_rating, 1, 2)) = 'H' Then 0 -- Under $10K is 0
-            Else get_number_from_dollar(officer_rating) / 1000000 -- Everything else in millions
+            Else ksm_pkg_utility.get_number_from_dollar(officer_rating) / 1000000 -- Everything else in millions
           End
         -- Else use evaluation rating
         When evaluation_rating <> ' ' Then
           Case
             When trim(substr(evaluation_rating, 1, 2)) = 'H' Then 0
-            Else get_number_from_dollar(evaluation_rating) / 1000000 -- Everthing else in millions
+            Else ksm_pkg_utility.get_number_from_dollar(evaluation_rating) / 1000000 -- Everthing else in millions
           End
         Else 0
       End
@@ -388,6 +419,23 @@ Function tbl_prospect_entity_active
     Close c_prospect_entity_active;
     For i in 1..(pe.count) Loop
       Pipe row(pe(i));
+    End Loop;
+    Return;
+  End;
+
+-- Pipelined function returning Kellogg top 150/300 Campaign prospects
+-- Coded in Prospect Categories; see cursor for definition 
+Function tbl_entity_top_150_300
+  Return t_prospect_categories Pipelined As
+  -- Declarations
+  prospects t_prospect_categories;
+  
+  Begin
+    Open c_entity_top_150_300;
+      Fetch c_entity_top_150_300 Bulk Collect Into prospects;
+    Close c_entity_top_150_300;
+    For i in 1..(prospects.count) Loop
+      Pipe row(prospects(i));
     End Loop;
     Return;
   End;
