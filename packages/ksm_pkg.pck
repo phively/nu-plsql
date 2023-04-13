@@ -1,4 +1,4 @@
-Create Or Replace Package ksm_pkg_tst Is
+Create Or Replace Package ksm_pkg_tmp Is
 
 /*************************************************************************
 Author  : PBH634
@@ -476,10 +476,10 @@ Function tbl_committee_mbai
 End of package
 *************************************************************************/
 
-End ksm_pkg_tst;
+End ksm_pkg_tmp;
 /
 
-Create Or Replace Package Body ksm_pkg_tst Is
+Create Or Replace Package Body ksm_pkg_tmp Is
 
 /*************************************************************************
 Private cursors -- data definitions
@@ -1524,8 +1524,8 @@ Function get_numeric_constant(const_name In varchar2)
   
   Begin
     -- If const_name doesn't include ksm_pkg, prepend it
-    If substr(lower(const_name), 1, 8) <> 'ksm_pkg_tst.'
-      Then var := 'ksm_pkg_tst.' || const_name;
+    If substr(lower(const_name), 1, 8) <> 'ksm_pkg_tmp.'
+      Then var := 'ksm_pkg_tmp.' || const_name;
     Else
       var := const_name;
     End If;
@@ -1548,8 +1548,8 @@ Function get_string_constant(const_name In varchar2)
   
   Begin
     -- If const_name doesn't include ksm_pkg, prepend it
-    If substr(lower(const_name), 1, 8) <> 'ksm_pkg_tst.'
-      Then var := 'ksm_pkg_tst.' || const_name;
+    If substr(lower(const_name), 1, 8) <> 'ksm_pkg_tmp.'
+      Then var := 'ksm_pkg_tmp.' || const_name;
     Else
       var := const_name;
     End If;
@@ -2405,5 +2405,5 @@ Function tbl_special_handling_concat
         Return;
       End;
 
-End ksm_pkg_tst;
+End ksm_pkg_tmp;
 /
