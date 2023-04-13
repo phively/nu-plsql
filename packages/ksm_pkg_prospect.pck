@@ -117,7 +117,12 @@ Function tbl_university_strategy
 Function tbl_numeric_capacity_ratings
   Return t_numeric_capacity Pipelined;
 
--- Return pipelined model scores
+-- Return model scores
+-- Cursor accessor
+Function c_segment_extract(year In integer, month In integer, code In varchar2)
+Return t_modeled_score;
+
+-- Pipelined functions
 Function tbl_model_af_10k(
   model_year In integer Default seg_af_10k_yr
   , model_month In integer Default seg_af_10k_mo
@@ -138,7 +143,7 @@ Public cursors -- data definitions
 *************************************************************************/
 
 -- Definition of numeric capacity ratings
-Cursor ct_numeric_capacity_ratings Is
+Cursor c_numeric_capacity_ratings Is
   With
   -- Extract numeric ratings from tms_rating.short_desc
   numeric_rating As (
@@ -280,16 +285,8 @@ Cursor c_prospect_entity_active Is
   Where p.active_ind = 'Y' -- Active only
   ;
 
-End ksm_pkg_prospect;
-/
-Create Or Replace Package Body ksm_pkg_prospect Is
-
-/*************************************************************************
-Private cursors -- data definitions
-*************************************************************************/
-
 -- Extract from the segment table given the passed year, month, and segment code
-Cursor c_segment_extract(year In integer, month In integer, code In varchar2) Is
+Cursor segment_extract(year In integer, month In integer, code In varchar2) Is
   Select
     s.id_number
     , s.segment_year
@@ -303,6 +300,10 @@ Cursor c_segment_extract(year In integer, month In integer, code In varchar2) Is
     And ksm_pkg_utility.to_number2(s.segment_year) = year
     And ksm_pkg_utility.to_number2(s.segment_month) = month
   ;
+
+End ksm_pkg_prospect;
+/
+Create Or Replace Package Body ksm_pkg_prospect Is
 
 /*************************************************************************
 Functions
@@ -463,9 +464,9 @@ Function tbl_numeric_capacity_ratings
   caps t_numeric_capacity;
   
   Begin
-    Open ct_numeric_capacity_ratings;
-      Fetch ct_numeric_capacity_ratings Bulk Collect Into caps;
-    Close ct_numeric_capacity_ratings;
+    Open c_numeric_capacity_ratings;
+      Fetch c_numeric_capacity_ratings Bulk Collect Into caps;
+    Close c_numeric_capacity_ratings;
     For i in 1..(caps.count) Loop
       Pipe row(caps(i));
     End Loop;
@@ -473,16 +474,16 @@ Function tbl_numeric_capacity_ratings
   End;
 
 -- Generic function returning matching segment(s)
-Function segment_extract(year In integer, month In integer, code In varchar2)
+Function c_segment_extract(year In integer, month In integer, code In varchar2)
 Return t_modeled_score As
 -- Declarations
 score t_modeled_score;
 
 -- Return table results
 Begin
-    Open c_segment_extract(year => year, month => month, code => code);
-    Fetch c_segment_extract Bulk Collect Into score;
-    Close c_segment_extract;
+    Open segment_extract(year => year, month => month, code => code);
+    Fetch segment_extract Bulk Collect Into score;
+    Close segment_extract;
     Return score;
 End;
 
@@ -493,7 +494,7 @@ Return t_modeled_score Pipelined As
 score t_modeled_score;
 
 Begin
-    score := segment_extract(year => model_year, month => model_month, code => seg_af_10k);
+    score := c_segment_extract(year => model_year, month => model_month, code => seg_af_10k);
     For i in 1..(score.count) Loop
     Pipe row(score(i));
     End Loop;
@@ -507,9 +508,9 @@ Return t_modeled_score Pipelined As
 score t_modeled_score;
 
 Begin
-    Open c_segment_extract(year => model_year, month => model_month, code => seg_mg_id);
-    Fetch c_segment_extract Bulk Collect Into score;
-    Close c_segment_extract;
+    Open segment_extract(year => model_year, month => model_month, code => seg_mg_id);
+    Fetch segment_extract Bulk Collect Into score;
+    Close segment_extract;
     For i in 1..(score.count) Loop
     Pipe row(score(i));
     End Loop;
@@ -523,9 +524,9 @@ Return t_modeled_score Pipelined As
 score t_modeled_score;
 
 Begin
-    Open c_segment_extract(year => model_year, month => model_month, code => seg_mg_pr);
-    Fetch c_segment_extract Bulk Collect Into score;
-    Close c_segment_extract;
+    Open segment_extract(year => model_year, month => model_month, code => seg_mg_pr);
+    Fetch segment_extract Bulk Collect Into score;
+    Close segment_extract;
     For i in 1..(score.count) Loop
     Pipe row(score(i));
     End Loop;

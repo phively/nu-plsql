@@ -131,7 +131,7 @@ Cross Join mg_dates
 Select
   id_number
   , Case
-      When extracted_rating = ksm_pkg_tmp.get_prospect_rating_numeric(id_number) * 1E6
+      When extracted_rating = ksm_pkg_tst.get_prospect_rating_numeric(id_number) * 1E6
         Then 'true'
       Else 'FALSE'
       End
@@ -139,33 +139,33 @@ Select
   , evaluation_rating
   , officer_rating
   , extracted_rating
-  , ksm_pkg_tmp.get_prospect_rating_numeric(id_number) As get_pr_num
-  , ksm_pkg_tmp.get_prospect_rating_bin(id_number) As get_pr_bin
+  , ksm_pkg_tst.get_prospect_rating_numeric(id_number) As get_pr_num
+  , ksm_pkg_tst.get_prospect_rating_bin(id_number) As get_pr_bin
 From test_ksm_pkg_prospect
 ;
 
 -- Table functions
 Select *
-From table(ksm_pkg_tmp.tbl_prospect_entity_active)
+From table(ksm_pkg_tst.tbl_prospect_entity_active)
 ;
 
 Select *
-From table(ksm_pkg_tmp.tbl_university_strategy)
+From table(ksm_pkg_tst.tbl_university_strategy)
 ;
 
 Select *
-From table(ksm_pkg_tmp.tbl_numeric_capacity_ratings)
+From table(ksm_pkg_tst.tbl_numeric_capacity_ratings)
 ;
 
 -- Segment table functions
 Select *
-From table(ksm_pkg_tmp.tbl_model_af_10k)
+From table(ksm_pkg_tst.tbl_model_af_10k)
 ;
 
 Select *
-From table(ksm_pkg_tmp.tbl_model_mg_identification)
+From table(ksm_pkg_tst.tbl_model_mg_identification)
 ;
 
 Select *
-From table(ksm_pkg_tmp.tbl_model_mg_prioritization)
+From table(ksm_pkg_tst.tbl_model_mg_prioritization)
 ;
