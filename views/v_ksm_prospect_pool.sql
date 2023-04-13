@@ -20,12 +20,6 @@ ksm_deg As (
   From v_ksm_model_mg
 )
 
--- Kellogg Top 150/300
-, ksm_150_300 As (
-  Select *
-  From table(rpt_pbh634.ksm_pkg_tmp.tbl_entity_top_150_300)
-)
-
 -- Numeric rating bins
 , rating_bins As (
   Select *
@@ -45,18 +39,6 @@ ksm_deg As (
 
 -- Kellogg prospect interest
 , ksm_prs As (
-  (
-  -- Top 150/300
-  Select
-    prs_e.prospect_id
-    , prs_e.id_number
-    , prs_e.primary_ind
-    , 'Y' As ksm_prospect_interest_flag -- N.B. includes the 150/300 list
-  From program_prospect prs
-  Inner Join ksm_150_300 On ksm_150_300.prospect_id = prs.prospect_id
-  Inner Join prs_e On prs_e.prospect_id = prs.prospect_id
-  Inner Join entity on entity.id_number = prs_e.id_number
-  ) Union (
   Select
     prs_e.prospect_id
     , prs_e.id_number
@@ -70,7 +52,6 @@ ksm_deg As (
       And prs.active_ind = 'Y' -- Active only
       And entity.record_status_code Not In ('D', 'X') -- Exclude deceased, purgable
       And prs.stage_code Not In (7, 11) -- Exclude Disqualified, Permanent Stewardship
-  )
 )
 
 -- Previously disqualified prospects; note that this will include people with multiple prospect records
@@ -153,10 +134,6 @@ ksm_deg As (
 -- All prospects with an active Kellogg program code
 , ksm_prs_ids As (
   (
-  -- KSM top 150/300
-  Select id_number
-  From ksm_150_300
-  ) Union (
   -- KSM prospect program, not inactive or DQ
   Select id_number
   From ksm_prs
@@ -307,12 +284,7 @@ Select Distinct
   , assign.manager_ids
   , assign.managers
   , assign.curr_ksm_manager
-  -- Primary prospect for 150/300, or primary household member for everyone else
-  , Case
-      When ksm_150_300.primary_ind = 'Y' Then 'Y'
-      When ksm_150_300.primary_ind = 'N' Then NULL
-      When household_id = hh.id_number Then 'Y'
-    End As hh_primary
+  , hh.household_primary As hh_primary
   -- Rating bin
   , Case
       When officer_rating <> ' ' Then uor.numeric_rating
@@ -332,12 +304,7 @@ Select Distinct
   -- Which group?
   , ksm_prs.ksm_prospect_interest_flag
   , Case
-      -- Top 150
-      When ksm_150_300.prospect_category_code = 'KT1'
-        Then 'A. Top 150'
-      -- Top 300
-      When ksm_150_300.prospect_category_code = 'KT3'
-        Then 'B. Top 300'
+      -- (Removed Top 150/300)
       -- Assigned; exclude managed by Kellogg Donor Relations
       When assign.manager_ids Is Not Null
         And assign.prospect_manager_id Not In ('0000292130')
@@ -382,8 +349,6 @@ Left Join prs_e
   And prs_e.id_number = hh.id_number
 Left Join prospect
   On prospect.prospect_id = prs.prospect_id
-Left Join ksm_150_300
-  On ksm_150_300.id_number = hh.id_number
 Left Join entity contact_auth
   On contact_auth.id_number = prs.contact_author
 Left Join rpt_pbh634.v_assignment_summary assign

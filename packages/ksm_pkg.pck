@@ -353,10 +353,6 @@ Function tbl_entity_households_ksm
    N.B. uses matches pattern, user beware! */
 Function tbl_entity_employees_ksm(company In varchar2)
   Return ksm_pkg_employment.t_employees Pipelined;
-
-/* Return pipelined table of Top 150/300 KSM prospects */
-Function tbl_entity_top_150_300
-  Return ksm_pkg_prospect.t_prospect_categories Pipelined;
   
 /* Return pipelined table of KLC members */
 Function tbl_klc_history
@@ -1884,24 +1880,6 @@ Function tbl_entity_employees_ksm(company In varchar2)
     Close ksm_pkg_employment.c_entity_employees_ksm;
     For i in 1..(employees.count) Loop
       Pipe row(employees(i));
-    End Loop;
-    Return;
-  End;
-
-/* Pipelined function returning Kellogg top 150/300 Campaign prospects
-   Coded in Prospect Categories; see cursor for definition 
-   2017-12-20 */
-Function tbl_entity_top_150_300
-  Return ksm_pkg_prospect.t_prospect_categories Pipelined As
-  -- Declarations
-  prospects ksm_pkg_prospect.t_prospect_categories;
-  
-  Begin
-    Open ksm_pkg_prospect.c_entity_top_150_300;
-      Fetch ksm_pkg_prospect.c_entity_top_150_300 Bulk Collect Into prospects;
-    Close ksm_pkg_prospect.c_entity_top_150_300;
-    For i in 1..(prospects.count) Loop
-      Pipe row(prospects(i));
     End Loop;
     Return;
   End;

@@ -53,16 +53,6 @@ Type prospect_entity_active Is Record (
   , primary_ind prospect_entity.primary_ind%type
 );
 
-Type prospect_categories Is Record (
-  prospect_id prospect.prospect_id%type
-  , primary_ind prospect_entity.primary_ind%type
-  , id_number entity.id_number%type
-  , report_name entity.report_name%type
-  , person_or_org entity.person_or_org%type
-  , prospect_category_code tms_prospect_category.prospect_category_code%type
-  , prospect_category tms_prospect_category.short_desc%type
-);
-
 /*************************************************************************
 Public table declarations
 *************************************************************************/
@@ -71,7 +61,6 @@ Type t_university_strategy Is Table Of university_strategy;
 Type t_numeric_capacity Is Table Of numeric_capacity;
 Type t_modeled_score Is Table Of modeled_score;
 Type t_prospect_entity_active Is Table Of prospect_entity_active;
-Type t_prospect_categories Is Table Of prospect_categories;
 
 /*************************************************************************
 Public function declarations
@@ -104,10 +93,6 @@ Public pipelined functions declarations
 -- Return pipelined table of active prospect entities
 Function tbl_prospect_entity_active
   Return t_prospect_entity_active Pipelined;
-
--- Return pipelined table of Top 150/300 KSM prospects
-Function tbl_entity_top_150_300
-  Return t_prospect_categories Pipelined;
 
 -- Return pipelined tasks (including overall strategy)
 Function tbl_university_strategy
@@ -168,24 +153,6 @@ Cursor c_numeric_capacity_ratings Is
         Else numeric_rating
       End As numeric_bin
   From numeric_rating
-  ;
-
--- Definition of top 150/300 KSM campaign prospects
-Cursor c_entity_top_150_300 Is
-  Select
-    pc.prospect_id
-    , pe.primary_ind
-    , pe.id_number
-    , entity.report_name
-    , entity.person_or_org
-    , pc.prospect_category_code
-    , tms_pc.short_desc As prospect_category
-  From prospect_entity pe
-  Inner Join prospect_category pc On pc.prospect_id = pe.prospect_id
-  Inner Join entity On pe.id_number = entity.id_number
-  Inner Join tms_prospect_category tms_pc On tms_pc.prospect_category_code = pc.prospect_category_code
-  Where pc.prospect_category_code In ('KT1', 'KT3')
-  Order By pe.prospect_id Asc, pe.primary_ind Desc
   ;
 
 -- Definition of university strategy
@@ -420,23 +387,6 @@ Function tbl_prospect_entity_active
     Close c_prospect_entity_active;
     For i in 1..(pe.count) Loop
       Pipe row(pe(i));
-    End Loop;
-    Return;
-  End;
-
--- Pipelined function returning Kellogg top 150/300 Campaign prospects
--- Coded in Prospect Categories; see cursor for definition 
-Function tbl_entity_top_150_300
-  Return t_prospect_categories Pipelined As
-  -- Declarations
-  prospects t_prospect_categories;
-  
-  Begin
-    Open c_entity_top_150_300;
-      Fetch c_entity_top_150_300 Bulk Collect Into prospects;
-    Close c_entity_top_150_300;
-    For i in 1..(prospects.count) Loop
-      Pipe row(prospects(i));
     End Loop;
     Return;
   End;
