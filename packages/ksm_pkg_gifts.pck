@@ -5,6 +5,7 @@ Public constant declarations
 *************************************************************************/
 
 pkg_name Constant varchar2(64) := 'ksm_pkg_gifts';
+collect_default_limit Constant pls_integer := 100;
 
 /*************************************************************************
 Public type declarations
@@ -89,10 +90,14 @@ Public pipelined functions declarations
 Function tbl_plg_discount
   Return t_plg_disc Pipelined;
 
-Function tbl_gift_credit
+Function tbl_gift_credit(
+    limit_size In pls_integer Default collect_default_limit
+  )
   Return t_trans_entity Pipelined;
 
-Function tbl_gift_credit_ksm
+Function tbl_gift_credit_ksm(
+    limit_size In pls_integer Default collect_default_limit
+  )
   Return t_trans_entity Pipelined;
 
 /*************************************************************************
@@ -898,34 +903,50 @@ Function tbl_plg_discount
   End;
 
 -- Individual entity giving, all units, based on c_gift_credit
-Function tbl_gift_credit
+Function tbl_gift_credit(
+    limit_size In pls_integer Default collect_default_limit
+  )
   Return t_trans_entity Pipelined As
   -- Declarations
   trans t_trans_entity;
   
   Begin
+    If c_gift_credit %ISOPEN then
+      Close c_gift_credit;
+    End If;
     Open c_gift_credit;
-      Fetch c_gift_credit Bulk Collect Into trans;
-    Close c_gift_credit;
-    For i in 1..(trans.count) Loop
-      Pipe row(trans(i));
+    Loop
+      Fetch c_gift_credit Bulk Collect Into trans Limit limit_size;
+      Exit When trans.count = 0;
+      For i in 1..(trans.count) Loop
+        Pipe row(trans(i));
+      End Loop;
     End Loop;
+    Close c_gift_credit;
     Return;
   End;
 
 -- Individual entity giving, based on c_gift_credit_ksm
-Function tbl_gift_credit_ksm
+Function tbl_gift_credit_ksm(
+    limit_size In pls_integer Default collect_default_limit
+  )
   Return t_trans_entity Pipelined As
   -- Declarations
   trans t_trans_entity;
   
   Begin
+    If c_gift_credit_ksm %ISOPEN then
+      Close c_gift_credit_ksm;
+    End If;
     Open c_gift_credit_ksm;
-      Fetch c_gift_credit_ksm Bulk Collect Into trans;
-    Close c_gift_credit_ksm;
-    For i in 1..(trans.count) Loop
-      Pipe row(trans(i));
+    Loop
+      Fetch c_gift_credit_ksm Bulk Collect Into trans Limit limit_size;
+      Exit When trans.count = 0;
+      For i in 1..(trans.count) Loop
+        Pipe row(trans(i));
+      End Loop;
     End Loop;
+    Close c_gift_credit_ksm;
     Return;
   End;
 

@@ -50,7 +50,61 @@ Inner Join entity
 
 -- Table functions
 
+Select count(*)
+From table(ksm_pkg_gifts.tbl_plg_discount)
+;
+
+Select count(*)
+From table(ksm_pkg_gifts.tbl_gift_credit)
+;
+
+Select count(*)
+From table(ksm_pkg_gifts.tbl_gift_credit_ksm)
+;
+
 ---------------------------
 -- ksm_pkg tests
 ---------------------------
 
+-- Functions
+With
+srcdnrs As (
+    Select Distinct
+        tst.tx_number
+        , ksm_pkg_tst.get_gift_source_donor_ksm(tx_number)
+            As result
+        , tst.expected
+        , tst.explanation
+    From test_ksm_pkg_gifts_src_dnr tst
+)
+Select
+  Case
+    When result = expected
+      Then 'true'
+    Else 'FALSE'
+    End
+    As pass
+  , srcdnrs.tx_number
+  , srcdnrs.result
+  , srcdnrs.expected
+  , srcdnrs.explanation
+  , entity.person_or_org
+  , entity.institutional_suffix
+From srcdnrs
+Inner Join entity
+    On entity.id_number = srcdnrs.result
+;
+
+-- Table functions
+
+Select count(*)
+From table(ksm_pkg_tst.plg_discount)
+;
+
+Select count(*)
+From table(ksm_pkg_tst.tbl_gift_credit)
+;
+
+Select count(*)
+From table(ksm_pkg_tst.tbl_gift_credit_ksm)
+;
