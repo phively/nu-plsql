@@ -11,7 +11,7 @@ Create Or Replace View v_current_calendar As
 Create Or Replace View v_random_id As
 -- View converting from entity ID to a random row number for use in masked data sets
   Select rid.*
-  From table(ksm_pkg_tmp.tbl_random_id) rid
+  From table(ksm_pkg_datamasking.tbl_random_id) rid
 ;
 
 Create Or Replace View v_alloc_curr_use As
@@ -37,14 +37,14 @@ Create Or Replace View v_frontline_ksm_staff As
 -- View for pulling current and past frontline KSM staff from ksm_pkg
 -- New staff and start/stop dates need to be added to mv_past_ksm_gos to be reflected in this view
   Select fs.*
-  From table(ksm_pkg_tmp.tbl_frontline_ksm_staff) fs
+  From table(ksm_pkg_employment.tbl_frontline_ksm_staff) fs
 ;
 
 Create Or Replace View v_entity_special_handling As
 -- View pulling together active special handling and mailing list codes for all entities with at least one
 -- Use ONLY for Kellogg mailings!
   Select sh.*
-  From table(ksm_pkg_tmp.tbl_special_handling_concat) sh
+  From table(ksm_pkg_special_handling.tbl_special_handling_concat) sh
 ;
 
 Create Or Replace View v_geo_code_primary As
@@ -52,17 +52,4 @@ Create Or Replace View v_geo_code_primary As
 -- Primary key is id_number + xsequence
   Select *
   From table(ksm_pkg_address.tbl_geo_code_primary)
-;
-
-Create Or Replace View v_ksm_committees As 
--- View combining all committee table functions from ksm_package into a set of indicators
---  With
-    Select id_number
-    From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_gab)
--- Union each committee ID set
--- Find spouses
--- Union for final IDs
--- Indicators
---  Select *
---  From DUAL
 ;

@@ -8,8 +8,8 @@ Select
   , cal.today
   , cal.yesterday
   , cal.curr_fy
-From table(ksm_pkg_tmp.tbl_gift_credit_ksm) g
-Cross Join table(ksm_pkg_tmp.tbl_current_calendar) cal
+From table(ksm_pkg_gifts.tbl_gift_credit_ksm) g
+Cross Join table(ksm_pkg_calendar.tbl_current_calendar) cal
 ;
 
 /*************************************************
@@ -23,7 +23,7 @@ Select
   , cal.yesterday
   , cal.curr_fy
 From table(ksm_pkg_tmp.tbl_gift_credit_hh_ksm) g
-Cross Join table(ksm_pkg_tmp.tbl_current_calendar) cal
+Cross Join table(ksm_pkg_calendar.tbl_current_calendar) cal
 ;
 
 /*************************************************
@@ -429,7 +429,7 @@ Select
   , Case When anonymous_pfy5 > 0 Then 'Y' End As anonymous_pfy5_flag
 From trans
 Cross Join params
-Left Join table(ksm_pkg_tmp.tbl_special_handling_concat) shc
+Left Join table(ksm_pkg_special_handling.tbl_special_handling_concat) shc
   On shc.id_number = trans.id_number
 ;
 
@@ -477,7 +477,7 @@ manual_dates As (
 )
 , hh As (
   Select *
-  From table(ksm_pkg_tmp.tbl_entity_households_ksm)
+  From table(ksm_pkg_households.tbl_entity_households_ksm)
 )
 , cgft As (
   Select *
@@ -639,7 +639,7 @@ cal As (
 )
 , ytd_dts As (
   Select to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1 As dt,
-    ksm_pkg_tmp.fytd_indicator(to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1) As ytd_ind
+    ksm_pkg_calendar.fytd_indicator(to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1) As ytd_ind
   From cal
   Connect By
     rownum <= (to_date('09/01/' || cal.curr_fy, 'mm/dd/yyyy') - to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy'))
@@ -696,7 +696,7 @@ cal As (
 )
 , ytd_dts As (
   Select to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1 As dt,
-    ksm_pkg_tmp.fytd_indicator(to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1) As ytd_ind
+    ksm_pkg_calendar.fytd_indicator(to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1) As ytd_ind
   From cal
   Connect By
     rownum <= (to_date('09/01/' || cal.curr_fy, 'mm/dd/yyyy') - to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy'))
