@@ -114,7 +114,7 @@ Cursor c_source_donor_ksm (receipt In varchar2) Is
   Select
     gft.tx_number
     , gft.id_number
-    , get_entity_degrees_concat_fast(id_number) As ksm_degrees
+    , ksm_pkg_degrees.get_entity_degrees_concat_fast(id_number) As ksm_degrees
     , gft.person_or_org
     , gft.associated_code
     , gft.credit_amount
@@ -123,7 +123,7 @@ Cursor c_source_donor_ksm (receipt In varchar2) Is
     And associated_code Not In ('H', 'M') -- Exclude In Honor Of and In Memory Of from consideration
   Order By
     -- People with earlier KSM degree years take precedence over those with later ones
-    get_entity_degrees_concat_fast(id_number) Asc
+    ksm_pkg_degrees.get_entity_degrees_concat_fast(id_number) Asc
     -- People with smaller ID numbers take precedence over those with larger ones
     , id_number Asc
   ;
@@ -223,7 +223,7 @@ Cursor c_gift_credit Is
       , Case When ksm_cru_allocs.af_flag Is Not Null Then 'Y' End As cru_flag
       , Case When ksm_cru_allocs.af_flag = 'Y' Then 'Y' End As af_flag
     From allocation
-    Left Join table(tbl_alloc_curr_use_ksm) ksm_cru_allocs
+    Left Join table(ksm_pkg_allocation.tbl_alloc_curr_use_ksm) ksm_cru_allocs
       On ksm_cru_allocs.allocation_code = allocation.allocation_code
   )
   , tms_trans As (
@@ -278,7 +278,7 @@ Cursor c_gift_credit Is
       , NULL As proposal_id
       , NULL As pledge_status
       , match_gift_date_of_record
-      , get_fiscal_year(match_gift_date_of_record)
+      , ksm_pkg_calendar.get_fiscal_year(match_gift_date_of_record)
       -- Full legal amount to matching company
       , match_gift_amount
       , match_gift_amount
@@ -328,7 +328,7 @@ Cursor c_gift_credit Is
       , NULL As proposal_id
       , NULL As pledge_status
       , match_gift_date_of_record
-      , get_fiscal_year(match_gift_date_of_record)
+      , ksm_pkg_calendar.get_fiscal_year(match_gift_date_of_record)
       -- 0 legal amount to matched donors
       , Case When gft.id_number = match_gift_company_id Then match_gift_amount Else 0 End As legal_amount
       , match_gift_amount
@@ -391,14 +391,14 @@ Cursor c_gift_credit Is
       , Case When primary_gift.proposal_id <> 0 Then primary_gift.proposal_id End As proposal_id
       , NULL As pledge_status
       , gift.gift_date_of_record As date_of_record
-      , get_fiscal_year(gift.gift_date_of_record) As fiscal_year
+      , ksm_pkg_calendar.get_fiscal_year(gift.gift_date_of_record) As fiscal_year
       , gift.gift_associated_amount As legal_amount
       , gift.gift_associated_credit_amt As credit_amount
       -- Recognition credit; for $0 internal transfers, extract dollar amount stated in comment
       , Case
           When tms_pmt_type.payment_type = 'Internal Transfer'
             And gift.gift_associated_credit_amt = 0
-            Then get_number_from_dollar(primary_gift.prim_gift_comment)
+            Then ksm_pkg_utility.get_number_from_dollar(primary_gift.prim_gift_comment)
           Else gift.gift_associated_credit_amt
         End As recognition_credit
       -- Stewardship credit, where pledge payments are counted at face value provided the pledge
@@ -407,14 +407,14 @@ Cursor c_gift_credit Is
           -- Internal transfers logic
           When tms_pmt_type.payment_type = 'Internal Transfer'
             And gift.gift_associated_credit_amt = 0
-            Then get_number_from_dollar(primary_gift.prim_gift_comment)
+            Then ksm_pkg_utility.get_number_from_dollar(primary_gift.prim_gift_comment)
           -- When no associated pledge use credit amount
           When primary_pledge.prim_pledge_number Is Null
             Then gift.gift_associated_credit_amt
           -- When a pledge transaction type, check the year
           Else Case
             -- Zero out when pledge fiscal year and payment fiscal year are the same
-            When primary_pledge.prim_pledge_year_of_giving = get_fiscal_year(gift.gift_date_of_record)
+            When primary_pledge.prim_pledge_year_of_giving = ksm_pkg_calendar.get_fiscal_year(gift.gift_date_of_record)
               Then 0
             Else gift.gift_associated_credit_amt
             End
@@ -470,7 +470,7 @@ Cursor c_gift_credit Is
       , Case When proposal_id <> 0 Then proposal_id End As proposal_id
       , prim_pledge_status
       , pledge_date_of_record
-      , get_fiscal_year(pledge_date_of_record)
+      , ksm_pkg_calendar.get_fiscal_year(pledge_date_of_record)
       , plgd.legal
       , plgd.credit
       , plgd.recognition_credit
@@ -502,7 +502,7 @@ Cursor c_gift_credit_ksm Is
   /* KSM allocations */
   , ksm_cru_allocs As (
     Select *
-    From table(tbl_alloc_curr_use_ksm) cru
+    From table(ksm_pkg_allocation.tbl_alloc_curr_use_ksm) cru
   )
   , ksm_allocs As (
     Select
@@ -569,7 +569,7 @@ Cursor c_gift_credit_ksm Is
       , NULL As proposal_id
       , NULL As pledge_status
       , match_gift_date_of_record
-      , get_fiscal_year(match_gift_date_of_record)
+      , ksm_pkg_calendar.get_fiscal_year(match_gift_date_of_record)
       -- Full legal amount to matching company
       , match_gift_amount
       , match_gift_amount
@@ -619,7 +619,7 @@ Cursor c_gift_credit_ksm Is
       , NULL As proposal_id
       , NULL As pledge_status
       , match_gift_date_of_record
-      , get_fiscal_year(match_gift_date_of_record)
+      , ksm_pkg_calendar.get_fiscal_year(match_gift_date_of_record)
       -- 0 legal amount to matched donors
       , Case When gft.id_number = match_gift_company_id Then match_gift_amount Else 0 End As legal_amount
       , match_gift_amount
@@ -682,14 +682,14 @@ Cursor c_gift_credit_ksm Is
       , Case When primary_gift.proposal_id <> 0 Then primary_gift.proposal_id End As proposal_id
       , NULL As pledge_status
       , gift.gift_date_of_record As date_of_record
-      , get_fiscal_year(gift.gift_date_of_record) As fiscal_year
+      , ksm_pkg_calendar.get_fiscal_year(gift.gift_date_of_record) As fiscal_year
       , gift.gift_associated_amount As legal_amount
       , gift.gift_associated_credit_amt As credit_amount
       -- Recognition credit; for $0 internal transfers, extract dollar amount stated in comment
       , Case
           When tms_pmt_type.payment_type = 'Internal Transfer'
             And gift.gift_associated_credit_amt = 0
-            Then get_number_from_dollar(primary_gift.prim_gift_comment)
+            Then ksm_pkg_utility.get_number_from_dollar(primary_gift.prim_gift_comment)
           Else gift.gift_associated_credit_amt
         End As recognition_credit
       -- Stewardship credit, where pledge payments are counted at face value provided the pledge
@@ -698,14 +698,14 @@ Cursor c_gift_credit_ksm Is
           -- Internal transfers logic
           When tms_pmt_type.payment_type = 'Internal Transfer'
             And gift.gift_associated_credit_amt = 0
-            Then get_number_from_dollar(primary_gift.prim_gift_comment)
+            Then ksm_pkg_utility.get_number_from_dollar(primary_gift.prim_gift_comment)
           -- When no associated pledge use credit amount
           When primary_pledge.prim_pledge_number Is Null
             Then gift.gift_associated_credit_amt
           -- When a pledge transaction type, check the year
           Else Case
             -- Zero out when pledge fiscal year and payment fiscal year are the same
-            When primary_pledge.prim_pledge_year_of_giving = get_fiscal_year(gift.gift_date_of_record)
+            When primary_pledge.prim_pledge_year_of_giving = ksm_pkg_calendar.get_fiscal_year(gift.gift_date_of_record)
               Then 0
             Else gift.gift_associated_credit_amt
             End
@@ -755,7 +755,7 @@ Cursor c_gift_credit_ksm Is
       , Case When proposal_id <> 0 Then proposal_id End As proposal_id
       , prim_pledge_status
       , pledge_date_of_record
-      , get_fiscal_year(pledge_date_of_record)
+      , ksm_pkg_calendar.get_fiscal_year(pledge_date_of_record)
       , plgd.legal
       , plgd.credit
       , plgd.recognition_credit
@@ -786,13 +786,150 @@ Cursor c_gift_credit_ksm Is
 Functions
 *************************************************************************/
 
+-- Takes a receipt number and returns the ID number of the entity who should receive primary Kellogg gift credit.
+-- Relies on nu_gft_trp_gifttrans, which combines gifts and matching gifts into a single table.
+-- Kellogg alumni status is defined as ksm_pkg_degrees.get_entity_degrees_concat_ksm(id_number) returning a non-null result.
+Function get_gift_source_donor_ksm(receipt In varchar2, debug In boolean Default FALSE)
+  Return varchar2 Is
+  -- Declarations
+  gift_type char(1); -- GPYM indicator
+  donor_type char(1); -- record type of primary associated donor
+  id_tmp varchar2(10); -- temporary holder for id_number or receipt
+  -- Table type corresponding to above cursor
+  Type t_results Is Table Of c_source_donor_ksm%rowtype;
+    results t_results;
 
+  Begin
+    -- Check if the receipt is a matching gift
+    Select Distinct gift.tx_gypm_ind
+    Into gift_type
+    From nu_gft_trp_gifttrans gift
+    Where gift.tx_number = receipt;
+
+  -- For matching gifts, recursively run this function but replace the matching gift receipt with matched receipt
+    If gift_type = 'M' Then
+      -- If debug, mention that it's a matched gift
+      If debug Then
+        dbms_output.put_line('==== Matching Gift! ====' || chr(10) || '*Matching receipt: ' || receipt);
+      End If;
+      -- Pull the matched receipt into id_tmp
+      Select gift.matched_receipt_nbr
+      Into id_tmp
+      From nu_gft_trp_gifttrans gift
+      Where gift.tx_number = receipt;
+      -- Run id_tmp through this function
+      id_tmp := get_gift_source_donor_ksm(receipt => id_tmp,  debug => debug);
+      -- Return found ID and break out of function
+      Return(id_tmp);
+    End If;
+  -- For any other type of gift, proceed through the hierarchy of potential source donors
+    -- Retrieve c_source_donor_ksm cursor results
+    Open c_source_donor_ksm(receipt => receipt);
+      Fetch c_source_donor_ksm Bulk Collect Into results;
+    Close c_source_donor_ksm;
+    -- Debug -- test that the cursors worked --
+    If debug Then
+      dbms_output.put_line('==== Cursor Results ====' || chr(10) || '*Gift receipt: ' || receipt);
+      -- Loop through the lists
+      For i In 1..(results.count) Loop
+        -- Concatenate output
+        dbms_output.put_line(results(i).id_number || '; ' || results(i).ksm_degrees || '; ' || results(i).person_or_org || '; ' ||
+          results(i).associated_code || '; ' || results(i).credit_amount);
+      End Loop;
+    End If;
+    -- Check if the primary donor has a KSM degree
+    For i In 1..(results.count) Loop
+      If results(i).associated_code = 'P' Then
+        -- Store the record type of the primary donor
+        donor_type := results(i).person_or_org;
+        -- If the primary donor is a KSM alum we're done
+        If results(i).ksm_degrees Is Not Null Then
+          Return(results(i).id_number);
+        -- Otherwise jump to next check
+        Else Exit;
+        End If;
+      End If;
+    End Loop;
+    -- Check if any non-primary donors have a KSM degree; grab first that has a non-null l_degrees
+    -- IMPORTANT: this means the cursor c_source_donor_ksm needs to be sorted in preferred order!
+    For i In 1..(results.count) Loop
+      -- If we find a KSM alum we're done
+      If results(i).ksm_degrees Is Not Null Then
+        Return(results(i).id_number);
+      End If;
+    End Loop;
+    -- Check if the primary donor is an organization; if so, grab first person who's associated
+    -- IMPORTANT: this means the cursor c_source_donor_ksm needs to be sorted in preferred order!
+    -- If primary record type is not person, continue
+    If donor_type != 'P' Then  
+      For i In 1..(results.count) Loop
+        If results(i).person_or_org = 'P' Then
+          return(results(i).id_number);
+        End If;
+      End Loop;  
+    End If;
+    -- Fallback is to use the existing primary donor ID
+    For i In 1..(results.count) Loop
+      -- If we find a KSM alum we're done
+      If results(i).associated_code = 'P' Then
+        Return(results(i).id_number);
+      End If;
+    End Loop;
+    -- If we got all the way to the end, return null
+    Return(NULL);
+  End;
 
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
 
+-- Function to return discounted pledge amounts
+Function plg_discount
+  Return t_plg_disc Pipelined As
+  -- Declarations
+  trans t_plg_disc;
+  
+  Begin
+    Open c_plg_discount;
+      Fetch c_plg_discount Bulk Collect Into trans;
+    Close c_plg_discount;
+    For i in 1..(trans.count) Loop
+      Pipe row(trans(i));
+    End Loop;
+    Return;
+  End;
 
+-- Individual entity giving, all units, based on c_gift_credit
+Function tbl_gift_credit
+  Return t_trans_entity Pipelined As
+  -- Declarations
+  trans t_trans_entity;
+  
+  Begin
+    Open c_gift_credit;
+      Fetch c_gift_credit Bulk Collect Into trans;
+    Close c_gift_credit;
+    For i in 1..(trans.count) Loop
+      Pipe row(trans(i));
+    End Loop;
+    Return;
+  End;
+
+-- Individual entity giving, based on c_gift_credit_ksm
+Function tbl_gift_credit_ksm
+  Return t_trans_entity Pipelined As
+  -- Declarations
+  trans t_trans_entity;
+  
+  Begin
+    Open c_gift_credit_ksm;
+      Fetch c_gift_credit_ksm Bulk Collect Into trans;
+    Close c_gift_credit_ksm;
+    For i in 1..(trans.count) Loop
+      Pipe row(trans(i));
+    End Loop;
+    Return;
+  End;
 
 End ksm_pkg_gifts;
 /
