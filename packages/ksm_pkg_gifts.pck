@@ -86,7 +86,7 @@ Public pipelined functions declarations
 *************************************************************************/
 
 -- Returns pipelined table of Kellogg transactions
-Function plg_discount
+Function tbl_plg_discount
   Return t_plg_disc Pipelined;
 
 Function tbl_gift_credit
@@ -98,35 +98,6 @@ Function tbl_gift_credit_ksm
 /*************************************************************************
 Public cursors -- data definitions
 *************************************************************************/
-
-
-
-End ksm_pkg_gifts;
-/
-Create Or Replace Package Body ksm_pkg_gifts Is
-
-/*************************************************************************
-Private cursors -- data definitions
-*************************************************************************/
-
--- Definition of Kellogg gift source donor
-Cursor c_source_donor_ksm (receipt In varchar2) Is
-  Select
-    gft.tx_number
-    , gft.id_number
-    , ksm_pkg_degrees.get_entity_degrees_concat_fast(id_number) As ksm_degrees
-    , gft.person_or_org
-    , gft.associated_code
-    , gft.credit_amount
-  From nu_gft_trp_gifttrans gft
-  Where gft.tx_number = receipt
-    And associated_code Not In ('H', 'M') -- Exclude In Honor Of and In Memory Of from consideration
-  Order By
-    -- People with earlier KSM degree years take precedence over those with later ones
-    ksm_pkg_degrees.get_entity_degrees_concat_fast(id_number) Asc
-    -- People with smaller ID numbers take precedence over those with larger ones
-    , id_number Asc
-  ;
 
 -- Definition of discounted pledge amounts
 Cursor c_plg_discount Is
@@ -206,14 +177,41 @@ Cursor c_plg_discount Is
     Or pledge_alloc_school = 'KM'
   ;
 
+End ksm_pkg_gifts;
+/
+Create Or Replace Package Body ksm_pkg_gifts Is
+
+/*************************************************************************
+Private cursors -- data definitions
+*************************************************************************/
+
+-- Definition of Kellogg gift source donor
+Cursor c_source_donor_ksm(receipt In varchar2) Is
+  Select
+    gft.tx_number
+    , gft.id_number
+    , ksm_pkg_degrees.get_entity_degrees_concat_fast(id_number) As ksm_degrees
+    , gft.person_or_org
+    , gft.associated_code
+    , gft.credit_amount
+  From nu_gft_trp_gifttrans gft
+  Where gft.tx_number = receipt
+    And associated_code Not In ('H', 'M') -- Exclude In Honor Of and In Memory Of from consideration
+  Order By
+    -- People with earlier KSM degree years take precedence over those with later ones
+    ksm_pkg_degrees.get_entity_degrees_concat_fast(id_number) Asc
+    -- People with smaller ID numbers take precedence over those with larger ones
+    , id_number Asc
+  ;
+
 -- Rework of match + matched + gift + payment + pledge union definition
 -- Intended to replace nu_gft_trp_gifttrans with KSM-specific fields 
 -- Shares significant code with c_gift_credit_ksm below
 Cursor c_gift_credit Is
   With
-  plg_discount As (
+  tbl_plg_discount As (
     Select *
-    From table(plg_discount)
+    From table(tbl_plg_discount)
   )
   , ksm_allocs As (
     Select
@@ -483,7 +481,7 @@ Cursor c_gift_credit Is
     -- Allocation name backup
     Inner Join allocation On allocation.allocation_code = pledge.pledge_allocation_name
     -- Discounted pledge amounts where applicable
-    Left Join plg_discount plgd On plgd.pledge_number = pledge.pledge_pledge_number
+    Left Join tbl_plg_discount plgd On plgd.pledge_number = pledge.pledge_pledge_number
       And plgd.pledge_sequence = pledge.pledge_sequence
     -- KSM AF flag
     Left Join ksm_allocs On ksm_allocs.allocation_code = pledge.pledge_allocation_name
@@ -495,9 +493,9 @@ Cursor c_gift_credit Is
 Cursor c_gift_credit_ksm Is
   With
   /* Primary pledge discounted amounts */
-  plg_discount As (
+  tbl_plg_discount As (
     Select *
-    From table(plg_discount)
+    From table(tbl_plg_discount)
   )
   /* KSM allocations */
   , ksm_cru_allocs As (
@@ -768,7 +766,7 @@ Cursor c_gift_credit_ksm Is
     -- Allocation name backup
     Inner Join allocation On allocation.allocation_code = pledge.pledge_allocation_name
     -- Discounted pledge amounts where applicable
-    Left Join plg_discount plgd On plgd.pledge_number = pledge.pledge_pledge_number
+    Left Join tbl_plg_discount plgd On plgd.pledge_number = pledge.pledge_pledge_number
       And plgd.pledge_sequence = pledge.pledge_sequence
     -- KSM AF flag
     Left Join ksm_allocs On ksm_allocs.allocation_code = pledge.pledge_allocation_name
@@ -884,7 +882,7 @@ Pipelined functions
 *************************************************************************/
 
 -- Function to return discounted pledge amounts
-Function plg_discount
+Function tbl_plg_discount
   Return t_plg_disc Pipelined As
   -- Declarations
   trans t_plg_disc;
