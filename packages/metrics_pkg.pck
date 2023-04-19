@@ -472,15 +472,15 @@ Cursor c_contact_reports Is
     , contact_purpose_code
     , extract(year From contact_date)
       As cal_year
-    , rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(contact_date)
+    , rpt_pbh634.ksm_pkg_calendar.get_fiscal_year(contact_date)
       As fiscal_year
     , extract(month From contact_date)
       As cal_month
-    , rpt_pbh634.ksm_pkg_tmp.get_quarter(contact_date, 'fisc')
+    , rpt_pbh634.ksm_pkg_calendar.get_quarter(contact_date, 'fisc')
       As fiscal_qtr
-    , rpt_pbh634.ksm_pkg_tmp.get_quarter(contact_date, 'perf')
+    , rpt_pbh634.ksm_pkg_calendar.get_quarter(contact_date, 'perf')
       As perf_quarter
-    , rpt_pbh634.ksm_pkg_tmp.get_performance_year(contact_date)
+    , rpt_pbh634.ksm_pkg_calendar.get_performance_year(contact_date)
       As perf_year -- performance year
   From contact_report
   Where contact_type = 'V' -- Only count visits

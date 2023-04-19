@@ -29,15 +29,15 @@ Select
   -- Parse dates
   , committee.start_dt
   -- Start date fallback is date added
-  , ksm_pkg_tmp.date_parse(committee.start_dt, committee.date_added)
+  , ksm_pkg_utility.date_parse(committee.start_dt, committee.date_added)
     As start_dt_calc
   , committee.stop_dt
   -- Stop date fallback is date modified for past committees, and end of the FY for current ones
   , Case
       When committee.committee_status_code Not In ('A', 'C')
-        Then ksm_pkg_tmp.date_parse(committee.stop_dt, committee.date_modified)
+        Then ksm_pkg_utility.date_parse(committee.stop_dt, committee.date_modified)
       When committee.committee_status_code In ('A', 'C')
-        Then ksm_pkg_tmp.date_parse(committee.stop_dt, cal.next_fy_start - 1)
+        Then ksm_pkg_utility.date_parse(committee.stop_dt, cal.next_fy_start - 1)
       End
     As stop_dt_calc
   , trunc(committee.date_added)
@@ -52,7 +52,7 @@ Select
   , geo_code
   , committee.xcomment
 From committee
-Cross Join rpt_pbh634.v_current_calendar cal
+Cross Join v_current_calendar cal
 Inner Join committee_header
   On committee_header.committee_code = committee.committee_code
 Left Join tms_committee_header_type tms_cht
@@ -75,7 +75,7 @@ Select
   hh.household_id
   , hh.report_name
   , nuc.*
-From v_entity_ksm_households hh
+From table(ksm_pkg_households.tbl_households_fast_ext) hh
 Inner Join v_nu_committees nuc
   On nuc.id_number = hh.id_number
 ;

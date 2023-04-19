@@ -20,13 +20,13 @@ pe As (
   Select
     id_number
     , report_name
-  From table(ksm_pkg_tmp.tbl_nu_ard_staff)
+  From table(ksm_pkg_employment.tbl_nu_ard_staff)
   Union
   -- KSM frontline staff start/stop dates
   Select
     id_number
     , report_name
-  From table(ksm_pkg_tmp.tbl_frontline_ksm_staff)
+  From table(ksm_pkg_employment.tbl_frontline_ksm_staff)
 )
 , ard_staff As (
   Select
@@ -35,13 +35,13 @@ pe As (
     , staff.job_title
     , staff.employer_unit
   From ard_staff_ids asi
-  Left Join table(ksm_pkg_tmp.tbl_nu_ard_staff) staff On staff.id_number = asi.id_number
+  Left Join table(ksm_pkg_employment.tbl_nu_ard_staff) staff On staff.id_number = asi.id_number
 )
 
 /* Numeric rating bins */
 , rating_bins As (
   Select *
-  From table(ksm_pkg_tmp.tbl_numeric_capacity_ratings)
+  From table(ksm_pkg_prospect.tbl_numeric_capacity_ratings)
 )
 
 /* Main query */
@@ -67,7 +67,7 @@ Select
   , prospect.prospect_name
   , prospect.prospect_name_sort
   , contact_report.contact_date
-  , rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(contact_report.contact_date) As fiscal_year
+  , ksm_pkg_calendar.get_fiscal_year(contact_report.contact_date) As fiscal_year
   , contact_report.description
   , dbms_lob.substr(contact_report.summary, 2000, 1) As summary
   -- Prospect fields
@@ -110,10 +110,10 @@ Left Join tms_contact_rpt_credit_type tms_crc On tms_crc.contact_credit_type = c
 Left Join rating_bins eval On eval.rating_desc = prs.evaluation_rating
 Left Join rating_bins uor On uor.rating_desc = prs.officer_rating
 Left Join ard_staff On ard_staff.id_number = contact_rpt_credit.id_number
-Left Join table(ksm_pkg_tmp.tbl_frontline_ksm_staff) ksm_staff On ksm_staff.id_number = ard_staff.id_number
+Left Join table(ksm_pkg_employment.tbl_frontline_ksm_staff) ksm_staff On ksm_staff.id_number = ard_staff.id_number
 Left Join prospect On prospect.prospect_id = prs.prospect_id
 Left Join pe On pe.id_number = prs.id_number
-Left Join table(ksm_pkg_tmp.tbl_university_strategy) strat On strat.prospect_id = contact_report.prospect_id
+Left Join table(ksm_pkg_prospect.tbl_university_strategy) strat On strat.prospect_id = contact_report.prospect_id
 ) Union All (
 -- id_number_2
 Select
@@ -136,7 +136,7 @@ Select
   , prospect.prospect_name
   , prospect.prospect_name_sort
   , contact_report.contact_date
-  , rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(contact_report.contact_date) As fiscal_year
+  , ksm_pkg_calendar.get_fiscal_year(contact_report.contact_date) As fiscal_year
   , contact_report.description
   , dbms_lob.substr(contact_report.summary, 2000, 1) As summary
   -- Prospect fields
@@ -179,10 +179,10 @@ Left Join tms_contact_rpt_credit_type tms_crc On tms_crc.contact_credit_type = c
 Left Join rating_bins eval On eval.rating_desc = prs.evaluation_rating
 Left Join rating_bins uor On uor.rating_desc = prs.officer_rating
 Left Join ard_staff On ard_staff.id_number = contact_rpt_credit.id_number
-Left Join table(ksm_pkg_tmp.tbl_frontline_ksm_staff) ksm_staff On ksm_staff.id_number = ard_staff.id_number
+Left Join table(ksm_pkg_employment.tbl_frontline_ksm_staff) ksm_staff On ksm_staff.id_number = ard_staff.id_number
 Left Join prospect On prospect.prospect_id = prs.prospect_id
 Left Join pe On pe.id_number = prs.id_number
-Left Join table(ksm_pkg_tmp.tbl_university_strategy) strat On strat.prospect_id = contact_report.prospect_id
+Left Join table(ksm_pkg_prospect.tbl_university_strategy) strat On strat.prospect_id = contact_report.prospect_id
 )
 ;
 
@@ -201,7 +201,7 @@ hh As (
     , hhs.report_name
     , hhs.household_id
   From contact_report
-  Inner Join table(rpt_pbh634.ksm_pkg_tmp.tbl_entity_households_ksm) hhs On hhs.id_number = contact_report.id_number
+  Inner Join table(ksm_pkg_households.tbl_households_fast) hhs On hhs.id_number = contact_report.id_number
 )
 
 /* Main query */
