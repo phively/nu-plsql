@@ -61,7 +61,7 @@ Public cursors -- data definitions
 -- Kellogg degrees concatenated
 Cursor c_entity_degrees_concat_ksm Is
   With
-  -- Stewardship concatenated years; uses Distinct to de-dupe multiple degrees in one year
+  -- Stewardship concatenated years: uses Distinct to de-dupe multiple degrees in one year
   stwrd_yrs As (
     Select Distinct
       id_number
@@ -116,7 +116,7 @@ Cursor c_entity_degrees_concat_ksm Is
         End As dept_short_desc
       , class_section
       , tms_class_section.short_desc As class_section_desc
-      -- Concatenated majors; separate by , within a single degree
+      -- Concatenated majors: separate by , within a single degree
       , trim(
           trim(
             m1.short_desc ||
@@ -177,10 +177,10 @@ Cursor c_entity_degrees_concat_ksm Is
         trim(majors)  
         , '; '
       ) Within Group (Order By degree_year) As majors_concat
-      -- First Kellogg year; exclude non-grad years
+      -- First Kellogg year: exclude non-grad years
       , min(trim(Case When non_grad_code = 'N' Then NULL Else degree_year End))
         As first_ksm_year
-      -- First MBA or other Master's year; exclude non-grad years
+      -- First MBA or other Master's year: exclude non-grad years
       , min(Case
           When degree_level_code = 'M' -- Master's level
             Or degree_code In('MBA', 'MMGT', 'MS', 'MSDI', 'MSHA', 'MSMS') -- In case of data errors
@@ -330,7 +330,7 @@ Cursor c_entity_degrees_concat_ksm Is
       , last_noncert_year
       , stwrd_deg.stewardship_years
       , prg.program
-      -- program_group and program_group_rank; make sure to keep entries in the same order
+      -- program_group and program_group_rank: make sure to keep entries in the same order
       , Case
           When program Like '%NONGRD%' Then 'NONGRD'
           When program Like 'FT%' Then  'FT'

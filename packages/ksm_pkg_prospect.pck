@@ -218,7 +218,7 @@ Cursor c_university_strategy Is
       , uos.strategy_modified_netid
       , netids.report_name
   )
-  -- Main query; uses nu_prs_trp_prospect fields if available
+  -- Main query: uses nu_prs_trp_prospect fields if available
   Select Distinct
     uos.prospect_id
     , Case

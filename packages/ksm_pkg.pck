@@ -584,7 +584,7 @@ Cursor c_gift_credit_campaign_2008 Is
   Left Join unsplit On unsplit.rcpt_or_plg_number = daily.rcpt_or_plg_number
   Where daily.alloc_school = 'KM'
   ) Union All (
-  -- Internal transfer; 344303 is 50%
+  -- Internal transfer: 344303 is 50%
   Select
     id_number
     , record_type_code
@@ -663,7 +663,7 @@ Cursor c_gift_credit_hh_campaign_2008 Is
   Inner Join (Select Distinct rcpt_or_plg_number From nu_rpt_t_cmmt_dtl_daily) daily
     On hh_cred.tx_number = daily.rcpt_or_plg_number
   ) Union All (
-  -- Internal transfer; 344303 is 50%
+  -- Internal transfer: 344303 is 50%
   Select
     daily.id_number As household_id
     , entity.report_name As household_rpt_name

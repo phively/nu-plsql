@@ -132,7 +132,7 @@ Cursor c_plg_discount Is
         -- Not inactive, not a BE or LE
         When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A')
           And pplg.prim_pledge_type Not In ('BE', 'LE') Then pledge.pledge_amount
-        -- Not inactive, is BE or LE; make sure to allocate proportionally to program code allocation
+        -- Not inactive, is BE or LE: make sure to allocate proportionally to program code allocation
         When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A')
           And pplg.prim_pledge_type In ('BE', 'LE') Then pplg.discounted_amt * pledge.pledge_amount /
             (Case When pplg.prim_pledge_amount = 0 Then 1 Else pplg.prim_pledge_amount End)
@@ -150,7 +150,7 @@ Cursor c_plg_discount Is
         -- Not inactive, not a BE or LE
         When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A')
           And pplg.prim_pledge_type Not In ('BE', 'LE') Then pledge.pledge_associated_credit_amt
-        -- Not inactive, is BE or LE; make sure to allocate proportionally to program code allocation
+        -- Not inactive, is BE or LE: make sure to allocate proportionally to program code allocation
         When (pplg.prim_pledge_status Is Null Or pplg.prim_pledge_status = 'A')
           And pplg.prim_pledge_type In ('BE', 'LE') Then pplg.discounted_amt * pledge.pledge_associated_credit_amt /
             (Case When pplg.prim_pledge_amount = 0 Then 1 Else pplg.prim_pledge_amount End)
@@ -370,7 +370,7 @@ Cursor c_gift_credit Is
       , ksm_pkg_calendar.get_fiscal_year(gift.gift_date_of_record) As fiscal_year
       , gift.gift_associated_amount As legal_amount
       , gift.gift_associated_credit_amt As credit_amount
-      -- Recognition credit; for $0 internal transfers, extract dollar amount stated in comment
+      -- Recognition credit: for $0 internal transfers, extract dollar amount stated in comment
       , Case
           When tms_pmt_type.payment_type = 'Internal Transfer'
             And gift.gift_associated_credit_amt = 0
@@ -661,7 +661,7 @@ Cursor c_gift_credit_ksm Is
       , ksm_pkg_calendar.get_fiscal_year(gift.gift_date_of_record) As fiscal_year
       , gift.gift_associated_amount As legal_amount
       , gift.gift_associated_credit_amt As credit_amount
-      -- Recognition credit; for $0 internal transfers, extract dollar amount stated in comment
+      -- Recognition credit: for $0 internal transfers, extract dollar amount stated in comment
       , Case
           When tms_pmt_type.payment_type = 'Internal Transfer'
             And gift.gift_associated_credit_amt = 0

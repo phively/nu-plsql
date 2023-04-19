@@ -125,7 +125,7 @@ Cursor c_committee_member(my_committee_cd In varchar2) Is
   Left Join tms_committee_role tms_role On comm.committee_role_code = tms_role.committee_role_code
   Left Join committee_header hdr On comm.committee_code = hdr.committee_code
   Where comm.committee_code = my_committee_cd
-    And comm.committee_status_code In ('C', 'A') -- 'C'urrent or 'A'ctive; 'A' is deprecated
+    And comm.committee_status_code In ('C', 'A') -- 'C'urrent or 'A'ctive: 'A' is deprecated
   ;
 
 Cursor c_committee_agg(
@@ -156,7 +156,7 @@ Cursor c_committee_agg(
       Left Join tms_committee_role tms_role On comm.committee_role_code = tms_role.committee_role_code
       Left Join committee_header hdr On comm.committee_code = hdr.committee_code
       Where comm.committee_code = my_committee_cd
-        And comm.committee_status_code In ('C', 'A') -- 'C'urrent or 'A'ctive; 'A' is deprecated
+        And comm.committee_status_code In ('C', 'A') -- 'C'urrent or 'A'ctive: 'A' is deprecated
   )
   -- Main query
   Select

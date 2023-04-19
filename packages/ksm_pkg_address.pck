@@ -74,7 +74,7 @@ Cursor c_geo_code_primary Is
     On geo_type.geo_type = geo_code.geo_type
   Where 
     address.addr_status_code = 'A' -- Active addresses only
-    And address_geo.geo_type In (100, 110) -- Tier 1 Region; Club
+    And address_geo.geo_type In (100, 110) -- Tier 1 Region, Club
     And address_geo.geo_code Not In (
       'C035' -- Lake Arc 
       , 'C068' -- SF without SJ

@@ -246,7 +246,7 @@ Cursor c_entity_employees_ksm(company In varchar2) Is
   Left Join nu_prs_trp_prospect prs On deg.id_number = prs.id_number
   Left Join tms_ctry On tms_ctry.country_code = prs.business_country
   Where
-    -- Matches pattern; user beware (Apple vs. Snapple)
+    -- Matches pattern: user beware (Apple vs. Snapple)
     lower(employ.employer_name) Like lower('%' || company || '%')
     Or lower(prs.employer_name1) Like lower('%' || company || '%')
   ;
