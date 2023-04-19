@@ -76,11 +76,15 @@ Public pipelined functions declarations
 *************************************************************************/
 
 -- Pipelined table of KLC members
-Function tbl_klc_history
+Function tbl_klc_history(
+    limit_size In pls_integer Default collect_default_limit
+  )
   Return t_klc_members Pipelined;
 
 -- Pipelined table of Kellogg transactions
-Function tbl_gift_credit_hh_ksm
+Function tbl_gift_credit_hh_ksm(
+    limit_size In pls_integer Default collect_default_limit
+  )
   Return t_trans_household Pipelined;
 
 /*************************************************************************
@@ -88,7 +92,7 @@ Public cursors -- data definitions
 *************************************************************************/
 
 -- Definition of a KLC member
-Cursor c_klc_history (fy_start_month In integer) Is
+Cursor c_klc_history(fy_start_month In integer) Is
   Select
     extract(year from ksm_pkg_utility.to_date2(gift_club_end_date, 'yyyymmdd'))
       As fiscal_year
@@ -178,34 +182,50 @@ Pipelined functions
 *************************************************************************/
 
 -- Pipelined function returning KLC members (per c_klc_history)
-Function tbl_klc_history
+Function tbl_klc_history(
+    limit_size In pls_integer Default collect_default_limit
+  )
   Return t_klc_members Pipelined As
   -- Declarations
   klc t_klc_members;
 
   Begin
+    If c_klc_history %ISOPEN then
+      Close c_klc_history;
+    End If;
     Open c_klc_history(ksm_pkg_calendar.get_numeric_constant('fy_start_month'));
-      Fetch c_klc_history Bulk Collect Into klc;
-    Close c_klc_history;
-    For i in 1..(klc.count) Loop
-      Pipe row(klc(i));
+    Loop
+      Fetch c_klc_history Bulk Collect Into klc Limit limit_size;
+      Exit When klc.count = 0;
+      For i in 1..(klc.count) Loop
+        Pipe row(klc(i));
+      End Loop;
     End Loop;
+    Close c_klc_history;
     Return;
   End;
 
 -- Householdable entity giving, based on c_gift_credit_hh_ksm
-  Function tbl_gift_credit_hh_ksm
+  Function tbl_gift_credit_hh_ksm(
+    limit_size In pls_integer Default collect_default_limit
+  )
     Return t_trans_household Pipelined As
     -- Declarations
     trans t_trans_household;
     
     Begin
+      If c_gift_credit_hh_ksm %ISOPEN then
+        Close c_gift_credit_hh_ksm;
+      End If;
       Open c_gift_credit_hh_ksm;
-        Fetch c_gift_credit_hh_ksm Bulk Collect Into trans;
-      Close c_gift_credit_hh_ksm;
-      For i in 1..(trans.count) Loop
-        Pipe row(trans(i));
+      Loop
+        Fetch c_gift_credit_hh_ksm Bulk Collect Into trans Limit limit_size;
+        Exit When trans.count = 0;
+        For i in 1..(trans.count) Loop
+          Pipe row(trans(i));
+        End Loop;
       End Loop;
+      Close c_gift_credit_hh_ksm;
       Return;
     End;
 
