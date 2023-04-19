@@ -90,7 +90,8 @@ Public cursors -- data definitions
 -- Definition of a KLC member
 Cursor c_klc_history (fy_start_month In integer) Is
   Select
-    extract(year from to_date2(gift_club_end_date, 'yyyymmdd')) As fiscal_year
+    extract(year from ksm_pkg_utility.to_date2(gift_club_end_date, 'yyyymmdd'))
+      As fiscal_year
     , tms_lvl.short_desc As level_desc
     , hh.id_number
     , hh.household_id
@@ -104,12 +105,14 @@ Cursor c_klc_history (fy_start_month In integer) Is
     , hh.household_program_group
     -- FYTD indicator
     , Case
-        When extract(year from to_date2(gift_club_start_date, 'yyyymmdd')) < extract(year from to_date2(gift_club_end_date, 'yyyymmdd'))
-          And extract(month from to_date2(gift_club_start_date, 'yyyymmdd')) < fy_start_month Then 'Y'
-        Else fytd_indicator(to_date2(gift_club_start_date, 'yyyymmdd'))
+        When extract(year from ksm_pkg_utility.to_date2(gift_club_start_date, 'yyyymmdd')) <
+          extract(year from ksm_pkg_utility.to_date2(gift_club_end_date, 'yyyymmdd'))
+          And extract(month from ksm_pkg_utility.to_date2(gift_club_start_date, 'yyyymmdd')) < fy_start_month
+          Then 'Y'
+        Else fytd_indicator(ksm_pkg_utility.to_date2(gift_club_start_date, 'yyyymmdd'))
       End As klc_fytd
   From gift_clubs
-  Inner Join table(tbl_entity_households_ksm) hh
+  Inner Join table(ksm_pkg_households.tbl_entity_households_ksm) hh
     On hh.id_number = gift_clubs.gift_club_id_number
   Left Join nu_mem_v_tmsclublevel tms_lvl
     On tms_lvl.level_code = gift_clubs.school_code
@@ -123,10 +126,13 @@ Cursor c_gift_credit_hh_ksm Is
   hhid As (
     Select
       hh.household_id
-      , hh.household_rpt_name
+      , entity.report_name As household_rpt_name
       , ksm_trans.*
-    From table(ksm_pkg_households.tbl_entity_households_ksm) hh
-    Inner Join table(tbl_gift_credit_ksm) ksm_trans On ksm_trans.id_number = hh.id_number
+    From table(ksm_pkg_households.tbl_households_fast) hh
+    Inner Join table(ksm_pkg_gifts.tbl_gift_credit_ksm) ksm_trans
+      On ksm_trans.id_number = hh.id_number
+    Inner Join entity
+      On entity.id_number = hh.household_id
   )
   , giftcount As (
     Select
