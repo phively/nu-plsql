@@ -34,6 +34,32 @@ Type household_fast Is Record (
   , household_id entity.id_number%type
 );
 
+Type household_fast_ext Is Record (
+  id_number entity.id_number%type
+  , report_name entity.report_name%type
+  , pref_mail_name entity.pref_mail_name%type
+  , record_status_code entity.record_status_code%type
+  , degrees_concat varchar2(512)
+  , first_ksm_year degrees.degree_year%type
+  , last_noncert_year degrees.degree_year%type
+  , program varchar2(20)
+  , program_group varchar2(20)
+  , institutional_suffix entity.institutional_suffix%type
+  , spouse_id_number entity.spouse_id_number%type
+  , spouse_report_name entity.report_name%type
+  , spouse_pref_mail_name entity.pref_mail_name%type
+  , spouse_suffix entity.institutional_suffix%type
+  , spouse_degrees_concat varchar2(512)
+  , spouse_first_ksm_year degrees.degree_year%type
+  , spouse_program varchar2(20)
+  , spouse_program_group varchar2(20)
+  , spouse_last_noncert_year degrees.degree_year%type
+  , household_id entity.id_number%type
+  , household_rpt_name entity.report_name%type
+  , household_primary varchar2(1)
+);
+
+
 Type household Is Record (
   id_number entity.id_number%type
   , report_name entity.report_name%type
@@ -91,6 +117,7 @@ Public table declarations
 *************************************************************************/
 
 Type t_household_fast Is Table Of household_fast;
+Type t_household_fast_ext Is Table Of household_fast_ext;
 Type t_household Is Table Of household;
 
 /*************************************************************************
@@ -102,6 +129,11 @@ Function tbl_households_fast(
     limit_size In pls_integer Default collect_default_limit
   )
     Return t_household_fast Pipelined;
+
+Function tbl_households_fast_ext(
+    limit_size In pls_integer Default collect_default_limit
+  )
+    Return t_household_fast_ext Pipelined;
 
 Function tbl_entity_households_ksm(
     limit_size In pls_integer Default collect_default_limit
@@ -481,6 +513,21 @@ With
   From couples
 ;
 
+-- Add household name and primary flag to households_fast
+Cursor households_fast_ext Is
+Select
+  hf.*
+  , entity.report_name As household_rpt_name
+  , Case
+      When hf.id_number = hf.household_id
+        Then 'Y'
+      End
+    As household_primary
+From table(ksm_pkg_households.tbl_households_fast) hf
+Inner Join entity
+  On entity.id_number = hf.household_id
+;
+
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
@@ -506,6 +553,29 @@ Function tbl_households_fast(
       End Loop;
     End Loop;
     Close households_fast;
+    Return;
+  End;
+
+Function tbl_households_fast_ext(
+    limit_size In pls_integer Default collect_default_limit
+  )
+    Return t_household_fast_ext Pipelined As
+    -- Declarations
+    households t_household_fast_ext;
+
+  Begin
+    If households_fast_ext %ISOPEN then
+      Close households_fast_ext;
+    End If;
+    Open households_fast_ext;
+    Loop
+      Fetch households_fast_ext Bulk Collect Into households Limit limit_size;
+      Exit When households.count = 0;
+      For i in 1..(households.count) Loop
+        Pipe row(households(i));
+      End Loop;
+    End Loop;
+    Close households_fast_ext;
     Return;
   End;
 

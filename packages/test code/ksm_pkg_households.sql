@@ -67,6 +67,28 @@ Left Join table(ksm_pkg_households.tbl_households_fast) hh
 Order By household_id
 ;
 
+Select
+    hh.household_id
+  , test_hh.expected_hhid
+  , Case
+      When hh.household_id = test_hh.expected_hhid
+        Then 'true'
+        Else 'FALSE'
+        End
+    As passed
+  , test_hh.explanation
+  , test_hh.id_number
+  , entity.report_name
+  , hh.household_rpt_name
+  , hh.household_primary
+From test_ksm_pkg_households test_hh
+Inner Join entity
+  On entity.id_number = test_hh.id_number
+Left Join table(ksm_pkg_households.tbl_households_fast_ext) hh
+  On test_hh.id_number = hh.id_number
+Order By household_id
+;
+
 ---------------------------
 -- ksm_pkg tests
 ---------------------------
