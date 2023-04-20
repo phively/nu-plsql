@@ -13,7 +13,7 @@ Public type declarations
 
 Type campaign_exception Is Record (
   tx_number nu_rpt_t_cmmt_dtl_daily.rcpt_or_plg_number%type
-  , anonymous varchar2(1)
+  , anon varchar2(1)
   , amount nu_rpt_t_cmmt_dtl_daily.amount%type
   , amount_explanation varchar2(128)
   , associated_code nu_rpt_t_cmmt_dtl_daily.transaction_type%type
@@ -67,10 +67,14 @@ Public pipelined functions declarations
 Function tbl_campaign_exceptions_2008
   Return t_campaign_exception Pipelined;
 
-Function tbl_gift_credit_campaign
+Function tbl_gift_credit_campaign(
+    limit_size In pls_integer Default collect_default_limit
+  )
   Return t_trans_campaign Pipelined;
     
-Function tbl_gift_credit_hh_campaign
+Function tbl_gift_credit_hh_campaign(
+    limit_size In pls_integer Default collect_default_limit
+  )
   Return ksm_pkg_gifts_hh.t_trans_household Pipelined;
 
 /*************************************************************************
@@ -169,7 +173,7 @@ Cursor c_gift_credit_campaign_2008 Is
   Left Join unsplit On unsplit.rcpt_or_plg_number = daily.rcpt_or_plg_number
   Where daily.alloc_school = 'KM'
   ) Union All (
-  -- Internal transfer: 344303 is 50%
+  -- Exceptions
   Select
     id_number
     , record_type_code
@@ -177,10 +181,10 @@ Cursor c_gift_credit_campaign_2008 Is
     , birth_dt
     , rcpt_or_plg_number
     , xsequence
-    , anons.anon
-    , 344303 As amount
-    , 344303 As credited_amount
-    , 344303 As unsplit_amount
+    , exceptions.anon
+    , exceptions.amount As amount
+    , exceptions.amount As credited_amount
+    , exceptions.amount As unsplit_amount
     , year_of_giving
     , date_of_record
     , alloc_code
@@ -200,9 +204,8 @@ Cursor c_gift_credit_campaign_2008 Is
     , zipcountry
   From nu_rpt_t_cmmt_dtl_daily daily
   Inner Join tms_trans On tms_trans.transaction_type_code = daily.transaction_type
-  Left Join anons On anons.tx_number = daily.rcpt_or_plg_number
-    And anons.tx_sequence = daily.xsequence
-  Where daily.rcpt_or_plg_number = '0002275766'
+  Inner Join table(ksm_pkg_gifts_campaign.tbl_campaign_exceptions_2008) exceptions
+    On exceptions.tx_number = daily.rcpt_or_plg_number
   )
   ;
   
@@ -248,7 +251,7 @@ Cursor c_gift_credit_hh_campaign_2008 Is
   Inner Join (Select Distinct rcpt_or_plg_number From nu_rpt_t_cmmt_dtl_daily) daily
     On hh_cred.tx_number = daily.rcpt_or_plg_number
   ) Union All (
-  -- Internal transfer: 344303 is 50%
+  -- Exceptions
   Select
     daily.id_number As household_id
     , entity.report_name As household_rpt_name
@@ -258,37 +261,38 @@ Cursor c_gift_credit_hh_campaign_2008 Is
     , daily.rcpt_or_plg_number
     , daily.xsequence
     , NULL As transaction_type_code
-    , 'Internal Transfer' As transaction_type
+    , exceptions.associated_desc As transaction_type
     , daily.gift_pledge_or_match
-    , 'IT' As associated_code
-    , 'Internal Transfer' As associated_desc
+    , exceptions.associated_code
+    , exceptions.associated_desc
     , NULL As pledge_number
     , NULL As pledge_fiscal_year
     , NULL As matched_tx_number
     , NULL As matched_fiscal_year
-    , 'Internal Transfer'
+    , exceptions.associated_desc
     , daily.alloc_code
     , allocation.short_name
-    , 'Y' As ksm_flag
-    , 'N' As af_flag
-    , 'N' As cru_flag
+    , exceptions.ksm_flag As ksm_flag
+    , exceptions.af_flag As af_flag
+    , exceptions.cru_flag As cru_flag
     , primary_gift.prim_gift_comment
     , NULL As proposal_id
     , daily.pledge_status
     , daily.date_of_record
     , to_number(daily.year_of_giving) As fiscal_year
-    , 344303 As legal_amount
-    , 344303 As credit_amount
-    , 344303 As recognition_amount
-    , 344303 As stewardship_credit_amount
-    , 344303 As hh_credit
-    , 344303 As hh_recognition_credit
-    , 344303 As hh_stewardship_credit
+    , exceptions.amount As legal_amount
+    , exceptions.amount As credit_amount
+    , exceptions.amount As recognition_amount
+    , exceptions.amount As stewardship_credit_amount
+    , exceptions.amount As hh_credit
+    , exceptions.amount As hh_recognition_credit
+    , exceptions.amount As hh_stewardship_credit
   From nu_rpt_t_cmmt_dtl_daily daily
   Inner Join entity On entity.id_number = daily.id_number
   Inner Join allocation On allocation.allocation_code = daily.alloc_code
   Inner Join primary_gift On primary_gift.prim_gift_receipt_number = daily.rcpt_or_plg_number
-  Where daily.rcpt_or_plg_number = '0002275766'
+  Inner Join table(ksm_pkg_gifts_campaign.tbl_campaign_exceptions_2008) exceptions
+    On exceptions.tx_number = daily.rcpt_or_plg_number
   )
   ;
 
@@ -336,34 +340,50 @@ Pipelined functions
   End;
 
 -- Campaign giving by entity, based on c_gifts_campaign_2008
-  Function tbl_gift_credit_campaign
+  Function tbl_gift_credit_campaign(
+    limit_size In pls_integer Default collect_default_limit
+  )
     Return t_trans_campaign Pipelined As
     -- Declarations
     trans t_trans_campaign;
     
     Begin
+      If c_gift_credit_campaign_2008 %ISOPEN then
+        Close c_gift_credit_campaign_2008;
+      End If;
       Open c_gift_credit_campaign_2008;
-        Fetch c_gift_credit_campaign_2008 Bulk Collect Into trans;
-      Close c_gift_credit_campaign_2008;
-      For i in 1..(trans.count) Loop
-        Pipe row(trans(i));
+      Loop
+        Fetch c_gift_credit_campaign_2008 Bulk Collect Into trans Limit limit_size;
+        Exit When trans.count = 0;
+        For i in 1..(trans.count) Loop
+          Pipe row(trans(i));
+        End Loop;
       End Loop;
+      Close c_gift_credit_campaign_2008;
       Return;
     End;
 
   -- Householdable entity campaign giving, based on c_ksm_trans_hh_campaign_2008
-  Function tbl_gift_credit_hh_campaign
+  Function tbl_gift_credit_hh_campaign(
+    limit_size In pls_integer Default collect_default_limit
+  )
     Return ksm_pkg_gifts_hh.t_trans_household Pipelined As
     -- Declarations
     trans ksm_pkg_gifts_hh.t_trans_household;
-    
+
     Begin
+      If c_gift_credit_hh_campaign_2008 %ISOPEN then
+        Close c_gift_credit_hh_campaign_2008;
+      End If;
       Open c_gift_credit_hh_campaign_2008;
-        Fetch c_gift_credit_hh_campaign_2008 Bulk Collect Into trans;
-      Close c_gift_credit_hh_campaign_2008;
-      For i in 1..(trans.count) Loop
-        Pipe row(trans(i));
+      Loop
+        Fetch c_gift_credit_hh_campaign_2008 Bulk Collect Into trans Limit limit_size;
+        Exit When trans.count = 0;
+        For i in 1..(trans.count) Loop
+          Pipe row(trans(i));
+        End Loop;
       End Loop;
+      Close c_gift_credit_hh_campaign_2008;
       Return;
     End;
 
