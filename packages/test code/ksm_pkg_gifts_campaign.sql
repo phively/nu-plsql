@@ -2,6 +2,10 @@
 -- ksm_pkg_gifts_campaign tests
 ---------------------------
 
+Select *
+From table(ksm_pkg_gifts_campaign.tbl_campaign_exceptions_2008)
+;
+
 Select count(*)
 From table(ksm_pkg_gifts_campaign.tbl_gift_credit_campaign)
 ;

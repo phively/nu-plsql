@@ -11,6 +11,18 @@ collect_default_limit Constant pls_integer := 100;
 Public type declarations
 *************************************************************************/
 
+Type campaign_exception Is Record (
+  tx_number nu_rpt_t_cmmt_dtl_daily.rcpt_or_plg_number%type
+  , anonymous varchar2(1)
+  , amount nu_rpt_t_cmmt_dtl_daily.amount%type
+  , amount_explanation varchar2(128)
+  , associated_code nu_rpt_t_cmmt_dtl_daily.transaction_type%type
+  , associated_desc varchar2(40)
+  , ksm_flag varchar2(1)
+  , af_flag varchar2(1)
+  , cru_flag varchar2(1)
+);
+
 Type trans_campaign Is Record (
   id_number nu_rpt_t_cmmt_dtl_daily.id_number%type
   , record_type_code nu_rpt_t_cmmt_dtl_daily.record_type_code%type
@@ -46,10 +58,14 @@ Public table declarations
 *************************************************************************/
 
 Type t_trans_campaign Is Table Of trans_campaign;
+Type t_campaign_exception Is Table Of campaign_exception;
 
 /*************************************************************************
 Public pipelined functions declarations
 *************************************************************************/
+
+Function tbl_campaign_exceptions_2008
+  Return t_campaign_exception Pipelined;
 
 Function tbl_gift_credit_campaign
   Return t_trans_campaign Pipelined;
@@ -281,8 +297,43 @@ End ksm_pkg_gifts_campaign;
 Create Or Replace Package Body ksm_pkg_gifts_campaign Is
 
 /*************************************************************************
+Private cursors -- data definitions
+*************************************************************************/
+
+-- 2008 campaign exceptions
+Cursor campaign_exceptions_2008 Is
+  Select
+    '0002275766' As tx_number
+    , ' ' As anonymous
+    , 344303 As amount
+    , '50% of face value' As amount_explanation
+    , 'IT' As associated_code
+    , 'Internal Transfer' As associated_desc
+    , 'Y' As ksm_flag
+    , 'N' As af_flag
+    , 'N' As cru_flag
+  From DUAL
+  ;
+
+/*************************************************************************
 Pipelined functions
 *************************************************************************/
+
+-- 2008 campaign exceptions
+  Function tbl_campaign_exceptions_2008
+    Return t_campaign_exception Pipelined As
+    -- Declarations
+    trans t_campaign_exception;
+
+  Begin
+      Open campaign_exceptions_2008;
+        Fetch campaign_exceptions_2008 Bulk Collect Into trans;
+      Close campaign_exceptions_2008;
+      For i in 1..(trans.count) Loop
+        Pipe row(trans(i));
+      End Loop;
+      Return;
+  End;
 
 -- Campaign giving by entity, based on c_gifts_campaign_2008
   Function tbl_gift_credit_campaign
