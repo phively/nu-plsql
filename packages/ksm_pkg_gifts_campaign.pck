@@ -228,7 +228,7 @@ Cursor c_gift_credit_hh_campaign_2008 Is
     , hh_credit
     , hh_recognition_credit
     , hh_stewardship_credit
-  From table(tbl_gift_credit_hh_ksm) hh_cred
+  From table(ksm_pkg_gifts_hh.tbl_gift_credit_hh_ksm) hh_cred
   Inner Join (Select Distinct rcpt_or_plg_number From nu_rpt_t_cmmt_dtl_daily) daily
     On hh_cred.tx_number = daily.rcpt_or_plg_number
   ) Union All (
