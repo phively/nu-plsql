@@ -6,10 +6,6 @@ Create Or Replace View vt_af_gifts_srcdnr_5fy As
 
 With
 
-/* Core Annual Fund transaction-level view; current and previous 5 fiscal years. Rolls data up to the household giving source donor
-   level, e.g. Kellogg-specific giving source donor, then householded for married entities.
-   2017-07-17: added ytd_dts; removing function call from select led to ~32x speed-up! */
-
 -- Thresholded allocations: count up to max_gift dollars
 thresh_allocs As (
   Select
@@ -34,16 +30,6 @@ thresh_allocs As (
     , yesterday
   From v_current_calendar
 )
-, ytd_dts As (
-  Select
-    to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1
-      As dt
-    , ksm_pkg_tmp.fytd_indicator(to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1)
-      As ytd_ind
-  From cal
-  Connect By
-    rownum <= (to_date('09/01/' || cal.curr_fy, 'mm/dd/yyyy') - to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy'))
-)
 
 -- KSM householding
 , households As (
@@ -58,11 +44,11 @@ thresh_allocs As (
     , cal.curr_fy
     , cal.yesterday
     , ksm_pkg_tmp.get_gift_source_donor_ksm(tx_number) As id_src_dnr -- giving source donor as defined by ksm_pkg
-    , ytd_dts.ytd_ind -- year to date flag
+    , ksm_pkg_calendar.fytd_indicator(gft.date_of_record)
+      As ytd_ind
   From nu_gft_trp_gifttrans gft
   Cross Join cal
   Inner Join ksm_cru_allocs cru On cru.allocation_code = gft.allocation_code
-  Inner Join ytd_dts On ytd_dts.dt = trunc(date_of_record)
   Where
     -- Drop pledges
     tx_gypm_ind <> 'P'
