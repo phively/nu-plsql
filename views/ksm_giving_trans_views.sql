@@ -210,7 +210,7 @@ params As (
       As last_gift_alloc
     , sum(gfts.hh_recognition_credit) keep(dense_rank First Order By gfts.date_of_record Desc, gfts.tx_number Asc)
       As last_gift_recognition_credit
-  From v_entity_ksm_households hh
+  From v_entity_ksm_households_fast hh
   Cross Join v_current_calendar cal
   Cross Join params
   Inner Join hh_giving gfts
