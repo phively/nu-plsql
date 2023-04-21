@@ -33,6 +33,13 @@ Create Or Replace View v_entity_ksm_households As
   From table(ksm_pkg_households.tbl_entity_households_ksm) hh
 ;
 
+Create Or Replace View v_entity_ksm_households_fast As
+-- v_entity_ksm_households without address info
+-- Do not try to load all rows as this households every entity record in the database
+  Select hh.*
+  From table(ksm_pkg_households.tbl_households_fast_ext) hh
+;
+
 Create Or Replace View v_frontline_ksm_staff As
 -- View for pulling current and past frontline KSM staff from ksm_pkg
 -- New staff and start/stop dates need to be added to mv_past_ksm_gos to be reflected in this view

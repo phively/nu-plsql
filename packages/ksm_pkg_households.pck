@@ -41,9 +41,9 @@ Type household_fast_ext Is Record (
   , record_status_code entity.record_status_code%type
   , degrees_concat varchar2(512)
   , first_ksm_year degrees.degree_year%type
-  , last_noncert_year degrees.degree_year%type
   , program varchar2(20)
   , program_group varchar2(20)
+  , last_noncert_year degrees.degree_year%type
   , institutional_suffix entity.institutional_suffix%type
   , spouse_id_number entity.spouse_id_number%type
   , spouse_report_name entity.report_name%type
@@ -55,10 +55,22 @@ Type household_fast_ext Is Record (
   , spouse_program_group varchar2(20)
   , spouse_last_noncert_year degrees.degree_year%type
   , household_id entity.id_number%type
-  , household_rpt_name entity.report_name%type
   , household_primary varchar2(1)
+  , household_record entity.record_type_code%type
+  , person_or_org entity.person_or_org%type
+  , household_name entity.pref_mail_name%type
+  , household_rpt_name entity.report_name%type
+  , household_spouse_id entity.id_number%type
+  , household_spouse entity.pref_mail_name%type
+  , household_spouse_rpt_name entity.report_name%type
+  , household_suffix entity.institutional_suffix%type
+  , household_spouse_suffix entity.institutional_suffix%type
+  , household_ksm_year degrees.degree_year%type
+  , household_masters_year degrees.degree_year%type
+  , household_last_masters_year degrees.degree_year%type
+  , household_program varchar2(20)
+  , household_program_group varchar2(20)
 );
-
 
 Type household Is Record (
   id_number entity.id_number%type
@@ -513,19 +525,134 @@ With
   From couples
 ;
 
--- Add household name and primary flag to households_fast
+-- Households minus the slow address information
 Cursor households_fast_ext Is
-Select
-  hf.*
-  , entity.report_name As household_rpt_name
-  , Case
-      When hf.id_number = hf.household_id
-        Then 'Y'
-      End
-    As household_primary
-From table(ksm_pkg_households.tbl_households_fast) hf
-Inner Join entity
-  On entity.id_number = hf.household_id
+With
+  -- Entities and spouses, with Kellogg degrees concat fields
+  degs As (
+    Select deg.*
+    From table(ksm_pkg_degrees.tbl_entity_degrees_concat_ksm) deg
+  )
+  , couples As (
+    Select
+      -- Entity fields
+      entity.id_number
+      , entity.pref_mail_name
+      , entity.report_name
+      , entity.record_type_code
+      , entity.gender_code
+      , entity.person_or_org
+      , entity.record_status_code
+      , entity.institutional_suffix
+      , edc.degrees_concat
+      , edc.first_ksm_year
+      , edc.first_masters_year
+      , edc.last_masters_year
+      , edc.last_noncert_year
+      , edc.program
+      , edc.program_group
+      , edc.program_group_rank
+      -- Spouse fields
+      , entity.spouse_id_number
+      , spouse.pref_mail_name As spouse_pref_mail_name
+      , spouse.report_name As spouse_report_name
+      , spouse.gender_code As spouse_gender_code
+      , spouse.institutional_suffix As spouse_suffix
+      , sdc.degrees_concat As spouse_degrees_concat
+      , sdc.first_ksm_year As spouse_first_ksm_year
+      , sdc.first_masters_year As spouse_first_masters_year
+      , sdc.last_masters_year As spouse_last_masters_year
+      , sdc.last_noncert_year As spouse_last_noncert_year
+      , sdc.program As spouse_program
+      , sdc.program_group As spouse_program_group
+      , sdc.program_group_rank As spouse_program_group_rank
+    From entity
+    Left Join degs edc On entity.id_number = edc.id_number
+    Left Join degs sdc On entity.spouse_id_number = sdc.id_number
+    Left Join entity spouse On entity.spouse_id_number = spouse.id_number
+  )
+  , household As (
+    Select
+      id_number
+      , report_name
+      , record_status_code
+      , pref_mail_name
+      , institutional_suffix
+      , degrees_concat
+      , first_ksm_year
+      , last_noncert_year
+      , program
+      , program_group
+      , spouse_id_number
+      , spouse_report_name
+      , spouse_pref_mail_name
+      , spouse_suffix
+      , spouse_degrees_concat
+      , spouse_first_ksm_year
+      , spouse_program
+      , spouse_program_group
+      , spouse_last_noncert_year
+      -- Choose which spouse is primary based on program_group
+      , Case
+          When length(spouse_id_number) < 10 Or spouse_id_number Is Null Then id_number -- if no spouse, use id_number
+          -- if same program (or both null), use lower id_number
+          When program_group = spouse_program_group Or program_group Is Null And spouse_program_group Is Null Then
+            Case When id_number < spouse_id_number Then id_number Else spouse_id_number End
+          When spouse_program_group Is Null Then id_number -- if no spouse program, use id_number
+          When program_group Is Null Then spouse_id_number -- if no self program, use spouse_id_number
+          When program_group_rank < spouse_program_group_rank Then id_number
+          When spouse_program_group_rank < program_group_rank Then spouse_id_number
+        End As household_id
+      -- Compute last master's degree year in household
+      , Case
+          When spouse_last_masters_year Is Null Then last_masters_year
+          When last_masters_year Is Null Then spouse_last_masters_year
+          When last_masters_year >= spouse_last_masters_year Then last_masters_year
+          When spouse_last_masters_year >= last_masters_year Then spouse_last_masters_year
+        End As household_last_masters_year
+    From couples
+  )
+  -- Main query
+  Select
+    household.id_number
+    , household.report_name
+    , household.pref_mail_name
+    , household.record_status_code
+    , household.degrees_concat
+    , household.first_ksm_year
+    , household.program
+    , household.program_group
+    , household.last_noncert_year
+    , household.institutional_suffix
+    , household.spouse_id_number
+    , household.spouse_report_name
+    , household.spouse_pref_mail_name
+    , household.spouse_suffix
+    , household.spouse_degrees_concat
+    , household.spouse_first_ksm_year
+    , household.spouse_program
+    , household.spouse_program_group
+    , household.spouse_last_noncert_year
+    , household.household_id
+    , Case When household.household_id = household.id_number Then 'Y' End
+      As household_primary
+    , couples.record_type_code As household_record
+    , couples.person_or_org
+    , couples.pref_mail_name As household_name
+    , couples.report_name As household_rpt_name
+    , couples.spouse_id_number As household_spouse_id
+    , couples.spouse_pref_mail_name As household_spouse
+    , couples.spouse_report_name As household_spouse_rpt_name
+    , couples.institutional_suffix As household_suffix
+    , couples.spouse_suffix As household_spouse_suffix
+    , couples.first_ksm_year As household_ksm_year
+    , couples.first_masters_year As household_masters_year
+    -- Household last non-certificate year, for (approximate) young alumni designation
+    , household.household_last_masters_year
+    , couples.program As household_program
+    , couples.program_group As household_program_group
+  From household
+  Inner Join couples On household.household_id = couples.id_number
 ;
 
 /*************************************************************************
