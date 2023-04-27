@@ -62,7 +62,7 @@ Left Join nu_mem_v_tmsclublevel tms
      On tms.level_code = gc.school_code
 Inner Join entity e
      On e.id_number = gc.gift_club_id_number
-Inner Join rpt_pbh634.v_entity_ksm_households hh
+Inner Join rpt_pbh634.v_entity_ksm_households_fast hh
      On e.id_number = hh.id_number
 Left Join GAB
      On GAB.id_number = e.id_number

@@ -330,7 +330,7 @@ params As (
     , assignment_report_name
   From v_assignment_history vah
   Cross Join rpt_pbh634.v_current_calendar cal
-  Inner Join rpt_pbh634.v_entity_ksm_households hh On hh.id_number = vah.id_number
+  Inner Join rpt_pbh634.v_entity_ksm_households_fast hh On hh.id_number = vah.id_number
   Where assignment_type In ('PM', 'PP') -- PM and PPM only
     And primary_ind = 'Y' -- Primary prospect entity only
 )

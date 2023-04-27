@@ -305,6 +305,6 @@ Select
   , epf.start_fy_calc
   , epf.stop_fy_calc
 From v_nu_event_participants_fast epf
-Inner Join v_entity_ksm_households hh
+Inner Join v_entity_ksm_households_fast hh
   On hh.id_number = epf.id_number
 ;

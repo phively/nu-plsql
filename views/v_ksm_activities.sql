@@ -75,7 +75,7 @@ Select
   , naf.stop_fy_calc
   , naf.xcomment
 From v_nu_activities_fast naf
-Inner Join v_entity_ksm_households hh
+Inner Join v_entity_ksm_households_fast hh
   On hh.id_number = naf.id_number
 ;
 

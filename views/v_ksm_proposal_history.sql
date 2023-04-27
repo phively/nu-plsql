@@ -418,7 +418,7 @@ households As (
   Select Distinct
     pe.prospect_id
     , hh.household_id
-  From v_entity_ksm_households hh
+  From v_entity_ksm_households_fast hh
   Inner Join prospect_entity pe
     On pe.id_number = hh.id_number
   Where pe.primary_ind = 'Y'
