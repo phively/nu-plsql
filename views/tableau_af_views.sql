@@ -15,6 +15,17 @@ thresh_allocs As (
   From allocation
   Where allocation_code = '3203006213301GFT' -- KEC Fund
 )
+, af_toggle As (
+  Select
+    thresh_allocs.allocation_code
+    , af_toggle.af_flag
+  From thresh_allocs
+  Cross Join (
+    Select 'Y' As af_flag From DUAL
+    Union All
+    Select 'N' As af_flag From DUAL
+  ) af_toggle
+)
 
 -- Kellogg Annual Fund allocations as defined in ksm_pkg
 , ksm_cru_allocs As (
@@ -103,53 +114,76 @@ thresh_allocs As (
 )
 
 -- Gift receipts and biographic information
-Select
-  -- Giving fields
-  af.allocation_code
-  , af.af_flag
-  , af.sweepable
-  , af.budget_relieving
-  , af.alloc_short_name
-  , af.alloc_purpose_desc
-  , af.tx_number
-  , af.tx_sequence
-  , af.tx_gypm_ind
-  , af.fiscal_year
-  , af.date_of_record
-  , af.ytd_ind
-  , af.legal_dnr_id
-  , af.legal_amount
-  , af.credit_amount
-  , af.nwu_af_amount
-  , af.ksm_af_amount_legal
-  , af.ksm_af_amount_credit
-  , af.legal_amount - af.ksm_af_amount_legal
-    As ksm_cru_amount_legal
-  , af.credit_amount - af.ksm_af_amount_credit
-    As ksm_cru_amount_credit
-  -- Household source donor entity fields
-  , af.id_hh_src_dnr
-  , hh.pref_mail_name
-  , e_src_dnr.pref_name_sort
-  , e_src_dnr.report_name
-  , e_src_dnr.person_or_org
-  , e_src_dnr.record_status_code
-  , e_src_dnr.institutional_suffix
-  , hh.household_state As master_state
-  , hh.household_country As master_country
-  , e_src_dnr.gender_code
-  , hh.spouse_id_number
-  , hh.spouse_pref_mail_name
-  -- KSM alumni flag
-  , Case When hh.household_program_group Is Not Null Then 'Y' Else 'N' End
-    As ksm_alum_flag
-  -- Fiscal year number
-  , curr_fy
-  , yesterday As data_as_of
-From ksm_cru_gifts af
-Inner Join entity e_src_dnr On af.id_hh_src_dnr = e_src_dnr.id_number
-Inner Join households hh On hh.id_number = af.id_hh_src_dnr
-Where legal_amount > 0
+  Select
+    -- Giving fields
+    af.allocation_code
+    , Case
+        When af_toggle.af_flag Is Not Null
+          Then af_toggle.af_flag
+        Else af.af_flag
+        End
+      As af_flag
+    , af.sweepable
+    , af.budget_relieving
+    , af.alloc_short_name
+    , af.alloc_purpose_desc
+    , af.tx_number
+    , af.tx_sequence
+    , af.tx_gypm_ind
+    , af.fiscal_year
+    , af.date_of_record
+    , af.ytd_ind
+    , af.legal_dnr_id
+    , Case
+        When af_toggle.af_flag = 'Y'
+          Then af.ksm_af_amount_legal
+        When af_toggle.af_flag = 'N'
+          Then af.legal_amount - af.ksm_af_amount_legal
+        Else af.legal_amount
+        End
+      As legal_amount
+    , Case
+        When af_toggle.af_flag = 'Y'
+          Then af.ksm_af_amount_credit
+        When af_toggle.af_flag = 'N'
+          Then af.credit_amount - af.ksm_af_amount_credit
+        Else af.credit_amount
+        End
+      As credit_amount
+    , af.legal_amount As original_legal_amount
+    , af.credit_amount As original_credit_amount
+    , af.nwu_af_amount
+    , af.ksm_af_amount_legal
+    , af.ksm_af_amount_credit
+    , af.legal_amount - af.ksm_af_amount_legal
+      As ksm_cru_amount_legal
+    , af.credit_amount - af.ksm_af_amount_credit
+      As ksm_cru_amount_credit
+    -- Household source donor entity fields
+    , af.id_hh_src_dnr
+    , hh.pref_mail_name
+    , e_src_dnr.pref_name_sort
+    , e_src_dnr.report_name
+    , e_src_dnr.person_or_org
+    , e_src_dnr.record_status_code
+    , e_src_dnr.institutional_suffix
+    , hh.household_state As master_state
+    , hh.household_country As master_country
+    , e_src_dnr.gender_code
+    , hh.spouse_id_number
+    , hh.spouse_pref_mail_name
+    -- KSM alumni flag
+    , Case When hh.household_program_group Is Not Null Then 'Y' Else 'N' End
+      As ksm_alum_flag
+    -- Fiscal year number
+    , curr_fy
+    , yesterday As data_as_of
+  From ksm_cru_gifts af
+  Left Join af_toggle
+    On af_toggle.allocation_code = af.allocation_code
+  Inner Join entity e_src_dnr On af.id_hh_src_dnr = e_src_dnr.id_number
+  Inner Join households hh On hh.id_number = af.id_hh_src_dnr
+  Where legal_amount > 0
 ;
 
 /*****************************************
