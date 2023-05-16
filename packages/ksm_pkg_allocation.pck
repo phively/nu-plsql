@@ -99,6 +99,7 @@ Cursor c_alloc_annual_fund_ksm Is
       , '3203006453601GFT' -- Lowry DEI
       , '3203006469401GFT' -- Scholarship Fund (RS)
       , '3203006114401GFT' -- Finance Scholarship (MS)
+      , '3203005228401GFT' -- Student Life
       /************ UPDATE ABOVE HERE ************/
     )
   ;
@@ -223,7 +224,6 @@ Cursor c_alloc_curr_use_ksm Is
 
 End ksm_pkg_allocation;
 /
-
 Create Or Replace Package Body ksm_pkg_allocation Is
 /*************************************************************************
 Pipelined functions
