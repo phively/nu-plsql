@@ -327,6 +327,7 @@ Select
   , degrees.operator_name
   , case when deg.FIRST_KSM_YEAR is not null and degrees.school_code = 'KSM' then deg.FIRST_KSM_YEAR End As First_KSM_Year
   , case when deg.FIRST_MASTERS_YEAR is not null and degrees.school_code = 'KSM' then deg.FIRST_MASTERS_YEAR End as First_KSM_Masters_Year
+  , degrees.xcomment
 From degrees
 Inner Join ADVANCE_NU_RPT.v_entity_ksm_degrees deg -- Alumni only
   On deg.id_number = degrees.id_number
