@@ -1,5 +1,9 @@
+--- Households
+with h as (select  *
+from rpt_pbh634.v_entity_ksm_households),
+
 --- event table
-with event as (select *
+event as (select *
 from rpt_pbh634.v_nu_events),
 
 --- participant table
@@ -210,6 +214,14 @@ d.REPORT_NAME,
 d.FIRST_KSM_YEAR,
 d.PROGRAM,
 d.PROGRAM_GROUP,
+h.HOUSEHOLD_CITY,
+h.HOUSEHOLD_STATE,
+h.HOUSEHOLD_ZIP,
+h.HOUSEHOLD_GEO_CODES,
+h.HOUSEHOLD_GEO_PRIMARY,
+h.HOUSEHOLD_GEO_PRIMARY_DESC,
+h.HOUSEHOLD_COUNTRY,
+h.HOUSEHOLD_CONTINENT,
 R.Reunion_18_IND,
 R.Reunion_19_IND,
 R.Reunion_21_IND,
@@ -247,6 +259,9 @@ spec.TRUSTEE,
 spec.EBFA,
 spec.SPECIAL_HANDLING_CONCAT
 from rpt_pbh634.v_entity_ksm_degrees d
+--- inner join house - to get geocodes/location
+inner join h on h.id_number = d.id_number
+--- entity
 inner join entity on entity.id_number = d.id_number
 --- Reunion
 left join r on r.id_number = d.id_number
