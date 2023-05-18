@@ -219,8 +219,15 @@ or KLC.Club_END_DATE = cal.CURR_FY - 4
 or KLC.Club_END_DATE = cal.CURR_FY - 5)
 Group By KLC.GIFT_CLUB_ID_NUMBER),
 
+--- Current Donors (Use Amy's View) 
+
+amyklc as (select k.ID_NUMBER
+from RPT_ABM1914.V_KLC_MEMBERS k),
+
 
 KLC_Final As (Select distinct KLC.GIFT_CLUB_ID_NUMBER,
+--- Entity's in Amy's KLC report
+case when aklc.id_number is not null then 'Current KLC Member' end as KLC_Current_IND, 
 --- KLC FY Donor This Year
 KLC_Give_Ind.KSM_donor_cfy,
 --- KLC FY Donor Last Year 
@@ -233,6 +240,7 @@ from KLC
 left join KLC_Count on KLC_Count.GIFT_CLUB_ID_NUMBER = KLC.GIFT_CLUB_ID_NUMBER
 left join KLC5 ON KLC5.GIFT_CLUB_ID_NUMBER = KLC.GIFT_CLUB_ID_NUMBER 
 left join KLC_Give_Ind on KLC_Give_Ind.GIFT_CLUB_ID_NUMBER = KLC.GIFT_CLUB_ID_NUMBER
+left join amyklc aklc on aklc.id_number = KLC.GIFT_CLUB_ID_NUMBER
 cross join ADVANCE_NU_RPT.v_current_calendar cal),
 
 Spec AS (Select rpt_pbh634.v_entity_special_handling.ID_NUMBER,
@@ -268,7 +276,20 @@ employ As (
   Left Join tms_fld_of_work fow
        On fow.fld_of_work_code = employment.fld_of_work_code
   Where employment.primary_emp_ind = 'Y'
-)
+),
+
+--- speaker - flag for speaker and most recent speaking event
+
+speak as (select Activity.Id_Number,
+max (Activity.Start_Dt) keep (dense_rank First Order By Activity.Start_Dt DESC) as last_speak_date,
+max (Activity.Xcomment) keep (dense_rank First Order By Activity.Start_Dt DESC) as last_speak_detail
+from Activity
+--- KSP = Kellogg Speakers
+where Activity.Activity_Code = 'KSP'
+group by Activity.Id_Number)
+
+
+
 
 select d.id_number,
 d.RECORD_STATUS_CODE,
@@ -305,6 +326,8 @@ c.contact_type,
 c.Max_Date,
 c.description_,
 c.summary_,
+speak.last_speak_date,
+speak.last_speak_detail,
 g.NGC_LIFETIME,
 case when g.NGC_LIFETIME > 0 then 'KSM Donor' end as Donor_NGC_Lifetime_IND, 
 g.NU_MAX_HH_LIFETIME_GIVING,
@@ -321,7 +344,7 @@ g.LAST_GIFT_ALLOC,
 g.LAST_GIFT_RECOGNITION_CREDIT,
 max_gift.DATE_OF_RECORD as date_of_record_max_gift,
 max_gift.max_credit as max_gift_credit,
-KLC.KSM_donor_cfy,
+KLC.KLC_Current_IND, 
 KLC.KSM_donor_pfy1,
 KLC.klc_fy_count,
 KLC.klc_fy_count_5,
@@ -359,3 +382,5 @@ left join max_gift on max_gift.id_number = d.id_number
 left join p on p.id_number = d.id_number 
 --- employment
 left join employ on employ.id_number = d.id_number
+--- Speakers and last speaking engagement 
+left join speak on speak.id_number = d.id_number
