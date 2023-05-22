@@ -26,12 +26,19 @@ Type alloc_info Is Record (
   , budget_relieving allocation.annual_sw%type 
 );
 
+Type thresh_alloc Is Record (
+    allocation_code  allocation.allocation_code%type
+    , short_name allocation.short_name%type
+    , max_gift nu_gft_trp_gifttrans.legal_amount%type
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
 
 Type t_alloc_list Is Table Of alloc_list;
 Type t_alloc_info Is Table Of alloc_info;
+Type t_thresh_allocs Is Table Of thresh_alloc;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -43,6 +50,9 @@ Function tbl_alloc_annual_fund_ksm
 
 Function tbl_alloc_curr_use_ksm
   Return t_alloc_info Pipelined;
+
+Function tbl_threshold_allocs
+  Return t_thresh_allocs Pipelined;
 
 /*************************************************************************
 Public cursors -- data definitions
@@ -225,6 +235,23 @@ Cursor c_alloc_curr_use_ksm Is
 End ksm_pkg_allocation;
 /
 Create Or Replace Package Body ksm_pkg_allocation Is
+
+/*************************************************************************
+Private cursors -- data definitions
+*************************************************************************/
+
+-- AF thresholded allocations: count up to max_gift dollars
+Cursor c_thresh_allocs Is
+  Select
+    allocation.allocation_code
+    , allocation.short_name
+    , 100E3 As max_gift
+  From allocation
+  Where allocation_code In (
+    '3203006213301GFT' -- KEC Fund
+  )
+  ;
+
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
@@ -256,6 +283,23 @@ Function tbl_alloc_curr_use_ksm
     Open c_alloc_curr_use_ksm; -- Annual Fund allocations cursor
       Fetch c_alloc_curr_use_ksm Bulk Collect Into allocs;
     Close c_alloc_curr_use_ksm;
+    -- Pipe out the allocations
+    For i in 1..(allocs.count) Loop
+      Pipe row(allocs(i));
+    End Loop;
+    Return;
+  End;
+
+-- Returns a pipelined table
+Function tbl_threshold_allocs
+  Return t_thresh_allocs Pipelined As
+    -- Declarations
+    allocs t_thresh_allocs;
+
+  Begin
+    Open c_thresh_allocs; -- Annual Fund allocations cursor
+      Fetch c_thresh_allocs Bulk Collect Into allocs;
+    Close c_thresh_allocs;
     -- Pipe out the allocations
     For i in 1..(allocs.count) Loop
       Pipe row(allocs(i));

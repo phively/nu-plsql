@@ -8,12 +8,8 @@ With
 
 -- Thresholded allocations: count up to max_gift dollars
 thresh_allocs As (
-  Select
-    allocation.allocation_code
-    , allocation.short_name
-    , 100E3 As max_gift
-  From allocation
-  Where allocation_code = '3203006213301GFT' -- KEC Fund
+  Select *
+  From table(ksm_pkg_allocation.tbl_threshold_allocs)
 )
 , af_toggle As (
   Select

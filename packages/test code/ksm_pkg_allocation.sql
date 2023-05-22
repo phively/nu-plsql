@@ -10,6 +10,10 @@ Select *
 From table(ksm_pkg_allocation.tbl_alloc_curr_use_ksm)
 ;
 
+Select *
+From table(ksm_pkg_allocation.tbl_threshold_allocs)
+;
+
 ---------------------------
 -- ksm_pkg tests
 ---------------------------
