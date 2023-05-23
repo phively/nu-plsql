@@ -23,6 +23,7 @@ prime as (Select DISTINCT
       ,  a.state_code
       ,  c.country as country
       ,  G.GEO_CODE_PRIMARY_DESC AS PRIMARY_GEO_CODE
+      ,  C.continent
       FROM address a
       LEFT JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
       LEFT JOIN tms_address_type ON tms_address_type.addr_type_code = a.addr_type_code
@@ -44,6 +45,7 @@ Business As(Select DISTINCT
       ,  max (c.country) as country
       ,  max (a.start_dt)
       ,  max (G.GEO_CODE_PRIMARY_DESC) AS BUSINESS_GEO_CODE
+      ,  max (C.continent) as continent
       FROM address a
       LEFT JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
       LEFT JOIN tms_address_type ON tms_address_type.addr_type_code = a.addr_type_code
@@ -65,6 +67,7 @@ Home as (Select DISTINCT
       ,  max (c.country) as country 
       ,  max (a.start_dt)
       ,  max (G.GEO_CODE_PRIMARY_DESC) AS home_GEO_CODE
+      ,  max (C.continent) as continent
       FROM address a
       LEFT JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
       LEFT JOIN tms_address_type ON tms_address_type.addr_type_code = a.addr_type_code
@@ -85,6 +88,7 @@ Alt_Home As  (Select DISTINCT
       ,  max (c.country) as country
       ,  max (a.start_dt)
       ,  max (G.GEO_CODE_PRIMARY_DESC) AS alt_home_GEO_CODE
+      ,  max (C.continent) as continent
       FROM address a
       LEFT JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
       LEFT JOIN tms_address_type ON tms_address_type.addr_type_code = a.addr_type_code
@@ -105,6 +109,7 @@ Alt_Bus As  (Select DISTINCT
       ,  max (c.country) as country
       ,  max (a.start_dt)
       ,  max (G.GEO_CODE_PRIMARY_DESC) AS alt_bus_GEO_CODE
+      ,  max (C.continent) as continent
       FROM address a
       LEFT JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
       LEFT JOIN tms_address_type ON tms_address_type.addr_type_code = a.addr_type_code
@@ -126,6 +131,7 @@ Seasonal as (
       ,  max (c.country) as country 
       ,  max (a.start_dt)
       ,  max (G.GEO_CODE_PRIMARY_DESC) AS SEASONAL_GEO_CODE
+      ,  max (C.continent) as continent
       FROM address a
       LEFT JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
       LEFT JOIN tms_address_type ON tms_address_type.addr_type_code = a.addr_type_code
@@ -147,36 +153,42 @@ SELECT DISTINCT
   , prime.PRIMARY_GEO_CODE as primary_geo
   , prime.STATE_Code as primary_state
   , prime.country as primary_country
+  , prime.continent
   --- Home Address - Non Preferred
   , home.Address_Type as non_preferred_home_type
   , home.city as non_preferred_home_city
   , home.home_GEO_CODE as non_pref_home_geo
   , home.state_code as non_preferred_home_state
   , home.country as non_preferred_home_country
+  , home.continent as non_preferred_home_continent
   --- Business Address - Non Preferred
   , Business.Address_Type as non_preferred_business_type
   , Business.BUSINESS_GEO_CODE as non_preferred_business_geo
   , Business.city as non_preferred_business_city
   , Business.state_code as non_preferred_business_state
   , Business.country as non_preferred_business_country
+  , Business.continent as non_preferred_busin_continent
   --- Alternative Home - Non Preferred
   , Alt_Home.Address_Type as alt_home_type
   , Alt_Home.alt_home_geo_code as alt_home_geo
   , Alt_Home.city as alt_home_city
   , Alt_Home.state_code as alt_home_state
   , Alt_Home.country as alt_home_country
+  , Alt_Home.continent as alt_home_continent
   --- Alternative Business - Non Preferred 
   , Alt_Bus.Address_Type as alt_bus_type
   , Alt_Bus.alt_bus_GEO_CODE as alt_business_geo
   , Alt_Bus.city as alt_bus_city
   , Alt_Bus.state_code as alt_bus_state
   , Alt_Bus.country as alt_bus_country
+  , Alt_Bus.continent as alt_bus_continent
   ---- Seasonal Address - Non Preferred
   , seasonal.Address_Type as seasonal_Type
   , Seasonal.SEASONAL_GEO_CODE
   , Seasonal.city as seasonal_city
   , Seasonal.state_code as seasonal_state
   , Seasonal.country as seasonal_country
+  , Seasonal.continent as seasonal_continent
   ---- Lookup Geocode
   , trim(prime.PRIMARY_GEO_CODE || chr(13) || home.home_GEO_CODE || chr(13) || Business.BUSINESS_GEO_CODE ||
     chr(13) || Alt_Home.alt_home_geo_code || chr(13) || Alt_Bus.state_code || chr(13) || Seasonal.SEASONAL_GEO_CODE)
@@ -189,6 +201,10 @@ SELECT DISTINCT
       , trim(prime.country || chr(13) || home.country || chr(13) || Business.country ||
     chr(13) || Alt_Home.country || chr(13) || Alt_Bus.country || chr(13) || Seasonal.country)
     As lookup_country
+    --- Continent
+      ,trim(prime.continent || chr(13) || home.continent || chr(13) || Business.continent ||
+    chr(13) || Alt_Home.continent || chr(13) || Alt_Bus.continent || chr(13) || Seasonal.continent)
+    As lookup_continent
     
     
    
