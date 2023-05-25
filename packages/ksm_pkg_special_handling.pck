@@ -33,6 +33,7 @@ Type special_handling Is Record (
      , exc_all_sols varchar2(1)
      , exc_surveys varchar2(1)
      , last_survey_dt date
+     , no_af_sol_ind varchar2(1)
      , no_survey_ind varchar2(1)
      , no_phone_ind varchar2(1)
      , no_phone_sol_ind varchar2(1)
@@ -203,6 +204,9 @@ Cursor c_special_handling_concat Is
       -- All solicitation
       , max(Case When ml.mail_list_code = 'AS' And ml.mail_list_ctrl_code = 'EXC' Then 'Y' End)
         As exc_all_sols
+      -- AF solicitation
+      , max(Case When ml.mail_list_code = 'NAF' And ml.mail_list_ctrl_code = 'EXC' Then 'Y' End)
+        As no_af_solicit
       -- Surveys
       , max(Case When ml.mail_list_code = 'SURV' And ml.mail_list_ctrl_code = 'EXC' Then 'Y' End)
         As exc_surveys
@@ -399,6 +403,17 @@ Cursor c_special_handling_concat Is
     , exc_all_sols
     , exc_surveys
     , last_survey.last_survey_dt
+    -- No AF sol combined
+    , Case
+        When no_contact = 'Y'
+          Or exc_all_comm = 'Y'
+          Or active_with_restrictions = 'Y'
+          Or no_solicit = 'Y'
+          Or exc_all_sols = 'Y'
+          Or no_af_solicit = 'Y'
+          Then 'Y'
+        End
+      As no_af_sol_ind
     -- No surveys combined
     -- Based on p. 7 of Alumni Survey Request Guidelines and Procedures
     -- (v0.7 updated 6/24/2015)

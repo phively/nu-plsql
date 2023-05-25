@@ -53,6 +53,7 @@ manual_exclusions_pre As (
     , never_engaged_reunion
     , exc_all_comm
     , exc_all_sols
+    , no_af_sol_ind
   From table(ksm_pkg_special_handling.tbl_special_handling_concat) shc
   Where no_contact = 'Y'
     Or no_solicit = 'Y'
@@ -60,6 +61,7 @@ manual_exclusions_pre As (
     Or never_engaged_reunion = 'Y'
     Or exc_all_comm = 'Y'
     Or exc_all_sols = 'Y'
+    Or no_af_sol_ind = 'Y'
 )
 
 -- Global Advisory Board
