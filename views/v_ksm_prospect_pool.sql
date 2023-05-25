@@ -281,6 +281,8 @@ Select Distinct
   , prs.contact_date
   , contact_auth.report_name As contact_author
   -- Concatenated managers on prospect or entity ID as appropriate
+  , assign.lgo_ids
+  , assign.lgos
   , assign.manager_ids
   , assign.managers
   , assign.curr_ksm_manager

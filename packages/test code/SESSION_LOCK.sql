@@ -23,7 +23,10 @@ ksm_pkg_blockers As (
     v$session ses
     , v$sqltext sqltxt
   Where ses.sql_address = sqltxt.address
-    And lower(sqltxt.sql_text) Like '%ksm_pkg%'
+    And (
+      lower(sqltxt.sql_text) Like '%ksm_pkg%'
+      Or lower(sqltxt.sql_text) Like '%pbh634%'
+    )
 )
 
 , blocked As (
