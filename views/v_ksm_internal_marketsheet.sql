@@ -286,9 +286,42 @@ max (Activity.Xcomment) keep (dense_rank First Order By Activity.Start_Dt DESC) 
 from Activity
 --- KSP = Kellogg Speakers
 where Activity.Activity_Code = 'KSP'
-group by Activity.Id_Number)
+group by Activity.Id_Number),
 
 
+--- Kellogg Alumni Admission Callers
+kaac as(select distinct committee.id_number
+from committee
+where committee.committee_code = 'KAAC'
+and committee.committee_status_code = 'C'),
+
+--- Kellogg Alumni Admissions Organization
+kacao as(select distinct committee.id_number
+from committee
+where committee.committee_code = 'KACAO'
+and committee.committee_status_code = 'C'),
+
+
+--- Kellogg Alumni Admissions Organization 
+leader as(select committee.id_number,
+committee_Header.short_desc As Club_Title,
+tms_committee_role.short_desc As Leadership_Title,
+committee.committee_status_code,
+committee.start_dt,
+committee.stop_dt
+From committee
+Inner Join tms_committee_role ON tms_committee_role.committee_role_code = committee.committee_role_code
+Inner Join committee_header ON committee_header.committee_code = committee.committee_code
+where  (committee.committee_role_code = 'CL'
+    OR  committee.committee_role_code = 'P'
+    OR  committee.committee_role_code = 'I'
+    OR  committee.committee_role_code = 'DIR'
+    OR  committee.committee_role_code = 'S'
+    OR  committee.committee_role_code = 'PE'
+    OR  committee.committee_role_code = 'T'
+    OR  committee.committee_role_code = 'E')
+--- Pulling Current Members Only
+   AND  (committee.committee_status_code = 'C'))
 
 
 select d.id_number,
@@ -328,6 +361,9 @@ c.description_,
 c.summary_,
 speak.last_speak_date,
 speak.last_speak_detail,
+case when kaac.id_number is not null then 'Kellogg Alumni Admission Caller' end as KSM_AL_Admission_Caller, 
+case when kacao.id_number is not null then 'Kellogg Alumni Admissions Organization ' end as KSM_AL_Admission_Org,
+case when leader.id_number is not null then 'Kellogg club Leader' end as KSM_Club_Leader,
 g.NGC_LIFETIME,
 case when g.NGC_LIFETIME > 0 then 'KSM Donor' end as Donor_NGC_Lifetime_IND, 
 g.NU_MAX_HH_LIFETIME_GIVING,
@@ -384,3 +420,9 @@ left join p on p.id_number = d.id_number
 left join employ on employ.id_number = d.id_number
 --- Speakers and last speaking engagement 
 left join speak on speak.id_number = d.id_number
+--- Kellogg Alumni Admission Callers
+left join kaac on kaac.id_number = d.id_number
+--- Kellogg Alumni Admission Organization
+left join kacao on kacao.id_number = d.id_number
+--- Club Leader
+left join leader on leader.id_number = d.id_number
