@@ -25,6 +25,7 @@ committee_privateEquity Constant committee.committee_code%type := 'KPETC'; -- Ke
 committee_pe_asia Constant committee.committee_code%type := 'APEAC'; -- KSM Asia Private Equity Advisory Council
 committee_asia Constant committee.committee_code%type := 'KEBA'; -- Kellogg Executive Board for Asia
 committee_mbai Constant committee.committee_code%type := 'MBAAC'; -- MBAi Advisory Council 
+committee_yab Constant committee.committee_code%type := 'KAYAB'; -- Kellogg Young Alumni Board
 
 /*************************************************************************
 Public type declarations
