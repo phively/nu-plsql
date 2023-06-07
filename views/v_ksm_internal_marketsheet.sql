@@ -67,7 +67,6 @@ ON ep.event_id = event.event_id
 where ep.event_id = '28145'
 ),
 
-
 -- Final Reunion - Avoiding left joins in my base 
 R as (select entity.id_number,
 case when R18.id_number is not null then 'Reunion 2018 Participant' end as Reunion_18_IND,
@@ -133,22 +132,10 @@ s.LAST_GIFT_DATE,
 s.LAST_GIFT_TYPE,
 s.LAST_GIFT_ALLOC_CODE,
 s.LAST_GIFT_ALLOC,
-s.LAST_GIFT_RECOGNITION_CREDIT
+s.LAST_GIFT_RECOGNITION_CREDIT,
+s.MAX_GIFT_DATE_OF_RECORD,
+s.MAX_GIFT_CREDIT
 from rpt_pbh634.v_ksm_giving_summary s),
-
---- Max Gift - Reccomendation from Melanie 
-
-hh as (select *
-from rpt_pbh634.v_ksm_giving_trans),
-
-max_gift as (select hh.ID_NUMBER,
-max (hh.DATE_OF_RECORD) keep (dense_rank First Order By hh.CREDIT_AMOUNT DESC,
-hh.DATE_OF_RECORD DESC, hh.TX_NUMBER desc) As Date_of_record,
-max (hh.CREDIT_AMOUNT)  keep (dense_rank First Order By hh.CREDIT_AMOUNT DESC,
-hh.DATE_OF_RECORD DESC, hh.TX_NUMBER desc) As max_credit
-from hh
-group by hh.ID_NUMBER),
-
 
 ---- Eval and Officer Ratings - Reccomendation from Melanie 
 
@@ -336,29 +323,9 @@ Where act.activity_code = 'KEH'
 And act.activity_participation_code = 'P'
 ),
 
-
-
---- Kellogg Alumni Admissions Organization 
-leader as(select committee.id_number,
-committee_Header.short_desc As Club_Title,
-tms_committee_role.short_desc As Leadership_Title,
-committee.committee_status_code,
-committee.start_dt,
-committee.stop_dt
-From committee
-Inner Join tms_committee_role ON tms_committee_role.committee_role_code = committee.committee_role_code
-Inner Join committee_header ON committee_header.committee_code = committee.committee_code
-where  (committee.committee_role_code = 'CL'
-    OR  committee.committee_role_code = 'P'
-    OR  committee.committee_role_code = 'I'
-    OR  committee.committee_role_code = 'DIR'
-    OR  committee.committee_role_code = 'S'
-    OR  committee.committee_role_code = 'PE'
-    OR  committee.committee_role_code = 'T'
-    OR  committee.committee_role_code = 'E')
---- Pulling Current Members Only
-   AND  (committee.committee_status_code = 'C'))
-
+--- Kellogg Alumni Club Leader  
+leader as(select v_ksm_club_leaders.id_number
+from v_ksm_club_leaders)
 
 select d.id_number,
 d.RECORD_STATUS_CODE,
@@ -401,12 +368,12 @@ case when kaac.id_number is not null then 'Kellogg Alumni Admission Caller' end 
 case when kacao.id_number is not null then 'Kellogg Alumni Admissions Organization ' end as KSM_AL_Admission_Org,
 case when leader.id_number is not null then 'Kellogg club Leader' end as KSM_Club_Leader,
 case when k.id_number is not null then 'Kellogg On Campus Career Interviewers' End as KSM_Career_Interviewers, 
-case when KStuAct.id_number is not null then 'Kellgg Student Activity' End as KSM_Student_Activities, 
+case when KStuAct.id_number is not null then 'Kellogg Student Activity' End as KSM_Student_Activities, 
 case when e.id_number is not null then 'Event Host' End as Event_Host, 
 g.NGC_LIFETIME,
 case when g.NGC_LIFETIME > 0 then 'KSM Donor' end as Donor_NGC_Lifetime_IND, 
-g.NU_MAX_HH_LIFETIME_GIVING,
-case when g.NU_MAX_HH_LIFETIME_GIVING > 0 then 'NU Donor' end as NU_HH_LIFETIME_GIVING_IND,
+g.MAX_GIFT_DATE_OF_RECORD,
+g.MAX_GIFT_CREDIT,
 g.CRU_CFY,
 g.CRU_PFY1,
 g.CRU_PFY2,
@@ -417,8 +384,10 @@ g.LAST_GIFT_DATE,
 g.LAST_GIFT_TYPE,
 g.LAST_GIFT_ALLOC,
 g.LAST_GIFT_RECOGNITION_CREDIT,
-max_gift.DATE_OF_RECORD as date_of_record_max_gift,
-max_gift.max_credit as max_gift_credit,
+--max_gift.DATE_OF_RECORD as date_of_record_max_gift,
+--max_gift.max_credit as max_gift_credit,
+g.max_gift_date_of_record,
+g.max_gift_credit,
 KLC.KLC_Current_IND, 
 KLC.KSM_donor_pfy1,
 KLC.klc_fy_count,
@@ -452,7 +421,7 @@ left join KLC_FINAL KLC on KLC.GIFT_CLUB_ID_NUMBER = d.id_number
 --- Special Handling
 left join Spec on Spec.id_number = d.id_number
 --- Max Gift
-left join max_gift on max_gift.id_number = d.id_number 
+--left join max_gift on max_gift.id_number = d.id_number 
 --- Prospect Ratings
 left join p on p.id_number = d.id_number 
 --- employment
