@@ -302,6 +302,41 @@ where committee.committee_code = 'KACAO'
 and committee.committee_status_code = 'C'),
 
 
+--- K Interviewers
+K_Interviewers as (
+SELECT distinct comm.id_number
+       , count(comm.committee_code) KSM_Interviewer_Count
+From committee comm
+Inner Join tms_committee_table tmscomm
+      On comm.committee_code = tmscomm.committee_code
+Inner Join tms_committee_status tmscommstat
+      On comm.committee_status_code = tmscommstat.committee_status_code
+Where comm.committee_code = 'KOCCI'
+Group By comm.id_number
+),
+
+--- Student Activities
+
+KStuAct as (
+SELECT distinct sa.id_number
+From student_activity sa
+Inner Join tms_student_act tmssp
+      On tmssp.student_activity_code = sa.student_activity_code
+Where sa.student_activity_code In ('DAK', 'IKC', 'KSMT', 'KDKJS', 'KTC', 'KR', 'FFKDC', 'KSA36', 'KSB3', 'KSB33', 'KSA44', 'KSA51', 'KSA18', 'KSA93', 'KSB49', 'KSA98', 'KSB12', 'KSA54', 'KSB52', 'KSB25', 'KSB6', 'KSB51', 'KSA52', 'KSB56', 'KSA73', 'KSA74', 'KSB57', 'KSB40', 'KMSSA', 'KSA58', 'KSB41', 'KSB61', 'KSA86', 'KSA45', 'KSC', 'KSA84', 'KSB30', 'KVA', 'KSB81', 'KSA23', 'KSB14')
+),
+
+--- event hosts
+Event_Host as (
+SELECT distinct act.id_number
+From activity act
+Inner join tms_activity_table tmsat
+      On tmsat.activity_code = act.activity_code
+Where act.activity_code = 'KEH'
+And act.activity_participation_code = 'P'
+),
+
+
+
 --- Kellogg Alumni Admissions Organization 
 leader as(select committee.id_number,
 committee_Header.short_desc As Club_Title,
@@ -364,6 +399,9 @@ speak.last_speak_detail,
 case when kaac.id_number is not null then 'Kellogg Alumni Admission Caller' end as KSM_AL_Admission_Caller, 
 case when kacao.id_number is not null then 'Kellogg Alumni Admissions Organization ' end as KSM_AL_Admission_Org,
 case when leader.id_number is not null then 'Kellogg club Leader' end as KSM_Club_Leader,
+case when k.id_number is not null then 'Kellogg On Campus Career Interviewers' End as KSM_Career_Interviewers, 
+case when KStuAct.id_number is not null then 'Kellgg Student Activity' End as KSM_Student_Activities, 
+case when e.id_number is not null then 'Event Host' End as Event_Host, 
 g.NGC_LIFETIME,
 case when g.NGC_LIFETIME > 0 then 'KSM Donor' end as Donor_NGC_Lifetime_IND, 
 g.NU_MAX_HH_LIFETIME_GIVING,
@@ -426,3 +464,9 @@ left join kaac on kaac.id_number = d.id_number
 left join kacao on kacao.id_number = d.id_number
 --- Club Leader
 left join leader on leader.id_number = d.id_number
+--- K Interviewers
+left join K_Interviewers k on k.id_number = d.id_number
+--- Student Activities 
+left join KStuAct on KStuAct.id_number = d.id_number
+--- Event Host
+left Join Event_Host e on e.id_number = d.id_number
