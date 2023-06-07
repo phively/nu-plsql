@@ -301,6 +301,7 @@ from committee
 where committee.committee_code = 'KACAO'
 and committee.committee_status_code = 'C'),
 
+--- Adding Kellogg interviewers, student activities, event hosts from Liam's engagement model 
 
 --- K Interviewers
 K_Interviewers as (
