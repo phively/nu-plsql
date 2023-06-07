@@ -49,7 +49,7 @@ adv_dates As (
   Union All Select '0000292130', 'ADV', to_date('20170206', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000760399', 'ADV', to_date('20160815', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000818901', 'AF', to_date('20190903', 'yyyymmdd'), to_date('20200103', 'yyyymmdd') From DUAL
-  Union All Select '0000752673', 'AF', to_date('20191021', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000752673', 'AF', to_date('20191021', 'yyyymmdd'), to_date('20230605', 'yyyymmdd') From DUAL
   Union All Select '0000752085', 'AF', to_date('20200106', 'yyyymmdd'), to_date('20200831', 'yyyymmdd') From DUAL
   Union All Select '0000436760', 'ADV', to_date('20011101', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000529430', 'MG', to_date('20200106', 'yyyymmdd'), to_date('20221109', 'yyyymmdd') From DUAL
@@ -69,6 +69,7 @@ adv_dates As (
   Union All Select '0000889141', 'AF', to_date('20221128', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000889424', 'AF', to_date('20221205', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000809084', 'AR', to_date('20221117', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000757346', 'AF', to_date('20230424', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
 )
 
 Select
