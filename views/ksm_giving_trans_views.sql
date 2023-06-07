@@ -210,6 +210,13 @@ params As (
       As last_gift_alloc
     , sum(gfts.hh_recognition_credit) keep(dense_rank First Order By gfts.date_of_record Desc, gfts.tx_number Asc)
       As last_gift_recognition_credit
+    -- Largest KSM gift
+    , max(gfts.date_of_record)
+      keep (dense_rank First Order By gfts.hh_recognition_credit Desc, gfts.date_of_record Desc, gfts.tx_number Desc)
+      As max_gift_date_of_record
+    , max(gfts.hh_recognition_credit)
+      keep (dense_rank First Order By gfts.hh_recognition_credit Desc, gfts.date_of_record Desc, gfts.tx_number Desc)
+      As max_gift_credit
   From v_entity_ksm_households_fast hh
   Cross Join v_current_calendar cal
   Cross Join params
