@@ -144,8 +144,16 @@ Order By Date_Recent_Event ASC),
 birth as (select  entity.id_number,
 (substr (birth_dt, 1, 4)) as birth_year,
 entity.birth_dt
-from entity)
+from entity),
 
+--- Committee Membership: Concats membership in a KSM Committee - Marketsheets can extend to affinty/groups
+
+club as (select  c.id_number,
+Listagg (c.committee_desc, ';  ') Within Group (Order By c.committee_desc) As committee_desc
+        from ADVANCE_NU_RPT.v_nu_committees c
+where c.ksm_committee = 'Y'
+and c.committee_status_code = 'C'
+Group By c.id_number) 
 
 --- Degree Fields
 
@@ -240,7 +248,9 @@ recent_reunion.Date_Recent_Event,
 
 recent_reunion.Recent_Event_ID,
 
-recent_reunion.Recent_Event_Name
+recent_reunion.Recent_Event_Name,
+
+club.committee_desc as ksm_committee_concat
 
 From rpt_pbh634.v_entity_ksm_degrees
 
@@ -284,6 +294,8 @@ Left Join apr on apr.id_number = rpt_pbh634.v_entity_ksm_degrees.ID_NUMBER
 Left Join recent_reunion on recent_reunion.id_number = rpt_pbh634.v_entity_ksm_degrees.ID_NUMBER
 
 Left Join birth on birth.id_number = rpt_pbh634.v_entity_ksm_degrees.id_number
+
+Left Join club on club.id_number = rpt_pbh634.v_entity_ksm_degrees.id_number
 
 Where rpt_pbh634.v_entity_ksm_degrees.Record_Status_Code IN ('A','L')
 ;
