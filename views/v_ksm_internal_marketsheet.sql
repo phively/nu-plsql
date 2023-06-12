@@ -110,11 +110,15 @@ or cal.curr_fy = event.start_fy_calc + 2
 or cal.curr_fy = event.start_fy_calc + 1
 or cal.curr_fy = event.start_fy_calc + 0)),
 
+fac_dean_last_5 as (select distinct f.id_number
+from f),
+
+
 a as (select distinct assign.id_number,
-assign.prospect_manager,
-assign.lgos,
-assign.managers
-from rpt_pbh634.v_assignment_summary assign),
+Listagg (assign.prospect_manager, ';  ') Within Group (Order By assign.prospect_manager) As prospect_manager,
+Listagg (assign.lgos, ';  ') Within Group (Order By assign.lgos) As lgos
+from rpt_pbh634.v_assignment_summary assign
+group by assign.id_number),
 
 --- Lifetime Giving, NU Lifetime, CRU CFY, 
 g as (select s.ID_NUMBER,
@@ -363,6 +367,7 @@ c.description_,
 c.summary_,
 speak.last_speak_date,
 speak.last_speak_detail,
+case when fe.id_number is not null then 'Faculty_event_last_5' end as KSM_faculty_event_last5,
 case when kaac.id_number is not null then 'Kellogg Alumni Admission Caller' end as KSM_AL_Admission_Caller, 
 case when kacao.id_number is not null then 'Kellogg Alumni Admissions Organization ' end as KSM_AL_Admission_Org,
 case when leader.id_number is not null then 'Kellogg club Leader' end as KSM_Club_Leader,
@@ -412,7 +417,7 @@ left join a on a.id_number = d.id_number
 --- Contact Reports
 left join c on c.id_number = d.id_number
 --- faculty or dean event
-left join f on f.id_number = d.id_number
+left join fac_dean_last_5 fe on fe.id_number = d.id_number
 --- giving
 left join g on g.id_number = d.id_number
 --- KLC
