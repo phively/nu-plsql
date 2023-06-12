@@ -569,9 +569,11 @@ From Table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_trustee) Trustee)
 SELECT DISTINCT
    E.ID_NUMBER
   ,E.pref_mail_name
+  ,E.REPORT_NAME
   ,M.maiden_name
   --- Adding in first name - That way AF and Reunion Team can use Dean Salutation based on the Dean_Source  
   ,E.FIRST_NAME
+  ,E.last_name
   ,d.P_Dean_Salut
   ,d.P_Dean_Source
   ,E.RECORD_STATUS_CODE

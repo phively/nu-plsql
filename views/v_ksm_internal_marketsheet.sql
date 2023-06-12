@@ -293,7 +293,6 @@ and committee.committee_status_code = 'C'),
 --- K Interviewers
 K_Interviewers as (
 SELECT distinct comm.id_number
-       , count(comm.committee_code) KSM_Interviewer_Count
 From committee comm
 Inner Join tms_committee_table tmscomm
       On comm.committee_code = tmscomm.committee_code
@@ -324,7 +323,7 @@ And act.activity_participation_code = 'P'
 ),
 
 --- Kellogg Alumni Club Leader  
-leader as(select v_ksm_club_leaders.id_number
+leader as(select distinct v_ksm_club_leaders.id_number
 from v_ksm_club_leaders)
 
 select d.id_number,
