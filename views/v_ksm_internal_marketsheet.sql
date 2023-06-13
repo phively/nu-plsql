@@ -2,6 +2,11 @@
 with h as (select  *
 from rpt_pbh634.v_entity_ksm_households),
 
+--- entity 
+
+e as (select  *
+from entity),
+
 --- event table
 event as (select *
 from rpt_pbh634.v_nu_events),
@@ -68,20 +73,20 @@ where ep.event_id = '28145'
 ),
 
 -- Final Reunion - Avoiding left joins in my base 
-R as (select entity.id_number,
+R as (select e.id_number,
 case when R18.id_number is not null then 'Reunion 2018 Participant' end as Reunion_18_IND,
 case when R19.id_number is not null then 'Reunion 2019 Participant' end as Reunion_19_IND,
 case when R21.id_number is not null then 'Reunion 2021 Participant' end as Reunion_21_IND, 
 case when R22W1.id_number is not null then 'Reunion 2022 Weekend 1 Participant' end as Reunion_22W1_IND,
 case when R22W2.id_number is not null then 'Reunion 2022 Weekend 2 Participant' end as Reunion_22W2_IND,
 case when R23.id_number is not null then 'Reunion 2023 Participant' end as Reunion_23_IND
-from entity
-left join REUNION_2018_PARTICIPANTS R18 ON R18.id_number = entity.id_number
-left join REUNION_2019_PARTICIPANTS R19 on R19.id_number = entity.id_number
-left join REUNION_2021_PARTICIPANTS R21 on R21.id_number = entity.id_number
-left join REUNION_2022_PARTICIPANTS R22W1 on R22W1.id_number = entity.id_number
-left join REUNION_2022_PARTICIPANTS R22W2 on R22W2.id_number = entity.id_number
-left join REUNION_2023_PARTICIPANTS R23 on R23.id_number = entity.id_number
+from e
+left join REUNION_2018_PARTICIPANTS R18 ON R18.id_number = e.id_number
+left join REUNION_2019_PARTICIPANTS R19 on R19.id_number = e.id_number
+left join REUNION_2021_PARTICIPANTS R21 on R21.id_number = e.id_number
+left join REUNION_2022_PARTICIPANTS R22W1 on R22W1.id_number = e.id_number
+left join REUNION_2022_PARTICIPANTS R22W2 on R22W2.id_number = e.id_number
+left join REUNION_2023_PARTICIPANTS R23 on R23.id_number = e.id_number
 where (R18.id_number is not null
 or R19.id_number is not null
 or R21.id_number is not null
@@ -114,11 +119,12 @@ fac_dean_last_5 as (select distinct f.id_number
 from f),
 
 
-a as (select distinct assign.id_number,
-Listagg (assign.prospect_manager, ';  ') Within Group (Order By assign.prospect_manager) As prospect_manager,
-Listagg (assign.lgos, ';  ') Within Group (Order By assign.lgos) As lgos
+a as (select distinct assign.prospect_id,
+                assign.id_number,
+                assign.prospect_manager,
+                assign.lgos
 from rpt_pbh634.v_assignment_summary assign
-group by assign.id_number),
+where assign.curr_ksm_manager = 'Y'),
 
 --- Lifetime Giving, NU Lifetime, CRU CFY, 
 g as (select s.ID_NUMBER,
@@ -332,7 +338,7 @@ from v_ksm_club_leaders)
 
 select d.id_number,
 d.RECORD_STATUS_CODE,
-entity.gender_code,
+e.gender_code,
 d.REPORT_NAME,
 d.FIRST_KSM_YEAR,
 d.PROGRAM,
@@ -409,7 +415,7 @@ from rpt_pbh634.v_entity_ksm_degrees d
 --- inner join house - to get geocodes/location
 inner join h on h.id_number = d.id_number
 --- entity
-inner join entity on entity.id_number = d.id_number
+inner join e on e.id_number = d.id_number
 --- Reunion
 left join r on r.id_number = d.id_number
 --- Assignments
