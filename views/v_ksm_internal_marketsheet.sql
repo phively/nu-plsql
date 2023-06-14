@@ -95,36 +95,33 @@ or R22W2.id_number is not null)),
 
 --- Faculty or Dean Event Past 5 Years 
 
-F as (select ep.id_number,
-event.event_id,
-event.event_name,
-event.start_fy_calc,
-v.id_number as kellogg_faculty_staff_id,
-v.first_name as kellogg_first_name,
-v.last_name as kellogg_last_name
+F as (select distinct ep.id_number
+-- dupes caused by above
 from event
 cross join rpt_pbh634.v_current_calendar cal
 inner join v_ksm_faculty_events v ON v.event_id = event.event_id
 Inner Join ep
 ON ep.event_id = event.event_id
 --- Past 5 Years
-where (cal.curr_fy = event.start_fy_calc + 5
+where
+-- event.start_fy_calc Between cal.curr_fy - 5 And cal.curr_fy
+(cal.curr_fy = event.start_fy_calc + 5
 or cal.curr_fy = event.start_fy_calc + 4
 or cal.curr_fy = event.start_fy_calc + 3
 or cal.curr_fy = event.start_fy_calc + 2
 or cal.curr_fy = event.start_fy_calc + 1
 or cal.curr_fy = event.start_fy_calc + 0)),
 
-fac_dean_last_5 as (select distinct f.id_number
-from f),
-
 
 a as (select distinct assign.prospect_id,
                 assign.id_number,
                 assign.prospect_manager,
-                assign.lgos
+                assign.lgos,
+                assign.managers,
+                assign.curr_ksm_manager
 from rpt_pbh634.v_assignment_summary assign
-where assign.curr_ksm_manager = 'Y'),
+---Central - All managers !!! Changes this 
+),
 
 --- Lifetime Giving, NU Lifetime, CRU CFY, 
 g as (select s.ID_NUMBER,
@@ -171,6 +168,7 @@ max (cr.summary) keep (dense_rank First Order By cr.contact_date DESC) as summar
 from rpt_pbh634.v_contact_reports_fast cr
 group by cr.id_number
 ),
+
 
 /* KLC Membership Queries
 1. Establishing KLC Members
@@ -365,6 +363,8 @@ P.EVALUATION_RATING,
 P.OFFICER_RATING,
 a.prospect_manager,
 a.lgos,
+a.managers,
+a.curr_ksm_manager,
 c.credited,
 c.credited_name,
 c.contact_type,
@@ -373,7 +373,7 @@ c.description_,
 c.summary_,
 speak.last_speak_date,
 speak.last_speak_detail,
-case when fe.id_number is not null then 'Faculty_event_last_5' end as KSM_faculty_event_last5,
+case when f.id_number is not null then 'Faculty_event_last_5' end as KSM_faculty_event_last5,
 case when kaac.id_number is not null then 'Kellogg Alumni Admission Caller' end as KSM_AL_Admission_Caller, 
 case when kacao.id_number is not null then 'Kellogg Alumni Admissions Organization ' end as KSM_AL_Admission_Org,
 case when leader.id_number is not null then 'Kellogg club Leader' end as KSM_Club_Leader,
@@ -423,7 +423,7 @@ left join a on a.id_number = d.id_number
 --- Contact Reports
 left join c on c.id_number = d.id_number
 --- faculty or dean event
-left join fac_dean_last_5 fe on fe.id_number = d.id_number
+left join f on f.id_number = d.id_number
 --- giving
 left join g on g.id_number = d.id_number
 --- KLC
