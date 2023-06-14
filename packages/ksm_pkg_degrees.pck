@@ -17,6 +17,7 @@ Type degreed_alumni Is Record (
   , record_status_code entity.record_status_code%type
   , degrees_verbose varchar2(1024)
   , degrees_concat varchar2(512)
+  , first_ksm_grad_dt degrees.grad_dt%type
   , first_ksm_year degrees.degree_year%type
   , first_masters_year degrees.degree_year%type
   , last_masters_year degrees.degree_year%type
@@ -88,6 +89,7 @@ Cursor c_entity_degrees_concat_ksm Is
   , deg_data As (
     Select
       degrees.id_number
+      , grad_dt
       , degree_year
       , non_grad_code
       , Case When non_grad_code = 'N' Then 'Nongrad ' End As nongrad
@@ -177,6 +179,9 @@ Cursor c_entity_degrees_concat_ksm Is
         trim(majors)  
         , '; '
       ) Within Group (Order By degree_year) As majors_concat
+      -- First Kellogg grad date
+      , min(grad_dt) keep(dense_rank First Order By non_grad_code Desc, degree_year Asc, grad_dt Asc)
+        As first_ksm_grad_dt
       -- First Kellogg year: exclude non-grad years
       , min(trim(Case When non_grad_code = 'N' Then NULL Else degree_year End))
         As first_ksm_year
@@ -324,6 +329,7 @@ Cursor c_entity_degrees_concat_ksm Is
       , entity.record_status_code
       , degrees_verbose
       , degrees_concat
+      , first_ksm_grad_dt
       , first_ksm_year
       , first_masters_year
       , last_masters_year
