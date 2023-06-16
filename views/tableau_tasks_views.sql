@@ -180,6 +180,7 @@ Select Distinct
   , pp.team
   , pp.prospect_manager_id
   , pp.prospect_manager
+  , vas.lgos
   , ksm_staff.former_staff
   , cat.prospect_category_code
   , tms_prospect_category.short_desc As prospect_cat
@@ -212,6 +213,7 @@ Select Distinct
   , task_detail.task_description
   , task_detail.proposal_id
   , lr.latest_contact
+  , lr.latest_contact_author
   , nvl(cc.nonvisit_contacts_during_task, 0)
     As nonvisit_contacts_during_task
   , nvl(cc.contacts_during_task_inactive, 0)
@@ -256,6 +258,8 @@ Inner Join rpt_pbh634.v_entity_ksm_households hh
   On hh.id_number = pe.id_number
 Left Join nu_prs_trp_prospect pp
   On pe.id_number = pp.id_number
+Left Join rpt_pbh634.v_assignment_summary vas
+  On vas.id_number = pe.id_number
 Left Join uor
   On uor.prospect_id = pe.prospect_id
 Left Join program_prospect pr
