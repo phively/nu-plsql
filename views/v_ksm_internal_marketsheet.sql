@@ -1,3 +1,5 @@
+Create or Replace view v_ksm_internal_marketsheet as
+
 --- Households
 with h as (select  *
 from rpt_pbh634.v_entity_ksm_households),
@@ -396,8 +398,8 @@ g.LAST_GIFT_ALLOC,
 g.LAST_GIFT_RECOGNITION_CREDIT,
 --max_gift.DATE_OF_RECORD as date_of_record_max_gift,
 --max_gift.max_credit as max_gift_credit,
-g.max_gift_date_of_record,
-g.max_gift_credit,
+---g.max_gift_date_of_record,
+---g.max_gift_credit,
 KLC.KLC_Current_IND, 
 KLC.KSM_donor_pfy1,
 KLC.klc_fy_count,
