@@ -381,7 +381,7 @@ SELECT
   GROUP BY GT.ID_NUMBER
 )
 
-,KSM_TOTAL22 AS (
+,KSM_TOTAL23 AS (
   SELECT
   GT.ID_NUMBER
   ,SUM(GT.CREDIT_AMOUNT) AS KSM_TOTAL
@@ -392,7 +392,7 @@ SELECT
  GROUP BY GT.ID_NUMBER
 )
 
-,KSM_MATCH_22 AS (
+,KSM_MATCH_23 AS (
    SELECT DISTINCT
      GT.ID_NUMBER
    FROM GIVING_TRANS GT
@@ -410,9 +410,7 @@ FROM KSM_REUNION
 )
 
 --- Edit 10.6.2022: Selecting Max to adjust for the duplicate issue with a record. 
- /* 
   
-Not needed per AF 6/22/23  
 
 ,AF_SCORES AS (
 SELECT
@@ -423,7 +421,6 @@ FROM RPT_PBH634.V_KSM_MODEL_AF_10K AF
 GROUP BY AF.ID_NUMBER
 )
 
-*/
 
 --- ADDING ADDTIONAL MODEL SCORES
 --- Edit 10.6.2022: Selecting Max to adjust for the duplicate issue with a record. 
@@ -605,9 +602,35 @@ Left JOIN tms_affiliation_level ON tms_affiliation_level.affil_level_code = aff.
 inner join rpt_pbh634.v_entity_ksm_degrees d on d.ID_NUMBER = aff.id_number
  WHERE  aff.affil_code = 'KM'
    AND (aff.affil_level_code = 'ES'
-    OR  aff.affil_level_code = 'EF'))
+    OR  aff.affil_level_code = 'EF')),
+    
+    
+    
+---32)	CYD gift made through DAF or Foundation (add – check with Amy on this)
 
+GIVING_TRANS_DAF AS (SELECT *
+  FROM rpt_pbh634.v_ksm_giving_trans GT
+  INNER JOIN GIFT G
+  ON GT."TX_NUMBER" = G.GIFT_RECEIPT_NUMBER
+   AND GT."TX_SEQUENCE" = G.GIFT_SEQUENCE
+  WHERE G.GIFT_ASSOCIATED_CODE IN ('D', 'C')
+   AND (GT."AF_FLAG" = 'Y' OR GT."CRU_FLAG" = 'Y')
+),
 
+FOUNDATION AS (SELECT
+           GIVING_TRANS_DAF.ID_NUMBER,
+max (ENTITY.REPORT_NAME) keep (dense_rank First Order By DATE_OF_RECORD DESC) as REPORT_NAME,           
+max (associated_desc) keep (dense_rank First Order By DATE_OF_RECORD DESC) as associated_desc,
+max (DATE_OF_RECORD) keep (dense_rank First Order By DATE_OF_RECORD DESC) as DATE_OF_RECORD,
+max (TX_NUMBER) keep (dense_rank First Order By DATE_OF_RECORD DESC) as rcpt
+          FROM GIVING_TRANS_DAF
+          LEFT JOIN GIFT
+          ON GIVING_TRANS_DAF.TX_NUMBER = GIFT.GIFT_RECEIPT_NUMBER
+            --AND GIFT.GIFT_SEQUENCE = 1
+          LEFT JOIN ENTITY
+          ON GIFT.GIFT_DONOR_ID = ENTITY.ID_NUMBER
+          WHERE TX_GYPM_IND <> 'P'  AND GIFT.GIFT_SEQUENCE = 1
+          GROUP BY GIVING_TRANS_DAF.ID_NUMBER)
 
 --- Don't need the temp table .... Yet. Will create one when registration opens in Jan 2023. 
 
@@ -648,6 +671,7 @@ SELECT DISTINCT
   --- Let's use my employer subquery instead of Bill's Function
   ,EMPL.JOB_TITLE AS BS_POSITION
   ,EMPL.employer_name AS EMPLOYER
+  ,CASE WHEN KFS.ID_NUMBER IS NOT NULL THEN 'NU Faculty/Staff' end as NU_faculty_staff_ind
   ,p.addr_pref_ind as preferred_address_indicator
   ,p.addr_type_code as preferred_address_type
   ,p.care_of as preferred_address_care_of
@@ -730,10 +754,14 @@ SELECT DISTINCT
   ,Case when CYD.id_number is not null then WT0_GIFTS2.IsAnonymousDonor(E.ID_NUMBER) End as ANON_DONOR1
   ,Case when CYD.id_number is not null then WT0_GIFTS2.HasAnonymousGift(E.SPOUSE_ID_NUMBER, '1900', '2020') End as ANON_GIFT2
   ,Case when CYD.id_number is not null then WT0_GIFTS2.IsAnonymousDonor(E.SPOUSE_ID_NUMBER) end as ANON_DONOR2
+  ,Case when CYD.id_number is not null then FOUNDATION.REPORT_NAME END AS FOUNDATION_CYD
+  ,Case when CYD.id_number is not null then FOUNDATION.ASSOCIATED_DESC END AS FOUNDATION_DESC_CYD
+  ,Case when CYD.id_number is not null then FOUNDATION.RCPT END AS FOUNDATION_RECPT_NUM_CYD
+  ,Case when CYD.id_number is not null then FOUNDATION.DATE_OF_RECORD END AS FOUNDATION_DATE_OF_GIFT_CYD
   ,KSMT.KSM_TOTAL
   ,KAFT.KSM_AF_TOTAL
-  ,KSM22.KSM_TOTAL AS KSM_TOTAL_2022
-  ,CASE WHEN KM22.ID_NUMBER IS NOT NULL THEN 'Y' END AS MATCH_2022
+  ,KSM23.KSM_TOTAL AS KSM_TOTAL_2023
+  ,CASE WHEN KM23.ID_NUMBER IS NOT NULL THEN 'Y' END AS MATCH_2022
   ,NP.OFFICER_RATING
   ,REPLACE(WT0_PKG.GetRecentRating(E.ID_NUMBER, 'PR'), ';;') RESEARCH_RATING
   --,WT0_PKG.Get_Prime_Geo_Area_From_Zip(PA.ZIPCODE) AS GEO_AREA
@@ -747,12 +775,8 @@ SELECT DISTINCT
   ---,WT0_PARSE(PROPOSAL_STATUS, 8,  '^') PROPOSAL_DESCRIPTION Not need AF 6/22/23
   ,WT0_PARSE(PROPOSAL_STATUS, 9,  '^') PROGRAM
   --- ,WT0_PARSE(PROPOSAL_STATUS, 10, '^') PROPOSAL_ID Not need AF 6/22/23
-  /* 
-  
-  Not needed per AF 6/22/23 
-  
-  ,AFS.AF_10K_MODEL_SCORE
-  ,AFS.AF_10K_MODEL_TIER */
+  /* Not needed per AF 6/22/23 ,AFS.AF_10K_MODEL_SCORE */
+  ,AFS.AF_10K_MODEL_TIER 
   ,KSM_MODEL.id_score
   ,KSM_MODEL.pr_segment
   ,KSM_MODEL.pr_score
@@ -818,24 +842,16 @@ LEFT JOIN KSM_TOTAL KSMT
  ON E.ID_NUMBER = KSMT.ID_NUMBER
 LEFT JOIN KSM_AF_TOTAL KAFT
   ON E.ID_NUMBER = KAFT.ID_NUMBER
-LEFT JOIN KSM_TOTAL22 KSM22
-  ON E.ID_NUMBER = KSM22.ID_NUMBER
-LEFT JOIN KSM_MATCH_22 KM22
-  ON E.ID_NUMBER = KM22.ID_NUMBER
+LEFT JOIN KSM_TOTAL23 KSM23
+  ON E.ID_NUMBER = KSM23.ID_NUMBER
+LEFT JOIN KSM_MATCH_23 KM23
+  ON E.ID_NUMBER = KM23.ID_NUMBER
 LEFT JOIN NU_PRS_TRP_PROSPECT NP
   ON E.ID_NUMBER = NP.ID_NUMBER
 LEFT JOIN PROPOSALS PROP
   ON E.ID_NUMBER = PROP.ID_NUMBER
-  
-   /* 
-  
-  Not needed per AF 6/22/23 
-  
-
 LEFT JOIN AF_SCORES AFS
   ON E.ID_NUMBER = AFS.ID_NUMBER
-  */
-  
 LEFT JOIN KSM_MODEL
      ON KSM_MODEL.ID_NUMBER = E.ID_NUMBER
 LEFT JOIN KSM_ENGAGEMENT
@@ -873,5 +889,7 @@ LEFT JOIN KAC
 ON KAC.ID_NUMBER = E.ID_NUMBER
 --- Kellogg Faculty or Staff Flag
 Left Join KSM_Faculty_Staff KFS
-ON KFS.id_number = E.id_number;
-
+ON KFS.ID_NUMBER = E.ID_NUMBER
+--- CYD FOUNDATION 
+Left Join FOUNDATION
+ON FOUNDATION.id_number = E.id_number;
