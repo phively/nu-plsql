@@ -724,10 +724,12 @@ SELECT DISTINCT
   ,GI.GACCT4 AS ACC4
   ,GI.MATCH4 AS MATCH_AMOUNT4
   ,GI.CLAIM4 AS CLAIM_AMOUNT4
-  ,WT0_GIFTS2.HasAnonymousGift(E.ID_NUMBER, '1900', '2020') ANON_GIFT1
-  ,WT0_GIFTS2.IsAnonymousDonor(E.ID_NUMBER) ANON_DONOR1
-  ,WT0_GIFTS2.HasAnonymousGift(E.SPOUSE_ID_NUMBER, '1900', '2020') ANON_GIFT2
-  ,WT0_GIFTS2.IsAnonymousDonor(E.SPOUSE_ID_NUMBER) ANON_DONOR2
+  ---  Will you look into this code? It is pulling it for all gifts, so hard for us to tell if the CYD gift is anonymous
+  --- AF wants to see if they are CYDs
+  ,Case when CYD.id_number is not null then WT0_GIFTS2.HasAnonymousGift(E.ID_NUMBER, '1900', '2020') End as ANON_GIFT1
+  ,Case when CYD.id_number is not null then WT0_GIFTS2.IsAnonymousDonor(E.ID_NUMBER) End as ANON_DONOR1
+  ,Case when CYD.id_number is not null then WT0_GIFTS2.HasAnonymousGift(E.SPOUSE_ID_NUMBER, '1900', '2020') End as ANON_GIFT2
+  ,Case when CYD.id_number is not null then WT0_GIFTS2.IsAnonymousDonor(E.SPOUSE_ID_NUMBER) end as ANON_DONOR2
   ,KSMT.KSM_TOTAL
   ,KAFT.KSM_AF_TOTAL
   ,KSM22.KSM_TOTAL AS KSM_TOTAL_2022
