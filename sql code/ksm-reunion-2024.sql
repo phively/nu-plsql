@@ -669,7 +669,7 @@ SELECT DISTINCT
   ,KCL.Leadership_Titles AS CLUB_LEADER
   ,FW.short_desc AS INDUSTRY
   --- Let's use my employer subquery instead of Bill's Function
-  ,EMPL.JOB_TITLE AS BS_POSITION
+  ,EMPL.JOB_TITLE AS JOB_TITLE
   ,EMPL.employer_name AS EMPLOYER
   ,CASE WHEN KFS.ID_NUMBER IS NOT NULL THEN 'NU Faculty/Staff' end as NU_faculty_staff_ind
   ,p.addr_pref_ind as preferred_address_indicator
@@ -687,7 +687,6 @@ SELECT DISTINCT
   ,p.zipcode as preferred_zipcode
   ,p.country_code as preferred_country
   ,KR.P_GEOCODE_DESC AS GEO_AREA 
-  
   ,S.NO_EMAIL_IND AS NO_EMAIL
   ,S.NO_EMAIL_SOL_IND AS NO_EMAIL_SOLICIT
   ,S.NO_MAIL_SOL_IND AS NO_MAIL_SOLICIT
@@ -761,7 +760,7 @@ SELECT DISTINCT
   ,KSMT.KSM_TOTAL
   ,KAFT.KSM_AF_TOTAL
   ,KSM23.KSM_TOTAL AS KSM_TOTAL_2023
-  ,CASE WHEN KM23.ID_NUMBER IS NOT NULL THEN 'Y' END AS MATCH_2022
+  ,CASE WHEN KM23.ID_NUMBER IS NOT NULL THEN 'Y' END AS MATCH_2023
   ,NP.OFFICER_RATING
   ,REPLACE(WT0_PKG.GetRecentRating(E.ID_NUMBER, 'PR'), ';;') RESEARCH_RATING
   --,WT0_PKG.Get_Prime_Geo_Area_From_Zip(PA.ZIPCODE) AS GEO_AREA
