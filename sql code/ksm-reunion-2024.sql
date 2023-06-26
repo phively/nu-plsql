@@ -11,7 +11,7 @@ Select
 )
 
 ,HOUSE AS (SELECT *
-FROM rpt_pbh634.v_entity_ksm_households H)
+FROM rpt_pbh634.v_entity_ksm_households_fast H)
 
 ,KSM_DEGREES AS (
  SELECT
@@ -599,12 +599,9 @@ KSM_Faculty_Staff  as (select aff.id_number,
 FROM  affiliation aff
 LEFT JOIN TMS_AFFIL_CODE ON TMS_AFFIL_CODE.affil_code = aff.affil_code
 Left JOIN tms_affiliation_level ON tms_affiliation_level.affil_level_code = aff.affil_level_code
-inner join rpt_pbh634.v_entity_ksm_degrees d on d.ID_NUMBER = aff.id_number
  WHERE  aff.affil_code = 'KM'
    AND (aff.affil_level_code = 'ES'
     OR  aff.affil_level_code = 'EF')),
-    
-    
     
 ---32)	CYD gift made through DAF or Foundation (add – check with Amy on this)
 
@@ -627,7 +624,7 @@ max (TX_NUMBER) keep (dense_rank First Order By DATE_OF_RECORD DESC) as rcpt
           LEFT JOIN GIFT
           ON GIVING_TRANS_DAF.TX_NUMBER = GIFT.GIFT_RECEIPT_NUMBER
             --AND GIFT.GIFT_SEQUENCE = 1
-          LEFT JOIN ENTITY
+          INNER JOIN ENTITY
           ON GIFT.GIFT_DONOR_ID = ENTITY.ID_NUMBER
           WHERE TX_GYPM_IND <> 'P'  AND GIFT.GIFT_SEQUENCE = 1
           GROUP BY GIVING_TRANS_DAF.ID_NUMBER)
@@ -808,6 +805,7 @@ INNER JOIN KSM_REUNION KR
 ON E.ID_NUMBER = KR.ID_NUMBER
 INNER JOIN HOUSE
 ON HOUSE.ID_NUMBER = E.ID_NUMBER
+--- 2019 REUNION COMMITTEE
 LEFT JOIN REUNION_COMMITTEE RC
 ON E.ID_NUMBER = RC.ID_NUMBER
 LEFT JOIN REUNION_14_COMMITTEE  PRC
