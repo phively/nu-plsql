@@ -28,16 +28,17 @@ FROM rpt_pbh634.v_entity_ksm_households_fast H)
 ,KSM_REUNION AS (
 SELECT
 A.*
-,GC.P_GEOCODE_Desc
+--- Let's have the geocode 100% tied to the primary address 
+---,GC.P_GEOCODE_Desc
 ,House.HOUSEHOLD_ID
 FROM AFFILIATION A
 CROSS JOIN manual_dates MD
 Inner JOIN house ON House.ID_NUMBER = A.ID_NUMBER
 Inner Join KSM_DEGREES d on d.id_number = a.id_number
-LEFT JOIN RPT_DGZ654.V_GEO_CODE GC
-  ON A.ID_NUMBER = GC.ID_NUMBER
-    AND GC.ADDR_PREF_IND = 'Y'
-     AND GC.GEO_STATUS_CODE = 'A'
+---LEFT JOIN RPT_DGZ654.V_GEO_CODE GC
+---  ON A.ID_NUMBER = GC.ID_NUMBER
+---    AND GC.ADDR_PREF_IND = 'Y'
+---     AND GC.GEO_STATUS_CODE = 'A'
 WHERE (TO_NUMBER(NVL(TRIM(A.CLASS_YEAR),'1')) IN (MD.CFY-1, MD.CFY-5, MD.CFY-10, MD.CFY-15, MD.CFY-20, MD.CFY-25, MD.CFY-30, MD.CFY-35, MD.CFY-40,
   MD.CFY-45, MD.CFY-50, MD.CFY-51, MD.CFY-52, MD.CFY-53, MD.CFY-54, MD.CFY-55, MD.CFY-56, MD.CFY-57, MD.CFY-58, MD.CFY-59, MD.CFY-60)
 AND A.AFFIL_CODE = 'KM'
@@ -462,6 +463,16 @@ FROM  a
 WHERE  a.activity_code = 'KCR'
 AND A.ACTIVITY_PARTICIPATION_CODE = 'P') */
 
+--- Geocode that ties to the primary address!!! 
+
+,G as (Select
+gc.*
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_geo_code_primary) gc
+Inner Join address
+On address.id_number = gc.id_number
+And address.xsequence = gc.xsequence)
+
+
 ,Preferred_address as (Select
        a.Id_number
       ,  a.addr_type_code
@@ -477,7 +488,10 @@ AND A.ACTIVITY_PARTICIPATION_CODE = 'P') */
       , a.company_name_1
       , a.company_name_2
       , a.business_title
+      , G.GEO_CODE_PRIMARY_DESC AS PRIMARY_GEO_CODE
       FROM address a
+      LEFT JOIN g ON g.id_number = A.ID_NUMBER
+      AND g.xsequence = a.xsequence
       WHERE a.addr_pref_IND = 'Y')
       
 ,s as (Select spec.ID_NUMBER,
@@ -653,6 +667,7 @@ SELECT DISTINCT
   ,p.street3 as preferred_street3
   ,p.zipcode as preferred_street4
   ,p.city as preferred_city
+  ,p.PRIMARY_GEO_CODE as primary_geo_code
   ,p.state_code as preferred_state
   ,p.zipcode as preferred_zipcode
   ,p.country_code as preferred_country
@@ -688,7 +703,6 @@ SELECT DISTINCT
   ,S.NO_PHONE_SOL_IND AS NO_PHONE_SOLICIT
   ,S.SPECIAL_HANDLING_CONCAT AS RESTRICTIONS
   ,S.NO_CONTACT
-  ,KR.P_GEOCODE_DESC AS GEO_AREA
   ,EMPL.JOB_TITLE AS JOB_TITLE
   ,EMPL.employer_name AS EMPLOYER
   ,EMPL.FLD_OF_WORK AS INDUSTRY
