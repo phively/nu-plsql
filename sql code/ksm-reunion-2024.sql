@@ -43,20 +43,28 @@ WHERE (TO_NUMBER(NVL(TRIM(A.CLASS_YEAR),'1')) IN (MD.CFY-1, MD.CFY-5, MD.CFY-10,
 AND A.AFFIL_CODE = 'KM'
 AND A.AFFIL_LEVEL_CODE = 'RG'))
 
-,GIVING_SUMMARY AS (
-Select Distinct house.id_number
-    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year     And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_cfy
-    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 1 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy1
-    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 2 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy2
-    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 3 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy3
-    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 4 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy4
-    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 5 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy5
-From house
-  Cross Join rpt_pbh634.v_current_calendar cal
-  Inner Join rpt_pbh634.v_ksm_giving_trans_hh gfts
-    On gfts.ID_NUMBER = house.id_number
-  Group By
-house.id_number)
+,GIVING_SUMMARY AS (select s.ID_NUMBER,
+       s.CRU_CFY,
+       s.CRU_PFY1,
+       s.CRU_PFY2,
+       s.CRU_PFY3,
+       s.CRU_PFY4,
+       s.CRU_PFY5,
+       s.anonymous_donor,
+       s.anonymous_cfy_flag,
+       s.anonymous_pfy1_flag,
+       s.anonymous_pfy2_flag,
+       s.anonymous_pfy3_flag,
+       s.anonymous_pfy4_flag,
+       s.anonymous_pfy5_flag,
+       s.ANONYMOUS_CFY,
+       s.ANONYMOUS_PFY1,
+       s.ANONYMOUS_PFY2,
+       s.ANONYMOUS_PFY3,
+       s.ANONYMOUS_PFY4,
+       s.ANONYMOUS_PFY5,
+       s.NU_MAX_HH_LIFETIME_GIVING
+from rpt_pbh634.v_ksm_giving_summary s)
 
 ,GIVING_TRANS AS
 ( SELECT HH.*
@@ -65,11 +73,9 @@ house.id_number)
   ON HH."ID_NUMBER" = KR.ID_NUMBER
 )
 
-/* 
-AF Does not need this anymore
-  edit 6/22/23
+
 ,KSM_GIVING_MOD as (select *
-from v_ksm_reunion_giving_mod) */
+from v_ksm_reunion_giving_mod) 
 
 --- Spouse Reunion Year Only for 2024
 
@@ -109,13 +115,13 @@ inner join KSM_REUNION ON KSM_REUNION.ID_number = house.SPOUSE_ID_NUMBER)
   AND START_DT = '20130901'
 )
 
-
+/* Don't need this now
 
 
 ,PAST_REUNION_COMMITTEE AS (SELECT DISTINCT
    ID_NUMBER
   FROM COMMITTEE
-  WHERE COMMITTEE_CODE = '227' AND COMMITTEE_STATUS_CODE = 'F')
+  WHERE COMMITTEE_CODE = '227' AND COMMITTEE_STATUS_CODE = 'F')/* 
 
 
 /*,CURRENT_DONOR AS (
@@ -149,6 +155,8 @@ where ep_event.event_id = '9760'
 )
 
 
+/* AF DOES NOT NEED REGISTRANTS, JUST ATTENDEES
+
 ,REUNION_2014_REGISTRANTS AS (
 select EP_REGISTRATION.CONTACT_ID_NUMBER,
 EP_REGISTRATION.EVENT_ID,
@@ -156,7 +164,7 @@ TMS_EVENT_REGISTRATION_STATUS.short_desc,
 EP_REGISTRATION.RESPONSE_DATE
 from EP_REGISTRATION
 left join TMS_EVENT_REGISTRATION_STATUS ON TMS_EVENT_REGISTRATION_STATUS.registration_status_code = EP_REGISTRATION.REGISTRATION_STATUS_CODE
-where EP_REGISTRATION.EVENT_ID = '9760')
+where EP_REGISTRATION.EVENT_ID = '9760') */
 
 
 ,REUNION_2019_PARTICIPANTS AS (
@@ -168,6 +176,7 @@ ON ep_participant.event_id = ep_event.event_id
 where ep_event.event_id = '21120'
 )
 
+/* AF DOES NOT NEED REGISTRANTS, JUST ATTENDEES
 
 ,REUNION_2019_REGISTRANTS AS (
 select EP_REGISTRATION.CONTACT_ID_NUMBER,
@@ -177,6 +186,11 @@ EP_REGISTRATION.RESPONSE_DATE
 from EP_REGISTRATION
 left join TMS_EVENT_REGISTRATION_STATUS ON TMS_EVENT_REGISTRATION_STATUS.registration_status_code = EP_REGISTRATION.REGISTRATION_STATUS_CODE
 where EP_REGISTRATION.EVENT_ID = '21120')
+
+*/
+
+/* NO LONGER NEEDED AT THIS TIME
+
 
 ,KSM_ENGAGEMENT AS (--- Subquery to add into the 2021 Reunion Report. This will help user identify an alum's most recent attendance. 
 
@@ -188,37 +202,13 @@ from rpt_pbh634.v_nu_event_participants event
 where event.ksm_event = 'Y'
 and event.degrees_concat is not null
 Group BY event.id_number
-Order By Date_Recent_Event ASC)
+Order By Date_Recent_Event ASC) */
 
-,KSM_CLUB_LEADERS AS (Select DISTINCT
-committee.id_number,
-Listagg (committee_Header.short_desc, ';  ') Within Group (Order By committee_Header.short_desc) As Club_Titles,
-Listagg (tms_committee_role.short_desc, ';  ') Within Group (Order By tms_committee_role.short_desc) As Leadership_Titles
-From committee
-Left Join committee_header
-ON committee_header.committee_code = committee.committee_code
-Inner Join tms_committee_role
-ON tms_committee_role.committee_role_code = committee.committee_role_code
-Where
- (committee.committee_role_code = 'CL'
-    OR  committee.committee_role_code = 'P'
-    OR  committee.committee_role_code = 'I'
-    OR  committee.committee_role_code = 'DIR'
-    OR  committee.committee_role_code = 'S'
-    OR  committee.committee_role_code = 'PE'
-    OR  committee.committee_role_code = 'T'
-    OR  committee.committee_role_code = 'E')
-   AND  (committee.committee_status_code = 'C'
-   And committee.committee_code != 'KACLE'
-   And committee.Committee_Code != '535'
-   And committee.committee_code != 'KCGC'
-   And committee.committee_code != 'KWLC'
-   And committee_header.short_desc != 'KSM Global Advisory Board')
-   AND (committee_header.short_desc LIKE '%KSM%'
-   Or committee_header.short_desc LIKE '%Kellogg%'
-   Or committee_header.short_desc LIKE '%NU-%'
-   Or committee_header.short_desc = 'NU Club of Switzerland')
-Group By committee.id_number)
+,KSM_CLUB_LEADERS AS (select cl.id_Number
+,Listagg (cl.Club_Title, ';  ') Within Group (Order By cl.Club_Title) As Club_Title
+,Listagg (cl.Leadership_Title, ';  ') Within Group (Order By cl.Leadership_Title) As Leadership_Title
+from v_ksm_club_leaders cl
+group by cl.id_number) 
 
 ,PLG AS
 (SELECT
@@ -422,9 +412,11 @@ GROUP BY AF.ID_NUMBER
 )
 
 
+/*
 --- ADDING ADDTIONAL MODEL SCORES
 --- Edit 10.6.2022: Selecting Max to adjust for the duplicate issue with a record. 
 
+REMOVED PER ANNUAL FUND REVIEW 6/29/23
 ,KSM_Model as (select  mg.id_number,
        max (mg.id_score) as id_score,
        max (mg.pr_code) as pr_code,
@@ -432,6 +424,7 @@ GROUP BY AF.ID_NUMBER
        max (mg.pr_score) as pr_score
 From rpt_pbh634.v_ksm_model_mg mg
 group by mg.id_number)
+*/
 
 --- ADDING ACTIVITIES (SPEAKERS AND CORPORATE RECRUITERS) 
 
@@ -457,7 +450,6 @@ AND A.ACTIVITY_PARTICIPATION_CODE = 'P')
 --- KSM CORPORATE RECRUITERS 
 
 /* 
-
 Not Needed according to AF 
 Edit 6/22/23
 
@@ -529,6 +521,8 @@ From rpt_pbh634.v_entity_special_handling spec)
        assign.curr_ksm_manager
 from rpt_pbh634.v_assignment_summary assign)
 
+/* NOT NEEDED AT THIS TIME
+
 --- Recent Contact Report
 
 ,c as (select
@@ -542,13 +536,15 @@ max (cr.summary) keep (dense_rank First Order By cr.contact_date DESC) as summar
 from rpt_pbh634.v_contact_reports_fast cr
 group by cr.id_number)
 
-,Maiden_Name AS(
+*/
+
+/* ,Maiden_Name AS(
 Select id_number,
  max(pref_name) keep(dense_rank first order by date_modified desc) AS maiden_name
 FROM name
 WHERE name_type_code = 'MN'
 GROUP BY id_number
-)
+) */
 
 --- Dean Salutation 
 ,dean as (Select rpt_zrc8929.v_dean_salutation.ID_NUMBER,
@@ -629,46 +625,23 @@ max (TX_NUMBER) keep (dense_rank First Order By DATE_OF_RECORD DESC) as rcpt
           WHERE TX_GYPM_IND <> 'P'  AND GIFT.GIFT_SEQUENCE = 1
           GROUP BY GIVING_TRANS_DAF.ID_NUMBER)
 
---- Don't need the temp table .... Yet. Will create one when registration opens in Jan 2023. 
-
 SELECT DISTINCT
    E.ID_NUMBER
-  ,E.pref_mail_name
-  ,E.REPORT_NAME
-  ,M.maiden_name
-  --- Adding in first name - That way AF and Reunion Team can use Dean Salutation based on the Dean_Source  
-  ,E.FIRST_NAME
-  ,E.last_name
-  ,d.P_Dean_Salut
-  --- ,d.P_Dean_Source - AF Does Not Need
   ,E.RECORD_STATUS_CODE
   ,E.GENDER_CODE
+  ,E.REPORT_NAME
+  ,E.pref_mail_name
+  --- Adding in first name - That way AF and Reunion Team can use Dean Salutation based on the Dean_Source   
+  ,E.FIRST_NAME
+  ,d.P_Dean_Salut
+  ,E.last_name
+--- Don't need the temp table .... Yet. Will create one when registration opens in Jan 2023.   
+  ,KR.CLASS_YEAR
   ,KD."PROGRAM" AS DEGREE_PROGRAM
   ,KD."PROGRAM_GROUP"
-  ,KR.CLASS_YEAR
   ,KD."CLASS_SECTION" AS COHORT
-  ,HOUSE.SPOUSE_ID_NUMBER
-  ,HOUSE.SPOUSE_PREF_MAIL_NAME
-  ,HOUSE.SPOUSE_SUFFIX
-  ,HOUSE.SPOUSE_FIRST_KSM_YEAR
-  ,HOUSE.SPOUSE_PROGRAM
-  ,HOUSE.SPOUSE_PROGRAM_GROUP
-  ,CASE WHEN spouse_RY.SPOUSE_ID_NUMBER is not null then spouse_RY.CLASS_YEAR else '' End as Spouse_Reunion24_Classyr_IND
-  ,CASE WHEN R19.CONTACT_ID_NUMBER IS NOT NULL THEN 'Y' END AS "REGISTERED_2019_REUNION"
   ,CASE WHEN RP19.ID_NUMBER IS NOT NULL THEN 'Y' END AS "ATTENDED_REUNION_2019"
-  ,CASE WHEN R14.CONTACT_ID_NUMBER IS NOT NULL THEN 'Y' END AS "REGISTERED_2014_REUNION"
   ,CASE WHEN RP14.ID_NUMBER IS NOT NULL THEN 'Y' END AS "ATTENDED_REUNION_2014"
-  ,CASE WHEN RC19.ID_NUMBER IS NOT NULL THEN 'Y' ELSE '' END AS "REUNION_2019_COMMITTEE"
-  ,CASE WHEN PRC.ID_NUMBER IS NOT NULL THEN 'Y'  ELSE ''END AS "REUNION_2014_COMMITTEE"
-  ,KSM_SPEAKERS.SHORT_DESC AS ACTIVITY_KSM_SPEAKERS
-  --- ,KSM_CORPORATE_RECRUITERS.SHORT_DESC AS KSM_CORPORATE_RECRUITERS --- Not Needed by AF
-  ,KCL.CLUB_TITLES AS CLUB_LEADERSHIP_CLUB
-  ,KCL.Leadership_Titles AS CLUB_LEADER
-  ,FW.short_desc AS INDUSTRY
-  --- Let's use my employer subquery instead of Bill's Function
-  ,EMPL.JOB_TITLE AS JOB_TITLE
-  ,EMPL.employer_name AS EMPLOYER
-  ,CASE WHEN KFS.ID_NUMBER IS NOT NULL THEN 'NU Faculty/Staff' end as NU_faculty_staff_ind
   ,p.addr_pref_ind as preferred_address_indicator
   ,p.addr_type_code as preferred_address_type
   ,p.care_of as preferred_address_care_of
@@ -683,28 +656,44 @@ SELECT DISTINCT
   ,p.state_code as preferred_state
   ,p.zipcode as preferred_zipcode
   ,p.country_code as preferred_country
-  ,KR.P_GEOCODE_DESC AS GEO_AREA 
+  ,HOUSE.SPOUSE_ID_NUMBER
+  ,HOUSE.SPOUSE_PREF_MAIL_NAME
+  ,HOUSE.SPOUSE_SUFFIX
+  ,HOUSE.SPOUSE_FIRST_KSM_YEAR
+  ,HOUSE.SPOUSE_PROGRAM
+  ,HOUSE.SPOUSE_PROGRAM_GROUP
+  ,CASE WHEN spouse_RY.SPOUSE_ID_NUMBER is not null then spouse_RY.CLASS_YEAR else '' End as Spouse_Reunion24_Classyr_IND
+  ,assign.LGOS
+  ,assign.Prospect_Manager
+  ,CASE WHEN CYD.ID_NUMBER IS NOT NULL THEN 'Y' END AS "CYD"
+  ,Case when CYD.id_number is not null then FOUNDATION.REPORT_NAME END AS FOUNDATION_CYD
+  ,Case when CYD.id_number is not null then FOUNDATION.ASSOCIATED_DESC END AS FOUNDATION_DESC_CYD
+  ,Case when CYD.id_number is not null then FOUNDATION.RCPT END AS FOUNDATION_RECPT_NUM_CYD
+  ,Case when CYD.id_number is not null then FOUNDATION.DATE_OF_RECORD END AS FOUNDATION_DATE_OF_GIFT_CYD
+  ,S.ANONYMOUS_DONOR
+  ,CASE WHEN RC19.ID_NUMBER IS NOT NULL THEN 'Y' ELSE '' END AS "REUNION_2019_COMMITTEE"
+  ,CASE WHEN PRC.ID_NUMBER IS NOT NULL THEN 'Y'  ELSE ''END AS "REUNION_2014_COMMITTEE"
+  ,KCL.CLUB_TITLE AS CLUB_LEADERSHIP_CLUB
+  ,KCL.Leadership_Title AS CLUB_LEADER
+  --- GAB Should have Spouse
+  ,S.GAB as GAB
+  --- Check for Spouse
+  ,S.TRUSTEE AS TRUSTEE
+  ,S.EBFA AS ASIA_EXECUTIVE_BOARD
+  ,KAC.SHORT_DESC AS KAC
+  ,PHS.SHORT_DESC AS PHS
   ,S.NO_EMAIL_IND AS NO_EMAIL
   ,S.NO_EMAIL_SOL_IND AS NO_EMAIL_SOLICIT
   ,S.NO_MAIL_SOL_IND AS NO_MAIL_SOLICIT
   ,S.NO_PHONE_SOL_IND AS NO_PHONE_SOLICIT
   ,S.SPECIAL_HANDLING_CONCAT AS RESTRICTIONS
   ,S.NO_CONTACT
+  ,KR.P_GEOCODE_DESC AS GEO_AREA
+  ,EMPL.JOB_TITLE AS JOB_TITLE
+  ,EMPL.employer_name AS EMPLOYER
+  ,EMPL.FLD_OF_WORK AS INDUSTRY
+  ,CASE WHEN KFS.ID_NUMBER IS NOT NULL THEN 'NU Faculty/Staff' end as NU_faculty_staff_ind
   ,case when KFS.id_number is not null then KFS.affilation_level End as NU_Faculty_Staff_IND
-  ,KAC.SHORT_DESC AS KAC
-  ,PHS.SHORT_DESC AS PHS
-  --- Need to check for Spouse GAB too
-  ,S.GAB as GAB
-  --- Need to check for Spouse Trustee too 
-  ,S.TRUSTEE AS TRUSTEE
-  ,S.EBFA AS ASIA_EXECUTIVE_BOARD
-  ,KSM_ENGAGEMENT.Date_Recent_Event
-  ,KSM_ENGAGEMENT.Recent_Event_ID
-  ,KSM_ENGAGEMENT.Recent_Event_Name
-  ,CASE WHEN CYD.ID_NUMBER IS NOT NULL THEN 'Y' END AS "CYD"
-  ,S.ANONYMOUS_DONOR
-  ,assign.LGOS
-  ,assign.Prospect_Manager
   ,GIVING_SUMMARY.CRU_CFY
   ,GIVING_SUMMARY.CRU_PFY1
   ,GIVING_SUMMARY.CRU_PFY2
@@ -717,6 +706,10 @@ SELECT DISTINCT
   or GIVING_SUMMARY.CRU_PFY4 > 0
   or GIVING_SUMMARY.CRU_PFY5 > 0 then 'Giver_Last_5'
   Else '' END as Giver_Last_5_Years
+  ,KGM.modified_hh_gift_count_cfy
+  ,KGM.modified_hh_gift_credit_pfy5
+  ,KGM.pledge_modified_cfy
+  ,KGM.pledge_modified_pfy5
   ,PR.last_plg_dt AS PLG_DATE
   ,PR.pacct1 AS PLG_ALLOC
   ,PR.pamt1 AS PLG_AMT
@@ -724,7 +717,7 @@ SELECT DISTINCT
   ,PR.status1 AS PLG_STATUS
   --- ,PR.plgActive AS PLG_ACTIVE --- Not Needed by AF 6/22/23
   ,rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(GI.GDT1) AS RECENT_FISAL_YEAR
-  ,GI.GDT1 AS DATE1
+    ,GI.GDT1 AS DATE1
   ,GI.GAMT1 AS AMOUNT1
   ,GI.GACCT1 AS ACC1
   ,GI.MATCH1 AS MATCH_AMOUNT1
@@ -744,19 +737,23 @@ SELECT DISTINCT
   ,GI.GACCT4 AS ACC4
   ,GI.MATCH4 AS MATCH_AMOUNT4
   ,GI.CLAIM4 AS CLAIM_AMOUNT4
-  ---  Will you look into this code? It is pulling it for all gifts, so hard for us to tell if the CYD gift is anonymous
-  --- AF wants to see if they are CYDs
-  ,Case when CYD.id_number is not null then WT0_GIFTS2.HasAnonymousGift(E.ID_NUMBER, '1900', '2020') End as ANON_GIFT1
-  ,Case when CYD.id_number is not null then WT0_GIFTS2.IsAnonymousDonor(E.ID_NUMBER) End as ANON_DONOR1
-  ,Case when CYD.id_number is not null then WT0_GIFTS2.HasAnonymousGift(E.SPOUSE_ID_NUMBER, '1900', '2020') End as ANON_GIFT2
-  ,Case when CYD.id_number is not null then WT0_GIFTS2.IsAnonymousDonor(E.SPOUSE_ID_NUMBER) end as ANON_DONOR2
-  ,Case when CYD.id_number is not null then FOUNDATION.REPORT_NAME END AS FOUNDATION_CYD
-  ,Case when CYD.id_number is not null then FOUNDATION.ASSOCIATED_DESC END AS FOUNDATION_DESC_CYD
-  ,Case when CYD.id_number is not null then FOUNDATION.RCPT END AS FOUNDATION_RECPT_NUM_CYD
-  ,Case when CYD.id_number is not null then FOUNDATION.DATE_OF_RECORD END AS FOUNDATION_DATE_OF_GIFT_CYD
+  --- Anonymous Gift Information (CYD Flag)
+  , Case when CYD.id_number is not null and GIVING_SUMMARY.anonymous_cfy_flag is not null then 'Y' End as Anonymous_cyd_cfy_flag
+  , Case when CYD.id_number is not null and GIVING_SUMMARY.anonymous_pfy1_flag is not null then 'Y' End as Anonymous_cyd_pfy1_flag
+  , Case when CYD.id_number is not null and GIVING_SUMMARY.anonymous_pfy2_flag is not null then 'Y' End as Anonymous_cyd_pfy2_flag
+  , Case when CYD.id_number is not null and GIVING_SUMMARY.anonymous_pfy3_flag is not null then 'Y' End as Anonymous_cyd_pfy3_flag
+  , Case when CYD.id_number is not null and GIVING_SUMMARY.anonymous_pfy4_flag is not null then 'Y' End as Anonymous_cyd_pfy4_flag
+  , Case when CYD.id_number is not null and GIVING_SUMMARY.anonymous_pfy5_flag is not null then 'Y' End as Anonymous__cyd_pfy5_flag
+  , Case when CYD.id_number is not null and GIVING_SUMMARY.anonymous_cfy_flag is not null then GIVING_SUMMARY.ANONYMOUS_CFY End as Anonymous_cyd_cfy
+  , Case when CYD.id_number is not null and GIVING_SUMMARY.anonymous_cfy_flag is not null then GIVING_SUMMARY.ANONYMOUS_PFY1 End as Anonymous_cyd_pfy1
+  , Case when CYD.id_number is not null and GIVING_SUMMARY.anonymous_cfy_flag is not null then GIVING_SUMMARY.ANONYMOUS_PFY2 End as Anonymous_cyd_pfy2
+  , Case when CYD.id_number is not null and GIVING_SUMMARY.anonymous_cfy_flag is not null then GIVING_SUMMARY.ANONYMOUS_PFY3 End as Anonymous_cyd_pfy3
+  , Case when CYD.id_number is not null and GIVING_SUMMARY.anonymous_cfy_flag is not null then GIVING_SUMMARY.ANONYMOUS_PFY4 End as Anonymous_cyd_pfy4
+  , Case when CYD.id_number is not null and GIVING_SUMMARY.anonymous_cfy_flag is not null then GIVING_SUMMARY.ANONYMOUS_PFY5 End as Anonymous_cyd_pfy5
   ,KSMT.KSM_TOTAL
   ,KAFT.KSM_AF_TOTAL
   ,KSM23.KSM_TOTAL AS KSM_TOTAL_2023
+  ,GIVING_SUMMARY.NU_MAX_HH_LIFETIME_GIVING
   ,CASE WHEN KM23.ID_NUMBER IS NOT NULL THEN 'Y' END AS MATCH_2023
   ,NP.OFFICER_RATING
   ,REPLACE(WT0_PKG.GetRecentRating(E.ID_NUMBER, 'PR'), ';;') RESEARCH_RATING
@@ -769,23 +766,34 @@ SELECT DISTINCT
   ,WT0_PARSE(PROPOSAL_STATUS, 6,  '^') STOP_DATE
   ,WT0_PARSE(PROPOSAL_STATUS, 7,  '^') PROPOSAL_TITLE
   ---,WT0_PARSE(PROPOSAL_STATUS, 8,  '^') PROPOSAL_DESCRIPTION Not need AF 6/22/23
-  ,WT0_PARSE(PROPOSAL_STATUS, 9,  '^') PROGRAM
+  ---,WT0_PARSE(PROPOSAL_STATUS, 9,  '^') PROGRAM Not need AF 6/22/23
   --- ,WT0_PARSE(PROPOSAL_STATUS, 10, '^') PROPOSAL_ID Not need AF 6/22/23
   /* Not needed per AF 6/22/23 ,AFS.AF_10K_MODEL_SCORE */
   ,AFS.AF_10K_MODEL_TIER 
-  ,KSM_MODEL.id_score
+  /*,KSM_MODEL.id_score
   ,KSM_MODEL.pr_segment
-  ,KSM_MODEL.pr_score
-  /* AF Does not need this anymore
-  edit 6/22/23
-  ,KGM.pledge_modified_cfy
+  ,KSM_MODEL.pr_score*/
+/* 
+REMAINING REMOVALS FROM REVIEW WITH ANNUAL FUND 
+---,CASE WHEN R19.CONTACT_ID_NUMBER IS NOT NULL THEN 'Y' END AS "REGISTERED_2019_REUNION"
+---,CASE WHEN R14.CONTACT_ID_NUMBER IS NOT NULL THEN 'Y' END AS "REGISTERED_2014_REUNION"
+---,KSM_SPEAKERS.SHORT_DESC AS ACTIVITY_KSM_SPEAKERS
+--- ,KSM_CORPORATE_RECRUITERS.SHORT_DESC AS KSM_CORPORATE_RECRUITERS --- Not Needed by AF
+--- Let's use my employer subquery instead of Bill's Function
+--- Need to check for Spouse GAB too
+--- Need to check for Spouse Trustee too 
+---,KSM_ENGAGEMENT.Date_Recent_Event
+---,KSM_ENGAGEMENT.Recent_Event_ID
+---,KSM_ENGAGEMENT.Recent_Event_Name
+AF Does not need this anymore
+  
   ,KGM.pledge_modified_pfy1
   ,KGM.pledge_modified_pfy2
   ,KGM.pledge_modified_pfy3
   ,KGM.pledge_modified_pfy4
-  ,KGM.pledge_modified_pfy5
+  
    ,KGM.modified_hh_credit_cfy
-  ,KGM.modified_hh_gift_count_cfy
+  
   ,KGM.modified_hh_gift_credit_pfy1
   ,KGM.modified_hh_gift_count_pfy1
   ,KGM.modified_hh_gift_credit_pfy2
@@ -794,43 +802,49 @@ SELECT DISTINCT
   ,KGM.modified_hh_gift_count_pfy3
   ,KGM.modified_hh_gift_credit_pfy4
   ,KGM.modified_hh_gift_count_pfy4
-  ,KGM.modified_hh_gift_credit_pfy5
-  ,KGM.modified_hh_gift_count_pfy5 */ 
+  
+  ,KGM.modified_hh_gift_count_pfy5  
   ,c.credited_name
   ,c.Contacted_name
   ,c.Max_Date
+*/
 FROM ENTITY E
 --- Just want Reunion for the given year
 INNER JOIN KSM_REUNION KR
 ON E.ID_NUMBER = KR.ID_NUMBER
 INNER JOIN HOUSE
 ON HOUSE.ID_NUMBER = E.ID_NUMBER
+--- Inner Join Degrees - They're all KSM alumni! 
+INNER JOIN RPT_PBH634.V_ENTITY_KSM_DEGREES KD
+ON E.ID_NUMBER = KD.ID_NUMBER
 --- 2019 REUNION COMMITTEE
-LEFT JOIN REUNION_COMMITTEE RC
-ON E.ID_NUMBER = RC.ID_NUMBER
+/*LEFT JOIN REUNION_COMMITTEE RC
+ON E.ID_NUMBER = RC.ID_NUMBER*/
 LEFT JOIN REUNION_14_COMMITTEE  PRC
 ON E.ID_NUMBER = PRC.ID_NUMBER
 LEFT JOIN CURRENT_DONOR CYD
 ON E.ID_NUMBER = CYD.ID_NUMBER
---- Inner Join Degrees - They're all KSM alumni! 
-INNER JOIN RPT_PBH634.V_ENTITY_KSM_DEGREES KD
-ON E.ID_NUMBER = KD.ID_NUMBER
 LEFT JOIN NU_PRS_TRP_PROSPECT NP
 ON E.ID_NUMBER = NP.ID_NUMBER
+/*
 LEFT JOIN REUNION_2019_REGISTRANTS R19
-ON E.ID_NUMBER = R19.Contact_ID_number
+ON E.ID_NUMBER = R19.Contact_ID_number */
 LEFT JOIN REUNION_2019_PARTICIPANTS RP19
 ON E.ID_NUMBER = RP19.ID_NUMBER
+/*
 LEFT JOIN REUNION_2014_REGISTRANTS R14
 ON E.ID_NUMBER = R14.Contact_ID_number
+*/
 LEFT JOIN REUNION_2014_PARTICIPANTS RP14
 ON E.ID_NUMBER = RP14.ID_NUMBER
 LEFT JOIN KSM_CLUB_LEADERS KCL
 ON E.ID_NUMBER = KCL.ID_NUMBER
 LEFT JOIN EM EMPL
 ON E.ID_NUMBER = EMPL.ID_NUMBER
+/* FIELD OF WORK ALREADY IN EMPLOYMENT SUBQUERY
 LEFT JOIN TMS_FLD_OF_WORK FW
 ON EMPL.FLD_OF_WORK_CODE = FW.fld_of_work_code
+*/
 LEFT JOIN PLEDGE_ROWS PR
  ON E.ID_NUMBER = PR.ID
 LEFT JOIN GIFTINFO GI
@@ -843,25 +857,28 @@ LEFT JOIN KSM_TOTAL23 KSM23
   ON E.ID_NUMBER = KSM23.ID_NUMBER
 LEFT JOIN KSM_MATCH_23 KM23
   ON E.ID_NUMBER = KM23.ID_NUMBER
+/*
+REMOVE! IT WAS ADDED TWICE 
 LEFT JOIN NU_PRS_TRP_PROSPECT NP
-  ON E.ID_NUMBER = NP.ID_NUMBER
+  ON E.ID_NUMBER = NP.ID_NUMBER*/
 LEFT JOIN PROPOSALS PROP
   ON E.ID_NUMBER = PROP.ID_NUMBER
 LEFT JOIN AF_SCORES AFS
   ON E.ID_NUMBER = AFS.ID_NUMBER
+  /*
 LEFT JOIN KSM_MODEL
-     ON KSM_MODEL.ID_NUMBER = E.ID_NUMBER
+     ON KSM_MODEL.ID_NUMBER = E.ID_NUMBER*/
+     /*
 LEFT JOIN KSM_ENGAGEMENT
-     ON KSM_ENGAGEMENT.ID_NUMBER = E.ID_NUMBER
-LEFT JOIN KSM_SPEAKERS
-     ON KSM_SPEAKERS.ID_NUMBER = E.ID_NUMBER
+     ON KSM_ENGAGEMENT.ID_NUMBER = E.ID_NUMBER */     
+/*LEFT JOIN KSM_SPEAKERS
+     ON KSM_SPEAKERS.ID_NUMBER = E.ID_NUMBER*/
 /*LEFT JOIN KSM_CORPORATE_RECRUITERS
      ON KSM_CORPORATE_RECRUITERS.ID_NUMBER = E.ID_NUMBER*/
 LEFT JOIN GIVING_SUMMARY
      ON GIVING_SUMMARY.id_number = KR.id_number
-     /*
 LEFT JOIN KSM_GIVING_MOD KGM
-        ON KGM.household_id = KR.HOUSEHOLD_ID */
+        ON KGM.household_id = KR.HOUSEHOLD_ID
 LEFT JOIN REUNION_19_COMMITTEE RC19
  ON RC19.ID_NUMBER = E.ID_NUMBER
 LEFT JOIN REUNION_2019_PARTICIPANTS RP19
@@ -869,15 +886,19 @@ LEFT JOIN REUNION_2019_PARTICIPANTS RP19
 LEFT JOIN Preferred_address p 
  ON p.id_number = e.id_number
 Left Join spouse_RY
-on spouse_RY.SPOUSE_ID_NUMBER = hOUSE.SPOUSE_ID_NUMBER
+on spouse_RY.SPOUSE_ID_NUMBER = HOUSE.SPOUSE_ID_NUMBER
+--- SPECIAL HANDLING
 LEFT JOIN S 
 ON S.ID_NUMBER = E.ID_NUMBER
+/*
 LEFT JOIN C 
 ON C.ID_NUMBER = E.ID_NUMBER
+*/
 LEFT JOIN assign
 ON assign.id_number = E.ID_NUMBER
+/*
 LEFT JOIN Maiden_Name M
-on m.id_number = e.id_number
+on m.id_number = e.id_number */
 LEFT JOIN DEAN d
 on d.id_number = e.id_number
 LEFT JOIN phs 
