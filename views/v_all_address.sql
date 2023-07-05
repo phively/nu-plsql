@@ -20,6 +20,7 @@ prime as (Select DISTINCT
       ,  a.addr_pref_ind
       ,  tms_address_type.short_desc AS Address_Type
       ,  a.city
+      ,  a.zipcode
       ,  a.state_code
       ,  c.country as country
       ,  G.GEO_CODE_PRIMARY_DESC AS PRIMARY_GEO_CODE
@@ -42,6 +43,7 @@ Business As(Select DISTINCT
       ,  max(tms_address_type.short_desc) AS Address_Type
       ,  max(a.city) as city
       ,  max (a.state_code) as state_code
+      ,  max (a.zipcode) as zipcode
       ,  max (c.country) as country
       ,  max (a.start_dt)
       ,  max (G.GEO_CODE_PRIMARY_DESC) AS BUSINESS_GEO_CODE
@@ -64,6 +66,7 @@ Home as (Select DISTINCT
       ,  max(tms_address_type.short_desc) AS Address_Type
       ,  max(a.city) as city
       ,  max (a.state_code) as state_code
+      ,  max (a.zipcode) as zipcode
       ,  max (c.country) as country 
       ,  max (a.start_dt)
       ,  max (G.GEO_CODE_PRIMARY_DESC) AS home_GEO_CODE
@@ -85,6 +88,7 @@ Alt_Home As  (Select DISTINCT
       ,  max(tms_address_type.short_desc) AS Address_Type
       ,  max(a.city) as city
       ,  max (a.state_code) as state_code
+      ,  max (a.zipcode) as zipcode
       ,  max (c.country) as country
       ,  max (a.start_dt)
       ,  max (G.GEO_CODE_PRIMARY_DESC) AS alt_home_GEO_CODE
@@ -106,6 +110,7 @@ Alt_Bus As  (Select DISTINCT
       ,  max(tms_address_type.short_desc) AS Address_Type
       ,  max(a.city) as city
       ,  max (a.state_code) as state_code
+      ,  max (a.zipcode) as zipcode
       ,  max (c.country) as country
       ,  max (a.start_dt)
       ,  max (G.GEO_CODE_PRIMARY_DESC) AS alt_bus_GEO_CODE
@@ -128,6 +133,7 @@ Seasonal as (
       ,  max(tms_address_type.short_desc) AS Address_Type
       ,  max(a.city) as city
       ,  max (a.state_code) as state_code
+      ,  max (a.zipcode) as zipcode
       ,  max (c.country) as country 
       ,  max (a.start_dt)
       ,  max (G.GEO_CODE_PRIMARY_DESC) AS SEASONAL_GEO_CODE
@@ -152,6 +158,7 @@ SELECT DISTINCT
   , prime.CITY as primary_city
   , prime.PRIMARY_GEO_CODE as primary_geo
   , prime.STATE_Code as primary_state
+  , prime.zipcode as primary_zipcode
   , prime.country as primary_country
   , prime.continent
   --- Home Address - Non Preferred
@@ -159,6 +166,7 @@ SELECT DISTINCT
   , home.city as non_preferred_home_city
   , home.home_GEO_CODE as non_pref_home_geo
   , home.state_code as non_preferred_home_state
+  , home.zipcode as non_preferred_home_zipcode
   , home.country as non_preferred_home_country
   , home.continent as non_preferred_home_continent
   --- Business Address - Non Preferred
@@ -166,6 +174,7 @@ SELECT DISTINCT
   , Business.BUSINESS_GEO_CODE as non_preferred_business_geo
   , Business.city as non_preferred_business_city
   , Business.state_code as non_preferred_business_state
+  , Business.zipcode as non_preferred_business_zipcode
   , Business.country as non_preferred_business_country
   , Business.continent as non_preferred_busin_continent
   --- Alternative Home - Non Preferred
@@ -173,6 +182,7 @@ SELECT DISTINCT
   , Alt_Home.alt_home_geo_code as alt_home_geo
   , Alt_Home.city as alt_home_city
   , Alt_Home.state_code as alt_home_state
+  , Alt_Home.zipcode as alt_home_zipcode
   , Alt_Home.country as alt_home_country
   , Alt_Home.continent as alt_home_continent
   --- Alternative Business - Non Preferred 
@@ -180,6 +190,7 @@ SELECT DISTINCT
   , Alt_Bus.alt_bus_GEO_CODE as alt_business_geo
   , Alt_Bus.city as alt_bus_city
   , Alt_Bus.state_code as alt_bus_state
+  , Alt_Bus.zipcode as alt_bus_zipcode
   , Alt_Bus.country as alt_bus_country
   , Alt_Bus.continent as alt_bus_continent
   ---- Seasonal Address - Non Preferred
@@ -187,6 +198,7 @@ SELECT DISTINCT
   , Seasonal.SEASONAL_GEO_CODE
   , Seasonal.city as seasonal_city
   , Seasonal.state_code as seasonal_state
+  , Seasonal.zipcode as seasonal_zipcode
   , Seasonal.country as seasonal_country
   , Seasonal.continent as seasonal_continent
   ---- Lookup Geocode
@@ -197,6 +209,10 @@ SELECT DISTINCT
   , trim(prime.STATE_Code || chr(13) || home.state_code || chr(13) || Business.state_code ||
     chr(13) || Alt_Home.state_code || chr(13) || Alt_Bus.state_code || chr(13) || Seasonal.state_code)
     As lookup_state
+    --- Zipcode
+  ,trim(prime.zipcode || chr(13) || home.zipcode  || chr(13) || Business.zipcode  ||
+    chr(13) || Alt_Home.zipcode  || chr(13) || Alt_Bus.zipcode  || chr(13) || Seasonal.zipcode)
+    As lookup_zipcode 
     --- Country
       , trim(prime.country || chr(13) || home.country || chr(13) || Business.country ||
     chr(13) || Alt_Home.country || chr(13) || Alt_Bus.country || chr(13) || Seasonal.country)
@@ -245,6 +261,12 @@ Where lookup_geo Like '%%'
 Select *
 From v_all_address
 Where lookup_state Like '%%'
+
+--- Zipcode
+
+Select *
+From v_all_address
+Where lookup_zipcode Like '%%'
 
 --- Country
 
