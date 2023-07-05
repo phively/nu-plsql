@@ -1,6 +1,13 @@
+Create or Replace view v_ksm_internal_marketsheet as
+
 --- Households
 with h as (select  *
 from rpt_pbh634.v_entity_ksm_households),
+
+--- entity 
+
+e as (select  *
+from entity),
 
 --- event table
 event as (select *
@@ -67,22 +74,21 @@ ON ep.event_id = event.event_id
 where ep.event_id = '28145'
 ),
 
-
 -- Final Reunion - Avoiding left joins in my base 
-R as (select entity.id_number,
+R as (select e.id_number,
 case when R18.id_number is not null then 'Reunion 2018 Participant' end as Reunion_18_IND,
 case when R19.id_number is not null then 'Reunion 2019 Participant' end as Reunion_19_IND,
 case when R21.id_number is not null then 'Reunion 2021 Participant' end as Reunion_21_IND, 
 case when R22W1.id_number is not null then 'Reunion 2022 Weekend 1 Participant' end as Reunion_22W1_IND,
 case when R22W2.id_number is not null then 'Reunion 2022 Weekend 2 Participant' end as Reunion_22W2_IND,
 case when R23.id_number is not null then 'Reunion 2023 Participant' end as Reunion_23_IND
-from entity
-left join REUNION_2018_PARTICIPANTS R18 ON R18.id_number = entity.id_number
-left join REUNION_2019_PARTICIPANTS R19 on R19.id_number = entity.id_number
-left join REUNION_2021_PARTICIPANTS R21 on R21.id_number = entity.id_number
-left join REUNION_2022_PARTICIPANTS R22W1 on R22W1.id_number = entity.id_number
-left join REUNION_2022_PARTICIPANTS R22W2 on R22W2.id_number = entity.id_number
-left join REUNION_2023_PARTICIPANTS R23 on R23.id_number = entity.id_number
+from e
+left join REUNION_2018_PARTICIPANTS R18 ON R18.id_number = e.id_number
+left join REUNION_2019_PARTICIPANTS R19 on R19.id_number = e.id_number
+left join REUNION_2021_PARTICIPANTS R21 on R21.id_number = e.id_number
+left join REUNION_2022_PARTICIPANTS R22W1 on R22W1.id_number = e.id_number
+left join REUNION_2022_PARTICIPANTS R22W2 on R22W2.id_number = e.id_number
+left join REUNION_2023_PARTICIPANTS R23 on R23.id_number = e.id_number
 where (R18.id_number is not null
 or R19.id_number is not null
 or R21.id_number is not null
@@ -91,31 +97,33 @@ or R22W2.id_number is not null)),
 
 --- Faculty or Dean Event Past 5 Years 
 
-F as (select ep.id_number,
-event.event_id,
-event.event_name,
-event.start_fy_calc,
-v.id_number as kellogg_faculty_staff_id,
-v.first_name as kellogg_first_name,
-v.last_name as kellogg_last_name
+F as (select distinct ep.id_number
+-- dupes caused by above
 from event
 cross join rpt_pbh634.v_current_calendar cal
 inner join v_ksm_faculty_events v ON v.event_id = event.event_id
 Inner Join ep
 ON ep.event_id = event.event_id
 --- Past 5 Years
-where (cal.curr_fy = event.start_fy_calc + 5
+where
+-- event.start_fy_calc Between cal.curr_fy - 5 And cal.curr_fy
+(cal.curr_fy = event.start_fy_calc + 5
 or cal.curr_fy = event.start_fy_calc + 4
 or cal.curr_fy = event.start_fy_calc + 3
 or cal.curr_fy = event.start_fy_calc + 2
 or cal.curr_fy = event.start_fy_calc + 1
 or cal.curr_fy = event.start_fy_calc + 0)),
 
-a as (select distinct assign.id_number,
-assign.prospect_manager,
-assign.lgos,
-assign.managers
-from rpt_pbh634.v_assignment_summary assign),
+
+a as (select distinct assign.prospect_id,
+                assign.id_number,
+                assign.prospect_manager,
+                assign.lgos,
+                assign.managers,
+                assign.curr_ksm_manager
+from rpt_pbh634.v_assignment_summary assign
+---Central - All managers !!! Changes this 
+),
 
 --- Lifetime Giving, NU Lifetime, CRU CFY, 
 g as (select s.ID_NUMBER,
@@ -133,22 +141,10 @@ s.LAST_GIFT_DATE,
 s.LAST_GIFT_TYPE,
 s.LAST_GIFT_ALLOC_CODE,
 s.LAST_GIFT_ALLOC,
-s.LAST_GIFT_RECOGNITION_CREDIT
+s.LAST_GIFT_RECOGNITION_CREDIT,
+s.MAX_GIFT_DATE_OF_RECORD,
+s.MAX_GIFT_CREDIT
 from rpt_pbh634.v_ksm_giving_summary s),
-
---- Max Gift - Reccomendation from Melanie 
-
-hh as (select *
-from rpt_pbh634.v_ksm_giving_trans),
-
-max_gift as (select hh.ID_NUMBER,
-max (hh.DATE_OF_RECORD) keep (dense_rank First Order By hh.CREDIT_AMOUNT DESC,
-hh.DATE_OF_RECORD DESC, hh.TX_NUMBER desc) As Date_of_record,
-max (hh.CREDIT_AMOUNT)  keep (dense_rank First Order By hh.CREDIT_AMOUNT DESC,
-hh.DATE_OF_RECORD DESC, hh.TX_NUMBER desc) As max_credit
-from hh
-group by hh.ID_NUMBER),
-
 
 ---- Eval and Officer Ratings - Reccomendation from Melanie 
 
@@ -174,6 +170,7 @@ max (cr.summary) keep (dense_rank First Order By cr.contact_date DESC) as summar
 from rpt_pbh634.v_contact_reports_fast cr
 group by cr.id_number
 ),
+
 
 /* KLC Membership Queries
 1. Establishing KLC Members
@@ -306,7 +303,6 @@ and committee.committee_status_code = 'C'),
 --- K Interviewers
 K_Interviewers as (
 SELECT distinct comm.id_number
-       , count(comm.committee_code) KSM_Interviewer_Count
 From committee comm
 Inner Join tms_committee_table tmscomm
       On comm.committee_code = tmscomm.committee_code
@@ -336,33 +332,13 @@ Where act.activity_code = 'KEH'
 And act.activity_participation_code = 'P'
 ),
 
-
-
---- Kellogg Alumni Admissions Organization 
-leader as(select committee.id_number,
-committee_Header.short_desc As Club_Title,
-tms_committee_role.short_desc As Leadership_Title,
-committee.committee_status_code,
-committee.start_dt,
-committee.stop_dt
-From committee
-Inner Join tms_committee_role ON tms_committee_role.committee_role_code = committee.committee_role_code
-Inner Join committee_header ON committee_header.committee_code = committee.committee_code
-where  (committee.committee_role_code = 'CL'
-    OR  committee.committee_role_code = 'P'
-    OR  committee.committee_role_code = 'I'
-    OR  committee.committee_role_code = 'DIR'
-    OR  committee.committee_role_code = 'S'
-    OR  committee.committee_role_code = 'PE'
-    OR  committee.committee_role_code = 'T'
-    OR  committee.committee_role_code = 'E')
---- Pulling Current Members Only
-   AND  (committee.committee_status_code = 'C'))
-
+--- Kellogg Alumni Club Leader  
+leader as(select distinct v_ksm_club_leaders.id_number
+from v_ksm_club_leaders)
 
 select d.id_number,
 d.RECORD_STATUS_CODE,
-entity.gender_code,
+e.gender_code,
 d.REPORT_NAME,
 d.FIRST_KSM_YEAR,
 d.PROGRAM,
@@ -389,6 +365,8 @@ P.EVALUATION_RATING,
 P.OFFICER_RATING,
 a.prospect_manager,
 a.lgos,
+a.managers,
+a.curr_ksm_manager,
 c.credited,
 c.credited_name,
 c.contact_type,
@@ -397,16 +375,17 @@ c.description_,
 c.summary_,
 speak.last_speak_date,
 speak.last_speak_detail,
+case when f.id_number is not null then 'Faculty_event_last_5' end as KSM_faculty_event_last5,
 case when kaac.id_number is not null then 'Kellogg Alumni Admission Caller' end as KSM_AL_Admission_Caller, 
 case when kacao.id_number is not null then 'Kellogg Alumni Admissions Organization ' end as KSM_AL_Admission_Org,
 case when leader.id_number is not null then 'Kellogg club Leader' end as KSM_Club_Leader,
 case when k.id_number is not null then 'Kellogg On Campus Career Interviewers' End as KSM_Career_Interviewers, 
-case when KStuAct.id_number is not null then 'Kellgg Student Activity' End as KSM_Student_Activities, 
+case when KStuAct.id_number is not null then 'Kellogg Student Activity' End as KSM_Student_Activities, 
 case when e.id_number is not null then 'Event Host' End as Event_Host, 
 g.NGC_LIFETIME,
 case when g.NGC_LIFETIME > 0 then 'KSM Donor' end as Donor_NGC_Lifetime_IND, 
-g.NU_MAX_HH_LIFETIME_GIVING,
-case when g.NU_MAX_HH_LIFETIME_GIVING > 0 then 'NU Donor' end as NU_HH_LIFETIME_GIVING_IND,
+g.MAX_GIFT_DATE_OF_RECORD,
+g.MAX_GIFT_CREDIT,
 g.CRU_CFY,
 g.CRU_PFY1,
 g.CRU_PFY2,
@@ -417,8 +396,10 @@ g.LAST_GIFT_DATE,
 g.LAST_GIFT_TYPE,
 g.LAST_GIFT_ALLOC,
 g.LAST_GIFT_RECOGNITION_CREDIT,
-max_gift.DATE_OF_RECORD as date_of_record_max_gift,
-max_gift.max_credit as max_gift_credit,
+--max_gift.DATE_OF_RECORD as date_of_record_max_gift,
+--max_gift.max_credit as max_gift_credit,
+---g.max_gift_date_of_record,
+---g.max_gift_credit,
 KLC.KLC_Current_IND, 
 KLC.KSM_donor_pfy1,
 KLC.klc_fy_count,
@@ -436,7 +417,7 @@ from rpt_pbh634.v_entity_ksm_degrees d
 --- inner join house - to get geocodes/location
 inner join h on h.id_number = d.id_number
 --- entity
-inner join entity on entity.id_number = d.id_number
+inner join e on e.id_number = d.id_number
 --- Reunion
 left join r on r.id_number = d.id_number
 --- Assignments
@@ -452,7 +433,7 @@ left join KLC_FINAL KLC on KLC.GIFT_CLUB_ID_NUMBER = d.id_number
 --- Special Handling
 left join Spec on Spec.id_number = d.id_number
 --- Max Gift
-left join max_gift on max_gift.id_number = d.id_number 
+--left join max_gift on max_gift.id_number = d.id_number 
 --- Prospect Ratings
 left join p on p.id_number = d.id_number 
 --- employment
