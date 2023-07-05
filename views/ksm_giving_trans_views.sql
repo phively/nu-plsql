@@ -22,7 +22,7 @@ Select
   , cal.today
   , cal.yesterday
   , cal.curr_fy
-From table(ksm_pkg_tmp.tbl_gift_credit_hh_ksm) g
+From table(ksm_pkg_gifts_hh.tbl_gift_credit_hh_ksm) g
 Cross Join table(ksm_pkg_calendar.tbl_current_calendar) cal
 ;
 
@@ -461,7 +461,7 @@ Kellogg Transforming Together Campaign giving transactions
 Create Or Replace View v_ksm_giving_campaign_trans As
 -- Campaign transactions
 Select *
-From table(ksm_pkg_tmp.tbl_gift_credit_campaign)
+From table(ksm_pkg_gifts_campaign.tbl_gift_credit_campaign)
 ;
 
 /*************************************************
@@ -470,7 +470,7 @@ Householded Kellogg campaign giving transactions
 Create Or Replace View v_ksm_giving_campaign_trans_hh As
 -- Householded campaign transactions
 Select *
-From table(ksm_pkg_tmp.tbl_gift_credit_hh_campaign)
+From table(ksm_pkg_gifts_campaign.tbl_gift_credit_hh_campaign)
 ;
 
 /*************************************************
