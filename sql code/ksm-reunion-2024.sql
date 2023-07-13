@@ -6,7 +6,7 @@ Select
 )
 
 ,HOUSE AS (SELECT *
-FROM rpt_pbh634.v_entity_ksm_households_fast H)
+FROM rpt_pbh634.v_entity_ksm_households)
 
 ,KSM_DEGREES AS (
  SELECT
@@ -23,8 +23,6 @@ FROM rpt_pbh634.v_entity_ksm_households_fast H)
 ,KSM_REUNION AS (
 SELECT
 A.*
---- Let's have the geocode 100% tied to the primary address 
-,GC.P_GEOCODE_Desc
 ,House.HOUSEHOLD_ID
 ,D.PROGRAM
 ,D.PROGRAM_GROUP
@@ -35,14 +33,11 @@ A.*
 ,HOUSE.SPOUSE_FIRST_KSM_YEAR
 ,HOUSE.SPOUSE_PROGRAM
 ,HOUSE.SPOUSE_PROGRAM_GROUP
+,HOUSE.HOUSEHOLD_GEO_CODES
 FROM AFFILIATION A
 CROSS JOIN manual_dates MD
 Inner JOIN house ON House.ID_NUMBER = A.ID_NUMBER
 Inner Join KSM_DEGREES d on d.id_number = a.id_number
-LEFT JOIN RPT_DGZ654.V_GEO_CODE GC
-ON A.ID_NUMBER = GC.ID_NUMBER
-AND GC.ADDR_PREF_IND = 'Y'
-AND GC.GEO_STATUS_CODE = 'A'
 WHERE (TO_NUMBER(NVL(TRIM(A.CLASS_YEAR),'1')) IN (MD.CFY-1, MD.CFY-5, MD.CFY-10, MD.CFY-15, MD.CFY-20, MD.CFY-25, MD.CFY-30, MD.CFY-35, MD.CFY-40,
   MD.CFY-45, MD.CFY-50, MD.CFY-51, MD.CFY-52, MD.CFY-53, MD.CFY-54, MD.CFY-55, MD.CFY-56, MD.CFY-57, MD.CFY-58, MD.CFY-59, MD.CFY-60)
 AND A.AFFIL_CODE = 'KM'
@@ -517,7 +512,19 @@ From nu_prs_trp_prospect TP),
 
 
 final as (select  KSM_REUNION.id_number
-  , S.ANONYMOUS_DONOR
+  , GIVING_SUMMARY.ANONYMOUS_DONOR
+  , GIVING_SUMMARY.anonymous_cfy_flag
+  , GIVING_SUMMARY.anonymous_pfy1_flag
+  , GIVING_SUMMARY.anonymous_pfy2_flag
+  , GIVING_SUMMARY.anonymous_pfy3_flag
+  , GIVING_SUMMARY.anonymous_pfy4_flag
+  , GIVING_SUMMARY.anonymous_pfy5_flag
+  , GIVING_SUMMARY.ANONYMOUS_CFY
+  , GIVING_SUMMARY.ANONYMOUS_PFY1
+  , GIVING_SUMMARY.ANONYMOUS_PFY2
+  , GIVING_SUMMARY.ANONYMOUS_PFY3
+  , GIVING_SUMMARY.ANONYMOUS_PFY4
+  , GIVING_SUMMARY.ANONYMOUS_PFY5
   , Case when CYD.id_number is not null and (GIVING_SUMMARY.anonymous_cfy_flag is not null or S.ANONYMOUS_DONOR is not null) then 'Y' End as Anonymous_cyd_cfy_flag
   , Case when CYD.id_number is not null and (GIVING_SUMMARY.anonymous_pfy1_flag is not null or S.ANONYMOUS_DONOR is not null) then  'Y' End as Anonymous_cyd_pfy1_flag
   , Case when CYD.id_number is not null and (GIVING_SUMMARY.anonymous_pfy2_flag is not null or S.ANONYMOUS_DONOR is not null) then 'Y' End as Anonymous_cyd_pfy2_flag
@@ -601,7 +608,7 @@ SELECT
   ,pfin.State_code
   ,pfin.Zipcode
   ,pfin.Country
-  ,KR.P_GEOCODE_Desc
+  ,KR.HOUSEHOLD_GEO_CODES
   ,KR.SPOUSE_ID_NUMBER
   ,KR.SPOUSE_PREF_MAIL_NAME
   ,KR.SPOUSE_SUFFIX
@@ -679,6 +686,18 @@ SELECT
   ,GI.MATCH4 AS MATCH_AMOUNT4
   ,GI.CLAIM4 AS CLAIM_AMOUNT4
   ,Final.ANONYMOUS_DONOR
+  ,Final.anonymous_cfy_flag
+  ,Final.anonymous_pfy1_flag
+  ,Final.anonymous_pfy2_flag
+  ,Final.anonymous_pfy3_flag
+  ,Final.anonymous_pfy4_flag
+  ,Final.anonymous_pfy5_flag
+  ,Final.ANONYMOUS_CFY
+  ,Final.ANONYMOUS_PFY1
+  ,Final.ANONYMOUS_PFY2
+  ,Final.ANONYMOUS_PFY3
+  ,Final.ANONYMOUS_PFY4
+  ,Final.ANONYMOUS_PFY5
   , final.Anonymous_cyd_cfy_flag
   , final.Anonymous_cyd_pfy1_flag
   , final.Anonymous_cyd_pfy2_flag
