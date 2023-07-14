@@ -642,7 +642,7 @@ SELECT
   ,final.EMPLOYER
   ,final.INDUSTRY
   ,CASE WHEN KFS.ID_NUMBER IS NOT NULL THEN 'NU Faculty/Staff' end as NU_faculty_staff_ind
-  ,case when KFS.id_number is not null then KFS.affilation_level End as NU_Faculty_Staff_IND
+  ,case when KFS.id_number is not null then KFS.affilation_level End as NU_Faculty_Staff_aff_IND
   ,final.CRU_CFY
   ,final.CRU_PFY1
   ,final.CRU_PFY2
