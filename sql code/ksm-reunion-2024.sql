@@ -427,7 +427,8 @@ from rpt_pbh634.v_assignment_summary assign)
 --- Dean Salutation 
 ,dean as (Select rpt_zrc8929.v_dean_salutation.ID_NUMBER,
        rpt_zrc8929.v_dean_salutation.P_Dean_Salut,
-       rpt_zrc8929.v_dean_salutation.P_Dean_Source
+       rpt_zrc8929.v_dean_salutation.P_Dean_Source,
+       rpt_zrc8929.v_dean_salutation.Spouse_Dean_Salut
 From rpt_zrc8929.v_dean_salutation),
 
 
@@ -611,6 +612,7 @@ SELECT
   ,KR.HOUSEHOLD_GEO_CODES
   ,KR.SPOUSE_ID_NUMBER
   ,KR.SPOUSE_PREF_MAIL_NAME
+  ,D.Spouse_Dean_Salut
   ,KR.SPOUSE_SUFFIX
   ,KR.SPOUSE_FIRST_KSM_YEAR
   ,KR.SPOUSE_PROGRAM
