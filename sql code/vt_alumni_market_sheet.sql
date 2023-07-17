@@ -59,22 +59,27 @@ BusinessAddress AS(
       AND a.addr_status_code IN('A','K')
 ),
 
+p as (select  TP.ID_NUMBER,
+       TP.EVALUATION_RATING,
+       TP.OFFICER_RATING
+From nu_prs_trp_prospect TP),
+
 --- Prospect 1Mil + - Used for Ben's New Map (4/7/2021)
 
 Prospect_1M_Plus AS (
-Select distinct TP.ID_NUMBER,
-       TP.EVALUATION_RATING,
-       TP.OFFICER_RATING
+Select distinct P.ID_NUMBER,
+       P.EVALUATION_RATING,
+       P.OFFICER_RATING
 
-From nu_prs_trp_prospect TP
+From P
 
-Where TP.EVALUATION_RATING IN ('A7 $1M - $1.9M','A6 $2M - $4.9M','A5 $5M - $9.9M',
+Where P.EVALUATION_RATING IN ('A7 $1M - $1.9M','A6 $2M - $4.9M','A5 $5M - $9.9M',
 
 'A4 $10M - $24.9M','A3 $25M - $49.9M')
 
 Or
 
-TP.OFFICER_RATING IN ('A7 $1M - $1.9M',
+P.OFFICER_RATING IN ('A7 $1M - $1.9M',
 
 'A6 $2M - $4.9M', 'A5 $5M - $9.9M', 'A4 $10M - $24.9M', 'A3 $25M - $49.9M')),
 
@@ -153,7 +158,49 @@ Listagg (c.committee_desc, ';  ') Within Group (Order By c.committee_desc) As co
         from ADVANCE_NU_RPT.v_nu_committees c
 where c.ksm_committee = 'Y'
 and c.committee_status_code = 'C'
-Group By c.id_number) 
+Group By c.id_number),
+-- Annual Fund wants last gift date information 
+
+give as (
+select 
+s.ID_NUMBER,
+s.NU_MAX_HH_LIFETIME_GIVING,
+s.CRU_CFY,
+s.CRU_PFY1,
+s.CRU_PFY2,
+s.CRU_PFY3,
+s.CRU_PFY4,
+s.CRU_PFY5,
+s.LAST_GIFT_DATE,
+s.LAST_GIFT_ALLOC,
+s.LAST_GIFT_RECOGNITION_CREDIT
+from rpt_pbh634.v_ksm_giving_summary s),
+
+AF_SCORES AS (
+SELECT
+ AF.ID_NUMBER
+ ,max(AF.DESCRIPTION) as AF_10K_MODEL_TIER
+ ,max(AF.SCORE) as AF_10K_MODEL_SCORE
+FROM RPT_PBH634.V_KSM_MODEL_AF_10K AF
+GROUP BY AF.ID_NUMBER
+),
+
+--- Most Recent Contact Report
+
+c as (/* Last Contact Report - Date, Author, Type, Subject 
+(# Contact Reports - Contacts within FY and 5FYs
+*/
+select cr.id_number,
+max (cr.credited) keep (dense_rank First Order By cr.contact_date DESC) as credited,
+max (cr.credited_name) keep (dense_rank First Order By cr.contact_date DESC) as credited_name,
+max (cr.contacted_name) keep (dense_rank First Order By cr.contact_date DESC) as contacted_name,
+max (cr.contact_type) keep (dense_rank First Order By cr.contact_date DESC) as contact_type,
+max (cr.contact_date) keep (dense_rank First Order By cr.contact_date DESC) as Max_Date,
+max (cr.description) keep (dense_rank First Order By cr.contact_date DESC) as description_,
+max (cr.summary) keep (dense_rank First Order By cr.contact_date DESC) as summary_
+from rpt_pbh634.v_contact_reports_fast cr
+group by cr.id_number
+)
 
 --- Degree Fields
 
@@ -218,6 +265,10 @@ ksm_assignment.lgos,
 
 ksm_assignment.managers,
 
+P.EVALUATION_RATING,
+
+P.OFFICER_RATING,
+
 Prospect_1M_Plus.EVALUATION_RATING,
 
 Prospect_1M_Plus.OFFICER_RATING,
@@ -242,6 +293,42 @@ spec.NO_MAIL_IND,
 
 spec.SPECIAL_HANDLING_CONCAT,
 
+give.NU_MAX_HH_LIFETIME_GIVING,
+
+give.CRU_CFY,
+
+give.CRU_PFY1,
+
+give.CRU_PFY2,
+
+give.CRU_PFY3,
+
+give.CRU_PFY4,
+
+give.CRU_PFY5,
+
+give.LAST_GIFT_DATE,
+
+give.LAST_GIFT_ALLOC,
+
+give.LAST_GIFT_RECOGNITION_CREDIT,
+
+AF_SCORES.AF_10K_MODEL_TIER,
+
+AF_SCORES.AF_10K_MODEL_SCORE,
+
+c.credited,
+
+c.credited_name,
+
+c.contact_type,
+
+c.Max_Date,
+
+c.description_,
+
+c.summary_,
+
 case when APR.id_number is not null then 'Attended Previous Reunion' Else '' END As Attended_Previous_Reunion,
   
 recent_reunion.Date_Recent_Event,
@@ -251,6 +338,7 @@ recent_reunion.Recent_Event_ID,
 recent_reunion.Recent_Event_Name,
 
 club.committee_desc as ksm_committee_concat
+
 
 From rpt_pbh634.v_entity_ksm_degrees
 
@@ -270,15 +358,31 @@ Left Join Employ On rpt_pbh634.v_entity_ksm_degrees.ID_NUMBER = Employ.Id_Number
 
 Left Join ksm_assignment on ksm_assignment.id_number = rpt_pbh634.v_entity_ksm_degrees.ID_NUMBER
 
+--- AF Model
+
+Left Join AF_SCORES on AF_SCORES.id_number = rpt_pbh634.v_entity_ksm_degrees.ID_NUMBER
+
+--- Contact report
+
+Left Join C on C.id_number = rpt_pbh634.v_entity_ksm_degrees.ID_NUMBER
+
+--- Just prospect 
+
+Left Join P on P.id_number = rpt_pbh634.v_entity_ksm_degrees.ID_NUMBER
+
 --- Join 1 Mil Prospect Plus 
 
 Left Join Prospect_1M_Plus on Prospect_1M_Plus.id_number = rpt_pbh634.v_entity_ksm_degrees.ID_NUMBER
+
+--- Email Flags
 
 Left Join KSM_Email on KSM_Email.id_number = rpt_pbh634.v_entity_ksm_degrees.id_number
 
 --- Include Business Address 
 
 Left Join BusinessAddress on BusinessAddress.id_number = rpt_pbh634.v_entity_ksm_degrees.id_number
+
+--- Special Handling Code
 
 Left Join SPEC ON Spec.id_number = rpt_pbh634.v_entity_ksm_degrees.ID_NUMBER
 
@@ -296,6 +400,8 @@ Left Join recent_reunion on recent_reunion.id_number = rpt_pbh634.v_entity_ksm_d
 Left Join birth on birth.id_number = rpt_pbh634.v_entity_ksm_degrees.id_number
 
 Left Join club on club.id_number = rpt_pbh634.v_entity_ksm_degrees.id_number
+
+Left Join give on give.id_number = rpt_pbh634.v_entity_ksm_degrees.id_number
 
 Where rpt_pbh634.v_entity_ksm_degrees.Record_Status_Code IN ('A','L')
 ;
