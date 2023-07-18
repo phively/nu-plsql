@@ -200,7 +200,20 @@ max (cr.description) keep (dense_rank First Order By cr.contact_date DESC) as de
 max (cr.summary) keep (dense_rank First Order By cr.contact_date DESC) as summary_
 from rpt_pbh634.v_contact_reports_fast cr
 group by cr.id_number
-)
+),
+
+pros as (select pe.id_number,
+       max (f.ask_date) keep (dense_rank First Order By f.start_date) as prop1_ask_date,
+       max (f.close_date) keep (dense_rank First Order By f.start_date) as prop1_close_date,
+       max (f.proposal_manager) keep (dense_rank First Order By f.start_date) as prop1_managers,
+       max (f.total_ask_amt) keep (dense_rank First Order By f.start_date) as prop1_ask_amt,
+       max (f.total_anticipated_amt) keep (dense_rank First Order By f.start_date DESC) as prop1_anticipated_amt,
+       max (f.proposal_status) keep (dense_rank First Order By f.start_date DESC) as prop1_status
+from RPT_PBH634.v_ksm_proposal_history f 
+inner join prospect_entity pe 
+on pe.prospect_id = f.prospect_id
+where f.ksm_proposal_ind = 'Y'
+       group by pe.id_number)
 
 --- Degree Fields
 
@@ -317,6 +330,18 @@ AF_SCORES.AF_10K_MODEL_TIER,
 
 AF_SCORES.AF_10K_MODEL_SCORE,
 
+pros.prop1_ask_date,
+
+pros.prop1_close_date,
+
+pros.prop1_managers,
+
+pros.prop1_ask_amt,
+
+pros.prop1_anticipated_amt,
+
+pros.prop1_status,
+
 c.credited,
 
 c.credited_name,
@@ -373,6 +398,10 @@ Left Join P on P.id_number = rpt_pbh634.v_entity_ksm_degrees.ID_NUMBER
 --- Join 1 Mil Prospect Plus 
 
 Left Join Prospect_1M_Plus on Prospect_1M_Plus.id_number = rpt_pbh634.v_entity_ksm_degrees.ID_NUMBER
+
+--- Proposal Info
+
+Left Join pros on pros.id_number = rpt_pbh634.v_entity_ksm_degrees.ID_NUMBER
 
 --- Email Flags
 
