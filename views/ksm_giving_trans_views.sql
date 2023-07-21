@@ -142,6 +142,12 @@ params As (
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 3 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy3
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 4 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy4
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 5 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy5
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 6 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy6
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 7 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy7
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 8 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy8
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 9 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy9
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 10 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy10
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 11 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy11
     -- Current Use cash totals
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year     And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_cfy
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 1 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy1
