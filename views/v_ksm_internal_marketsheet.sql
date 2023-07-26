@@ -125,6 +125,19 @@ from rpt_pbh634.v_assignment_summary assign
 ---Central - All managers !!! Changes this 
 ),
 
+GIVING_TRANS AS
+( SELECT HH.*
+  FROM rpt_pbh634.v_ksm_giving_trans_hh HH
+),
+
+CURRENT_DONOR AS (
+  SELECT DISTINCT HH.ID_NUMBER
+FROM GIVING_TRANS HH
+cross join rpt_pbh634.v_current_calendar cal
+WHERE HH.FISCAL_YEAR = cal.CURR_FY
+ AND HH.TX_GYPM_IND NOT IN ('P', 'M')
+),
+
 --- Lifetime Giving, NU Lifetime, CRU CFY, 
 g as (select s.ID_NUMBER,
 s.NGC_LIFETIME,
@@ -164,7 +177,7 @@ max (cr.credited) keep (dense_rank First Order By cr.contact_date DESC) as credi
 max (cr.credited_name) keep (dense_rank First Order By cr.contact_date DESC) as credited_name,
 max (cr.contacted_name) keep (dense_rank First Order By cr.contact_date DESC) as contacted_name,
 max (cr.contact_type) keep (dense_rank First Order By cr.contact_date DESC) as contact_type,
-max (cr.contact_date) keep (dense_rank First Order By cr.contact_date DESC) as Max_Date,
+max (cr.contact_date) keep (dense_rank First Order By cr.contact_date DESC) as contact_Date,
 max (cr.description) keep (dense_rank First Order By cr.contact_date DESC) as description_,
 max (cr.summary) keep (dense_rank First Order By cr.contact_date DESC) as summary_
 from rpt_pbh634.v_contact_reports_fast cr
@@ -334,7 +347,34 @@ And act.activity_participation_code = 'P'
 
 --- Kellogg Alumni Club Leader  
 leader as(select distinct v_ksm_club_leaders.id_number
-from v_ksm_club_leaders)
+from v_ksm_club_leaders),
+
+--- Proposals Added 
+
+pros as (select pe.id_number,
+       max (f.ask_date) keep (dense_rank First Order By f.start_date) as prop1_ask_date,
+       max (f.close_date) keep (dense_rank First Order By f.start_date) as prop1_close_date,
+       max (f.proposal_manager) keep (dense_rank First Order By f.start_date) as prop1_managers,
+       max (f.total_ask_amt) keep (dense_rank First Order By f.start_date) as prop1_ask_amt,
+       max (f.total_anticipated_amt) keep (dense_rank First Order By f.start_date DESC) as prop1_anticipated_amt,
+       max (f.proposal_status) keep (dense_rank First Order By f.start_date DESC) as prop1_status
+from RPT_PBH634.v_ksm_proposal_history f 
+inner join prospect_entity pe 
+on pe.prospect_id = f.prospect_id
+where f.ksm_proposal_ind = 'Y'
+and f.proposal_active_calc = 'Active'
+       group by pe.id_number),
+       
+AF_SCORES AS (
+SELECT
+ AF.ID_NUMBER
+ ,max(AF.DESCRIPTION) as AF_10K_MODEL_TIER
+ ,max(AF.SCORE) as AF_10K_MODEL_SCORE
+FROM RPT_PBH634.V_KSM_MODEL_AF_10K AF
+GROUP BY AF.ID_NUMBER
+)
+
+       
 
 select d.id_number,
 d.RECORD_STATUS_CODE,
@@ -370,7 +410,7 @@ a.curr_ksm_manager,
 c.credited,
 c.credited_name,
 c.contact_type,
-c.Max_Date,
+c.contact_date,
 c.description_,
 c.summary_,
 speak.last_speak_date,
@@ -396,10 +436,14 @@ g.LAST_GIFT_DATE,
 g.LAST_GIFT_TYPE,
 g.LAST_GIFT_ALLOC,
 g.LAST_GIFT_RECOGNITION_CREDIT,
+CASE WHEN CYD.ID_NUMBER IS NOT NULL THEN 'Y' END AS CYD,
 --max_gift.DATE_OF_RECORD as date_of_record_max_gift,
 --max_gift.max_credit as max_gift_credit,
 ---g.max_gift_date_of_record,
 ---g.max_gift_credit,
+AR_Model.
+AF_SCORES.AF_10K_MODEL_TIER,
+AF_SCORES.AF_10K_MODEL_SCORE,
 KLC.KLC_Current_IND, 
 KLC.KSM_donor_pfy1,
 KLC.klc_fy_count,
@@ -412,7 +456,13 @@ spec.NO_MAIL_IND,
 spec.GAB,
 spec.TRUSTEE,
 spec.EBFA,
-spec.SPECIAL_HANDLING_CONCAT
+spec.SPECIAL_HANDLING_CONCAT,
+pros.prop1_ask_date,
+pros.prop1_close_date,
+pros.prop1_managers,
+pros.prop1_ask_amt,
+pros.prop1_anticipated_amt,
+pros.prop1_status
 from rpt_pbh634.v_entity_ksm_degrees d
 --- inner join house - to get geocodes/location
 inner join h on h.id_number = d.id_number
@@ -452,3 +502,9 @@ left join K_Interviewers k on k.id_number = d.id_number
 left join KStuAct on KStuAct.id_number = d.id_number
 --- Event Host
 left Join Event_Host e on e.id_number = d.id_number
+--- Proposals
+left join pros on pros.id_number = d.id_number
+--- CYD
+left join CURRENT_DONOR CYD on CYD.id_number = d.id_number
+--- Annual Fund Tier scores
+left join AF_SCORES on AF_SCORES.id_number = d.id_number

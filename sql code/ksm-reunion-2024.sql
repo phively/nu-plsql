@@ -440,7 +440,8 @@ From table (rpt_pbh634.ksm_pkg_tmp.tbl_committee_kac) k),
 
 PHS AS (Select p.id_number,
        p.short_desc,
-       p.status
+       p.status,
+       p.spouse_ID_Number
 From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_phs) P),
 
 --- My Employment Table
@@ -581,7 +582,7 @@ left join assign on assign.id_number = KSM_Reunion.id_number
 left join em on em.id_number = KSM_Reunion.id_number
 left join np on np.id_number = KSM_Reunion.id_number)
 
-SELECT
+SELECT DISTINCT 
    E.ID_NUMBER
   ,E.RECORD_STATUS_CODE
   ,E.GENDER_CODE
@@ -634,6 +635,7 @@ SELECT
   ,final.ASIA_EXECUTIVE_BOARD
   ,KAC.SHORT_DESC AS KAC
   ,PHS.SHORT_DESC AS PHS
+  ,Case when phs.spouse_ID_Number is not null then KR.SPOUSE_PREF_MAIL_NAME End as PHS_Spouse
   ,final.NO_EMAIL
   ,final.NO_EMAIL_SOLICIT
   ,final.NO_MAIL_SOLICIT
