@@ -110,6 +110,8 @@ Cursor c_alloc_annual_fund_ksm Is
       , '3203006469401GFT' -- Scholarship Fund (RS)
       , '3203006114401GFT' -- Finance Scholarship (MS)
       , '3203005228401GFT' -- Student Life
+      , '3203002402701GFT' -- Unrestricted expendable (SH)
+      , '3203006149601GFT' -- Vivo DEI
       /************ UPDATE ABOVE HERE ************/
     )
   ;
