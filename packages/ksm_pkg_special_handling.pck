@@ -334,6 +334,9 @@ Cursor c_special_handling_concat Is
     Union
     Select id_number, spouse_id_number
     From committees_merged
+    Union
+    Select spouse_id_number, id_number
+    From committees_merged
   )
   -- Universal no contact or no solicit
   -- Anyone with one of a few select codes should NEVER be contacted or solicited
