@@ -604,6 +604,7 @@ SELECT DISTINCT
   ,E.REPORT_NAME
   ,E.pref_mail_name
   ,E.FIRST_NAME
+  ,E.institutional_suffix
   ,d.P_Dean_Salut
   ,E.pers_suffix
   ,E.last_name   
