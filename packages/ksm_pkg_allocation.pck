@@ -112,6 +112,7 @@ Cursor c_alloc_annual_fund_ksm Is
       , '3203005228401GFT' -- Student Life
       , '3203002402701GFT' -- Unrestricted expendable (SH)
       , '3203006149601GFT' -- Vivo DEI
+      , '3203006498701GFT' -- Unrestricted scholarships (VK)
       /************ UPDATE ABOVE HERE ************/
     )
   ;
