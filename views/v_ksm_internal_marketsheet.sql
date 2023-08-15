@@ -388,7 +388,98 @@ SELECT
  ,max(AF.SCORE) as AF_10K_MODEL_SCORE
 FROM RPT_PBH634.V_KSM_MODEL_AF_10K AF
 GROUP BY AF.ID_NUMBER
-)      
+),
+
+
+KSM_STAFF AS (
+SELECT * FROM table(rpt_pbh634.ksm_pkg_tmp.tbl_frontline_ksm_staff) staff
+  WHERE (TEAM = 'AF' AND  staff.former_staff Is Null
+          AND ID_NUMBER NOT IN ('0000860423', '0000838308', '0000784241', '0000887951', '0000889141'))-- Historical Kellogg gift officers
+  -- Join credited visit ID to staff ID number
+),
+
+ASSIGNED_DATA AS(
+SELECT
+  AH.ID_NUMBER AS ID_NUMBER
+  ,AH.report_name AS REPORT_NAME
+    ,AE.PREF_MAIL_NAME AS STAFF_NAME
+  ,AH.assignment_id_number AS STAFF_ID
+  ,CASE WHEN AH.ID_NUMBER IN (SELECT ID FROM RPT_ABM1914.T_AF1_KLCLYBUNTS_FY23) THEN 'Y' ELSE 'N' END AS LYBUNT_YN
+FROM rpt_pbh634.v_assignment_history AH
+INNER JOIN KSM_STAFF KST
+ON AH.assignment_id_number = KST.ID_NUMBER
+LEFT JOIN ENTITY AE
+ON AH.assignment_id_number = AE.ID_NUMBER
+--LEFT JOIN RPT_ABM1914.T_AF1_KLCLYBUNTS LG
+--ON AH.id_number = LG.ID
+Where ah.assignment_active_calc = 'Active'
+  And
+  assignment_type In
+      -- Prospect Assist (PP), Prospect Manager (PM), Proposal Manager(PA), Leadership Giving Officer (LG)
+      ('LG', 'PM')
+),
+
+ALL_ASSIGNMENTS AS (
+   SELECT
+     AD.ID_NUMBER
+     ,AD.REPORT_NAME
+     ,AD.STAFF_NAME
+     ,AD.STAFF_ID
+     ,AD.LYBUNT_YN
+   FROM ASSIGNED_DATA AD
+),
+
+---- Per Amy's feedback to get total ASK Amount 
+
+CASH_COMMITMENTS AS(
+SELECT
+  PHF.PROPOSAL_MANAGER_ID
+  ,SUM(PHF.total_ask_amt) AS PROP_ASK
+FROM RPT_PBH634.V_PROPOSAL_HISTORY_FAST PHF
+INNER JOIN KSM_STAFF LGO
+ON PHF.proposal_manager_id = LGO.ID_NUMBER
+INNER JOIN PROSPECT_ENTITY PE
+ON PHF.prospect_id = PE.PROSPECT_ID
+  AND PE.PRIMARY_IND = 'Y'
+WHERE PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5', '7', '8') -- anticipated/submitted/approved/declined/funded
+  AND PHF.ask_date BETWEEN rpt_pbh634.ksm_pkg_tmp.to_date2('9/01/2022','MM-DD-YY')
+          AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY') OR
+      (PHF.PROPOSAL_STATUS_CODE IN ('A','C', '5', '7', '8') -- anticipated/submitted/approved/declined/funded
+  AND PHF.CLOSE_DATE BETWEEN rpt_pbh634.ksm_pkg_tmp.to_date2('9/01/2022','MM-DD-YY')
+          AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY'))
+    GROUP  BY PHF.proposal_manager_id
+)
+
+,PROPOSAL_ASSIST AS (
+  SELECT
+  PHF.PROPOSAL_ASSIST_ID
+  ,SUM(PHF.total_ask_amt) AS TOTAL_ASK_AMT
+FROM RPT_PBH634.V_PROPOSAL_HISTORY_FAST PHF
+INNER JOIN KSM_STAFF LGO
+ON PHF.PROPOSAL_ASSIST_ID = LGO.ID_NUMBER
+INNER JOIN PROSPECT_ENTITY PE
+ON PHF.prospect_id = PE.PROSPECT_ID
+  AND PE.PRIMARY_IND = 'Y'
+WHERE (PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5', '7', '8') -- anticipated/submitted/approved/declined/funded
+  AND PHF.ask_date BETWEEN rpt_pbh634.ksm_pkg_tmp.to_date2('9/01/2022','MM-DD-YY')
+          AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY')) OR
+      (PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5', '7', '8') -- anticipated/submitted/approved/declined/funded
+  AND PHF.CLOSE_DATE BETWEEN rpt_pbh634.ksm_pkg_tmp.to_date2('9/01/2022','MM-DD-YY')
+          AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY'))
+    GROUP  BY PHF.PROPOSAL_ASSIST_ID
+),
+
+TOTAL_ASK AS (
+
+select AA.ID_NUMBER,
+TO_NUMBER(NVL(TRIM(C.PROP_ASK ),'0'))+ TO_NUMBER(NVL(TRIM(PA.TOTAL_ASK_AMT),'0')) AS "TOTAL_ASK"
+from ALL_ASSIGNMENTS AA
+LEFT JOIN CASH_COMMITMENTS C
+ON AA.STAFF_ID = C.PROPOSAL_MANAGER_ID
+LEFT JOIN PROPOSAL_ASSIST PA
+ON AA.STAFF_ID = PA.PROPOSAL_ASSIST_ID)
+
+    
 
 select d.id_number,
 d.RECORD_STATUS_CODE,
@@ -456,6 +547,8 @@ g.af_status_fy_start,
 g.FY_GIVING_FIRST_YR,
 --- Count of visits
 ccount.VISITS,
+--- TOTAL ASK
+TOTAL_ASK.TOTAL_ASK,
 CASE WHEN CYD.ID_NUMBER IS NOT NULL THEN 'Y' END AS CYD,
 --max_gift.DATE_OF_RECORD as date_of_record_max_gift,
 --max_gift.max_credit as max_gift_credit,
@@ -529,6 +622,7 @@ left join CURRENT_DONOR CYD on CYD.id_number = d.id_number
 left join AF_SCORES on AF_SCORES.id_number = d.id_number
 --- Count of visits 
 left join ccount on ccount.id_number = d.id_number
+left join TOTAL_ASK ON TOTAL_ASK.ID_NUMBER = D.ID_NUMBER
 
 --- Adding Amy's AF dashboard
 
