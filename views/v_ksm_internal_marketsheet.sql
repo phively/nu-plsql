@@ -148,6 +148,9 @@ s.CRU_PFY2,
 s.CRU_PFY3,
 s.CRU_PFY4,
 s.CRU_PFY5,
+s.af_status,
+s.af_status_fy_start,
+s.FY_GIVING_FIRST_YR,
 --- Last gifts - Reccomendation from Melanie
 s.LAST_GIFT_TX_NUMBER,
 s.LAST_GIFT_DATE,
@@ -183,6 +186,14 @@ max (cr.summary) keep (dense_rank First Order By cr.contact_date DESC) as summar
 from rpt_pbh634.v_contact_reports_fast cr
 group by cr.id_number
 ),
+
+--- Count number of visits 
+ccount as (select 
+f.id_number,
+count (f.contact_type_code) AS VISITS 
+from rpt_pbh634.v_contact_reports_fast f
+where f.contact_type_code = 'V' 
+group by f.id_number),
 
 
 /* KLC Membership Queries
@@ -231,13 +242,18 @@ Group By KLC.GIFT_CLUB_ID_NUMBER),
 
 --- Current Donors (Use Amy's View) 
 
-amyklc as (select k.ID_NUMBER
+amyklc as (select k.ID_NUMBER,
+k.KLC_lev_pfy, 
+k.KLC_lev_cfy
 from RPT_ABM1914.V_KLC_MEMBERS k),
 
 
 KLC_Final As (Select distinct KLC.GIFT_CLUB_ID_NUMBER,
 --- Entity's in Amy's KLC report
 case when aklc.id_number is not null then 'Current KLC Member' end as KLC_Current_IND, 
+--- KLC Segment - Trying to find 10K + Household
+aklc.KLC_lev_pfy,
+aklc.KLC_lev_cfy,
 --- KLC FY Donor This Year
 KLC_Give_Ind.KSM_donor_cfy,
 --- KLC FY Donor Last Year 
@@ -372,9 +388,7 @@ SELECT
  ,max(AF.SCORE) as AF_10K_MODEL_SCORE
 FROM RPT_PBH634.V_KSM_MODEL_AF_10K AF
 GROUP BY AF.ID_NUMBER
-)
-
-       
+)      
 
 select d.id_number,
 d.RECORD_STATUS_CODE,
@@ -436,12 +450,17 @@ g.LAST_GIFT_DATE,
 g.LAST_GIFT_TYPE,
 g.LAST_GIFT_ALLOC,
 g.LAST_GIFT_RECOGNITION_CREDIT,
+--- af status is in giving summary 
+g.af_status,
+g.af_status_fy_start,
+g.FY_GIVING_FIRST_YR,
+--- Count of visits
+ccount.VISITS,
 CASE WHEN CYD.ID_NUMBER IS NOT NULL THEN 'Y' END AS CYD,
 --max_gift.DATE_OF_RECORD as date_of_record_max_gift,
 --max_gift.max_credit as max_gift_credit,
 ---g.max_gift_date_of_record,
 ---g.max_gift_credit,
-AR_Model.
 AF_SCORES.AF_10K_MODEL_TIER,
 AF_SCORES.AF_10K_MODEL_SCORE,
 KLC.KLC_Current_IND, 
@@ -508,3 +527,14 @@ left join pros on pros.id_number = d.id_number
 left join CURRENT_DONOR CYD on CYD.id_number = d.id_number
 --- Annual Fund Tier scores
 left join AF_SCORES on AF_SCORES.id_number = d.id_number
+--- Count of visits 
+left join ccount on ccount.id_number = d.id_number
+
+--- Adding Amy's AF dashboard
+
+--- Total Lybunts - Located in Giving Summary. Should be good to go.
+--- Lybunts retained - Is this calculated in Tableau or SQL?
+--- KLC Lybunt attainted - See above ^
+--- New KLC Household - I already have Amy's KLC view in the code. Should be good to go.
+--- KLC 10K+ - I added this from Amy's KLC view. Should be good to go. 
+--- Count of visits: I create code instead of joining on a view (for efficenect). Should be good to go.

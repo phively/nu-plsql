@@ -24,6 +24,7 @@ prime as (Select DISTINCT
       ,  a.state_code
       ,  c.country as country
       ,  G.GEO_CODE_PRIMARY_DESC AS PRIMARY_GEO_CODE
+      ,  a.country_code
       ,  C.continent
       FROM address a
       LEFT JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
@@ -45,6 +46,7 @@ Business As(Select DISTINCT
       ,  max (a.state_code) as state_code
       ,  max (a.zipcode) as zipcode
       ,  max (c.country) as country
+      ,  max (a.country_code) as country_code
       ,  max (a.start_dt)
       ,  max (G.GEO_CODE_PRIMARY_DESC) AS BUSINESS_GEO_CODE
       ,  max (C.continent) as continent
@@ -68,6 +70,7 @@ Home as (Select DISTINCT
       ,  max (a.state_code) as state_code
       ,  max (a.zipcode) as zipcode
       ,  max (c.country) as country 
+      ,  max (a.country_code) as country_code
       ,  max (a.start_dt)
       ,  max (G.GEO_CODE_PRIMARY_DESC) AS home_GEO_CODE
       ,  max (C.continent) as continent
@@ -90,6 +93,7 @@ Alt_Home As  (Select DISTINCT
       ,  max (a.state_code) as state_code
       ,  max (a.zipcode) as zipcode
       ,  max (c.country) as country
+      ,  max (a.country_code) as country_code
       ,  max (a.start_dt)
       ,  max (G.GEO_CODE_PRIMARY_DESC) AS alt_home_GEO_CODE
       ,  max (C.continent) as continent
@@ -112,6 +116,7 @@ Alt_Bus As  (Select DISTINCT
       ,  max (a.state_code) as state_code
       ,  max (a.zipcode) as zipcode
       ,  max (c.country) as country
+      ,  max (a.country_code) as country_code
       ,  max (a.start_dt)
       ,  max (G.GEO_CODE_PRIMARY_DESC) AS alt_bus_GEO_CODE
       ,  max (C.continent) as continent
@@ -135,6 +140,7 @@ Seasonal as (
       ,  max (a.state_code) as state_code
       ,  max (a.zipcode) as zipcode
       ,  max (c.country) as country 
+      ,  max (a.country_code) as country_code
       ,  max (a.start_dt)
       ,  max (G.GEO_CODE_PRIMARY_DESC) AS SEASONAL_GEO_CODE
       ,  max (C.continent) as continent
@@ -160,6 +166,7 @@ SELECT DISTINCT
   , prime.STATE_Code as primary_state
   , prime.zipcode as primary_zipcode
   , prime.country as primary_country
+  , prime.country_code as primary_country_code
   , prime.continent
   --- Home Address - Non Preferred
   , home.Address_Type as non_preferred_home_type
@@ -168,6 +175,7 @@ SELECT DISTINCT
   , home.state_code as non_preferred_home_state
   , home.zipcode as non_preferred_home_zipcode
   , home.country as non_preferred_home_country
+  , home.country_code as non_pref_home_country_code
   , home.continent as non_preferred_home_continent
   --- Business Address - Non Preferred
   , Business.Address_Type as non_preferred_business_type
@@ -176,6 +184,7 @@ SELECT DISTINCT
   , Business.state_code as non_preferred_business_state
   , Business.zipcode as non_preferred_business_zipcode
   , Business.country as non_preferred_business_country
+  , Business.country_code as non_pref_business_country_code
   , Business.continent as non_preferred_busin_continent
   --- Alternative Home - Non Preferred
   , Alt_Home.Address_Type as alt_home_type
@@ -184,6 +193,7 @@ SELECT DISTINCT
   , Alt_Home.state_code as alt_home_state
   , Alt_Home.zipcode as alt_home_zipcode
   , Alt_Home.country as alt_home_country
+  , Alt_Home.country_code as alt_home_country_code
   , Alt_Home.continent as alt_home_continent
   --- Alternative Business - Non Preferred 
   , Alt_Bus.Address_Type as alt_bus_type
@@ -192,6 +202,7 @@ SELECT DISTINCT
   , Alt_Bus.state_code as alt_bus_state
   , Alt_Bus.zipcode as alt_bus_zipcode
   , Alt_Bus.country as alt_bus_country
+  , Alt_Bus.country_code as alt_bus_country_code
   , Alt_Bus.continent as alt_bus_continent
   ---- Seasonal Address - Non Preferred
   , seasonal.Address_Type as seasonal_Type
@@ -200,6 +211,7 @@ SELECT DISTINCT
   , Seasonal.state_code as seasonal_state
   , Seasonal.zipcode as seasonal_zipcode
   , Seasonal.country as seasonal_country
+  , Seasonal.country_code as seasonal_country_code
   , Seasonal.continent as seasonal_continent
   ---- Lookup Geocode
   , trim(prime.PRIMARY_GEO_CODE || chr(13) || home.home_GEO_CODE || chr(13) || Business.BUSINESS_GEO_CODE ||
