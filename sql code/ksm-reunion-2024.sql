@@ -521,6 +521,36 @@ NP as (select TP.ID_NUMBER,
        TP.OFFICER_RATING
 From nu_prs_trp_prospect TP),
 
+c as (/* Last Contact Report - Date, Author, Type, Subject 
+(# Contact Reports - Contacts within FY and 5FYs
+*/
+select cr.id_number,
+max (cr.credited) keep (dense_rank First Order By cr.contact_date DESC) as credited,
+max (cr.credited_name) keep (dense_rank First Order By cr.contact_date DESC) as credited_name,
+max (cr.contacted_name) keep (dense_rank First Order By cr.contact_date DESC) as contacted_name,
+max (cr.contact_type) keep (dense_rank First Order By cr.contact_date DESC) as contact_type,
+max (cr.contact_date) keep (dense_rank First Order By cr.contact_date DESC) as contact_Date,
+max (cr.contact_purpose) keep (dense_rank First Order By cr.contact_date DESC) as contact_purpose,
+max (cr.description) keep (dense_rank First Order By cr.contact_date DESC) as description_,
+max (cr.summary) keep (dense_rank First Order By cr.contact_date DESC) as summary_
+from rpt_pbh634.v_contact_reports_fast cr
+group by cr.id_number
+),
+
+--- Major Gift Model Scores
+
+md as (select mg.id_number,
+       mg.segment_year,
+       mg.segment_month,
+       mg.id_code,
+       mg.id_segment,
+       mg.id_score,
+       mg.pr_code,
+       mg.pr_segment,
+       mg.pr_score,
+       mg.est_probability
+from rpt_pbh634.v_ksm_model_mg mg),
+
 
 final as (select  KSM_REUNION.id_number
   , GIVING_SUMMARY.ANONYMOUS_DONOR
@@ -638,6 +668,7 @@ SELECT DISTINCT
   ,KR.SPOUSE_FIRST_KSM_YEAR
   ,KR.SPOUSE_PROGRAM
   ,KR.SPOUSE_PROGRAM_GROUP
+  ,KR.CLASS_SECTION
   ,CASE WHEN spouse_RY.SPOUSE_ID_NUMBER is not null then spouse_RY.CLASS_YEAR else '' End as Spouse_Reunion24_Classyr_IND
   ,final.LGOS
   ,final.Prospect_Manager
@@ -757,6 +788,21 @@ SELECT DISTINCT
   ,WT0_PARSE(PROPOSAL_STATUS, 6,  '^') STOP_DATE
   ,WT0_PARSE(PROPOSAL_STATUS, 7,  '^') PROPOSAL_TITLE
   ,AFS.AF_10K_MODEL_TIER 
+  ,MD.ID_CODE
+  ,MD.id_segment
+  ,MD.id_score
+  ,MD.pr_code
+  ,MD.pr_segment
+  ,MD.pr_score
+  ,MD.est_probability
+  ,C.credited
+  ,C.contact_purpose
+  ,C.credited_name
+  ,C.contacted_name
+  ,C.contact_type
+  ,trunc (C.contact_Date) as contact_date
+  ,C.description_
+  ,C.summary_
 FROM ENTITY E
 INNER JOIN KSM_REUNION KR
 ON E.ID_NUMBER = KR.ID_NUMBER
@@ -799,3 +845,7 @@ LEFT JOIN KAC
 ON KAC.ID_NUMBER = E.ID_NUMBER
 Left Join KSM_Faculty_Staff KFS
 ON KFS.ID_NUMBER = E.ID_NUMBER
+LEFT JOIN MD
+ON MD.ID_NUMBER = E.ID_NUMBER
+LEFT JOIN C 
+ON C.ID_NUMBER = E.ID_NUMBER

@@ -477,9 +477,41 @@ from ALL_ASSIGNMENTS AA
 LEFT JOIN CASH_COMMITMENTS C
 ON AA.STAFF_ID = C.PROPOSAL_MANAGER_ID
 LEFT JOIN PROPOSAL_ASSIST PA
-ON AA.STAFF_ID = PA.PROPOSAL_ASSIST_ID)
+ON AA.STAFF_ID = PA.PROPOSAL_ASSIST_ID),
 
-    
+BG as (Select
+gc.*
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_geo_code_primary) gc
+Inner Join address
+On address.id_number = gc.id_number
+And address.xsequence = gc.xsequence
+Where address.addr_type_code = 'B'),
+
+BusinessAddress AS( 
+      Select
+         a.Id_number
+      ,  tms_addr_status.short_desc AS Address_Status
+      ,  tms_address_type.short_desc AS Address_Type
+      ,  a.addr_pref_ind
+      ,  a.street1
+      ,  a.street2
+      ,  a.street3
+      ,  a.foreign_cityzip
+      ,  a.city
+      ,  a.state_code
+      ,  a.zipcode
+      ,  tms_country.short_desc AS Country
+      ,  BG.GEO_CODE_PRIMARY_DESC AS BUSINESS_GEO_CODE
+      FROM address a
+      INNER JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
+      LEFT JOIN tms_address_type ON tms_address_type.addr_type_code = a.addr_type_code
+      LEFT JOIN tms_country ON tms_country.country_code = a.country_code
+      INNER JOIN BG 
+      ON BG.ID_NUMBER = A.ID_NUMBER
+      AND BG.xsequence = a.xsequence
+      WHERE a.addr_type_code = 'B'
+      AND a.addr_status_code IN('A','K')
+)
 
 select d.id_number,
 d.RECORD_STATUS_CODE,
@@ -499,6 +531,11 @@ h.HOUSEHOLD_GEO_PRIMARY,
 h.HOUSEHOLD_GEO_PRIMARY_DESC,
 h.HOUSEHOLD_COUNTRY,
 h.HOUSEHOLD_CONTINENT,
+B.city as business_city,
+B.state_code as business_state_code ,
+B.zipcode as business_zipcode,
+B.Country as business_country,
+B.BUSINESS_GEO_CODE,
 R.Reunion_18_IND,
 R.Reunion_19_IND,
 R.Reunion_21_IND,
@@ -528,6 +565,7 @@ case when k.id_number is not null then 'Kellogg On Campus Career Interviewers' E
 case when KStuAct.id_number is not null then 'Kellogg Student Activity' End as KSM_Student_Activities, 
 case when e.id_number is not null then 'Event Host' End as Event_Host, 
 g.NGC_LIFETIME,
+g.NU_MAX_HH_LIFETIME_GIVING,
 case when g.NGC_LIFETIME > 0 then 'KSM Donor' end as Donor_NGC_Lifetime_IND, 
 g.MAX_GIFT_DATE_OF_RECORD,
 g.MAX_GIFT_CREDIT,
@@ -622,7 +660,11 @@ left join CURRENT_DONOR CYD on CYD.id_number = d.id_number
 left join AF_SCORES on AF_SCORES.id_number = d.id_number
 --- Count of visits 
 left join ccount on ccount.id_number = d.id_number
+--- Total Ask Amount
 left join TOTAL_ASK ON TOTAL_ASK.ID_NUMBER = D.ID_NUMBER
+--- Business Address
+left join BusinessAddress B on B.id_number = D.id_number
+
 
 --- Adding Amy's AF dashboard
 
