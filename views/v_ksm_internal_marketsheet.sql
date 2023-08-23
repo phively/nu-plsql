@@ -125,6 +125,19 @@ from rpt_pbh634.v_assignment_summary assign
 ---Central - All managers !!! Changes this 
 ),
 
+GIVING_TRANS AS
+( SELECT HH.*
+  FROM rpt_pbh634.v_ksm_giving_trans_hh HH
+),
+
+CURRENT_DONOR AS (
+  SELECT DISTINCT HH.ID_NUMBER
+FROM GIVING_TRANS HH
+cross join rpt_pbh634.v_current_calendar cal
+WHERE HH.FISCAL_YEAR = cal.CURR_FY
+ AND HH.TX_GYPM_IND NOT IN ('P', 'M')
+),
+
 --- Lifetime Giving, NU Lifetime, CRU CFY, 
 g as (select s.ID_NUMBER,
 s.NGC_LIFETIME,
@@ -135,6 +148,9 @@ s.CRU_PFY2,
 s.CRU_PFY3,
 s.CRU_PFY4,
 s.CRU_PFY5,
+s.af_status,
+s.af_status_fy_start,
+s.FY_GIVING_FIRST_YR,
 --- Last gifts - Reccomendation from Melanie
 s.LAST_GIFT_TX_NUMBER,
 s.LAST_GIFT_DATE,
@@ -164,12 +180,20 @@ max (cr.credited) keep (dense_rank First Order By cr.contact_date DESC) as credi
 max (cr.credited_name) keep (dense_rank First Order By cr.contact_date DESC) as credited_name,
 max (cr.contacted_name) keep (dense_rank First Order By cr.contact_date DESC) as contacted_name,
 max (cr.contact_type) keep (dense_rank First Order By cr.contact_date DESC) as contact_type,
-max (cr.contact_date) keep (dense_rank First Order By cr.contact_date DESC) as Max_Date,
+max (cr.contact_date) keep (dense_rank First Order By cr.contact_date DESC) as contact_Date,
 max (cr.description) keep (dense_rank First Order By cr.contact_date DESC) as description_,
 max (cr.summary) keep (dense_rank First Order By cr.contact_date DESC) as summary_
 from rpt_pbh634.v_contact_reports_fast cr
 group by cr.id_number
 ),
+
+--- Count number of visits 
+ccount as (select 
+f.id_number,
+count (f.contact_type_code) AS VISITS 
+from rpt_pbh634.v_contact_reports_fast f
+where f.contact_type_code = 'V' 
+group by f.id_number),
 
 
 /* KLC Membership Queries
@@ -218,13 +242,18 @@ Group By KLC.GIFT_CLUB_ID_NUMBER),
 
 --- Current Donors (Use Amy's View) 
 
-amyklc as (select k.ID_NUMBER
+amyklc as (select k.ID_NUMBER,
+k.KLC_lev_pfy, 
+k.KLC_lev_cfy
 from RPT_ABM1914.V_KLC_MEMBERS k),
 
 
 KLC_Final As (Select distinct KLC.GIFT_CLUB_ID_NUMBER,
 --- Entity's in Amy's KLC report
 case when aklc.id_number is not null then 'Current KLC Member' end as KLC_Current_IND, 
+--- KLC Segment - Trying to find 10K + Household
+aklc.KLC_lev_pfy,
+aklc.KLC_lev_cfy,
 --- KLC FY Donor This Year
 KLC_Give_Ind.KSM_donor_cfy,
 --- KLC FY Donor Last Year 
@@ -334,7 +363,155 @@ And act.activity_participation_code = 'P'
 
 --- Kellogg Alumni Club Leader  
 leader as(select distinct v_ksm_club_leaders.id_number
-from v_ksm_club_leaders)
+from v_ksm_club_leaders),
+
+--- Proposals Added 
+
+pros as (select pe.id_number,
+       max (f.ask_date) keep (dense_rank First Order By f.start_date) as prop1_ask_date,
+       max (f.close_date) keep (dense_rank First Order By f.start_date) as prop1_close_date,
+       max (f.proposal_manager) keep (dense_rank First Order By f.start_date) as prop1_managers,
+       max (f.total_ask_amt) keep (dense_rank First Order By f.start_date) as prop1_ask_amt,
+       max (f.total_anticipated_amt) keep (dense_rank First Order By f.start_date DESC) as prop1_anticipated_amt,
+       max (f.proposal_status) keep (dense_rank First Order By f.start_date DESC) as prop1_status
+from RPT_PBH634.v_ksm_proposal_history f 
+inner join prospect_entity pe 
+on pe.prospect_id = f.prospect_id
+where f.ksm_proposal_ind = 'Y'
+and f.proposal_active_calc = 'Active'
+       group by pe.id_number),
+       
+AF_SCORES AS (
+SELECT
+ AF.ID_NUMBER
+ ,max(AF.DESCRIPTION) as AF_10K_MODEL_TIER
+ ,max(AF.SCORE) as AF_10K_MODEL_SCORE
+FROM RPT_PBH634.V_KSM_MODEL_AF_10K AF
+GROUP BY AF.ID_NUMBER
+),
+
+
+KSM_STAFF AS (
+SELECT * FROM table(rpt_pbh634.ksm_pkg_tmp.tbl_frontline_ksm_staff) staff
+  WHERE (TEAM = 'AF' AND  staff.former_staff Is Null
+          AND ID_NUMBER NOT IN ('0000860423', '0000838308', '0000784241', '0000887951', '0000889141'))-- Historical Kellogg gift officers
+  -- Join credited visit ID to staff ID number
+),
+
+ASSIGNED_DATA AS(
+SELECT
+  AH.ID_NUMBER AS ID_NUMBER
+  ,AH.report_name AS REPORT_NAME
+    ,AE.PREF_MAIL_NAME AS STAFF_NAME
+  ,AH.assignment_id_number AS STAFF_ID
+  ,CASE WHEN AH.ID_NUMBER IN (SELECT ID FROM RPT_ABM1914.T_AF1_KLCLYBUNTS_FY23) THEN 'Y' ELSE 'N' END AS LYBUNT_YN
+FROM rpt_pbh634.v_assignment_history AH
+INNER JOIN KSM_STAFF KST
+ON AH.assignment_id_number = KST.ID_NUMBER
+LEFT JOIN ENTITY AE
+ON AH.assignment_id_number = AE.ID_NUMBER
+--LEFT JOIN RPT_ABM1914.T_AF1_KLCLYBUNTS LG
+--ON AH.id_number = LG.ID
+Where ah.assignment_active_calc = 'Active'
+  And
+  assignment_type In
+      -- Prospect Assist (PP), Prospect Manager (PM), Proposal Manager(PA), Leadership Giving Officer (LG)
+      ('LG', 'PM')
+),
+
+ALL_ASSIGNMENTS AS (
+   SELECT
+     AD.ID_NUMBER
+     ,AD.REPORT_NAME
+     ,AD.STAFF_NAME
+     ,AD.STAFF_ID
+     ,AD.LYBUNT_YN
+   FROM ASSIGNED_DATA AD
+),
+
+---- Per Amy's feedback to get total ASK Amount 
+
+CASH_COMMITMENTS AS(
+SELECT
+  PHF.PROPOSAL_MANAGER_ID
+  ,SUM(PHF.total_ask_amt) AS PROP_ASK
+FROM RPT_PBH634.V_PROPOSAL_HISTORY_FAST PHF
+INNER JOIN KSM_STAFF LGO
+ON PHF.proposal_manager_id = LGO.ID_NUMBER
+INNER JOIN PROSPECT_ENTITY PE
+ON PHF.prospect_id = PE.PROSPECT_ID
+  AND PE.PRIMARY_IND = 'Y'
+WHERE PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5', '7', '8') -- anticipated/submitted/approved/declined/funded
+  AND PHF.ask_date BETWEEN rpt_pbh634.ksm_pkg_tmp.to_date2('9/01/2022','MM-DD-YY')
+          AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY') OR
+      (PHF.PROPOSAL_STATUS_CODE IN ('A','C', '5', '7', '8') -- anticipated/submitted/approved/declined/funded
+  AND PHF.CLOSE_DATE BETWEEN rpt_pbh634.ksm_pkg_tmp.to_date2('9/01/2022','MM-DD-YY')
+          AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY'))
+    GROUP  BY PHF.proposal_manager_id
+)
+
+,PROPOSAL_ASSIST AS (
+  SELECT
+  PHF.PROPOSAL_ASSIST_ID
+  ,SUM(PHF.total_ask_amt) AS TOTAL_ASK_AMT
+FROM RPT_PBH634.V_PROPOSAL_HISTORY_FAST PHF
+INNER JOIN KSM_STAFF LGO
+ON PHF.PROPOSAL_ASSIST_ID = LGO.ID_NUMBER
+INNER JOIN PROSPECT_ENTITY PE
+ON PHF.prospect_id = PE.PROSPECT_ID
+  AND PE.PRIMARY_IND = 'Y'
+WHERE (PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5', '7', '8') -- anticipated/submitted/approved/declined/funded
+  AND PHF.ask_date BETWEEN rpt_pbh634.ksm_pkg_tmp.to_date2('9/01/2022','MM-DD-YY')
+          AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY')) OR
+      (PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5', '7', '8') -- anticipated/submitted/approved/declined/funded
+  AND PHF.CLOSE_DATE BETWEEN rpt_pbh634.ksm_pkg_tmp.to_date2('9/01/2022','MM-DD-YY')
+          AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY'))
+    GROUP  BY PHF.PROPOSAL_ASSIST_ID
+),
+
+TOTAL_ASK AS (
+
+select AA.ID_NUMBER,
+TO_NUMBER(NVL(TRIM(C.PROP_ASK ),'0'))+ TO_NUMBER(NVL(TRIM(PA.TOTAL_ASK_AMT),'0')) AS "TOTAL_ASK"
+from ALL_ASSIGNMENTS AA
+LEFT JOIN CASH_COMMITMENTS C
+ON AA.STAFF_ID = C.PROPOSAL_MANAGER_ID
+LEFT JOIN PROPOSAL_ASSIST PA
+ON AA.STAFF_ID = PA.PROPOSAL_ASSIST_ID),
+
+BG as (Select
+gc.*
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_geo_code_primary) gc
+Inner Join address
+On address.id_number = gc.id_number
+And address.xsequence = gc.xsequence
+Where address.addr_type_code = 'B'),
+
+BusinessAddress AS( 
+      Select
+         a.Id_number
+      ,  tms_addr_status.short_desc AS Address_Status
+      ,  tms_address_type.short_desc AS Address_Type
+      ,  a.addr_pref_ind
+      ,  a.street1
+      ,  a.street2
+      ,  a.street3
+      ,  a.foreign_cityzip
+      ,  a.city
+      ,  a.state_code
+      ,  a.zipcode
+      ,  tms_country.short_desc AS Country
+      ,  BG.GEO_CODE_PRIMARY_DESC AS BUSINESS_GEO_CODE
+      FROM address a
+      INNER JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
+      LEFT JOIN tms_address_type ON tms_address_type.addr_type_code = a.addr_type_code
+      LEFT JOIN tms_country ON tms_country.country_code = a.country_code
+      INNER JOIN BG 
+      ON BG.ID_NUMBER = A.ID_NUMBER
+      AND BG.xsequence = a.xsequence
+      WHERE a.addr_type_code = 'B'
+      AND a.addr_status_code IN('A','K')
+)
 
 select d.id_number,
 d.RECORD_STATUS_CODE,
@@ -354,6 +531,11 @@ h.HOUSEHOLD_GEO_PRIMARY,
 h.HOUSEHOLD_GEO_PRIMARY_DESC,
 h.HOUSEHOLD_COUNTRY,
 h.HOUSEHOLD_CONTINENT,
+B.city as business_city,
+B.state_code as business_state_code ,
+B.zipcode as business_zipcode,
+B.Country as business_country,
+B.BUSINESS_GEO_CODE,
 R.Reunion_18_IND,
 R.Reunion_19_IND,
 R.Reunion_21_IND,
@@ -370,7 +552,7 @@ a.curr_ksm_manager,
 c.credited,
 c.credited_name,
 c.contact_type,
-c.Max_Date,
+c.contact_date,
 c.description_,
 c.summary_,
 speak.last_speak_date,
@@ -383,6 +565,7 @@ case when k.id_number is not null then 'Kellogg On Campus Career Interviewers' E
 case when KStuAct.id_number is not null then 'Kellogg Student Activity' End as KSM_Student_Activities, 
 case when e.id_number is not null then 'Event Host' End as Event_Host, 
 g.NGC_LIFETIME,
+g.NU_MAX_HH_LIFETIME_GIVING,
 case when g.NGC_LIFETIME > 0 then 'KSM Donor' end as Donor_NGC_Lifetime_IND, 
 g.MAX_GIFT_DATE_OF_RECORD,
 g.MAX_GIFT_CREDIT,
@@ -396,10 +579,21 @@ g.LAST_GIFT_DATE,
 g.LAST_GIFT_TYPE,
 g.LAST_GIFT_ALLOC,
 g.LAST_GIFT_RECOGNITION_CREDIT,
+--- af status is in giving summary 
+g.af_status,
+g.af_status_fy_start,
+g.FY_GIVING_FIRST_YR,
+--- Count of visits
+ccount.VISITS,
+--- TOTAL ASK
+TOTAL_ASK.TOTAL_ASK,
+CASE WHEN CYD.ID_NUMBER IS NOT NULL THEN 'Y' END AS CYD,
 --max_gift.DATE_OF_RECORD as date_of_record_max_gift,
 --max_gift.max_credit as max_gift_credit,
 ---g.max_gift_date_of_record,
 ---g.max_gift_credit,
+AF_SCORES.AF_10K_MODEL_TIER,
+AF_SCORES.AF_10K_MODEL_SCORE,
 KLC.KLC_Current_IND, 
 KLC.KSM_donor_pfy1,
 KLC.klc_fy_count,
@@ -412,7 +606,13 @@ spec.NO_MAIL_IND,
 spec.GAB,
 spec.TRUSTEE,
 spec.EBFA,
-spec.SPECIAL_HANDLING_CONCAT
+spec.SPECIAL_HANDLING_CONCAT,
+pros.prop1_ask_date,
+pros.prop1_close_date,
+pros.prop1_managers,
+pros.prop1_ask_amt,
+pros.prop1_anticipated_amt,
+pros.prop1_status
 from rpt_pbh634.v_entity_ksm_degrees d
 --- inner join house - to get geocodes/location
 inner join h on h.id_number = d.id_number
@@ -452,3 +652,25 @@ left join K_Interviewers k on k.id_number = d.id_number
 left join KStuAct on KStuAct.id_number = d.id_number
 --- Event Host
 left Join Event_Host e on e.id_number = d.id_number
+--- Proposals
+left join pros on pros.id_number = d.id_number
+--- CYD
+left join CURRENT_DONOR CYD on CYD.id_number = d.id_number
+--- Annual Fund Tier scores
+left join AF_SCORES on AF_SCORES.id_number = d.id_number
+--- Count of visits 
+left join ccount on ccount.id_number = d.id_number
+--- Total Ask Amount
+left join TOTAL_ASK ON TOTAL_ASK.ID_NUMBER = D.ID_NUMBER
+--- Business Address
+left join BusinessAddress B on B.id_number = D.id_number
+
+
+--- Adding Amy's AF dashboard
+
+--- Total Lybunts - Located in Giving Summary. Should be good to go.
+--- Lybunts retained - Is this calculated in Tableau or SQL?
+--- KLC Lybunt attainted - See above ^
+--- New KLC Household - I already have Amy's KLC view in the code. Should be good to go.
+--- KLC 10K+ - I added this from Amy's KLC view. Should be good to go. 
+--- Count of visits: I create code instead of joining on a view (for efficenect). Should be good to go.
