@@ -16,9 +16,9 @@ Select
   , Case When tms_at.short_desc Like '%KSM%' Then 'Y' End
     As ksm_activity
   , activity.activity_participation_code
-  , ksm_pkg.to_date2(activity.start_dt)
+  , ksm_pkg_tmp.to_date2(activity.start_dt)
     As start_dt
-  , ksm_pkg.to_date2(activity.stop_dt)
+  , ksm_pkg_tmp.to_date2(activity.stop_dt)
     As stop_dt
   , trunc(activity.date_added)
     As date_added
@@ -26,15 +26,15 @@ Select
     As date_modified
   -- FY is based on start/stop date if available, else date added
   , Case
-      When ksm_pkg.to_date2(activity.start_dt) Is Not Null
-        Then ksm_pkg.get_fiscal_year(ksm_pkg.to_date2(activity.start_dt))
-      Else ksm_pkg.get_fiscal_year(activity.date_added)
+      When ksm_pkg_tmp.to_date2(activity.start_dt) Is Not Null
+        Then ksm_pkg_tmp.get_fiscal_year(ksm_pkg_tmp.to_date2(activity.start_dt))
+      Else ksm_pkg_tmp.get_fiscal_year(activity.date_added)
       End
     As start_fy_calc
   , Case
-      When ksm_pkg.to_date2(activity.stop_dt) Is Not Null
-        Then ksm_pkg.get_fiscal_year(ksm_pkg.to_date2(activity.stop_dt))
-      Else ksm_pkg.get_fiscal_year(activity.date_added)
+      When ksm_pkg_tmp.to_date2(activity.stop_dt) Is Not Null
+        Then ksm_pkg_tmp.get_fiscal_year(ksm_pkg_tmp.to_date2(activity.stop_dt))
+      Else ksm_pkg_tmp.get_fiscal_year(activity.date_added)
       End
     As stop_fy_calc
   , activity.xcomment
@@ -75,7 +75,7 @@ Select
   , naf.stop_fy_calc
   , naf.xcomment
 From v_nu_activities_fast naf
-Inner Join v_entity_ksm_households hh
+Inner Join v_entity_ksm_households_fast hh
   On hh.id_number = naf.id_number
 ;
 
@@ -98,9 +98,9 @@ Select
   , Case When tsa.owner_usergroup = 'KO' Then 'Y' End
     As ksm_student_activity
   , sa.student_particip_code
-  , ksm_pkg.to_date2(sa.start_dt)
+  , ksm_pkg_tmp.to_date2(sa.start_dt)
     As start_dt
-  , ksm_pkg.to_date2(sa.stop_dt)
+  , ksm_pkg_tmp.to_date2(sa.stop_dt)
     As stop_dt
   , trunc(sa.date_added)
     As date_added
@@ -108,15 +108,15 @@ Select
     As date_modified
   -- FY is based on start/stop date if available, else date added
   , Case
-      When ksm_pkg.to_date2(sa.start_dt) Is Not Null
-        Then ksm_pkg.get_fiscal_year(ksm_pkg.to_date2(sa.start_dt))
-      Else ksm_pkg.get_fiscal_year(sa.date_added)
+      When ksm_pkg_tmp.to_date2(sa.start_dt) Is Not Null
+        Then ksm_pkg_tmp.get_fiscal_year(ksm_pkg_tmp.to_date2(sa.start_dt))
+      Else ksm_pkg_tmp.get_fiscal_year(sa.date_added)
       End
     As start_fy_calc
   , Case
-      When ksm_pkg.to_date2(sa.stop_dt) Is Not Null
-        Then ksm_pkg.get_fiscal_year(ksm_pkg.to_date2(sa.stop_dt))
-      Else ksm_pkg.get_fiscal_year(sa.date_added)
+      When ksm_pkg_tmp.to_date2(sa.stop_dt) Is Not Null
+        Then ksm_pkg_tmp.get_fiscal_year(ksm_pkg_tmp.to_date2(sa.stop_dt))
+      Else ksm_pkg_tmp.get_fiscal_year(sa.date_added)
       End
     As stop_fy_calc
   , sa.xcomment

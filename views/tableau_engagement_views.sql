@@ -162,8 +162,8 @@ cal As (
         As engagement_date
       , Case
           When stop_dt_calc > cfy_end
-            Then ksm_pkg.get_fiscal_year(cfy_end)
-          Else ksm_pkg.get_fiscal_year(stop_dt_calc)
+            Then ksm_pkg_tmp.get_fiscal_year(cfy_end)
+          Else ksm_pkg_tmp.get_fiscal_year(stop_dt_calc)
           End
         As engagement_fy
     From committees

@@ -12,13 +12,7 @@ Select
   , replace(description, 'KSM $10k Model ', '')
     As description
   , to_number(score) As score
-From table(
-  rpt_pbh634.ksm_pkg.tbl_model_af_10k(
-    -- Replace these with the most up-to-date modeled score month/year
-    model_year => 2018
-    , model_month => 01
-  )
-)
+From table(rpt_pbh634.ksm_pkg_prospect.tbl_model_af_10k)
 ;
 
 /*************************
@@ -29,47 +23,14 @@ Create Or Replace View v_ksm_model_mg As
 
 With
 
--- Determine maximum year to be used for the models
-seg_yr As (
-  Select
-    max(segment_year) As segment_year
-  From segment
-  Where segment_code Like 'KMID_'
-    Or segment_code Like 'KMPR_'
-)
-
--- Determine maximum month to be used for the models
-, seg_mo As (
-  Select
-    max(segment_month) As segment_month
-  From segment
-  Where segment_year = (Select segment_year From seg_yr)
-    And (
-      segment_code Like 'KMID_'
-      Or segment_code Like 'KMPR_'
-    )
-)
-
 -- Model scores
-, identification As (
+identification As (
   Select *
-  From table(
-    rpt_pbh634.ksm_pkg.tbl_model_mg_identification(
-      -- Replace these with the most up-to-date modeled score month/year
-      model_year => (Select segment_year From seg_yr)
-      , model_month => (Select segment_month From seg_mo)
-    )
-  )
+  From table(rpt_pbh634.ksm_pkg_prospect.tbl_model_mg_identification)
 )
 , prioritization As (
   Select *
-  From table(
-    rpt_pbh634.ksm_pkg.tbl_model_mg_prioritization(
-      -- Replace these with the most up-to-date modeled score month/year
-      model_year => (Select segment_year From seg_yr)
-      , model_month => (Select segment_month From seg_mo)
-    )
-  )
+  From table(rpt_pbh634.ksm_pkg_prospect.tbl_model_mg_prioritization)
 )
 
 -- Final query

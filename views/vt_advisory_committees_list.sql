@@ -160,7 +160,7 @@ Inner Join nu_prs_trp_prospect prs
   On prs.id_number = acg.id_number
 Left Join committee_header ch
   On ch.committee_code = acg.committee_code
-LEFT JOIN TABLE(RPT_PBH634.KSM_PKG.tbl_committee_trustee) T
+LEFT JOIN TABLE(RPT_PBH634.ksm_pkg_tmp.tbl_committee_trustee) T
 ON T.ID_NUMBER = acg.id_number
 LEFT JOIN ENTITY e
 ON e.id_number = acg.id_number

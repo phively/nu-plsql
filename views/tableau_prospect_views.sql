@@ -683,7 +683,7 @@ cal As (
     id_number
     , household_id
     , household_rpt_name
-  From table(ksm_pkg.tbl_entity_households_ksm)
+  From table(ksm_pkg_households.tbl_households_fast_ext)
 )
 
 -- Prospect entity deduped
@@ -703,7 +703,7 @@ cal As (
     , tl.id_number
     , report_name
     , primary_ind
-    , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(tl.id_number) As rating_bin
+    , ksm_pkg_prospect.get_prospect_rating_bin(tl.id_number) As rating_bin
     -- Data point description
     , type
     -- Additional description detail
@@ -787,7 +787,7 @@ cal As (
     , pe.id_number
     , entity.report_name
     , pe.primary_ind
-    , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(pe.id_number) As rating_bin
+    , ksm_pkg_prospect.get_prospect_rating_bin(pe.id_number) As rating_bin
     -- Data point description
     , proposal_status
     , ksm_or_univ_orig_ask
@@ -951,7 +951,7 @@ cal As (
     , gft.id_number
     , entity.report_name
     , pe.primary_ind
-    , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(pe.prospect_id) As rating_bin
+    , ksm_pkg_prospect.get_prospect_rating_bin(pe.prospect_id) As rating_bin
     , gft.transaction_type As type
     , to_char(gft.recognition_credit, '$999,999,999,999') As recognition_credit
     , gft.tx_gypm_ind
@@ -1136,7 +1136,7 @@ cal As (
     , t.id_number
     , entity.report_name
     , pe.primary_ind
-    , rpt_pbh634.ksm_pkg.get_prospect_rating_bin(pe.prospect_id) As rating_bin
+    , ksm_pkg_prospect.get_prospect_rating_bin(pe.prospect_id) As rating_bin
     -- Data point description
     , 'Task' As type
     -- Additional description detail

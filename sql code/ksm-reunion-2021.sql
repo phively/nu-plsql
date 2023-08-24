@@ -20,10 +20,12 @@ KSM_DEGREES AS (
 SELECT
 A.*
 ,GC.P_GEOCODE_Desc
+,HH.HOUSEHOLD_ID
 FROM AFFILIATION A
 CROSS JOIN manual_dates MD
 INNER JOIN KSM_DEGREES KD
 ON A.ID_NUMBER = KD."ID_NUMBER"
+LEFT JOIN rpt_pbh634.v_entity_ksm_households hh ON HH.ID_NUMBER = A.ID_NUMBER
 LEFT JOIN RPT_DGZ654.V_GEO_CODE GC
   ON A.ID_NUMBER = GC.ID_NUMBER
     AND GC.ADDR_PREF_IND = 'Y'
@@ -35,8 +37,7 @@ AND A.AFFIL_LEVEL_CODE = 'RG'
 ),
 
 GIVING_SUMMARY AS (
-Select Distinct hh.id_number
-    , hh.household_id
+Select Distinct hh.household_id
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year     And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_cfy
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 1 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy1
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 2 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy2
@@ -48,12 +49,7 @@ From rpt_pbh634.v_entity_ksm_households hh
   Inner Join rpt_pbh634.v_ksm_giving_trans_hh gfts
     On gfts.household_id = hh.household_id
   Group By
-    hh.id_number
-    , hh.household_id
-    , hh.household_rpt_name
-    , hh.household_spouse_id
-    , hh.household_spouse
-    , hh.household_last_masters_year),
+hh.household_id),
 
 GIVING_TRANS AS
 ( SELECT HH.*
@@ -143,12 +139,12 @@ WHERE HH.FISCAL_YEAR = '2021'
 SELECT
  ID_NUMBER
  ,ANONYMOUS_DONOR
-From table(rpt_pbh634.ksm_pkg.tbl_special_handling_concat)
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_special_handling_concat)
 WHERE ANONYMOUS_DONOR = 'Y'
 )
 
 ,KSM_STAFF AS (
-  SELECT * FROM table(rpt_pbh634.ksm_pkg.tbl_frontline_ksm_staff) staff -- Historical Kellogg gift officers
+  SELECT * FROM table(rpt_pbh634.ksm_pkg_tmp.tbl_frontline_ksm_staff) staff -- Historical Kellogg gift officers
   -- Join credited visit ID to staff ID number
  )
 
@@ -507,9 +503,24 @@ SELECT DISTINCT ACT.ID_NUMBER,
 FROM  activity act
 LEFT JOIN TMS_ACTIVITY_TABLE ON TMS_ACTIVITY_TABLE.activity_code = ACT.ACTIVITY_CODE
 WHERE  act.activity_code = 'KCR'
-AND ACT.ACTIVITY_PARTICIPATION_CODE = 'P')
+AND ACT.ACTIVITY_PARTICIPATION_CODE = 'P'),
+
+--- Registrations on April 23+24 Reunion Weekends
+
+reunion1 as (select EP_REGISTRATION.CONTACT_ID_NUMBER,
+EP_REGISTRATION.EVENT_ID,
+TMS_EVENT_REGISTRATION_STATUS.short_desc,
+EP_REGISTRATION.RESPONSE_DATE
+from EP_REGISTRATION
+left join TMS_EVENT_REGISTRATION_STATUS ON TMS_EVENT_REGISTRATION_STATUS.registration_status_code = EP_REGISTRATION.REGISTRATION_STATUS_CODE
+where EP_REGISTRATION.EVENT_ID = '26358'),
 
 
+----Participants on April 23+24 Reunion Weekends
+
+p1 as (select p.id_number
+from rpt_pbh634.v_nu_event_participants_fast p
+where p.event_id = '26358')
 
 
 SELECT DISTINCT
@@ -517,6 +528,8 @@ SELECT DISTINCT
   ,' ' AS "Ask Strategy"
   ,AFASK.ASK3_ROUNDED AS "Ask Amount"
   ,' ' AS "Attending Reunion"
+  ,CASE WHEN REUNION1.CONTACT_ID_NUMBER IS NOT NULL THEN 'Y' END AS REGISTERED_APR23_24_WEEKEND
+  ,CASE WHEN P1.ID_NUMBER IS NOT NULL THEN 'Y' END AS ATTENDED_APR23_24_WEEKEND
   ,CASE WHEN RC15.ID_NUMBER IS NOT NULL THEN 'Y' ELSE '' END AS "REUNION_2015_COMMITTEE"
   ,CASE WHEN RC16.ID_NUMBER IS NOT NULL THEN 'Y' ELSE '' END AS "REUNION_2016_COMMITTEE"
   ,CASE WHEN RC20.ID_NUMBER IS NOT NULL THEN 'Y' ELSE '' END AS "REUNION_2020_COMMITTEE"
@@ -638,7 +651,7 @@ SELECT DISTINCT
   ,PR.bal1 AS PLG_BALANCE
   ,PR.status1 AS PLG_STATUS
   ,PR.plgActive AS PLG_ACTIVE
-  ,RPT_PBH634.KSM_PKG.get_fiscal_year(GI.GDT1) AS RECENT_FISAL_YEAR
+  ,rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(GI.GDT1) AS RECENT_FISAL_YEAR
   ,GI.GDT1 AS DATE1
   ,GI.GAMT1 AS AMOUNT1
   ,GI.GACCT1 AS ACC1
@@ -739,7 +752,7 @@ LEFT JOIN NU_PRS_TRP_PROSPECT NP
 ON E.ID_NUMBER = NP.ID_NUMBER
 LEFT JOIN ASSIGNED LGOA
 ON E.ID_NUMBER = LGOA.ID_NUMBER
-LEFT JOIN table(rpt_pbh634.ksm_pkg.tbl_special_handling_concat) SH
+LEFT JOIN table(rpt_pbh634.ksm_pkg_tmp.tbl_special_handling_concat) SH
 ON E.ID_NUMBER = SH.ID_NUMBER
 LEFT JOIN REUNION_2015_PARTICIPANTS R5P
 ON E.ID_NUMBER = R5P.ID_NUMBER
@@ -819,8 +832,12 @@ LEFT JOIN KSM_SPEAKERS
 LEFT JOIN KSM_CORPORATE_RECRUITERS
      ON KSM_CORPORATE_RECRUITERS.ID_NUMBER = E.ID_NUMBER
 LEFT JOIN GIVING_SUMMARY
-     ON GIVING_SUMMARY.id_number = KR.ID_NUMBER
+     ON GIVING_SUMMARY.household_id = KR.HOUSEHOLD_ID
 LEFT JOIN KSM_GIVING_MOD KGM
         ON KGM.household_id = E.ID_NUMBER
+LEFT JOIN reunion1
+     ON reunion1.CONTACT_ID_NUMBER = E.ID_NUMBER 
+LEFT JOIN p1
+        ON p1.ID_number = E.ID_number
 ORDER BY E.LAST_NAME
 ;

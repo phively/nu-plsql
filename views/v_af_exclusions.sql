@@ -53,13 +53,15 @@ manual_exclusions_pre As (
     , never_engaged_reunion
     , exc_all_comm
     , exc_all_sols
-  From table(ksm_pkg.tbl_special_handling_concat) shc
+    , no_af_sol_ind
+  From table(ksm_pkg_special_handling.tbl_special_handling_concat) shc
   Where no_contact = 'Y'
     Or no_solicit = 'Y'
     Or never_engaged_forever = 'Y'
     Or never_engaged_reunion = 'Y'
     Or exc_all_comm = 'Y'
     Or exc_all_sols = 'Y'
+    Or no_af_sol_ind = 'Y'
 )
 
 -- Global Advisory Board
@@ -70,7 +72,7 @@ manual_exclusions_pre As (
         trim('GAB ' || role)
       , '; ') Within Group (Order By tcg.role Asc)
       As gab
-  From table(ksm_pkg.tbl_committee_gab) tcg
+  From table(ksm_pkg_committee.tbl_committee_agg(ksm_pkg_committee.get_string_constant('committee_gab'))) tcg
   Group By id_number
 )
 

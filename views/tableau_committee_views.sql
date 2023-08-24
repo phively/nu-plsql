@@ -2,100 +2,107 @@ Create Or Replace View rpt_pbh634.v_advisory_committees_members As
 
 -- GAB
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_gab')
+From table(rpt_pbh634.ksm_pkg_committee.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_committee.get_string_constant('committee_gab')
   , shortname => 'GAB')
 )
 -- Asia
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_asia')
+From table(rpt_pbh634.ksm_pkg_committee.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_committee.get_string_constant('committee_asia')
   , shortname => 'KEBA')
 )
 -- KAC
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_kac')
+From table(rpt_pbh634.ksm_pkg_committee.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_committee.get_string_constant('committee_kac')
   , shortname => 'KAC')
 )
 -- PHS
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_phs')
+From table(rpt_pbh634.ksm_pkg_committee.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_committee.get_string_constant('committee_phs')
   , shortname => 'PHS')
 )
 -- KFN
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_kfn')
+From table(rpt_pbh634.ksm_pkg_committee.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_committee.get_string_constant('committee_kfn')
   , shortname => 'KFN')
 )
 -- AMP
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_AMP')
+From table(rpt_pbh634.ksm_pkg_committee.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_committee.get_string_constant('committee_amp')
   , shortname => 'AMP')
 )
 -- Real Estate
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_RealEstCouncil')
+From table(rpt_pbh634.ksm_pkg_committee.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_committee.get_string_constant('committee_realEstCouncil')
   , shortname => 'RealEstCouncil')
 )
 -- DivSummit
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_DivSummit')
+From table(rpt_pbh634.ksm_pkg_committee.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_committee.get_string_constant('committee_divSummit')
   , shortname => 'DivSummit')
 )
 -- WomenSummit
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_WomenSummit')
+From table(rpt_pbh634.ksm_pkg_committee.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_committee.get_string_constant('committee_womenSummit')
   , shortname => 'WomenSummit')
 )
 -- CorpGov
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_CorpGov')
+From table(rpt_pbh634.ksm_pkg_committee.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_committee.get_string_constant('committee_corpGov')
   , shortname => 'CorpGov')
 )
 -- Healthcare
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_healthcare')
+From table(rpt_pbh634.ksm_pkg_committee.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_committee.get_string_constant('committee_healthcare')
   , shortname => 'Healthcare')
 )
 -- WomensLeadership
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_WomensLeadership')
+From table(rpt_pbh634.ksm_pkg_committee.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_committee.get_string_constant('committee_womensLeadership')
   , shortname => 'WomensLeadership')
 )
 -- Inclusion
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_kic')
+From table(rpt_pbh634.ksm_pkg_committee.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_committee.get_string_constant('committee_kic')
   , shortname => 'Inclusion')
 )
 -- PrivateEquity
 Union
 Select *
-From table(rpt_pbh634.ksm_pkg.tbl_committee_agg(
-  my_committee_cd => ksm_pkg.get_string_constant('committee_privateequity')
+From table(rpt_pbh634.ksm_pkg_committee.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_committee.get_string_constant('committee_privateEquity')
   , shortname => 'PrivateEquity')
+)
+-- PE Asia
+Union
+Select *
+From table(rpt_pbh634.ksm_pkg_committee.tbl_committee_agg(
+  my_committee_cd => ksm_pkg_committee.get_string_constant('committee_pe_asia')
+  , shortname => 'AsiaPEAC')
 )
 ;
 
@@ -112,9 +119,15 @@ members As (
   From rpt_pbh634.v_advisory_committees_members
 )
 
+, ids As (
+  Select Distinct id_number
+  From members
+)
+
 , all_committees As (
   Select Distinct
     ac.id_number
+    , deg.degrees_concat
     , Case When gab.committee_code = 'U' Then 'Y' Else 'N' End
       As gab_ind
     , gab.start_dt As gab_start_date
@@ -199,6 +212,13 @@ members As (
     , private_equity.status As private_equity_status
     , private_equity.role As private_equity_role
     , private_equity.committee_title As private_equity_committee_title
+    , Case When asia_peac.committee_code = 'APEAC' Then 'Y' Else 'N' End
+      As asia_peac_ind
+    , asia_peac.start_dt As asia_peac_start_date
+    , asia_peac.stop_dt As asia_peac_stop_date
+    , asia_peac.status As asia_peac_status
+    , asia_peac.role As asia_peac_role
+    , asia_peac.committee_title As asia_peac_committee_title
     , Case When keba.committee_code = 'KEBA' Then 'Y' Else 'N' End
       As keba_ind
     , keba.start_dt As keba_start_date
@@ -207,9 +227,11 @@ members As (
     , keba.role As keba_role
     , keba.committee_title As keba_committee_title
   From members ac
+  Left Join v_entity_ksm_degrees deg
+    On deg.id_number = ac.id_number
   Left Join members amp
-  On amp.id_number = ac.id_number
-  And amp.committee_short_desc = 'AMP'
+    On amp.id_number = ac.id_number
+    And amp.committee_short_desc = 'AMP'
   Left Join members realestcouncil
     On realestcouncil.id_number = ac.id_number
     And realestcouncil.committee_short_desc = 'RealEstCouncil'
@@ -238,14 +260,17 @@ members As (
     On KAC.id_number = ac.id_number
     And KAC.committee_short_desc = 'KAC'
   Left Join members PHS
-    On KAC.id_number = ac.id_number
-    And KAC.committee_short_desc = 'PHS'
+    On phs.id_number = ac.id_number
+    And phs.committee_short_desc = 'PHS'
   Left Join members inclusion
     On inclusion.id_number = ac.id_number
     And inclusion.committee_short_desc = 'Inclusion'
   Left Join members private_equity
     On private_equity.id_number = ac.id_number
     And private_equity.committee_short_desc = 'PrivateEquity'
+  Left Join members asia_peac
+    On asia_peac.id_number = ac.id_number
+    And asia_peac.committee_short_desc = 'AsiaPEAC'
   Left Join members keba
     On keba.id_number = ac.id_number
     And keba.committee_short_desc = 'KEBA'
@@ -263,8 +288,8 @@ members As (
       As lfy2_nult_giving
   From nu_gft_trp_gifttrans nugft
   Cross Join rpt_pbh634.v_current_calendar cal
-  Inner Join all_committees
-    On all_committees.id_number = nugft.id_number
+  Inner Join ids
+    On ids.id_number = nugft.id_number
   Where tx_gypm_ind != 'Y' -- No pledge payments
     And fiscal_year Between cal.curr_fy - 2 And cal.curr_fy
   Group By nugft.id_number
@@ -272,29 +297,29 @@ members As (
 
 , all_committees_giving As (
   Select
-    all_committees.id_number
+    ids.id_number
     , nvl(fy_nu_giving.cfy_nult_giving, 0) As cfy_nult_giving
     , nvl(fy_nu_giving.lfy_nult_giving, 0) As lfy_nult_giving
     , nvl(fy_nu_giving.lfy2_nult_giving, 0) As lfy2_nult_giving
     , nvl(v_ksm_giving_summary.ngc_lifetime_full_rec, 0) As ksm_lt_giving
-    , nvl(v_ksm_giving_campaign.campaign_giving,0) As ksm_campaign_giving
+--    , nvl(v_ksm_giving_campaign.campaign_giving,0) As ksm_campaign_giving
     , nvl(v_ksm_giving_summary.af_cfy, 0) As af_cfy_sftcredit
     , nvl(v_ksm_giving_summary.af_pfy1, 0) As af_lyfy_sftcredit
     , nvl(v_ksm_giving_summary.af_pfy2, 0) As af_lyfy2_sftcredit
     , nvl(v_ksm_giving_summary.ngc_cfy, 0) As ksm_cfy_sftcredit
     , nvl(v_ksm_giving_summary.ngc_pfy1, 0) As ksm_lyfy_sftcredit
     , nvl(v_ksm_giving_summary.ngc_pfy2, 0) As ksm_lyfy2_sftcredit
-    , nvl(v_ksm_giving_campaign.campaign_cfy, 0) As campaign_cfy
-    , nvl(v_ksm_giving_campaign.campaign_pfy1, 0) As campaign_pfy1
-    , nvl(v_ksm_giving_campaign.campaign_pfy2, 0) As campaign_pfy2
-    , nvl(v_ksm_giving_campaign.campaign_pfy3, 0) As campaign_pfy3
-  From all_committees
+--    , nvl(v_ksm_giving_campaign.campaign_cfy, 0) As campaign_cfy
+--    , nvl(v_ksm_giving_campaign.campaign_pfy1, 0) As campaign_pfy1
+--    , nvl(v_ksm_giving_campaign.campaign_pfy2, 0) As campaign_pfy2
+--    , nvl(v_ksm_giving_campaign.campaign_pfy3, 0) As campaign_pfy3
+  From ids
   Left Join rpt_pbh634.v_ksm_giving_summary
-    On v_ksm_giving_summary.id_number = all_committees.id_number
+    On v_ksm_giving_summary.id_number = ids.id_number
   Left Join fy_nu_giving
-    On all_committees.id_number = fy_nu_giving.id_number
-  Left Join rpt_pbh634.v_ksm_giving_campaign
-    On all_committees.id_number = v_ksm_giving_campaign.id_number
+    On ids.id_number = fy_nu_giving.id_number
+--  Left Join rpt_pbh634.v_ksm_giving_campaign
+--    On ids.id_number = v_ksm_giving_campaign.id_number
 )
 
 -- KSM proposal data
@@ -329,8 +354,8 @@ members As (
     nuprs.*
     , proposalcount.proposalcount
   From nu_prs_trp_prospect nuprs
-  Inner Join all_committees
-    On all_committees.id_number = nuprs.id_number
+  Inner Join ids
+    On ids.id_number = nuprs.id_number
   Left Join proposalcount
     On proposalcount.prospect_id = nuprs.prospect_id
 )
@@ -339,7 +364,7 @@ members As (
 Select
   prs.id_number
   , prs.pref_mail_name
-  , v_entity_ksm_degrees.degrees_concat
+  , ac.degrees_concat
   , prs.employer_name1
   , prs.business_title
   , prs.pref_city
@@ -424,6 +449,12 @@ Select
   , private_equity_status
   , private_equity_role
   , private_equity_committee_title
+  , asia_peac_ind
+  , asia_peac_start_date
+  , asia_peac_stop_date
+  , asia_peac_status
+  , asia_peac_role
+  , asia_peac_committee_title
   , keba_ind
   , keba_start_date
   , keba_stop_date
@@ -435,7 +466,7 @@ Select
   , acg.lfy_nult_giving
   , acg.lfy2_nult_giving
   , acg.ksm_lt_giving
-  , acg.ksm_campaign_giving
+--  , acg.ksm_campaign_giving
   , nvl(prs.proposalcount, 0) As proposal_count
   , acg.af_cfy_sftcredit
   , acg.af_lyfy_sftcredit
@@ -443,16 +474,14 @@ Select
   , acg.ksm_cfy_sftcredit
   , acg.ksm_lyfy_sftcredit
   , acg.ksm_lyfy2_sftcredit
-  , acg.campaign_cfy
-  , acg.campaign_pfy1
-  , acg.campaign_pfy2
-  , acg.campaign_pfy3
+--  , acg.campaign_cfy
+--  , acg.campaign_pfy1
+--  , acg.campaign_pfy2
+--  , acg.campaign_pfy3
 From all_committees ac
 Inner Join prs
   On prs.id_number = ac.id_number
-Left Join rpt_pbh634.v_entity_ksm_degrees
-  On v_entity_ksm_degrees.id_number = ac.id_number
-Left Join all_committees_giving acg
+Inner Join all_committees_giving acg
   On acg.id_number = ac.id_number
 ;
 
@@ -623,7 +652,7 @@ Inner Join nu_prs_trp_prospect prs
   On prs.id_number = acg.id_number
 Left Join committee_header ch
   On ch.committee_code = acg.committee_code
-LEFT JOIN TABLE(RPT_PBH634.KSM_PKG.tbl_committee_trustee) T
+LEFT JOIN TABLE(RPT_PBH634.ksm_pkg_tmp.tbl_committee_trustee) T
 ON T.ID_NUMBER = acg.id_number
 LEFT JOIN ENTITY e
 ON e.id_number = acg.id_number

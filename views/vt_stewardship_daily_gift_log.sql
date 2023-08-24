@@ -19,13 +19,13 @@ dts As (
     id_number
     , degrees_concat
     , trim(program_group) As program_group
-  From table(rpt_pbh634.ksm_pkg.tbl_entity_degrees_concat_ksm)
+  From table(rpt_pbh634.ksm_pkg_tmp.tbl_entity_degrees_concat_ksm)
 )
 
 /* KSM Current Use */
 , ksm_cu As (
   Select *
-  From table(rpt_pbh634.ksm_pkg.tbl_alloc_curr_use_ksm)
+  From table(rpt_pbh634.ksm_pkg_tmp.tbl_alloc_curr_use_ksm)
 )
 
 /* GAB indicator */
@@ -33,7 +33,7 @@ dts As (
   Select
     id_number
     , trim(status || ' ' || role) As gab_role
-  From table(rpt_pbh634.ksm_pkg.tbl_committee_gab)
+  From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_gab)
 )
 , gab_ind As ( -- Include all receipts where at least one GAB member is associated
   Select

@@ -9,7 +9,7 @@ With
 -- Current calendar
 cal As (
   Select *
-  From table(rpt_pbh634.ksm_pkg.tbl_current_calendar)
+  From table(ksm_pkg_calendar.tbl_current_calendar)
 )
 
 -- Proposal purpose
@@ -94,16 +94,16 @@ cal As (
 -- Additional proposal credit (CAT 190 report definition)
 , consolidated_proposal_credit As (
   Select proposal_id, assignment_id_number
-  From table(rpt_pbh634.metrics_pkg.tbl_funded_count)
+  From table(metrics_pkg.tbl_funded_count)
   Union
   Select proposal_id, assignment_id_number
-  From table(rpt_pbh634.metrics_pkg.tbl_funded_dollars)
+  From table(metrics_pkg.tbl_funded_dollars)
   Union
   Select proposal_id, assignment_id_number
-  From table(rpt_pbh634.metrics_pkg.tbl_asked_count)
+  From table(metrics_pkg.tbl_asked_count)
   Union
   Select proposal_id, assignment_id_number
-  From table(rpt_pbh634.metrics_pkg.tbl_assist_count)
+  From table(metrics_pkg.tbl_assist_count)
 )
 , proposal_credit_concat As (
   Select
@@ -121,7 +121,7 @@ cal As (
 -- Code to pull university strategy from the task table; BI method plus a cancelled/completed exclusion
 , strat As (
   Select *
-  From table(ksm_pkg.tbl_university_strategy)
+  From table(ksm_pkg_prospect.tbl_university_strategy)
 )
 
 -- Final KSM proposal amounts; if no non-KSM programs use face value, otherwise sum up KSM program amounts if able
@@ -146,6 +146,12 @@ cal As (
   From proposal
   Left Join ksm_purp On ksm_purp.proposal_id = proposal.proposal_id
   Left Join other_purp On other_purp.proposal_id = proposal.proposal_id
+)
+
+-- Granted dates (from metrics_pkg)
+, granted_dts As (
+  Select *
+  From table(metrics_pkg.tbl_proposal_dates)
 )
 
 -- Main query
@@ -191,22 +197,23 @@ Select Distinct
   , other_purp.other_programs
   , strat.university_strategy
   , trunc(start_date) As start_date
-  , ksm_pkg.get_fiscal_year(start_date) As start_fy
+  , ksm_pkg_calendar.get_fiscal_year(start_date) As start_fy
   -- Calculated start date: use date_added if start_date unavailable
   , Case
       When start_date Is Not Null Then trunc(start_date)
       Else trunc(proposal.date_added)
     End As start_dt_calc
   , trunc(initial_contribution_date) As ask_date
-  , ksm_pkg.get_fiscal_year(initial_contribution_date) As ask_fy
+  , ksm_pkg_calendar.get_fiscal_year(initial_contribution_date) As ask_fy
   , trunc(stop_date) As close_date
-  , ksm_pkg.get_fiscal_year(stop_date) As close_fy
+  , ksm_pkg_calendar.get_fiscal_year(stop_date) As close_fy
     -- Calculated stop date: use date_modified if stop_date unavailable
   , Case
       When stop_date Is Not Null Then trunc(stop_date)
       When proposal.active_ind <> 'Y' And tms_ps.hierarchy_order < 70 Then trunc(proposal.date_modified)
       Else NULL
     End As close_dt_calc
+  , granted_dts.date_of_record As granted_date_of_record
   , trunc(date_modified) As date_modified
   , original_ask_amt As total_original_ask_amt
   , ask_amt As total_ask_amt
@@ -262,11 +269,13 @@ Left Join tms_proposal_type tms_pt On tms_pt.proposal_type = proposal.proposal_t
 Left Join other_purp On other_purp.proposal_id = proposal.proposal_id
 Left Join assn On assn.proposal_id = proposal.proposal_id
 Left Join asst On asst.proposal_id = proposal.proposal_id
-Left Join table(ksm_pkg.tbl_frontline_ksm_staff) gos
+Left Join table(ksm_pkg_employment.tbl_frontline_ksm_staff) gos
   On gos.id_number = assn.proposal_manager_id
   And gos.former_staff Is Null
 Left Join proposal_credit_concat pcc
   On pcc.proposal_id = proposal.proposal_id
+Left Join granted_dts
+  On granted_dts.proposal_id = proposal.proposal_id
 -- Prospect info
 Left Join (Select prospect_id, prospect_name, prospect_name_sort From prospect) prs
   On prs.prospect_id = proposal.prospect_id
@@ -409,7 +418,7 @@ households As (
   Select Distinct
     pe.prospect_id
     , hh.household_id
-  From v_entity_ksm_households hh
+  From v_entity_ksm_households_fast hh
   Inner Join prospect_entity pe
     On pe.id_number = hh.id_number
   Where pe.primary_ind = 'Y'

@@ -1,8 +1,8 @@
 -- Drop old materialized view
-Drop Materialized View mv_past_ksm_gos;
+Drop Materialized View rpt_pbh634.mv_past_ksm_gos;
 
 -- Create new materialized view
-Create Materialized View mv_past_ksm_gos As
+Create Materialized View rpt_pbh634.mv_past_ksm_gos As
 
 With
 
@@ -10,7 +10,7 @@ With
 adv_dates As (
   Select 'notarealid' As id_number, 'notateam' As team, NULL As start_dt, NULL As stop_dt From DUAL
   Union All Select '0000562844', 'MG', to_date('20080808', 'yyyymmdd'), to_date('20150601', 'yyyymmdd') From DUAL
-  Union All Select '0000235591', 'AF', to_date('20160501', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000235591', 'MG', to_date('20160501', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000482962', 'MG', to_date('20030619', 'yyyymmdd'), to_date('20110511', 'yyyymmdd') From DUAL
   Union All Select '0000510455', 'MG', to_date('20081001', 'yyyymmdd'), to_date('20110920', 'yyyymmdd') From DUAL
   Union All Select '0000609581', 'MG', to_date('20110501', 'yyyymmdd'), to_date('20130901', 'yyyymmdd') From DUAL
@@ -24,7 +24,7 @@ adv_dates As (
   Union All Select '0000740856', 'AF', to_date('20171001', 'yyyymmdd'), to_date('20201211', 'yyyymmdd') From DUAL
   Union All Select '0000737745', 'MG', to_date('20151101', 'yyyymmdd'), to_date('20170401', 'yyyymmdd') From DUAL
   Union All Select '0000642888', 'MG', to_date('20160901', 'yyyymmdd'), to_date('20190927', 'yyyymmdd') From DUAL
-  Union All Select '0000784241', 'AF', to_date('20170901', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000784241', 'AF', to_date('20170901', 'yyyymmdd'), to_date('20221018', 'yyyymmdd') From DUAL
   Union All Select '0000779347', 'MG', to_date('20170701', 'yyyymmdd'), to_date('20200831', 'yyyymmdd') From DUAL
   Union All Select '0000664033', 'MG', to_date('20131101', 'yyyymmdd'), to_date('20160401', 'yyyymmdd') From DUAL
   Union All Select '0000405472', 'MG', to_date('20090401', 'yyyymmdd'), to_date('20100501', 'yyyymmdd') From DUAL
@@ -49,18 +49,28 @@ adv_dates As (
   Union All Select '0000292130', 'ADV', to_date('20170206', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000760399', 'ADV', to_date('20160815', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000818901', 'AF', to_date('20190903', 'yyyymmdd'), to_date('20200103', 'yyyymmdd') From DUAL
-  Union All Select '0000752673', 'AF', to_date('20191021', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000752673', 'AF', to_date('20191021', 'yyyymmdd'), to_date('20230605', 'yyyymmdd') From DUAL
   Union All Select '0000752085', 'AF', to_date('20200106', 'yyyymmdd'), to_date('20200831', 'yyyymmdd') From DUAL
   Union All Select '0000436760', 'ADV', to_date('20011101', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
-  Union All Select '0000529430', 'MG', to_date('20200106', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000529430', 'MG', to_date('20200106', 'yyyymmdd'), to_date('20221109', 'yyyymmdd') From DUAL
   Union All Select '0000296692', 'MG', to_date('20200601', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
-  Union All Select '0000837709', 'MG', to_date('20201005', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
-  Union All Select '0000838308', 'AF', to_date('20201102', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
-  Union All Select '0000838571', 'AF', to_date('20201109', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000837709', 'MG', to_date('20201005', 'yyyymmdd'), to_date('20230714', 'yyyymmdd') From DUAL
+  Union All Select '0000838308', 'AF', to_date('20201102', 'yyyymmdd'), to_date('20221122', 'yyyymmdd') From DUAL
+  Union All Select '0000838571', 'AF', to_date('20201109', 'yyyymmdd'), to_date('20230208', 'yyyymmdd') From DUAL
   Union All Select '0000838656', 'MG', to_date('20201111', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000364856', 'MG', to_date('20201116', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000841644', 'AF', to_date('20210315', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000842004', 'MG', to_date('20210419', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000857030', 'MG', to_date('20211208', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000777423', 'AR', to_date('20211122', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000860423', 'AF', to_date('20220404', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000819851', 'AF', to_date('20190930', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000887951', 'AF', to_date('20220919', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000889141', 'AF', to_date('20221128', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000889424', 'AF', to_date('20221205', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000809084', 'AR', to_date('20221117', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000757346', 'AF', to_date('20230424', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000767254', 'AF', to_date('20230705', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
 )
 
 Select
@@ -77,6 +87,6 @@ Order By entity.report_name Asc
 
 -- Check results
 Select *
-From mv_past_ksm_gos
+From rpt_pbh634.mv_past_ksm_gos
 ;
 

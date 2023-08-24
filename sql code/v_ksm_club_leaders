@@ -15,8 +15,8 @@ entity.record_type_code,
 committee_Header.short_desc As Club_Title,
 tms_committee_role.short_desc As Leadership_Title,
 committee.committee_status_code,
-rpt_pbh634.ksm_pkg.to_date2(committee.start_dt) As start_dt,
-rpt_pbh634.ksm_pkg.to_date2(committee.stop_dt) As stop_dt,
+rpt_pbh634.ksm_pkg_tmp.to_date2(committee.start_dt) As start_dt,
+rpt_pbh634.ksm_pkg_tmp.to_date2(committee.stop_dt) As stop_dt,
 
 --- Pulling Degree Info
 
@@ -68,7 +68,9 @@ Where
    Or committee_header.short_desc LIKE '%NU-%'
    Or committee_header.short_desc = 'NU Club of Switzerland'
 )
-   AND entity.record_status_code = 'A'
+   AND entity.record_status_code IN ('A','L')
+   
+   And (entity.id_number Not Like '0000574616' and entity.id_number not like '0000804796')
    
 --- Sort by Club Name 
 

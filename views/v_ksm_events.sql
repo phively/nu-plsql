@@ -16,12 +16,18 @@ Select Distinct
       End
     As event_organizer_name
   , Case
-      When lower(entity.report_name) Like lower('%Kellogg%')
-        And entity.person_or_org = 'O'
-        Then 'Y'
-      When lower(ento.report_name) Like lower('%Kellogg%')
-        And ento.person_or_org = 'O'
-        Then 'Y'
+      When entity.report_name Is Not Null
+      Then Case
+        When lower(entity.report_name) Like lower('%Kellogg%')
+          And entity.person_or_org = 'O'
+          Then 'Y'
+        End
+      When entity.report_name Is Null
+      Then Case
+        When lower(ento.report_name) Like lower('%Kellogg%')
+          And ento.person_or_org = 'O'
+          Then 'Y'
+        End
       End
     As kellogg_club
 From ep_event_organizer eo
@@ -129,7 +135,7 @@ Select
       Else trunc(event.date_added)
       End
     As stop_dt_calc
-  , ksm_pkg.get_fiscal_year(
+  , ksm_pkg_tmp.get_fiscal_year(
       Case
         When event.event_start_datetime Is Not Null
           Then trunc(event.event_start_datetime)
@@ -138,7 +144,7 @@ Select
         End
     )
     As start_fy_calc
-  , ksm_pkg.get_fiscal_year(
+  , ksm_pkg_tmp.get_fiscal_year(
       Case
         When event.event_stop_datetime Is Not Null
           Then trunc(event.event_stop_datetime)
@@ -159,6 +165,9 @@ Select
   -- Organizers
   , organizers_concat.event_organizers
   , organizers_concat.kellogg_organizers
+  -- Location
+  , event.venue_state
+  , event.note
   -- Event codes
   , event_codes_concat.event_codes_concat
   -- Master event information
@@ -296,6 +305,6 @@ Select
   , epf.start_fy_calc
   , epf.stop_fy_calc
 From v_nu_event_participants_fast epf
-Inner Join v_entity_ksm_households hh
+Inner Join v_entity_ksm_households_fast hh
   On hh.id_number = epf.id_number
 ;

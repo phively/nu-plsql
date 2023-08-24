@@ -130,7 +130,7 @@ Inner Join task_detail
   And pe.primary_ind = 'Y'
 Left Join cat
   On cat.prospect_id = pp.prospect_id
-Left Join table(rpt_pbh634.ksm_pkg.tbl_frontline_ksm_staff) ksm_staff
+Left Join table(rpt_pbh634.ksm_pkg_tmp.tbl_frontline_ksm_staff) ksm_staff
   On ksm_staff.id_number = task_detail.task_responsible_id
 Left Join entity e
   On e.id_number = task_detail.owner_id_number

@@ -6,16 +6,27 @@ Create Or Replace View vt_af_gifts_srcdnr_5fy As
 
 With
 
-/* Core Annual Fund transaction-level view; current and previous 5 fiscal years. Rolls data up to the household giving source donor
-   level, e.g. Kellogg-specific giving source donor, then householded for married entities.
-   2017-07-17: added ytd_dts; removing function call from select led to ~32x speed-up! */
+-- Thresholded allocations: count up to max_gift dollars
+thresh_allocs As (
+  Select *
+  From table(ksm_pkg_allocation.tbl_threshold_allocs)
+)
+, af_toggle As (
+  Select
+    thresh_allocs.allocation_code
+    , af_toggle.af_flag
+  From thresh_allocs
+  Cross Join (
+    Select 'Y' As af_flag From DUAL
+    Union All
+    Select 'N' As af_flag From DUAL
+  ) af_toggle
+)
 
 -- Kellogg Annual Fund allocations as defined in ksm_pkg
-ksm_cru_allocs As (
-  Select
-    allocation_code
-    , af_flag
-  From table(ksm_pkg.tbl_alloc_curr_use_ksm)
+, ksm_cru_allocs As (
+  Select *
+  From table(ksm_pkg_tmp.tbl_alloc_curr_use_ksm)
 )
 
 -- Calendar date range from current_calendar
@@ -26,21 +37,11 @@ ksm_cru_allocs As (
     , yesterday
   From v_current_calendar
 )
-, ytd_dts As (
-  Select
-    to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1
-      As dt
-    , ksm_pkg.fytd_indicator(to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1)
-      As ytd_ind
-  From cal
-  Connect By
-    rownum <= (to_date('09/01/' || cal.curr_fy, 'mm/dd/yyyy') - to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy'))
-)
 
 -- KSM householding
 , households As (
   Select hh.*
-  From table(ksm_pkg.tbl_entity_households_ksm) hh
+  From table(ksm_pkg_tmp.tbl_entity_households_ksm) hh
 )
 
 -- Formatted giving tables
@@ -49,12 +50,12 @@ ksm_cru_allocs As (
     tx_number
     , cal.curr_fy
     , cal.yesterday
-    , ksm_pkg.get_gift_source_donor_ksm(tx_number) As id_src_dnr -- giving source donor as defined by ksm_pkg
-    , ytd_dts.ytd_ind -- year to date flag
+    , ksm_pkg_tmp.get_gift_source_donor_ksm(tx_number) As id_src_dnr -- giving source donor as defined by ksm_pkg
+    , ksm_pkg_calendar.fytd_indicator(gft.date_of_record)
+      As ytd_ind
   From nu_gft_trp_gifttrans gft
   Cross Join cal
   Inner Join ksm_cru_allocs cru On cru.allocation_code = gft.allocation_code
-  Inner Join ytd_dts On ytd_dts.dt = trunc(date_of_record)
   Where
     -- Drop pledges
     tx_gypm_ind <> 'P'
@@ -65,6 +66,8 @@ ksm_cru_allocs As (
   Select
     cru.allocation_code
     , cru.af_flag
+    , cru.sweepable
+    , cru.budget_relieving
     , gft.alloc_short_name
     , gft.alloc_purpose_desc
     , gft.tx_number
@@ -76,6 +79,24 @@ ksm_cru_allocs As (
     , gft.legal_amount
     , gft.credit_amount
     , gft.nwu_af_amount
+    , Case
+        When thresh_allocs.allocation_code Is Not Null
+          And gft.legal_amount > thresh_allocs.max_gift
+          Then thresh_allocs.max_gift
+        When cru.af_flag = 'Y'
+          Then gft.legal_amount
+        Else 0
+        End
+      As ksm_af_amount_legal
+    , Case
+        When thresh_allocs.allocation_code Is Not Null
+          And gft.credit_amount > thresh_allocs.max_gift
+          Then thresh_allocs.max_gift
+        When cru.af_flag = 'Y'
+          Then gft.credit_amount
+        Else 0
+        End
+      As ksm_af_amount_credit
     , gft.id_number As legal_dnr_id
     , trans.id_src_dnr
     , households.household_id As id_hh_src_dnr
@@ -85,154 +106,80 @@ ksm_cru_allocs As (
   Inner Join ksm_cru_allocs cru On cru.allocation_code = gft.allocation_code
   Inner Join ksm_cru_trans trans On trans.tx_number = gft.tx_number
   Inner Join households On households.id_number = trans.id_src_dnr
+  Left Join thresh_allocs On thresh_allocs.allocation_code = gft.allocation_code
 )
 
 -- Gift receipts and biographic information
-Select
-  -- Giving fields
-  af.allocation_code
-  , af.af_flag
-  , af.alloc_short_name
-  , af.alloc_purpose_desc
-  , af.tx_number
-  , af.tx_sequence
-  , af.tx_gypm_ind
-  , af.fiscal_year
-  , af.date_of_record
-  , af.ytd_ind
-  , af.legal_dnr_id
-  , af.legal_amount
-  , af.credit_amount
-  , af.nwu_af_amount
-  -- Household source donor entity fields
-  , af.id_hh_src_dnr
-  , hh.pref_mail_name
-  , e_src_dnr.pref_name_sort
-  , e_src_dnr.report_name
-  , e_src_dnr.person_or_org
-  , e_src_dnr.record_status_code
-  , e_src_dnr.institutional_suffix
-  , hh.household_state As master_state
-  , hh.household_country As master_country
-  , e_src_dnr.gender_code
-  , hh.spouse_id_number
-  , hh.spouse_pref_mail_name
-  -- KSM alumni flag
-  , Case When hh.household_program_group Is Not Null Then 'Y' Else 'N' End
-    As ksm_alum_flag
-  -- Fiscal year number
-  , curr_fy
-  , yesterday As data_as_of
-From ksm_cru_gifts af
-Inner Join entity e_src_dnr On af.id_hh_src_dnr = e_src_dnr.id_number
-Inner Join households hh On hh.id_number = af.id_hh_src_dnr
-Where legal_amount > 0
-;
-
-/*****************************************
-Legal donor version of above
-******************************************/
-
-Create Or Replace View vt_af_gifts_legal_5fy As
-
-With
-
--- Kellogg Annual Fund allocations as defined in ksm_pkg
-ksm_af_allocs As (
-  Select allocation_code
-  From table(ksm_pkg.tbl_alloc_annual_fund_ksm)
-)
-
--- Calendar date range from current_calendar
-, cal As (
   Select
-    curr_fy - 5 As prev_fy5
+    -- Giving fields
+    af.allocation_code
+    , Case
+        When af_toggle.af_flag Is Not Null
+          Then af_toggle.af_flag
+        Else af.af_flag
+        End
+      As af_flag
+    , af.sweepable
+    , af.budget_relieving
+    , af.alloc_short_name
+    , af.alloc_purpose_desc
+    , af.tx_number
+    , af.tx_sequence
+    , af.tx_gypm_ind
+    , af.fiscal_year
+    , af.date_of_record
+    , af.ytd_ind
+    , af.legal_dnr_id
+    , Case
+        When af_toggle.af_flag = 'Y'
+          Then af.ksm_af_amount_legal
+        When af_toggle.af_flag = 'N'
+          Then af.legal_amount - af.ksm_af_amount_legal
+        Else af.legal_amount
+        End
+      As legal_amount
+    , Case
+        When af_toggle.af_flag = 'Y'
+          Then af.ksm_af_amount_credit
+        When af_toggle.af_flag = 'N'
+          Then af.credit_amount - af.ksm_af_amount_credit
+        Else af.credit_amount
+        End
+      As credit_amount
+    , af.legal_amount As original_legal_amount
+    , af.credit_amount As original_credit_amount
+    , af.nwu_af_amount
+    , af.ksm_af_amount_legal
+    , af.ksm_af_amount_credit
+    , af.legal_amount - af.ksm_af_amount_legal
+      As ksm_cru_amount_legal
+    , af.credit_amount - af.ksm_af_amount_credit
+      As ksm_cru_amount_credit
+    -- Household source donor entity fields
+    , af.id_hh_src_dnr
+    , hh.pref_mail_name
+    , e_src_dnr.pref_name_sort
+    , e_src_dnr.report_name
+    , e_src_dnr.person_or_org
+    , e_src_dnr.record_status_code
+    , e_src_dnr.institutional_suffix
+    , hh.household_state As master_state
+    , hh.household_country As master_country
+    , e_src_dnr.gender_code
+    , hh.spouse_id_number
+    , hh.spouse_pref_mail_name
+    -- KSM alumni flag
+    , Case When hh.household_program_group Is Not Null Then 'Y' Else 'N' End
+      As ksm_alum_flag
+    -- Fiscal year number
     , curr_fy
-    , yesterday
-  From v_current_calendar
-)
-
--- Degrees concat
-, deg As (
-  Select
-    id_number
-    , degrees_concat
-    , program
-    , program_group
-  From table(ksm_pkg.tbl_entity_degrees_concat_ksm)
-)
-
--- Formatted giving table
-, ksm_af_gifts As (
-  Select
-    ksm_af_allocs.allocation_code
-    , alloc_short_name
-    , tx_number
-    , tx_sequence
-    , tx_gypm_ind
-    , fiscal_year
-    , date_of_record
-    , legal_amount
-    , credit_amount
-    , nwu_af_amount
-    , id_number
-    , ksm_pkg.get_gift_source_donor_ksm(tx_number) As ksm_src_dnr_id
-    , curr_fy
-    , yesterday
-  From nu_gft_trp_gifttrans
-  Cross Join cal
-  Inner Join ksm_af_allocs On ksm_af_allocs.allocation_code = nu_gft_trp_gifttrans.allocation_code
-  -- Only pull KSM AF gifts in recent fiscal years
-  Where nu_gft_trp_gifttrans.allocation_code = ksm_af_allocs.allocation_code
-    And fiscal_year Between cal.prev_fy5 And cal.curr_fy
-    -- Drop pledges
-    And tx_gypm_ind != 'P'
-)
-
--- Final results
-Select
-  -- Giving fields
-  af.allocation_code
-  , af.alloc_short_name
-  , af.tx_number
-  , af.tx_sequence
-  , af.tx_gypm_ind
-  , af.fiscal_year
-  , af.date_of_record
-  , ksm_pkg.fytd_indicator(af.date_of_record) As ytd_ind -- year to date flag
-  , af.id_number As legal_dnr_id
-  , af.legal_amount
-  , af.credit_amount
-  , af.nwu_af_amount
-  -- Source donor entity fields
-  , af.ksm_src_dnr_id
-  , e_src_dnr.pref_name_sort
-  , e_src_dnr.person_or_org
-  , e_src_dnr.record_status_code
-  , e_src_dnr.institutional_suffix
-  , entity_deg.degrees_concat As src_dnr_degrees_concat
-  , entity_deg.program As src_dnr_program
-  , entity_deg.program_group As src_dnr_program_group
-  , ksm_pkg.get_entity_address(e_src_dnr.id_number, 'state_code') As master_state
-  , ksm_pkg.get_entity_address(e_src_dnr.id_number, 'country') As master_country
-  , e_src_dnr.gender_code
-  , e_src_dnr.spouse_id_number
-  , spouse_deg.degrees_concat As spouse_degrees_concat
-  -- KSM alumni flag
-  , Case When ksm_pkg.get_entity_degrees_concat_fast(e_src_dnr.id_number) Is Not Null Then 'Y' Else 'N' End
-    As ksm_alum_flag
-  -- Fiscal year number
-  , curr_fy
-  , yesterday As data_as_of
-From ksm_af_gifts af
-Inner Join entity e_src_dnr On af.ksm_src_dnr_id = e_src_dnr.id_number
-Left Join deg entity_deg On entity_deg.id_number = e_src_dnr.id_number
-Left Join deg spouse_deg On spouse_deg.id_number = e_src_dnr.spouse_id_number
-Where legal_amount > 0
-Order By
-  date_of_record Asc
-  , tx_number Asc
-  , tx_sequence Asc
+    , yesterday As data_as_of
+  From ksm_cru_gifts af
+  Left Join af_toggle
+    On af_toggle.allocation_code = af.allocation_code
+  Inner Join entity e_src_dnr On af.id_hh_src_dnr = e_src_dnr.id_number
+  Inner Join households hh On hh.id_number = af.id_hh_src_dnr
+  Where legal_amount > 0
 ;
 
 /*****************************************
@@ -253,7 +200,7 @@ deg As (
     , degrees_concat
     , program
     , program_group
-  From table(ksm_pkg.tbl_entity_degrees_concat_ksm)
+  From table(ksm_pkg_tmp.tbl_entity_degrees_concat_ksm)
 )
 
 -- Final results aggregated by entity and year
@@ -276,6 +223,8 @@ Select
   , master_country
   -- Giving fields
   , af_flag
+  , sweepable
+  , budget_relieving
   , allocation_code
   , alloc_short_name
   , alloc_purpose_desc
@@ -307,6 +256,8 @@ Group By
   , master_country
   -- Giving fields
   , af_flag
+  , sweepable
+  , budget_relieving
   , allocation_code
   , alloc_short_name
   , alloc_purpose_desc
@@ -331,7 +282,7 @@ With
 -- Current calendar
 cal As (
   Select *
-  From table(ksm_pkg.tbl_current_calendar)
+  From table(ksm_pkg_tmp.tbl_current_calendar)
 )
 
 -- Degrees concat
@@ -342,7 +293,7 @@ cal As (
     , first_ksm_year
     , program
     , program_group
-  From table(ksm_pkg.tbl_entity_degrees_concat_ksm)
+  From table(ksm_pkg_tmp.tbl_entity_degrees_concat_ksm)
 )
 
 -- Housheholds
@@ -350,7 +301,7 @@ cal As (
   Select
     id_number
     , household_id
-  From table(ksm_pkg.tbl_entity_households_ksm)
+  From table(ksm_pkg_tmp.tbl_entity_households_ksm)
 )
 
 -- Prospect reporting table
@@ -375,7 +326,7 @@ cal As (
     , comm.short_desc
     , comm.status
     , comm.role
-  From table(ksm_pkg.tbl_committee_kac) comm
+  From table(ksm_pkg_tmp.tbl_committee_kac) comm
   Inner Join hh On hh.id_number = comm.id_number
 )
 , gab As (
@@ -384,7 +335,7 @@ cal As (
     , comm.short_desc
     , comm.status
     , comm.role
-  From table(ksm_pkg.tbl_committee_gab) comm
+  From table(ksm_pkg_tmp.tbl_committee_gab) comm
   Inner Join hh On hh.id_number = comm.id_number
 )
 
@@ -437,7 +388,7 @@ cal As (
 -- Kellogg Annual Fund allocations as defined in ksm_pkg
 , ksm_af_allocs As (
   Select allocation_code
-  From table(ksm_pkg.tbl_alloc_annual_fund_ksm)
+  From table(ksm_pkg_tmp.tbl_alloc_annual_fund_ksm)
 )
 
 -- Householded first gift year
@@ -445,7 +396,7 @@ cal As (
   Select Distinct
     household_id
     , min(fiscal_year) As first_af_gift_year
-  From table(ksm_pkg.tbl_gift_credit_hh_ksm) gft
+  From table(ksm_pkg_tmp.tbl_gift_credit_hh_ksm) gft
   Inner Join ksm_af_allocs On ksm_af_allocs.allocation_code = gft.allocation_code
   Where tx_gypm_ind <> 'P'
     And af_flag = 'Y'
@@ -708,7 +659,7 @@ purposes As (
         When purposes.purpose Is Not Null Then purposes.purpose
         Else 'Other Unrestricted'
       End As alloc_categorizer
-  From table(rpt_pbh634.ksm_pkg.tbl_alloc_curr_use_ksm) alloc
+  From table(rpt_pbh634.ksm_pkg_tmp.tbl_alloc_curr_use_ksm) alloc
   Inner Join allocation On allocation.allocation_code = alloc.allocation_code
   Left Join purposes On purposes.purpose_code = allocation.alloc_purpose
 )
@@ -721,10 +672,10 @@ purposes As (
     , cal.curr_fy
     , count(tx_number) As total_gifts
     , sum(legal_amount) As total_cash_giving
-    , count(Case When rpt_pbh634.ksm_pkg.fytd_indicator(date_of_record) = 'Y' Then tx_number Else NULL End) As ytd_gifts
-    , sum(Case When rpt_pbh634.ksm_pkg.fytd_indicator(date_of_record) = 'Y' Then legal_amount Else 0 End) As ytd_cash_giving
-  From table(rpt_pbh634.ksm_pkg.tbl_gift_credit_ksm) gft
-  Cross Join table(rpt_pbh634.ksm_pkg.tbl_current_calendar) cal
+    , count(Case When rpt_pbh634.ksm_pkg_tmp.fytd_indicator(date_of_record) = 'Y' Then tx_number Else NULL End) As ytd_gifts
+    , sum(Case When rpt_pbh634.ksm_pkg_tmp.fytd_indicator(date_of_record) = 'Y' Then legal_amount Else 0 End) As ytd_cash_giving
+  From table(rpt_pbh634.ksm_pkg_tmp.tbl_gift_credit_ksm) gft
+  Cross Join table(rpt_pbh634.ksm_pkg_tmp.tbl_current_calendar) cal
   Where cru_flag = 'Y' -- Current Use only
     And tx_gypm_ind <> 'P' -- Exclude pledges, i.e. cash only
     And legal_amount > 0 -- Actual gifts only, not credited
@@ -774,14 +725,14 @@ cal As (
     , household_ksm_year
     , household_masters_year
     , household_program_group
-  From table(ksm_pkg.tbl_entity_households_ksm)
+  From table(ksm_pkg_tmp.tbl_entity_households_ksm)
   Where household_ksm_year Is Not Null
 )
 
 -- Kellogg Annual Fund allocations as defined in ksm_pkg
 , ksm_af_allocs As (
   Select allocation_code
-  From table(ksm_pkg.tbl_alloc_annual_fund_ksm)
+  From table(ksm_pkg_tmp.tbl_alloc_annual_fund_ksm)
 )
 
 -- First gift year
@@ -789,7 +740,7 @@ cal As (
   Select Distinct
     household_id
     , min(fiscal_year) As first_af_gift_year
-  From table(ksm_pkg.tbl_gift_credit_hh_ksm) gft
+  From table(ksm_pkg_tmp.tbl_gift_credit_hh_ksm) gft
   Inner Join ksm_af_allocs On ksm_af_allocs.allocation_code = gft.allocation_code
   Where tx_gypm_ind <> 'P'
     And af_flag = 'Y'
@@ -895,7 +846,7 @@ Select Distinct
   -- Current calendar fields
   , cal.curr_fy
   , cal.yesterday
-From table(ksm_pkg.tbl_klc_history) klc
+From table(ksm_pkg_tmp.tbl_klc_history) klc
 Cross Join v_current_calendar cal
 Left Join vt_af_donors_5fy_summary af On klc.household_id = af.id_hh_src_dnr
 ;
@@ -921,13 +872,13 @@ Select
   , allocm.allocation_code As match_allocation_code
   , allocm.short_name As match_allocation
   , match_gift_date_of_record
-  , ksm_pkg.get_fiscal_year(match_gift_date_of_record) As fiscal_year_of_match
+  , ksm_pkg_tmp.get_fiscal_year(match_gift_date_of_record) As fiscal_year_of_match
   , match_gift_amount
 From matching_gift
 Inner Join nu_gft_trp_gifttrans gft On gft.tx_number = matching_gift.match_gift_matched_receipt
   And gft.tx_sequence = matching_gift.match_gift_matched_sequence
 Inner Join entity On entity.id_number = matching_gift.match_gift_matched_donor_id
-Left Join table(rpt_pbh634.ksm_pkg.tbl_entity_degrees_concat_ksm) ksm_alum On ksm_alum.id_number = matching_gift.match_gift_matched_donor_id
+Left Join table(rpt_pbh634.ksm_pkg_tmp.tbl_entity_degrees_concat_ksm) ksm_alum On ksm_alum.id_number = matching_gift.match_gift_matched_donor_id
 Left Join allocation allocg On allocg.allocation_code = gft.allocation_code
 Left Join allocation allocm On allocm.allocation_code = matching_gift.match_gift_allocation_name
 Where match_gift_program_credit_code <> 'KM'
@@ -955,7 +906,7 @@ ksm_tbd As (
 /* KSM degrees concat definition */
 , deg As (
   Select *
-  From table(rpt_pbh634.ksm_pkg.tbl_entity_degrees_concat_ksm)
+  From table(rpt_pbh634.ksm_pkg_tmp.tbl_entity_degrees_concat_ksm)
 )
 
 /* Transaction and pledge TMS table definition */

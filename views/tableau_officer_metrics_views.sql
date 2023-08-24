@@ -52,6 +52,7 @@ Select Distinct
   , Phf.total_ask_amt
   , Phf.total_anticipated_amt
   , Phf.total_granted_amt
+  , Phf.granted_date_of_record
   , Phf.ksm_ask
   , Phf.ksm_anticipated
   , Phf.ksm_af_ask
@@ -67,14 +68,14 @@ Select Distinct
       When ksm_or_univ_ask >= 100000 
         And total_granted_amt >= 98000
         And proposal_Status_code = '7'
-        Then rpt_pbh634.ksm_pkg.get_performance_year(close_date)
+        Then rpt_pbh634.ksm_pkg_tmp.get_performance_year(phf.granted_date_of_record)
       Else NULL
       End
     As MG_Commitments
   , Case
       When ksm_or_univ_ask >= 100000 
         And proposal_status_code In ('5', 'C', 'B', '8', '7')
-        Then rpt_pbh634.ksm_pkg.get_performance_year(ask_date)
+        Then rpt_pbh634.ksm_pkg_tmp.get_performance_year(phf.ask_date)
       Else NULL
       End
     As MG_Solicitations
@@ -82,7 +83,7 @@ Select Distinct
       When ksm_or_univ_ask >= 100000 
         And total_granted_amt >= 48000
         And proposal_status_code = '7'
-        Then rpt_pbh634.ksm_pkg.get_performance_year(close_date)
+        Then rpt_pbh634.ksm_pkg_tmp.get_performance_year(phf.granted_date_of_record)
       Else NULL
       End
     As MG_Dollars_Raised
@@ -109,46 +110,23 @@ Gift officer contact report metrics audit
 
 Create Or Replace View rpt_dgz654.mgo_contact_reports As
 
-With
-
-Prospect_Manager As (
-  Select
-    A.prospect_ID
-    , PE.ID_Number
-    , PE.Primary_Ind
-    , A.assignment_ID_Number As Prospect_Manager_ID
-    , E.Pref_Mail_Name As Prospect_Manager
-  From assignment A
-  Inner Join prospect_entity PE
-    On A.prospect_ID = PE.prospect_Id
-  Inner Join entity E
-    On A.assignment_id_number = E.id_number
-  Where A.assignment_type = 'PM'
-    And A.active_IND = 'Y'
-    And PE.Primary_Ind = 'Y'
-)
-
 Select
   CR.*
-  , PP.prospect_manager_id
-  , PP.prospect_manager
+  , assign.prospect_manager_id
+  , assign.prospect_manager
   , assign.manager_ids
   , assign.managers
   , assign.curr_ksm_manager
-  , E.Institutional_Suffix
+  , hh.institutional_suffix
   , hh.degrees_concat
   , hh.household_city
   , hh.household_geo_primary_desc
   , hh.household_state
   , hh.household_country
-  , rpt_pbh634.ksm_pkg.get_performance_year(contact_date) As PY_Contact
+  , rpt_pbh634.ksm_pkg_tmp.get_performance_year(contact_date) As PY_Contact
 From rpt_pbh634.v_contact_reports_fast CR
 Inner Join rpt_pbh634.v_entity_ksm_households hh
   On hh.id_number = CR.id_number
-Left Join Prospect_manager PP
-  On PP.ID_NUMBER = CR.id_number
-Inner Join entity e
-  On E.Id_number = CR.Id_number
 Left Join rpt_pbh634.v_assignment_summary assign
   On assign.id_number = cr.id_number
 ;

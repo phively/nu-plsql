@@ -124,9 +124,9 @@ to be individually named.
 
 Examples: 
 Select ksm_af.*
-From table(rpt_pbh634.ksm_pkg.tbl_alloc_annual_fund_ksm) ksm_af;
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_alloc_annual_fund_ksm) ksm_af;
 Select cal.*
-From table(rpt_pbh634.ksm_pkg.tbl_current_calendar) cal;
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_current_calendar) cal;
 *************************************************************************/
 
 -- Standardized proposal data table function
@@ -472,15 +472,15 @@ Cursor c_contact_reports Is
     , contact_purpose_code
     , extract(year From contact_date)
       As cal_year
-    , rpt_pbh634.ksm_pkg.get_fiscal_year(contact_date)
+    , rpt_pbh634.ksm_pkg_calendar.get_fiscal_year(contact_date)
       As fiscal_year
     , extract(month From contact_date)
       As cal_month
-    , rpt_pbh634.ksm_pkg.get_quarter(contact_date, 'fisc')
+    , rpt_pbh634.ksm_pkg_calendar.get_quarter(contact_date, 'fisc')
       As fiscal_qtr
-    , rpt_pbh634.ksm_pkg.get_quarter(contact_date, 'perf')
+    , rpt_pbh634.ksm_pkg_calendar.get_quarter(contact_date, 'perf')
       As perf_quarter
-    , rpt_pbh634.ksm_pkg.get_performance_year(contact_date)
+    , rpt_pbh634.ksm_pkg_calendar.get_performance_year(contact_date)
       As perf_year -- performance year
   From contact_report
   Where contact_type = 'V' -- Only count visits

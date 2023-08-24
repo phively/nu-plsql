@@ -8,8 +8,8 @@ Select
   , cal.today
   , cal.yesterday
   , cal.curr_fy
-From table(ksm_pkg.tbl_gift_credit_ksm) g
-Cross Join table(ksm_pkg.tbl_current_calendar) cal
+From table(ksm_pkg_gifts.tbl_gift_credit_ksm) g
+Cross Join table(ksm_pkg_calendar.tbl_current_calendar) cal
 ;
 
 /*************************************************
@@ -22,8 +22,8 @@ Select
   , cal.today
   , cal.yesterday
   , cal.curr_fy
-From table(ksm_pkg.tbl_gift_credit_hh_ksm) g
-Cross Join table(ksm_pkg.tbl_current_calendar) cal
+From table(ksm_pkg_gifts_hh.tbl_gift_credit_hh_ksm) g
+Cross Join table(ksm_pkg_calendar.tbl_current_calendar) cal
 ;
 
 /*************************************************
@@ -142,6 +142,12 @@ params As (
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 3 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy3
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 4 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy4
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 5 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy5
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 6 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy6
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 7 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy7
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 8 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy8
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 9 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy9
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 10 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy10
+    , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 11 And af_flag = 'Y' Then hh_credit Else 0 End) As af_pfy11
     -- Current Use cash totals
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year     And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_cfy
     , sum(Case When tx_gypm_ind != 'P' And cal.curr_fy = fiscal_year + 1 And cru_flag = 'Y' Then hh_credit Else 0 End) As cru_pfy1
@@ -186,8 +192,13 @@ params As (
     , sum(Case When cal.curr_fy = fiscal_year + 4 And anonymous <> ' ' Then hh_stewardship_credit Else 0 End) As anonymous_pfy4
     , sum(Case When cal.curr_fy = fiscal_year + 5 And anonymous <> ' ' Then hh_stewardship_credit Else 0 End) As anonymous_pfy5
     -- Giving history
+    , max(cal.curr_fy) As curr_fy
     , min(gfts.fiscal_year) As fy_giving_first_yr
     , max(gfts.fiscal_year) As fy_giving_last_yr
+    , min(Case When tx_gypm_ind != 'P' And af_flag = 'Y' Then fiscal_year End) As fy_giving_first_yr_af
+    , max(Case When tx_gypm_ind != 'P' And af_flag = 'Y' Then fiscal_year End) As fy_giving_last_yr_af
+    , min(Case When tx_gypm_ind != 'P' And cru_flag = 'Y' Then fiscal_year End) As fy_giving_first_yr_cru
+    , max(Case When tx_gypm_ind != 'P' And cru_flag = 'Y' Then fiscal_year End) As fy_giving_last_yr_cru
     , count(Distinct gfts.fiscal_year) As fy_giving_yr_count
     , min(Case When tx_gypm_ind != 'P' Then gfts.fiscal_year Else NULL End) As fy_giving_first_cash_yr
     , max(Case When tx_gypm_ind != 'P' Then gfts.fiscal_year Else NULL End) As fy_giving_last_cash_yr
@@ -205,7 +216,14 @@ params As (
       As last_gift_alloc
     , sum(gfts.hh_recognition_credit) keep(dense_rank First Order By gfts.date_of_record Desc, gfts.tx_number Asc)
       As last_gift_recognition_credit
-  From v_entity_ksm_households hh
+    -- Largest KSM gift
+    , max(gfts.date_of_record)
+      keep (dense_rank First Order By gfts.hh_recognition_credit Desc, gfts.date_of_record Desc, gfts.tx_number Desc)
+      As max_gift_date_of_record
+    , max(gfts.hh_recognition_credit)
+      keep (dense_rank First Order By gfts.hh_recognition_credit Desc, gfts.date_of_record Desc, gfts.tx_number Desc)
+      As max_gift_credit
+  From v_entity_ksm_households_fast hh
   Cross Join v_current_calendar cal
   Cross Join params
   Inner Join hh_giving gfts
@@ -228,13 +246,17 @@ Select
       When af_cfy > 0 Then 'Donor'
       When af_pfy1 > 0 Then 'LYBUNT'
       When af_pfy2 + af_pfy3 + af_pfy4 > 0 Then 'PYBUNT'
-      When af_cfy + af_pfy1 + af_pfy2 + af_pfy3 + af_pfy4 = 0 Then 'Lapsed/Non'
+      When af_cfy + af_pfy1 + af_pfy2 + af_pfy3 + af_pfy4 = 0 Then 'Lapsed'
+      When fy_giving_first_yr_af Is Null Then 'Non'
     End As af_status
   -- AF status last year
   , Case
       When af_pfy1 > 0 Then 'LYBUNT'
       When af_pfy2 + af_pfy3 + af_pfy4 > 0 Then 'PYBUNT'
-      When af_pfy1 + af_pfy2 + af_pfy3 + af_pfy4 = 0 Then 'Lapsed/Non'
+      When af_pfy1 + af_pfy2 + af_pfy3 + af_pfy4 = 0 Then 'Lapsed'
+      When fy_giving_first_yr_af Is Null
+        Or fy_giving_first_yr_af = curr_fy
+        Then 'Non'
     End As af_status_fy_start
   -- AF KLC flag
   , Case
@@ -402,8 +424,10 @@ Select
       When cru_pfy4 > 0
         Then 'PYBUNT-4'
       When cru_pfy1 + cru_pfy2 + cru_pfy3 + cru_pfy4 = 0
-        Then 'Lapsed/Non'
-      Else 'Never'
+        And fy_giving_first_yr_cru Is Not Null
+        And fy_giving_first_yr_cru < curr_fy
+        Then 'Lapsed'
+      Else 'Non'
       End
     As af_giving_segment
   -- Stewardship flags
@@ -418,7 +442,7 @@ Select
   , Case When anonymous_pfy5 > 0 Then 'Y' End As anonymous_pfy5_flag
 From trans
 Cross Join params
-Left Join table(ksm_pkg.tbl_special_handling_concat) shc
+Left Join table(ksm_pkg_special_handling.tbl_special_handling_concat) shc
   On shc.id_number = trans.id_number
 ;
 
@@ -443,7 +467,7 @@ Kellogg Transforming Together Campaign giving transactions
 Create Or Replace View v_ksm_giving_campaign_trans As
 -- Campaign transactions
 Select *
-From table(ksm_pkg.tbl_gift_credit_campaign)
+From table(ksm_pkg_gifts_campaign.tbl_gift_credit_campaign)
 ;
 
 /*************************************************
@@ -452,7 +476,7 @@ Householded Kellogg campaign giving transactions
 Create Or Replace View v_ksm_giving_campaign_trans_hh As
 -- Householded campaign transactions
 Select *
-From table(ksm_pkg.tbl_gift_credit_hh_campaign)
+From table(ksm_pkg_gifts_campaign.tbl_gift_credit_hh_campaign)
 ;
 
 /*************************************************
@@ -466,7 +490,7 @@ manual_dates As (
 )
 , hh As (
   Select *
-  From table(ksm_pkg.tbl_entity_households_ksm)
+  From table(ksm_pkg_households.tbl_entity_households_ksm)
 )
 , cgft As (
   Select *
@@ -628,7 +652,7 @@ cal As (
 )
 , ytd_dts As (
   Select to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1 As dt,
-    ksm_pkg.fytd_indicator(to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1) As ytd_ind
+    ksm_pkg_calendar.fytd_indicator(to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1) As ytd_ind
   From cal
   Connect By
     rownum <= (to_date('09/01/' || cal.curr_fy, 'mm/dd/yyyy') - to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy'))
@@ -685,7 +709,7 @@ cal As (
 )
 , ytd_dts As (
   Select to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1 As dt,
-    ksm_pkg.fytd_indicator(to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1) As ytd_ind
+    ksm_pkg_calendar.fytd_indicator(to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1) As ytd_ind
   From cal
   Connect By
     rownum <= (to_date('09/01/' || cal.curr_fy, 'mm/dd/yyyy') - to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy'))
