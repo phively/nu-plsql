@@ -58,3 +58,13 @@ From identification
 Inner Join prioritization
   On identification.id_number = prioritization.id_number
 ;
+
+/*************************
+Most recent alumni engagement model
+**************************/
+
+Create Or Replace View v_ksm_model_alumni_engagement As
+
+Select *
+From rpt_lfs898.ksm_ae_model_scores
+;
