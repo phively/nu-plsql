@@ -81,7 +81,15 @@ case when R19.id_number is not null then 'Reunion 2019 Participant' end as Reuni
 case when R21.id_number is not null then 'Reunion 2021 Participant' end as Reunion_21_IND, 
 case when R22W1.id_number is not null then 'Reunion 2022 Weekend 1 Participant' end as Reunion_22W1_IND,
 case when R22W2.id_number is not null then 'Reunion 2022 Weekend 2 Participant' end as Reunion_22W2_IND,
-case when R23.id_number is not null then 'Reunion 2023 Participant' end as Reunion_23_IND
+case when R23.id_number is not null then 'Reunion 2023 Participant' end as Reunion_23_IND,
+--- Unique Reunion Attendee Over Last 5 Reunions 
+case when R18.id_number is not null 
+or R19.id_number is not null 
+or R21.id_number is not null
+or R22W1.id_number is not null
+or R22W2.id_number is not null
+or R23.id_number is not null
+then 'Y' End as Unique_Reunion_Attendee_Last5
 from e
 left join REUNION_2018_PARTICIPANTS R18 ON R18.id_number = e.id_number
 left join REUNION_2019_PARTICIPANTS R19 on R19.id_number = e.id_number
@@ -542,6 +550,7 @@ R.Reunion_21_IND,
 R.Reunion_22W1_IND,
 R.Reunion_22W2_IND,
 R.Reunion_23_IND,
+R.Unique_Reunion_Attendee_Last5,
 P.EVALUATION_DATE,
 P.EVALUATION_RATING,
 P.OFFICER_RATING,
