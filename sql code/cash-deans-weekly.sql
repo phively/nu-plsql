@@ -2,18 +2,30 @@ With
 
 -- FYTD indicator
 -- Can tweak fiscal years and which day to use as previous day below
+-- For example, for EOFY 2023 use:
+/*
+    2022 As prev_fy
+    , 2023 As curr_fy
+    , to_date('20230831', 'yyyymmdd') As prev_day
+*/
 cal As (
   Select
     curr_fy - 1 As prev_fy
-    , curr_fy
+    , curr_fy - 0 As curr_fy
     , yesterday As prev_day
   From rpt_pbh634.v_current_calendar
 )
 , ytd_dts As (
   Select
     to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1 As dt
-    , rpt_pbh634.ksm_pkg_tmp.fytd_indicator(to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1,
-      - (trunc(sysdate) - cal.prev_day)) As ytd_ind
+    -- If prev_day is EOFY (8/31) then ytd_ind should be 'Y' for all dates
+    , Case
+        When extract(month from cal.prev_day) = 8 And extract(day from cal.prev_day) = 31
+          Then 'Y'
+        Else rpt_pbh634.ksm_pkg_tmp.fytd_indicator(to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1,
+            - (trunc(sysdate) - cal.prev_day))
+        End
+      As ytd_ind
   From cal
   Connect By
     rownum <= (to_date('09/01/' || cal.curr_fy, 'mm/dd/yyyy') - to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy'))
@@ -23,8 +35,9 @@ cal As (
 , af_and_cru As (
   Select
     src.*
-    , cal.prev_fy
-    , cal.prev_day
+    , cal.curr_fy As cal_curr_fy
+    , cal.prev_fy As cal_prev_fy
+    , cal.prev_day As cal_prev_day
     , Case
       When af_flag = 'Y' Then 'Annual Fund'
       When src.fiscal_year = 2018 And -- FY18: include the following initiatives
@@ -45,9 +58,9 @@ cal As (
   Select
     cru.*
     , gft.*
-    , cal.curr_fy
-    , cal.prev_fy
-    , cal.prev_day
+    , cal.curr_fy As cal_curr_fy
+    , cal.prev_fy As cal_prev_fy
+    , cal.prev_day As cal_prev_day
     , 'Other Cash' As cash_type
   From nu_gft_trp_gifttrans gft
   Cross Join cal
@@ -60,10 +73,10 @@ cal As (
     And af_flag Is Null
 )
 , cash As (
-  Select fiscal_year, legal_amount, cash_type, curr_fy, prev_fy, prev_day
+  Select fiscal_year, legal_amount, cash_type, cal_curr_fy As curr_fy, cal_prev_fy As prev_fy, cal_prev_day As prev_day
   From other_cash
   Union All
-  Select fiscal_year, legal_amount, cash_type, curr_fy, prev_fy, prev_day
+  Select fiscal_year, legal_amount, cash_type, cal_curr_fy, cal_prev_fy, cal_prev_day
   From af_and_cru
 )
 
