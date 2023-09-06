@@ -449,7 +449,10 @@ ON PHF.proposal_manager_id = LGO.ID_NUMBER
 INNER JOIN PROSPECT_ENTITY PE
 ON PHF.prospect_id = PE.PROSPECT_ID
   AND PE.PRIMARY_IND = 'Y'
-WHERE PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5', '7', '8') -- anticipated/submitted/approved/declined/funded
+  --- Kellogg Proposals Only + Active Proposals! 
+WHERE PHF.ksm_proposal_ind = 'Y'
+and PHF.proposal_active_calc = 'Active'
+AND PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5', '7', '8') -- anticipated/submitted/approved/declined/funded
   AND PHF.ask_date BETWEEN rpt_pbh634.ksm_pkg_tmp.to_date2('9/01/2022','MM-DD-YY')
           AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY') OR
       (PHF.PROPOSAL_STATUS_CODE IN ('A','C', '5', '7', '8') -- anticipated/submitted/approved/declined/funded
@@ -468,7 +471,10 @@ ON PHF.PROPOSAL_ASSIST_ID = LGO.ID_NUMBER
 INNER JOIN PROSPECT_ENTITY PE
 ON PHF.prospect_id = PE.PROSPECT_ID
   AND PE.PRIMARY_IND = 'Y'
-WHERE (PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5', '7', '8') -- anticipated/submitted/approved/declined/funded
+  --- Kellogg Proposals Only + Active Proposals! 
+WHERE PHF.ksm_proposal_ind = 'Y'
+and PHF.proposal_active_calc = 'Active'
+AND (PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5', '7', '8') --- Just active proposals where status = 'A' /*, 'C', '5', '7', '8')*/ -- anticipated/submitted/approved/declined/funded
   AND PHF.ask_date BETWEEN rpt_pbh634.ksm_pkg_tmp.to_date2('9/01/2022','MM-DD-YY')
           AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY')) OR
       (PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5', '7', '8') -- anticipated/submitted/approved/declined/funded
