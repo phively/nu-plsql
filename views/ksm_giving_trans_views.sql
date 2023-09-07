@@ -258,6 +258,15 @@ Select
         Or fy_giving_first_yr_af = curr_fy
         Then 'Non'
     End As af_status_fy_start
+  -- AF status last year
+  , Case
+      When af_pfy2 > 0 Then 'LYBUNT'
+      When af_pfy3 + af_pfy4 + af_pfy5 > 0 Then 'PYBUNT'
+      When af_pfy2 + af_pfy3 + af_pfy4 + af_pfy5 = 0 Then 'Lapsed'
+      When fy_giving_first_yr_af Is Null
+        Or fy_giving_first_yr_af = curr_fy - 1
+        Then 'Non'
+    End As af_status_pfy1_start
   -- AF KLC flag
   , Case
       When klc_cfy >= klc_amt
