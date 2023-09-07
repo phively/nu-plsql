@@ -13,7 +13,13 @@ Create Table tbl_cpi_u (
 -- Insert current cpi-u data
 Insert All
   /* ADD ROWS HERE */
-  Into tbl_cpi_u Values(2017, 244.62, to_date('20170930', 'yyyymmdd')) -- Through September; updated 2017-11-13
+  Into tbl_cpi_u Values(2023, 302.8766, to_date('20230731', 'yyyymmdd')) -- Through 7/31/23
+  Into tbl_cpi_u Values(2022, 292.6549, to_date('20221231', 'yyyymmdd'))
+  Into tbl_cpi_u Values(2021, 270.9698, to_date('20211231', 'yyyymmdd'))
+  Into tbl_cpi_u Values(2020, 258.811, to_date('20201231', 'yyyymmdd'))
+  Into tbl_cpi_u Values(2019, 255.6574, to_date('20191231', 'yyyymmdd'))
+  Into tbl_cpi_u Values(2018, 251.1068, to_date('20181231', 'yyyymmdd'))  
+  Into tbl_cpi_u Values(2017, 245.1195, to_date('20171231', 'yyyymmdd'))
   Into tbl_cpi_u Values(2016, 240.007, to_date('20161231', 'yyyymmdd'))
   Into tbl_cpi_u Values(2015, 237.017, to_date('20151231', 'yyyymmdd'))
   Into tbl_cpi_u Values(2014, 236.736, to_date('20141231', 'yyyymmdd'))
