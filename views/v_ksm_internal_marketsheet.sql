@@ -158,6 +158,7 @@ s.CRU_PFY4,
 s.CRU_PFY5,
 s.af_status,
 s.af_status_fy_start,
+s.af_status_pfy1_start,
 s.FY_GIVING_FIRST_YR,
 --- Last gifts - Reccomendation from Melanie
 s.LAST_GIFT_TX_NUMBER,
@@ -450,14 +451,14 @@ INNER JOIN PROSPECT_ENTITY PE
 ON PHF.prospect_id = PE.PROSPECT_ID
   AND PE.PRIMARY_IND = 'Y'
   --- Kellogg Proposals Only + Active Proposals! 
-WHERE PHF.ksm_proposal_ind = 'Y'
+WHERE (PHF.ksm_proposal_ind = 'Y'
 and PHF.proposal_active_calc = 'Active'
-AND PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5', '7', '8') -- anticipated/submitted/approved/declined/funded
+AND PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5')---, 'C', '5', '7', '8') -- --- Just anticipated proposals where status = 'A' - anticipated/submitted/approved/declined/funded
   AND PHF.ask_date BETWEEN rpt_pbh634.ksm_pkg_tmp.to_date2('9/01/2022','MM-DD-YY')
           AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY') OR
-      (PHF.PROPOSAL_STATUS_CODE IN ('A','C', '5', '7', '8') -- anticipated/submitted/approved/declined/funded
+      (PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5') --- ,'C', '5', '7', '8') -- --- Just anticipated proposals where status = 'A' - anticipated/submitted/approved/declined/funded
   AND PHF.CLOSE_DATE BETWEEN rpt_pbh634.ksm_pkg_tmp.to_date2('9/01/2022','MM-DD-YY')
-          AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY'))
+          AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY')))
     GROUP  BY PHF.proposal_manager_id
 )
 
@@ -472,14 +473,14 @@ INNER JOIN PROSPECT_ENTITY PE
 ON PHF.prospect_id = PE.PROSPECT_ID
   AND PE.PRIMARY_IND = 'Y'
   --- Kellogg Proposals Only + Active Proposals! 
-WHERE PHF.ksm_proposal_ind = 'Y'
+WHERE (PHF.ksm_proposal_ind = 'Y'
 and PHF.proposal_active_calc = 'Active'
-AND (PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5', '7', '8') --- Just active proposals where status = 'A' /*, 'C', '5', '7', '8')*/ -- anticipated/submitted/approved/declined/funded
+AND (PHF.PROPOSAL_STATUS_CODE IN ('A','C','5')---, 'C', '5', '7', '8') --- Just anticipated proposals where status = 'A' /*, 'C', '5', '7', '8')*/ -- anticipated/submitted/approved/declined/funded
   AND PHF.ask_date BETWEEN rpt_pbh634.ksm_pkg_tmp.to_date2('9/01/2022','MM-DD-YY')
           AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY')) OR
-      (PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5', '7', '8') -- anticipated/submitted/approved/declined/funded
+      (PHF.PROPOSAL_STATUS_CODE IN ('A','C','5')---, 'C', '5', '7', '8') -- anticipated/submitted/approved/declined/funded
   AND PHF.CLOSE_DATE BETWEEN rpt_pbh634.ksm_pkg_tmp.to_date2('9/01/2022','MM-DD-YY')
-          AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY'))
+          AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY')))
     GROUP  BY PHF.PROPOSAL_ASSIST_ID
 ),
 
@@ -527,7 +528,7 @@ BusinessAddress AS(
       AND a.addr_status_code IN('A','K')
 )
 
-select d.id_number,
+select distinct d.id_number,
 d.RECORD_STATUS_CODE,
 e.gender_code,
 d.REPORT_NAME,
@@ -597,6 +598,8 @@ g.LAST_GIFT_RECOGNITION_CREDIT,
 --- af status is in giving summary 
 g.af_status,
 g.af_status_fy_start,
+--- adding af status pfy1
+g.af_status_pfy1_start,
 g.FY_GIVING_FIRST_YR,
 --- Count of visits
 ccount.VISITS,
