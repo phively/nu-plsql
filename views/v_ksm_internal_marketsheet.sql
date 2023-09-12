@@ -450,15 +450,15 @@ ON PHF.proposal_manager_id = LGO.ID_NUMBER
 INNER JOIN PROSPECT_ENTITY PE
 ON PHF.prospect_id = PE.PROSPECT_ID
   AND PE.PRIMARY_IND = 'Y'
+
   --- Kellogg Proposals Only + Active Proposals! 
 WHERE (PHF.ksm_proposal_ind = 'Y'
 and PHF.proposal_active_calc = 'Active'
 AND PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5')---, 'C', '5', '7', '8') -- --- Just anticipated proposals where status = 'A' - anticipated/submitted/approved/declined/funded
-  AND PHF.ask_date BETWEEN rpt_pbh634.ksm_pkg_tmp.to_date2('9/01/2022','MM-DD-YY')
-          AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY') OR
+  AND PHF.ask_FY = '2023' 
+          OR
       (PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5') --- ,'C', '5', '7', '8') -- --- Just anticipated proposals where status = 'A' - anticipated/submitted/approved/declined/funded
-  AND PHF.CLOSE_DATE BETWEEN rpt_pbh634.ksm_pkg_tmp.to_date2('9/01/2022','MM-DD-YY')
-          AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY')))
+  AND PHF.CLOSE_FY = '2023'))
     GROUP  BY PHF.proposal_manager_id
 )
 
