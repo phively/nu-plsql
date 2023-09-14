@@ -450,15 +450,13 @@ ON PHF.proposal_manager_id = LGO.ID_NUMBER
 INNER JOIN PROSPECT_ENTITY PE
 ON PHF.prospect_id = PE.PROSPECT_ID
   AND PE.PRIMARY_IND = 'Y'
-
+CROSS JOIN RPT_PBH634.V_CURRENT_CALENDAR CAL
   --- Kellogg Proposals Only + Active Proposals! 
 WHERE (PHF.ksm_proposal_ind = 'Y'
 and PHF.proposal_active_calc = 'Active'
 AND PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5')---, 'C', '5', '7', '8') -- --- Just anticipated proposals where status = 'A' - anticipated/submitted/approved/declined/funded
-  AND PHF.ask_FY = '2023' 
-          OR
-      (PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5') --- ,'C', '5', '7', '8') -- --- Just anticipated proposals where status = 'A' - anticipated/submitted/approved/declined/funded
-  AND PHF.CLOSE_FY = '2023'))
+  AND (PHF.ask_FY BETWEEN  CAL.CURR_FY - 1 AND CAL.CURR_FY
+          OR PHF.CLOSE_FY BETWEEN  CAL.CURR_FY - 1 AND CAL.CURR_FY))
     GROUP  BY PHF.proposal_manager_id
 )
 
@@ -472,15 +470,13 @@ ON PHF.PROPOSAL_ASSIST_ID = LGO.ID_NUMBER
 INNER JOIN PROSPECT_ENTITY PE
 ON PHF.prospect_id = PE.PROSPECT_ID
   AND PE.PRIMARY_IND = 'Y'
+CROSS JOIN RPT_PBH634.V_CURRENT_CALENDAR CAL
   --- Kellogg Proposals Only + Active Proposals! 
 WHERE (PHF.ksm_proposal_ind = 'Y'
 and PHF.proposal_active_calc = 'Active'
-AND (PHF.PROPOSAL_STATUS_CODE IN ('A','C','5')---, 'C', '5', '7', '8') --- Just anticipated proposals where status = 'A' /*, 'C', '5', '7', '8')*/ -- anticipated/submitted/approved/declined/funded
-  AND PHF.ask_date BETWEEN rpt_pbh634.ksm_pkg_tmp.to_date2('9/01/2022','MM-DD-YY')
-          AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY')) OR
-      (PHF.PROPOSAL_STATUS_CODE IN ('A','C','5')---, 'C', '5', '7', '8') -- anticipated/submitted/approved/declined/funded
-  AND PHF.CLOSE_DATE BETWEEN rpt_pbh634.ksm_pkg_tmp.to_date2('9/01/2022','MM-DD-YY')
-          AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY')))
+AND PHF.PROPOSAL_STATUS_CODE IN ('A','C','5')---, 'C', '5', '7', '8') --- Just anticipated proposals where status = 'A' /*, 'C', '5', '7', '8')*/ -- anticipated/submitted/approved/declined/funded
+  AND (PHF.ask_FY BETWEEN  CAL.CURR_FY - 1 AND CAL.CURR_FY
+          OR PHF.CLOSE_FY BETWEEN  CAL.CURR_FY - 1 AND CAL.CURR_FY))
     GROUP  BY PHF.PROPOSAL_ASSIST_ID
 ),
 
