@@ -191,7 +191,8 @@ max (cr.contacted_name) keep (dense_rank First Order By cr.contact_date DESC) as
 max (cr.contact_type) keep (dense_rank First Order By cr.contact_date DESC) as contact_type,
 max (cr.contact_date) keep (dense_rank First Order By cr.contact_date DESC) as contact_Date,
 max (cr.description) keep (dense_rank First Order By cr.contact_date DESC) as description_,
-max (cr.summary) keep (dense_rank First Order By cr.contact_date DESC) as summary_
+max (cr.summary) keep (dense_rank First Order By cr.contact_date DESC) as summary,
+max (cr.fiscal_year) keep (dense_rank First Order By cr.contact_date DESC) as fiscal_year
 from rpt_pbh634.v_contact_reports_fast cr
 group by cr.id_number
 ),
@@ -566,7 +567,10 @@ c.credited_name,
 c.contact_type,
 c.contact_date,
 c.description_,
-c.summary_,
+c.summary,
+c.fiscal_year,
+case when c.fiscal_year = '2023' and c.contact_type = 'Visit' then '2023 Visit' end as contact_visit_23,
+case when c.fiscal_year = '2024' and c.contact_type = 'Visit' then '2024 Visit' end as contact_visit_24,
 speak.last_speak_date,
 speak.last_speak_detail,
 case when f.id_number is not null then 'Faculty_event_last_5' end as KSM_faculty_event_last5,
