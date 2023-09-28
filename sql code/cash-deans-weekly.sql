@@ -10,12 +10,9 @@ With
 */
 cal As (
   Select
-/*    curr_fy - 1 As prev_fy
+    curr_fy - 1 As prev_fy
     , curr_fy - 0 As curr_fy
-    , yesterday As prev_day*/
-    2022 As prev_fy
-    , 2023 As curr_fy
-    , to_date('20230831', 'yyyymmdd') As prev_day
+    , yesterday As prev_day
   From rpt_pbh634.v_current_calendar
 )
 , ytd_dts As (
