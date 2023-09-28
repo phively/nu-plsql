@@ -10,9 +10,12 @@ With
 */
 cal As (
   Select
-    curr_fy - 1 As prev_fy
+/*    curr_fy - 1 As prev_fy
     , curr_fy - 0 As curr_fy
-    , yesterday As prev_day
+    , yesterday As prev_day*/
+    2022 As prev_fy
+    , 2023 As curr_fy
+    , to_date('20230831', 'yyyymmdd') As prev_day
   From rpt_pbh634.v_current_calendar
 )
 , ytd_dts As (
@@ -32,36 +35,25 @@ cal As (
 )
 
 -- Current cash transactions
-, af_and_cru As (
+, cash As (
   Select
-    src.*
-    , cal.curr_fy As cal_curr_fy
-    , cal.prev_fy As cal_prev_fy
-    , cal.prev_day As cal_prev_day
+    cru.*
+    , gft.*
+    , cal.curr_fy
+    , cal.prev_fy
+    , cal.prev_day
     , Case
-      When af_flag = 'Y' Then 'Annual Fund'
-      When src.fiscal_year = 2018 And -- FY18: include the following initiatives
-        src.allocation_code In ('3303000891601GFT', '3203000860501GFT', '3203000860201GFT', '', '3203003691101GFB', '3203004030001GFT', '3203003608901GFT', '3203004187301GFT')
-        Then 'Annual Fund'
-      When af_flag = 'N' Then 'Current Use Expendable'
+      When gft.allocation_code = '3203006213301GFT' Then 'Kellogg Education Center'
+      When gft.allocation_code In (
+        '3303002283701GFT' -- Kellogg Envision Campaign
+        , '3303002280601GFT' -- Kellogg Building Fund
+        , '3203004284701GFT' -- Donald P. Jacobs Wing
+      ) Then 'Expendable Cash'
+      When af_flag Is Not Null Then 'Expendable Cash'
       When af_flag Is Null Then 'Other Cash'
       Else 'ZZZ Error'
       End
       As cash_type
-  From vt_af_gifts_srcdnr_5fy src
-  Cross Join cal
-  Inner Join ytd_dts On trunc(ytd_dts.dt) = trunc(src.date_of_record)
-  Where src.fiscal_year In (cal.curr_fy, cal.prev_fy)
-    And ytd_dts.ytd_ind = 'Y'
-)
-, other_cash As (
-  Select
-    cru.*
-    , gft.*
-    , cal.curr_fy As cal_curr_fy
-    , cal.prev_fy As cal_prev_fy
-    , cal.prev_day As cal_prev_day
-    , 'Other Cash' As cash_type
   From nu_gft_trp_gifttrans gft
   Cross Join cal
   Inner Join ytd_dts On trunc(ytd_dts.dt) = trunc(gft.date_of_record)
@@ -70,14 +62,6 @@ cal As (
     And fiscal_year In (cal.curr_fy, cal.prev_fy)
     And tx_gypm_ind <> 'P'
     And ytd_dts.ytd_ind = 'Y'
-    And af_flag Is Null
-)
-, cash As (
-  Select fiscal_year, legal_amount, cash_type, cal_curr_fy As curr_fy, cal_prev_fy As prev_fy, cal_prev_day As prev_day
-  From other_cash
-  Union All
-  Select fiscal_year, legal_amount, cash_type, cal_curr_fy, cal_prev_fy, cal_prev_day
-  From af_and_cru
 )
 
 -- Main query
