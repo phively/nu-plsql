@@ -27,6 +27,14 @@ committee_asia Constant committee.committee_code%type := 'KEBA'; -- Kellogg Exec
 committee_mbai Constant committee.committee_code%type := 'MBAAC'; -- MBAi Advisory Council 
 committee_yab Constant committee.committee_code%type := 'KAYAB'; -- Kellogg Young Alumni Board
 
+-- Committee dues
+
+dues_gab Constant number := 25.0E3;
+dues_amp Constant number := 10.0E3;
+dues_realestate Constant number := 7.5E3;
+dues_healthcare Constant number := 1.0E3;
+dues_kac Constant number := 2.5E3;
+
 /*************************************************************************
 Public type declarations
 *************************************************************************/
@@ -75,6 +83,10 @@ Public function declarations
 Function get_string_constant(
   const_name In varchar2 -- Quoted name of constant to retrieve
 ) Return varchar2 Deterministic;
+
+Function get_numeric_constant(
+  const_name In varchar2 -- Name of constant to retrieve
+) Return number Deterministic;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -191,10 +203,33 @@ Cursor c_committee_agg(
 Functions
 *************************************************************************/
 
+-- Retrieve one of the named constants from the package
+-- Requires a quoted constant name
 Function get_string_constant(const_name In varchar2)
   Return varchar2 Deterministic Is
   -- Declarations
   val varchar2(100);
+  var varchar2(100);
+  
+  Begin
+    -- If const_name doesn't include ksm_pkg, prepend it
+    If substr(lower(const_name), 1, length(pkg_name)) <> pkg_name
+      Then var := pkg_name || '.' || const_name;
+    Else
+      var := const_name;
+    End If;
+    -- Run command
+    Execute Immediate
+      'Begin :val := ' || var || '; End;'
+      Using Out val;
+      Return val;
+  End;
+
+-- Requires a quoted constant name
+Function get_numeric_constant(const_name In varchar2)
+  Return number Deterministic Is
+  -- Declarations
+  val number;
   var varchar2(100);
   
   Begin
