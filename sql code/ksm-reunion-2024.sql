@@ -473,18 +473,34 @@ em As (
   Where employment.primary_emp_ind = 'Y'
 ),
 
---- KSM/NU Staff Flag
+--- KSM FACULTY/STAFF FLAG 
 
 
 KSM_Faculty_Staff  as (select aff.id_number,
+       aff.affil_status_code,
        TMS_AFFIL_CODE.short_desc as affilation_code,
        tms_affiliation_level.short_desc as affilation_level
 FROM  affiliation aff
 LEFT JOIN TMS_AFFIL_CODE ON TMS_AFFIL_CODE.affil_code = aff.affil_code
 Left JOIN tms_affiliation_level ON tms_affiliation_level.affil_level_code = aff.affil_level_code
  WHERE  aff.affil_code = 'KM'
+   AND  aff.affil_status_code = 'C'
    AND (aff.affil_level_code = 'ES'
     OR  aff.affil_level_code = 'EF')),
+    
+--- ALL NU FACULTY STAFF FLAG 
+    
+NU_Faculty_Staff as (select aff.id_number,
+       aff.affil_status_code,
+       TMS_AFFIL_CODE.short_desc as affilation_code,
+       tms_affiliation_level.short_desc as affilation_level
+FROM  affiliation aff
+LEFT JOIN TMS_AFFIL_CODE ON TMS_AFFIL_CODE.affil_code = aff.affil_code
+Left JOIN tms_affiliation_level ON tms_affiliation_level.affil_level_code = aff.affil_level_code
+ WHERE  aff.affil_status_code = 'C'
+ AND (aff.affil_level_code = 'ES'
+    OR  aff.affil_level_code = 'EF')),
+
     
 ---32)  CYD gift made through DAF or Foundation (add – check with Amy on this) - 14 seconds to run 
 
@@ -704,8 +720,9 @@ SELECT DISTINCT
   ,final.JOB_TITLE
   ,final.EMPLOYER
   ,final.INDUSTRY
-  ,CASE WHEN KFS.ID_NUMBER IS NOT NULL THEN 'NU Faculty/Staff' end as NU_faculty_staff_ind
-  ,case when KFS.id_number is not null then KFS.affilation_level End as NU_Faculty_Staff_aff_IND
+  ,CASE WHEN KFS.ID_NUMBER IS NOT NULL THEN 'KSM Faculty/Staff' end as KSM_faculty_staff_ind
+  ,CASE WHEN NFS.ID_NUMBER IS NOT NULL THEN 'NU Faculty/Staff' end as NU_faculty_staff_ind
+  ,CASE WHEN NFS.ID_NUMBER IS NOT NULL THEN NFS.affilation_code end as NU_faculty_staff_school_ind
   ,final.CRU_CFY
   ,final.CRU_PFY1
   ,final.CRU_PFY2
@@ -845,6 +862,8 @@ LEFT JOIN KAC
 ON KAC.ID_NUMBER = E.ID_NUMBER
 Left Join KSM_Faculty_Staff KFS
 ON KFS.ID_NUMBER = E.ID_NUMBER
+Left Join NU_Faculty_Staff NFS
+ON NFS.ID_NUMBER = E.ID_NUMBER
 LEFT JOIN MD
 ON MD.ID_NUMBER = E.ID_NUMBER
 LEFT JOIN C 
