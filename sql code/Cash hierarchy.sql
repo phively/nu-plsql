@@ -104,9 +104,26 @@ hhf As (
     Or health Is Not Null
 )
 
+, boards_hh As (
+  Select
+    hhf.household_id
+    , sum(boards.total_dues)
+      As total_dues_hh
+    , count(boards.gab) As gab
+    , count(boards.amp) As amp
+    , count(boards.re) As re
+    , count(boards.kac) As kac
+    , count(boards.health) As health
+  From boards
+  Inner Join hhf
+    On hhf.id_number = boards.id_number
+  Group By hhf.household_id
+)
+
 , assigned As (
   Select
     vas.id_number
+    , hhf.household_id
     , vas.curr_ksm_manager
     , vas.prospect_manager_id
     , vas.prospect_manager
@@ -137,6 +154,20 @@ hhf As (
         End
         As managed_hierarchy
   From v_assignment_summary vas
+  Inner Join hhf
+    On hhf.id_number = vas.id_number
+)
+
+, assigned_hh As (
+  Select
+    household_id
+    , max(curr_ksm_manager) As curr_ksm_manager
+    , max(prospect_manager_id) As prospect_manager_id
+    , max(prospect_manager) As prospect_manager
+    , max(lgos) As lgos
+    , max(managed_hierarchy) As managed_hierarchy
+  From assigned
+  Group By household_id
 )
 
 , attr_cash As (
@@ -178,20 +209,53 @@ hhf As (
     , attr_cash.fiscal_year
 )
 
+, merge_ids As (
+  Select household_id
+  From boards_hh
+  Union
+  Select household_id
+  From assigned_hh
+)
+
+, merge_flags As (
+  Select
+    merge_ids.household_id
+    , boards_hh.gab
+    , boards_hh.amp
+    , boards_hh.re
+    , boards_hh.kac
+    , boards_hh.health
+    , boards_hh.total_dues_hh
+    , assigned_hh.curr_ksm_manager
+    , assigned_hh.prospect_manager_id
+    , assigned_hh.prospect_manager
+    , assigned_hh.lgos
+    , nvl(assigned_hh.managed_hierarchy, 'Unmanaged')
+      As managed_hierarchy
+    From merge_ids
+    Left Join boards_hh
+      On boards_hh.household_id = merge_ids.household_id
+    Left Join assigned_hh
+      On assigned_hh.household_id = merge_ids.household_id
+)
+
 Select
   gc.cash_category
   , gc.household_id
   , gc.id_number
   , gc.fiscal_year
   , gc.sum_legal_amount
-  , boards.gab
-  , boards.amp
-  , boards.re
-  , boards.kac
-  , boards.health
-  , boards.total_dues
+  , merge_flags.gab
+  , merge_flags.amp
+  , merge_flags.re
+  , merge_flags.kac
+  , merge_flags.health
+  , merge_flags.total_dues_hh
+  , merge_flags.curr_ksm_manager
+  , merge_flags.prospect_manager_id
+  , merge_flags.prospect_manager
+  , merge_flags.lgos
+  , merge_flags.managed_hierarchy
 From grouped_cash gc
-Left Join boards
-  On boards.id_number = gc.id_number
---Left Join assigned
---  On assigned.id_number = gc.id_number
+Left Join merge_flags
+  On merge_flags.household_id = gc.household_id
