@@ -1,6 +1,11 @@
 With
 
-allocs As (
+hhf As (
+  Select *
+  From v_entity_ksm_households_fast
+)
+
+, allocs As (
   Select
     allocation.allocation_code
     , allocation.short_name As alloc_name
@@ -134,33 +139,51 @@ allocs As (
   From v_assignment_summary vas
 )
 
+, attr_cash As (
+  Select
+    gt.tx_number
+    , ksm_pkg_tmp.get_gift_source_donor_ksm(gt.tx_number)
+      As id_number
+    , gt.allocation_code
+    , gt.fiscal_year
+    , gt.legal_amount
+    , Case
+        When gt.payment_type = 'Gift-in-Kind'
+          Then 'Gift In Kind'
+        Else allocs.cash_category
+        End 
+      As cash_category
+  From v_ksm_giving_trans gt
+  Inner Join allocs
+    On allocs.allocation_code = gt.allocation_code
+  Where gt.legal_amount > 0
+    And gt.tx_gypm_ind <> 'P'
+    And gt.fiscal_year = 2023
+)
+
 , grouped_cash As (
   Select
-    allocs.cash_category
-    , gth.household_id
-    , gth.id_number
-    , gth.fiscal_year
-    , sum(gth.hh_credit) As sum_hh_credit
-    , sum(gth.hh_recognition_credit) As sum_hh_recognition_credit
-  From v_ksm_giving_trans_hh gth
-  Inner Join allocs
-    On allocs.allocation_code = gth.allocation_code
-  Where gth.hh_credit > 0
-    And tx_gypm_ind <> 'P'
-    And gth.fiscal_year = 2023
+    attr_cash.cash_category
+    , hhf.household_id
+    , attr_cash.id_number
+    , attr_cash.fiscal_year
+    , sum(attr_cash.legal_amount) As sum_legal_amount
+  From attr_cash
+  Inner Join hhf
+    On hhf.id_number = attr_cash.id_number
   Group By
-    allocs.cash_category
-    , gth.household_id
-    , gth.id_number
-    , gth.fiscal_year
+    attr_cash.cash_category
+    , hhf.household_id
+    , attr_cash.id_number
+    , attr_cash.fiscal_year
 )
 
 Select
   gc.cash_category
   , gc.household_id
   , gc.id_number
-  , gc.sum_hh_credit
-  , gc.sum_hh_recognition_credit
+  , gc.fiscal_year
+  , gc.sum_legal_amount
   , boards.gab
   , boards.amp
   , boards.re
@@ -170,7 +193,5 @@ Select
 From grouped_cash gc
 Left Join boards
   On boards.id_number = gc.id_number
-Left Join assigned
-  On assigned.id_number = gc.id_number
-  
-  
+--Left Join assigned
+--  On assigned.id_number = gc.id_number
