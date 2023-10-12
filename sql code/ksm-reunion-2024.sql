@@ -383,7 +383,7 @@ GROUP BY AF.ID_NUMBER
   ,Case When P.Address_type = 'Business'  Then P.business_title Else P.business_title End business_title
   ,Case When P.ADDRESS_TYPE = 'Business' Then P.Street1 else P.Street1 End Street1
   ,Case When P.ADDRESS_TYPE = 'Business' Then P.Street2 else P.Street2 End Street2
-  ,Case When P.ADDRESS_TYPE = 'Business' Then P.Street3 else P.Street2 End Street3 
+  ,Case When P.ADDRESS_TYPE = 'Business' Then P.Street3 else P.Street3 End Street3 
   ,Case When P.ADDRESS_TYPE = 'Business' Then P.City else P.City End City  
   ,Case When P.ADDRESS_TYPE = 'Business' Then P.State_code else P.State_code End State_code
   ,Case When P.ADDRESS_TYPE = 'Business' Then P.Zipcode else P.Zipcode End Zipcode
