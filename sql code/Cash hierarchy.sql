@@ -230,8 +230,7 @@ hhf As (
     , assigned_hh.prospect_manager_id
     , assigned_hh.prospect_manager
     , assigned_hh.lgos
-    , nvl(assigned_hh.managed_hierarchy, 'Unmanaged')
-      As managed_hierarchy
+    , assigned_hh.managed_hierarchy
     From merge_ids
     Left Join boards_hh
       On boards_hh.household_id = merge_ids.household_id
@@ -255,7 +254,24 @@ Select
   , merge_flags.prospect_manager_id
   , merge_flags.prospect_manager
   , merge_flags.lgos
-  , merge_flags.managed_hierarchy
+  , nvl(merge_flags.managed_hierarchy, 'Unmanaged')
+    As managed_hierarchy
+  -- For expendable, board_amt is at least sum_legal_amount up to total_dues_hh
+  , Case
+      When cash_category = 'Expendable'
+        And total_dues_hh Is Not Null
+        Then least(gc.sum_legal_amount, merge_flags.total_dues_hh)
+      Else 0
+      End
+    As board_amt
+  -- For expendable, nonboard_amt is at most sum_legal_amount - total_dues_hh
+  , Case
+      When cash_category = 'Expendable'
+        And total_dues_hh Is Not Null
+        Then greatest(gc.sum_legal_amount - merge_flags.total_dues_hh, 0)
+      Else gc.sum_legal_amount
+      End
+    As nonboard_amt
 From grouped_cash gc
 Left Join merge_flags
   On merge_flags.household_id = gc.household_id
