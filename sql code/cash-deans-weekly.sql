@@ -41,6 +41,7 @@ cal As (
     , cal.prev_day
     , Case
       When gft.allocation_code = '3203006213301GFT' Then 'Kellogg Education Center'
+      When gft.payment_type = 3 Then 'Other Cash'
       When gft.allocation_code In (
         '3303002283701GFT' -- Kellogg Envision Campaign
         , '3303002280601GFT' -- Kellogg Building Fund
