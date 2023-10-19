@@ -123,7 +123,7 @@ and hh.TX_GYPM_IND = 'M'
  
 --- Last 4 Matching Gifts
  
-GI AS( select house.HOUSEHOLD_ID
+GI AS( select house.ID_NUMBER
      ,max(decode(RW,1,house.TRANSACTION_TYPE)) TRANSACTION_TYPE1
      ,max(decode(RW,1,house.DATE_OF_RECORD)) DATE1
      ,max(decode(RW,1,house.TX_NUMBER)) TX_NUMBER1
@@ -145,7 +145,7 @@ GI AS( select house.HOUSEHOLD_ID
      ,max(decode(RW,4,house.ALLOC_SHORT_NAME)) ALLOCATION4
      ,max(decode(RW,4,house.HH_CREDIT)) CREDIT4
  from GIVING_TRANS house
- group by HOUSE.HOUSEHOLD_ID)
+ group by HOUSE.ID_NUMBER)
 
 
 Select h.ID_NUMBER,
@@ -160,6 +160,7 @@ h.SPOUSE_SUFFIX,
 h.SPOUSE_FIRST_KSM_YEAR,
 h.SPOUSE_PROGRAM,
 h.SPOUSE_PROGRAM_GROUP,
+ROW_NUMBER() OVER(PARTITION BY H.HOUSEHOLD_ID ORDER BY H.HOUSEHOLD_ID DESC) AS spouse_exclusion, 
 h.HOUSEHOLD_PRIMARY,
 a.prospect_manager,
 a.lgos,
@@ -213,4 +214,4 @@ left join  spouse
 left join p
      on p.id_number = h.id_number
 inner join GI
-     ON H.ID_NUMBER = GI.HOUSEHOLD_ID
+     ON H.ID_NUMBER = GI.ID_NUMBER
