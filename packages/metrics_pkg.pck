@@ -149,10 +149,15 @@ Function tbl_funded_dollars(
   )
   Return t_funded_dollars Pipelined;
 
-Function tbl_asked_count
+Function tbl_asked_count(
+    ask_amt number default metrics_pkg.mg_ask_amt
+  )
   Return t_ask_assist_credit Pipelined;
 
-Function tbl_asked_count_ksm
+Function tbl_asked_count_ksm(
+    ask_amt_ksm_plg number default metrics_pkg.mg_ask_amt_ksm_plg
+    , ask_amt_ksm_outright number default metrics_pkg.mg_ask_amt_ksm_outright
+  )
   Return t_ask_assist_credit Pipelined;
 
 Function tbl_contact_reports
@@ -361,14 +366,16 @@ Cursor c_funded_dollars(
 -- Refactor goal 2 subqueries in lines 518-590
 -- 3 clones, at 602-674, 686-758, 769-841
 -- Count for asked proposal goal 2
-Cursor c_asked_count Is
+Cursor c_asked_count(
+    ask_amt_in In number
+  ) Is
   -- Must be proposal manager and above the ask credit threshold
   With
   proposals_asked_count As (
     Select *
     From table(tbl_universal_proposals_data)
     Where assignment_type = 'PA' -- Proposal Manager
-      And ask_amt >= metrics_pkg.mg_ask_amt
+      And ask_amt >= ask_amt_in
   )
   , asked_count As (
       -- 1st priority - Look across all proposal managers on a proposal (inactive OR active).
@@ -415,7 +422,10 @@ Cursor c_asked_count Is
 
 -- KSM asked count: asks must be for an outright gift >= mg_ask_amt_ksm_outright
 -- or for a pledge >= mg_ask_amt_ksm_plg
-Cursor c_asked_count_ksm Is
+Cursor c_asked_count_ksm(
+    ask_amt_ksm_plg_in In number
+    , ask_amt_ksm_outright_in In number
+  ) Is
   -- Must be proposal manager and above the ask credit threshold
   With
   proposals_asked_count As (
@@ -424,10 +434,10 @@ Cursor c_asked_count_ksm Is
     Where assignment_type = 'PA' -- Proposal Manager
       And (
         -- Any gift type above overall threshold
-        ask_amt >= metrics_pkg.mg_ask_amt_ksm_plg
+        ask_amt >= ask_amt_ksm_plg_in
         -- Outright asks above outright threshold
         Or (
-          ask_amt >= metrics_pkg.mg_ask_amt_ksm_outright
+          ask_amt >= ask_amt_ksm_outright_in
           And outright_gift_proposal = 'Y'
         )
       )
@@ -664,13 +674,17 @@ Function tbl_funded_dollars(
   End;
 
 -- Pipelined function returning proposal asked data
-Function tbl_asked_count
+Function tbl_asked_count(
+    ask_amt number default metrics_pkg.mg_ask_amt
+  )
   Return t_ask_assist_credit Pipelined As
     -- Declarations
     pd t_ask_assist_credit;
 
   Begin
-    Open c_asked_count; -- Annual Fund allocations cursor
+    Open c_asked_count(
+      ask_amt_in => ask_amt
+    ); -- Annual Fund allocations cursor
       Fetch c_asked_count Bulk Collect Into pd;
     Close c_asked_count;
     -- Pipe out the data
@@ -680,13 +694,19 @@ Function tbl_asked_count
     Return;
   End;
   
-Function tbl_asked_count_ksm
+Function tbl_asked_count_ksm(
+    ask_amt_ksm_plg number default metrics_pkg.mg_ask_amt_ksm_plg
+    , ask_amt_ksm_outright number default metrics_pkg.mg_ask_amt_ksm_outright
+  )
   Return t_ask_assist_credit Pipelined As
     -- Declarations
     pd t_ask_assist_credit;
 
   Begin
-    Open c_asked_count_ksm; -- Annual Fund allocations cursor
+    Open c_asked_count_ksm(
+      ask_amt_ksm_plg_in => ask_amt_ksm_plg
+      , ask_amt_ksm_outright_in => ask_amt_ksm_outright
+    ); -- Annual Fund allocations cursor
       Fetch c_asked_count_ksm Bulk Collect Into pd;
     Close c_asked_count_ksm;
     -- Pipe out the data
