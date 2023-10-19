@@ -158,6 +158,7 @@ s.CRU_PFY4,
 s.CRU_PFY5,
 s.af_status,
 s.af_status_fy_start,
+s.af_status_pfy1_start,
 s.FY_GIVING_FIRST_YR,
 --- Last gifts - Reccomendation from Melanie
 s.LAST_GIFT_TX_NUMBER,
@@ -190,7 +191,8 @@ max (cr.contacted_name) keep (dense_rank First Order By cr.contact_date DESC) as
 max (cr.contact_type) keep (dense_rank First Order By cr.contact_date DESC) as contact_type,
 max (cr.contact_date) keep (dense_rank First Order By cr.contact_date DESC) as contact_Date,
 max (cr.description) keep (dense_rank First Order By cr.contact_date DESC) as description_,
-max (cr.summary) keep (dense_rank First Order By cr.contact_date DESC) as summary_
+max (cr.summary) keep (dense_rank First Order By cr.contact_date DESC) as summary,
+max (cr.fiscal_year) keep (dense_rank First Order By cr.contact_date DESC) as fiscal_year
 from rpt_pbh634.v_contact_reports_fast cr
 group by cr.id_number
 ),
@@ -449,12 +451,13 @@ ON PHF.proposal_manager_id = LGO.ID_NUMBER
 INNER JOIN PROSPECT_ENTITY PE
 ON PHF.prospect_id = PE.PROSPECT_ID
   AND PE.PRIMARY_IND = 'Y'
-WHERE PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5', '7', '8') -- anticipated/submitted/approved/declined/funded
-  AND PHF.ask_date BETWEEN rpt_pbh634.ksm_pkg_tmp.to_date2('9/01/2022','MM-DD-YY')
-          AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY') OR
-      (PHF.PROPOSAL_STATUS_CODE IN ('A','C', '5', '7', '8') -- anticipated/submitted/approved/declined/funded
-  AND PHF.CLOSE_DATE BETWEEN rpt_pbh634.ksm_pkg_tmp.to_date2('9/01/2022','MM-DD-YY')
-          AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY'))
+CROSS JOIN RPT_PBH634.V_CURRENT_CALENDAR CAL
+  --- Kellogg Proposals Only + Active Proposals! 
+WHERE (PHF.ksm_proposal_ind = 'Y'
+and PHF.proposal_active_calc = 'Active'
+AND PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5')---, 'C', '5', '7', '8') -- --- Just anticipated proposals where status = 'A' - anticipated/submitted/approved/declined/funded
+  AND (PHF.ask_FY BETWEEN  CAL.CURR_FY - 1 AND CAL.CURR_FY
+          OR PHF.CLOSE_FY BETWEEN  CAL.CURR_FY - 1 AND CAL.CURR_FY))
     GROUP  BY PHF.proposal_manager_id
 )
 
@@ -468,12 +471,13 @@ ON PHF.PROPOSAL_ASSIST_ID = LGO.ID_NUMBER
 INNER JOIN PROSPECT_ENTITY PE
 ON PHF.prospect_id = PE.PROSPECT_ID
   AND PE.PRIMARY_IND = 'Y'
-WHERE (PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5', '7', '8') -- anticipated/submitted/approved/declined/funded
-  AND PHF.ask_date BETWEEN rpt_pbh634.ksm_pkg_tmp.to_date2('9/01/2022','MM-DD-YY')
-          AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY')) OR
-      (PHF.PROPOSAL_STATUS_CODE IN ('A', 'C', '5', '7', '8') -- anticipated/submitted/approved/declined/funded
-  AND PHF.CLOSE_DATE BETWEEN rpt_pbh634.ksm_pkg_tmp.to_date2('9/01/2022','MM-DD-YY')
-          AND rpt_pbh634.ksm_pkg_tmp.to_date2('8/31/2023','MM-DD-YY'))
+CROSS JOIN RPT_PBH634.V_CURRENT_CALENDAR CAL
+  --- Kellogg Proposals Only + Active Proposals! 
+WHERE (PHF.ksm_proposal_ind = 'Y'
+and PHF.proposal_active_calc = 'Active'
+AND PHF.PROPOSAL_STATUS_CODE IN ('A','C','5')---, 'C', '5', '7', '8') --- Just anticipated proposals where status = 'A' /*, 'C', '5', '7', '8')*/ -- anticipated/submitted/approved/declined/funded
+  AND (PHF.ask_FY BETWEEN  CAL.CURR_FY - 1 AND CAL.CURR_FY
+          OR PHF.CLOSE_FY BETWEEN  CAL.CURR_FY - 1 AND CAL.CURR_FY))
     GROUP  BY PHF.PROPOSAL_ASSIST_ID
 ),
 
@@ -521,7 +525,7 @@ BusinessAddress AS(
       AND a.addr_status_code IN('A','K')
 )
 
-select d.id_number,
+select distinct d.id_number,
 d.RECORD_STATUS_CODE,
 e.gender_code,
 d.REPORT_NAME,
@@ -563,7 +567,10 @@ c.credited_name,
 c.contact_type,
 c.contact_date,
 c.description_,
-c.summary_,
+c.summary,
+c.fiscal_year,
+case when c.fiscal_year = '2023' and c.contact_type = 'Visit' then '2023 Visit' end as contact_visit_23,
+case when c.fiscal_year = '2024' and c.contact_type = 'Visit' then '2024 Visit' end as contact_visit_24,
 speak.last_speak_date,
 speak.last_speak_detail,
 case when f.id_number is not null then 'Faculty_event_last_5' end as KSM_faculty_event_last5,
@@ -591,6 +598,8 @@ g.LAST_GIFT_RECOGNITION_CREDIT,
 --- af status is in giving summary 
 g.af_status,
 g.af_status_fy_start,
+--- adding af status pfy1
+g.af_status_pfy1_start,
 g.FY_GIVING_FIRST_YR,
 --- Count of visits
 ccount.VISITS,
