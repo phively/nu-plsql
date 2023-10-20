@@ -53,6 +53,28 @@ Type prospect_entity_active Is Record (
   , primary_ind prospect_entity.primary_ind%type
 );
 
+Type assignment_history Is Record (
+  prospect_id prospect.prospect_id%type
+  , id_number entity.id_number%type
+  , report_name entity.report_name%type
+  , primary_ind varchar2(1)
+  , assignment_id assignment.assignment_id%type
+  , assignment_type assignment.assignment_type%type
+  , proposal_id proposal.proposal_id%type
+  , assignment_type_desc tms_assignment_type.short_desc%type
+  , start_date assignment.start_date%type
+  , stop_date assignment.stop_date%type
+  , start_dt_calc assignment.start_date%type
+  , stop_dt_calc assignment.stop_date%type
+  , assignment_active_ind assignment.active_ind%type
+  , assignment_active_calc varchar2(8)
+  , assignment_id_number assignment.assignment_id_number%type
+  , assignment_report_name entity.report_name%type
+  , committee_code committee_header.committee_code%type
+  , committee_desc committee_header.short_desc%type
+  , description assignment.xcomment%type
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
@@ -61,6 +83,7 @@ Type t_university_strategy Is Table Of university_strategy;
 Type t_numeric_capacity Is Table Of numeric_capacity;
 Type t_modeled_score Is Table Of modeled_score;
 Type t_prospect_entity_active Is Table Of prospect_entity_active;
+Type t_assignment_history Is Table Of assignment_history;
 
 /*************************************************************************
 Public function declarations
@@ -105,9 +128,12 @@ Function tbl_numeric_capacity_ratings
 -- Return model scores
 -- Cursor accessor
 Function c_segment_extract(year In integer, month In integer, code In varchar2)
-Return t_modeled_score;
+  Return t_modeled_score;
 
 -- Pipelined functions
+Function tbl_assignment_history
+  Return t_assignment_history Pipelined;
+
 Function tbl_model_af_10k(
   model_year In integer Default seg_af_10k_yr
   , model_month In integer Default seg_af_10k_mo
@@ -273,6 +299,102 @@ End ksm_pkg_prospect;
 Create Or Replace Package Body ksm_pkg_prospect Is
 
 /*************************************************************************
+Private cursors -- data definitions
+*************************************************************************/
+
+Cursor c_assignment_history Is
+  With
+
+  -- Active prospects from prospect_entity
+  active_pe As (
+    Select
+      pre.id_number
+      , pre.prospect_id
+      , pre.primary_ind
+    From prospect_entity pre
+    Inner Join prospect p On p.prospect_id = pre.prospect_id
+    Where p.active_ind = 'Y'
+  )
+
+  Select
+      -- Display prospect depending on whether prospect_id is filled in
+      Case
+        When trim(assignment.prospect_id) Is Not Null Then assignment.prospect_id
+        When trim(active_pe.prospect_id) Is Not Null Then active_pe.prospect_id
+      End As prospect_id
+    -- Display entity depending on whether id_number is filled in
+    , Case
+        When trim(assignment.id_number) Is Not Null Then assignment.id_number
+        When prospect_entity.id_number Is Not Null Then prospect_entity.id_number
+      End As id_number
+    , Case
+        When trim(assignment.id_number) Is Not Null Then entity.report_name
+        When prospect_entity.id_number Is Not Null Then pe_entity.report_name
+      End As report_name
+    , Case
+        When trim(assignment.prospect_id) Is Not Null Then prospect_entity.primary_ind
+        When trim(active_pe.prospect_id) Is Not Null Then active_pe.primary_ind
+      End As primary_ind
+    , assignment.assignment_id
+    , assignment.assignment_type
+    , assignment.proposal_id
+    , tms_at.short_desc As assignment_type_desc
+    , trunc(assignment.start_date) As start_date
+    , trunc(assignment.stop_date) As stop_date
+    -- Calculated start date: use date_added if start_date unavailable
+    , Case
+        When assignment.start_date Is Not Null Then trunc(assignment.start_date)
+        -- For proposal managers (PA), use start date of the associated proposal
+        When assignment.start_date Is Null And assignment.assignment_type = 'PA' Then 
+          Case
+            When proposal.start_date Is Not Null Then trunc(proposal.start_date)
+            Else trunc(proposal.date_added)
+          End
+        -- Fallback
+        Else trunc(assignment.date_added)
+      End As start_dt_calc
+    -- Calculated stop date: use date_modified if stop_date unavailable
+    , Case
+        When assignment.stop_date Is Not Null Then trunc(assignment.stop_date)
+        -- For proposal managers (PA), use stop date of the associated proposal
+        When assignment.stop_date Is Null And assignment.assignment_type = 'PA' Then 
+          Case
+            When proposal.stop_date Is Not Null Then trunc(proposal.stop_date)
+            When proposal.active_ind <> 'Y' Then trunc(proposal.date_modified)
+            Else NULL
+          End
+        -- For inactive assignments with null date use date_modified
+        When assignment.active_ind <> 'Y' Then trunc(assignment.date_modified)
+        Else NULL
+      End As stop_dt_calc
+    -- Active or inactive assignment
+    , assignment.active_ind As assignment_active_ind
+    -- Active or inactive computation
+    , Case
+        When assignment.active_ind = 'Y' And proposal.active_ind = 'Y' Then 'Active'
+        When assignment.active_ind = 'Y' And proposal.active_ind = 'N' Then 'Inactive'
+        When assignment.active_ind = 'Y' And assignment.stop_date Is Null Then 'Active'
+        When assignment.active_ind = 'Y' And assignment.stop_date > cal.yesterday Then 'Active'
+        Else 'Inactive'
+      End As assignment_active_calc
+    , assignment.assignment_id_number
+    , assignee.report_name As assignment_report_name
+    , assignment.committee_code
+    , committee_header.short_desc As committee_desc
+    , assignment.xcomment As description
+  From assignment
+  Cross Join v_current_calendar cal
+  Inner Join tms_assignment_type tms_at On tms_at.assignment_type = assignment.assignment_type
+  Left Join entity On entity.id_number = assignment.id_number
+  Left Join entity assignee On assignee.id_number = assignment.assignment_id_number
+  Left Join prospect_entity On prospect_entity.prospect_id = assignment.prospect_id
+  Left Join active_pe On active_pe.id_number = assignment.id_number
+  Left Join entity pe_entity On pe_entity.id_number = prospect_entity.id_number
+  Left Join proposal On proposal.proposal_id = assignment.proposal_id
+  Left Join committee_header On committee_header.committee_code = assignment.committee_code
+  ;
+
+/*************************************************************************
 Functions
 *************************************************************************/
 
@@ -419,6 +541,22 @@ Function tbl_numeric_capacity_ratings
     Close c_numeric_capacity_ratings;
     For i in 1..(caps.count) Loop
       Pipe row(caps(i));
+    End Loop;
+    Return;
+  End;
+
+-- Pipelined function returning assignment history
+Function tbl_assignment_history
+  Return t_assignment_history Pipelined As
+  -- Declarations
+  assn t_assignment_history;
+  
+  Begin
+    Open c_assignment_history;
+      Fetch c_assignment_history Bulk Collect Into assn;
+    Close c_assignment_history;
+    For i in 1..(assn.count) Loop
+      Pipe row(assn(i));
     End Loop;
     Return;
   End;
