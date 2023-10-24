@@ -57,7 +57,10 @@ params As (
   Select
     proposal_id
     , assignment_id_number
+    , entity.report_name As assignment_report_name
   From table(rpt_pbh634.metrics_pkg.tbl_funded_count(ask_amt => 0.01, funded_count => 0.01))
+  Inner Join entity
+    On entity.id_number = assignment_id_number
 )
 
 , historical_mgrs As (
@@ -161,6 +164,7 @@ params As (
 Select
   attr_cash.*
   , fpc.assignment_id_number As proposal_mgr
+  , fpc.assignment_report_name As proposal_mgr_name
   , pm.assignment_id_number As assigned_pm
   , pm.assignment_report_name As pm_name
   , pm.start_dt_calc As pm_start_dt
