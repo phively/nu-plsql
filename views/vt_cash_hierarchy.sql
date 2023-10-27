@@ -116,7 +116,7 @@ hhf As (
   From rpt_pbh634.mv_past_ksm_gos
 )
 
-, pre_cash As (
+, cash_credit As (
   Select
     v_ksm_giving_cash.*
     , Case
@@ -134,76 +134,80 @@ hhf As (
   From v_ksm_giving_cash
 )
 
-, attr_cash As (
-  Select
-    pre_cash.*
-    , Case
-        -- Unmanaged
-        When primary_credited_mgr Is Null
-          Or primary_credited_mgr = '0000722156' -- Pending Assignment
-          Then 'Unmanaged'
-        -- Active KSM MGOs
-        When primary_credited_mgr In (
-            Select id_number
-            From ksm_mgrs
-            Where team = 'MG'
-              And pre_cash.date_of_record
-              Between start_dt And nvl(stop_dt, to_date('99990101', 'yyyymmdd'))
-          )
-          Then 'MGO'
-        -- Any KSM LGO
-        When primary_credited_mgr In (
-            Select id_number
-            From ksm_mgrs
-            Where team = 'AF'
-              And pre_cash.date_of_record
-              Between start_dt And nvl(stop_dt, to_date('99990101', 'yyyymmdd'))
-          )
-          Then 'LGO'
-        -- Any other KSM staff
-        When primary_credited_mgr In (
-            Select id_number
-            From ksm_mgrs
-            Where team Not In ('AF', 'MG')
-              And pre_cash.date_of_record
-              Between start_dt And nvl(stop_dt, to_date('99990101', 'yyyymmdd'))
-          )
-          Then 'KSM'
-        -- Active in staff table = NU
-        When primary_credited_mgr In (
-            Select id_number
-            From staff
-            Where active_ind = 'Y'
-              And office_code <> 'KM'
-          )
-          Then 'NU'
-        -- Other past KSM staff = (team)
-        When primary_credited_mgr In (
-            Select id_number
-            From ksm_mgrs
-            Where team = 'MG'
-          )
-          Then 'pMGO'
-        When primary_credited_mgr In (
-            Select id_number
-            From ksm_mgrs
-            Where team = 'AF'
-          )
-          Then 'pLGO'
-        When primary_credited_mgr In (
-            Select id_number
-            From ksm_mgrs
-            Where team Not In ('AF', 'MG')
-          )
-          Then 'pKSM'
-        -- Fallback = NU
-        Else 'NU'
-        End
-      As managed_hierarchy
-  From pre_cash
-)
+Select
+  cash_credit.*
+  , Case
+      -- Unmanaged
+      When primary_credited_mgr Is Null
+        Or primary_credited_mgr = '0000722156' -- Pending Assignment
+        Then 'Unmanaged'
+      -- Active KSM MGOs
+      When primary_credited_mgr In (
+          Select id_number
+          From ksm_mgrs
+          Where team = 'MG'
+            And cash_credit.date_of_record
+            Between start_dt And nvl(stop_dt, to_date('99990101', 'yyyymmdd'))
+        )
+        Then 'MGO'
+      -- Any KSM LGO
+      When primary_credited_mgr In (
+          Select id_number
+          From ksm_mgrs
+          Where team = 'AF'
+            And cash_credit.date_of_record
+            Between start_dt And nvl(stop_dt, to_date('99990101', 'yyyymmdd'))
+        )
+        Then 'LGO'
+      -- Any other KSM staff
+      When primary_credited_mgr In (
+          Select id_number
+          From ksm_mgrs
+          Where team Not In ('AF', 'MG')
+            And cash_credit.date_of_record
+            Between start_dt And nvl(stop_dt, to_date('99990101', 'yyyymmdd'))
+        )
+        Then 'KSM'
+      -- Active in staff table = NU
+      When primary_credited_mgr In (
+          Select id_number
+          From staff
+          Where active_ind = 'Y'
+            And office_code <> 'KM'
+        )
+        Then 'NU'
+      -- Other past KSM staff = (team)
+      When primary_credited_mgr In (
+          Select id_number
+          From ksm_mgrs
+          Where team = 'MG'
+        )
+        Then 'Unmanaged-MGO'
+      When primary_credited_mgr In (
+          Select id_number
+          From ksm_mgrs
+          Where team = 'AF'
+        )
+        Then 'Unmanaged-LGO'
+      When primary_credited_mgr In (
+          Select id_number
+          From ksm_mgrs
+          Where team Not In ('AF', 'MG')
+        )
+        Then 'Unmanaged-KSM'
+      When primary_credited_mgr In (
+          Select id_number
+          From staff
+          Where active_ind = 'N'
+        )
+        Then 'Unmanaged-NU'
+      -- Fallback = NULL
+      Else NULL
+      End
+    As managed_hierarchy
+From cash_credit
+;
 
-SELECT * FROM ATTR_CASH
 /*, grouped_cash As (
   Select
     attr_cash.cash_category
