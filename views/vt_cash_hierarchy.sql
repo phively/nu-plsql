@@ -13,13 +13,19 @@ hhf As (
 , board_ids As (
   Select id_number From table(ksm_pkg_tmp.tbl_committee_gab)
   Union
+  Select id_number From table(ksm_pkg_tmp.tbl_committee_asia)
+  Union
   Select id_number From table(ksm_pkg_tmp.tbl_committee_amp)
   Union
   Select id_number From table(ksm_pkg_tmp.tbl_committee_realEstCouncil)
   Union
+  Select id_number From table(ksm_pkg_tmp.tbl_committee_healthcare)
+  Union
+  Select id_number From table(ksm_pkg_tmp.tbl_committee_privateEquity)
+  Union
   Select id_number From table(ksm_pkg_tmp.tbl_committee_kac)
   Union
-  Select id_number From table(ksm_pkg_tmp.tbl_committee_healthcare)
+  Select id_number From table(ksm_pkg_tmp.tbl_committee_womensLeadership)
 )
 
 , entity_boards As (
@@ -28,45 +34,63 @@ hhf As (
   , entity.report_name
   , entity.institutional_suffix
   , Case When gab.id_number Is Not Null Then 'Y' End As gab
+  , Case When ebfa.id_number Is Not Null Then 'Y' End As ebfa
   , Case When amp.id_number Is Not Null Then 'Y' End As amp
   , Case When re.id_number Is Not Null Then 'Y' End As re
-  , Case When kac.id_number Is Not Null Then 'Y' End As kac
   , Case When health.id_number Is Not Null Then 'Y' End As health
+  , Case When peac.id_number Is Not Null Then 'Y' End As peac
+  , Case When kac.id_number Is Not Null Then 'Y' End As kac
+  , Case When kwlc.id_number Is Not Null Then 'Y' End As kwlc
   From board_ids
   Inner Join entity
     On entity.id_number = board_ids.id_number
   Left Join table(ksm_pkg_tmp.tbl_committee_gab) gab
     On gab.id_number = entity.id_number
+  Left Join table(ksm_pkg_tmp.tbl_committee_asia) ebfa
+    On ebfa.id_number = entity.id_number
   Left Join table(ksm_pkg_tmp.tbl_committee_amp) amp
     On amp.id_number = entity.id_number
   Left Join table(ksm_pkg_tmp.tbl_committee_realEstCouncil) re
     On re.id_number = entity.id_number
-  Left Join table(ksm_pkg_tmp.tbl_committee_kac) kac
-    On kac.id_number = entity.id_number
   Left Join table(ksm_pkg_tmp.tbl_committee_healthcare) health
     On health.id_number = entity.id_number
+  Left Join table(ksm_pkg_tmp.tbl_committee_privateEquity) peac
+    On peac.id_number = entity.id_number
+  Left Join table(ksm_pkg_tmp.tbl_committee_kac) kac
+    On kac.id_number = entity.id_number
+  Left Join table(ksm_pkg_tmp.tbl_committee_womensLeadership) kwlc
+    On kwlc.id_number = entity.id_number
 )
 
 , boards As (
   Select
     id_number
     , gab
+    , ebfa
     , amp
     , re
-    , kac
     , health
+    , peac
+    , kac
+    , kwlc
     , Case When gab Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_gab') Else 0 End
+      + Case When ebfa Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_ebfa') Else 0 End
       + Case When amp Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_amp') Else 0 End
       + Case When re Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_realestate') Else 0 End
-      + Case When kac Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_kac') Else 0 End
       + Case When health Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_healthcare') Else 0 End
+      + Case When peac Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_privateequity') Else 0 End
+      + Case When kac Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_kac') Else 0 End
+      + Case When kwlc Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_womensleadership') Else 0 End
       As total_dues
   From entity_boards
   Where gab Is Not Null
+    Or ebfa Is Not Null
     Or amp Is Not Null
     Or re Is Not Null
-    Or kac Is Not Null
     Or health Is Not Null
+    Or peac Is Not Null
+    Or kac Is Not Null
+    Or kwlc Is Not Null
 )
 
 , boards_hh As (
@@ -75,10 +99,13 @@ hhf As (
     , sum(boards.total_dues)
       As total_dues_hh
     , count(boards.gab) As gab
+    , count(boards.ebfa) As ebfa
     , count(boards.amp) As amp
     , count(boards.re) As re
-    , count(boards.kac) As kac
     , count(boards.health) As health
+    , count(boards.peac) As peac
+    , count(boards.kac) As kac
+    , count(boards.kwlc) As kwlc
   From boards
   Inner Join hhf
     On hhf.id_number = boards.id_number
