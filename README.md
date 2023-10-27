@@ -19,6 +19,7 @@ Contains SQL and PL/SQL code for various Kellogg data definitions and best pract
 
  * [v_alloc_curr_use](https://github.com/phively/nu-plsql/blob/master/views/ksm_utility_views.sql) = KSM current use allocation definition
  * [v_ksm_giving_summary](https://github.com/phively/nu-plsql/blob/master/views/ksm_giving_trans_views.sql) = householded giving totals, including KSM lifetime, yearly ngc, yearly cash, yearly af and klc totals and categories, etc.
+ * [v_ksm_giving_cash](https://github.com/phively/nu-plsql/blob/master/views/v_ksm_giving_cash.sql) = cash transactions view for reconciliation with Finance; they count most funds with cash_category = Expendable or Hub Campaign Cash
  * [v_ksm_giving_trans_hh](https://github.com/phively/nu-plsql/blob/master/views/ksm_giving_trans_views.sql) = householded KSM giving transactions
  * [v_ksm_giving_campaign](https://github.com/phively/nu-plsql/blob/master/views/ksm_giving_trans_views.sql) = householded KSM campaign giving totals, stewardship totals, and broken out by year
  * [v_ksm_giving_campaign_trans_hh](https://github.com/phively/nu-plsql/blob/master/views/ksm_giving_trans_views.sql) = householded KSM campaign giving transactions
