@@ -14,43 +14,8 @@ params As (
 )
 
 , allocs As (
-  Select
-    allocation.allocation_code
-    , allocation.short_name As alloc_name
-    , allocation.status_code
-    , allocation.alloc_school
-    , Case
-        -- Inactive
-        When allocation.status_code <> 'A'
-          Then 'Inactive'
-        -- Kellogg Education Center
-        When allocation.allocation_code = '3203006213301GFT'
-          Then 'KEC'
-        -- Global Hub
-        When allocation.allocation_code In ('3303002280601GFT', '3303002283701GFT', '3203004284701GFT')
-          Then 'Hub Campaign Cash'
-        -- Gift In Kind
-        When allocation.allocation_code = '3303001899301GFT'
-          Then 'Gift In Kind'
-        -- All endowed
-        When allocation.agency = 'END'
-          Then 'Endowed'
-        -- All current use
-        When cru.allocation_code Is Not Null
-          Then 'Expendable'
-        -- Grant chartstring
-        When allocation.account Like '6%'
-          Then 'Grants'
-        --  Fallback - to reconcile
-        Else 'Other/TBD'
-      End
-      As cash_category
-  From allocation
-  Left Join v_alloc_curr_use cru
-    On cru.allocation_code = allocation.allocation_code
-  Where
-    -- KSM allocations
-    alloc_school = 'KM'
+  Select *
+  From table(rpt_pbh634.ksm_pkg_allocation_tst.tbl_cash_alloc_groups)
 )
 
 , funded_proposal_credit As (
@@ -162,7 +127,19 @@ params As (
 )
 
 Select
-  attr_cash.*
+  attr_cash.tx_number
+  , attr_cash.id_number
+  , entity.report_name As primary_donor_report_name
+  , attr_cash.allocation_code
+  , attr_cash.alloc_short_name
+  , attr_cash.tx_gypm_ind
+  , attr_cash.transaction_type
+  , attr_cash.fiscal_year
+  , attr_cash.date_of_record
+  , attr_cash.legal_amount
+  , attr_cash.cash_category
+  , attr_cash.pledge_number
+  , attr_cash.proposal_id
   , fpc.assignment_id_number As proposal_mgr
   , fpc.assignment_report_name As proposal_mgr_name
   , pm.assignment_id_number As assigned_pm
@@ -172,6 +149,8 @@ Select
   , lgo.assignment_report_name As lgo_name
   , lgo.start_dt_calc As lgo_start_dt
 From attr_cash
+Inner Join entity
+  On entity.id_number = attr_cash.id_number
 Left Join funded_proposal_credit fpc
   On fpc.proposal_id = attr_cash.proposal_id
 Left Join ranked_historical_mgrs pm
