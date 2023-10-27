@@ -32,6 +32,14 @@ Type thresh_alloc Is Record (
     , max_gift nu_gft_trp_gifttrans.legal_amount%type
 );
 
+Type t_cash_alloc Is Record (
+  allocation_code allocation.allocation_code%type
+  , alloc_name allocation.short_name%type
+  , status_code allocation.status_code%type
+  , alloc_school allocation.alloc_school%type
+  , cash_category varchar2(64)
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
@@ -39,6 +47,7 @@ Public table declarations
 Type t_alloc_list Is Table Of alloc_list;
 Type t_alloc_info Is Table Of alloc_info;
 Type t_thresh_allocs Is Table Of thresh_alloc;
+Type t_cash_alloc_groups Is Table Of t_cash_alloc;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -53,6 +62,9 @@ Function tbl_alloc_curr_use_ksm
 
 Function tbl_threshold_allocs
   Return t_thresh_allocs Pipelined;
+  
+Function tbl_cash_alloc_groups
+  Return t_cash_alloc_groups Pipelined;
 
 /*************************************************************************
 Public cursors -- data definitions
@@ -255,6 +267,47 @@ Cursor c_thresh_allocs Is
   )
   ;
 
+-- Definition of KSM cash allocation categories for reconciliation with Finance counting rules
+Cursor c_cash_alloc_groups Is
+    Select
+    allocation.allocation_code
+    , allocation.short_name As alloc_name
+    , allocation.status_code
+    , allocation.alloc_school
+    , Case
+        -- Inactive
+        When allocation.status_code <> 'A'
+          Then 'Inactive'
+        -- Kellogg Education Center
+        When allocation.allocation_code = '3203006213301GFT'
+          Then 'KEC'
+        -- Global Hub
+        When allocation.allocation_code In ('3303002280601GFT', '3303002283701GFT', '3203004284701GFT')
+          Then 'Hub Campaign Cash'
+        -- Gift In Kind
+        When allocation.allocation_code = '3303001899301GFT'
+          Then 'Gift In Kind'
+        -- All endowed
+        When allocation.agency = 'END'
+          Then 'Endowed'
+        -- All current use
+        When cru.allocation_code Is Not Null
+          Then 'Expendable'
+        -- Grant chartstring
+        When allocation.account Like '6%'
+          Then 'Grants'
+        --  Fallback - to reconcile
+        Else 'Other/TBD'
+      End
+      As cash_category
+  From allocation
+  Left Join v_alloc_curr_use cru
+    On cru.allocation_code = allocation.allocation_code
+  Where
+    -- KSM allocations
+    alloc_school = 'KM'
+  ;
+
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
@@ -303,6 +356,23 @@ Function tbl_threshold_allocs
     Open c_thresh_allocs; -- Annual Fund allocations cursor
       Fetch c_thresh_allocs Bulk Collect Into allocs;
     Close c_thresh_allocs;
+    -- Pipe out the allocations
+    For i in 1..(allocs.count) Loop
+      Pipe row(allocs(i));
+    End Loop;
+    Return;
+  End;
+
+-- Returns a pipelined table
+Function tbl_cash_alloc_groups
+  Return t_cash_alloc_groups Pipelined As
+    -- Declarations
+    allocs t_cash_alloc_groups;
+
+  Begin
+    Open c_cash_alloc_groups; -- Annual Fund allocations cursor
+      Fetch c_cash_alloc_groups Bulk Collect Into allocs;
+    Close c_cash_alloc_groups;
     -- Pipe out the allocations
     For i in 1..(allocs.count) Loop
       Pipe row(allocs(i));
