@@ -126,40 +126,142 @@ params As (
   From historical_lgos
 )
 
+, cash_plus_mgrs As (
+  Select
+    attr_cash.tx_number
+    , attr_cash.id_number
+    , entity.report_name As primary_donor_report_name
+    , attr_cash.allocation_code
+    , attr_cash.alloc_short_name
+    , attr_cash.tx_gypm_ind
+    , attr_cash.transaction_type
+    , attr_cash.fiscal_year
+    , attr_cash.date_of_record
+    , attr_cash.legal_amount
+    , attr_cash.cash_category
+    , attr_cash.pledge_number
+    , attr_cash.proposal_id
+    , fpc.assignment_id_number As proposal_mgr
+    , fpc.assignment_report_name As proposal_mgr_name
+    , pm.assignment_id_number As assigned_pm
+    , pm.assignment_report_name As pm_name
+    , pm.start_dt_calc As pm_start_dt
+    , lgo.assignment_id_number As assigned_lgo
+    , lgo.assignment_report_name As lgo_name
+    , lgo.start_dt_calc As lgo_start_dt
+  From attr_cash
+  Inner Join entity
+    On entity.id_number = attr_cash.id_number
+  Left Join funded_proposal_credit fpc
+    On fpc.proposal_id = attr_cash.proposal_id
+  Left Join ranked_historical_mgrs pm
+    On pm.id_number = attr_cash.id_number
+    And pm.tx_number = attr_cash.tx_number
+    And pm.assign_rank = 1
+    And pm.assignment_type = 'PM'
+  Left Join ranked_historical_mgrs lgo
+    On lgo.id_number = attr_cash.id_number
+    And lgo.tx_number = attr_cash.tx_number
+    And lgo.assign_rank = 1
+    And lgo.assignment_type = 'LG'
+)
+
+, cash_credit As (
+  Select
+    cash_plus_mgrs.*
+    , Case
+        When proposal_mgr Is Not Null Then proposal_mgr
+        When assigned_pm Is Not Null Then assigned_pm
+        When assigned_lgo Is Not Null Then assigned_lgo
+        End
+      As primary_credited_mgr
+    , Case
+        When proposal_mgr Is Not Null Then proposal_mgr_name
+        When assigned_pm Is Not Null Then pm_name
+        When assigned_lgo Is Not Null Then lgo_name
+        End
+      As primary_credited_mgr_name
+  From cash_plus_mgrs
+)
+
+, ksm_mgrs As (
+  Select
+    id_number
+    , team
+    , start_dt
+    , stop_dt
+  From rpt_pbh634.mv_past_ksm_gos
+)
+
 Select
-  attr_cash.tx_number
-  , attr_cash.id_number
-  , entity.report_name As primary_donor_report_name
-  , attr_cash.allocation_code
-  , attr_cash.alloc_short_name
-  , attr_cash.tx_gypm_ind
-  , attr_cash.transaction_type
-  , attr_cash.fiscal_year
-  , attr_cash.date_of_record
-  , attr_cash.legal_amount
-  , attr_cash.cash_category
-  , attr_cash.pledge_number
-  , attr_cash.proposal_id
-  , fpc.assignment_id_number As proposal_mgr
-  , fpc.assignment_report_name As proposal_mgr_name
-  , pm.assignment_id_number As assigned_pm
-  , pm.assignment_report_name As pm_name
-  , pm.start_dt_calc As pm_start_dt
-  , lgo.assignment_id_number As assigned_lgo
-  , lgo.assignment_report_name As lgo_name
-  , lgo.start_dt_calc As lgo_start_dt
-From attr_cash
-Inner Join entity
-  On entity.id_number = attr_cash.id_number
-Left Join funded_proposal_credit fpc
-  On fpc.proposal_id = attr_cash.proposal_id
-Left Join ranked_historical_mgrs pm
-  On pm.id_number = attr_cash.id_number
-  And pm.tx_number = attr_cash.tx_number
-  And pm.assign_rank = 1
-  And pm.assignment_type = 'PM'
-Left Join ranked_historical_mgrs lgo
-  On lgo.id_number = attr_cash.id_number
-  And lgo.tx_number = attr_cash.tx_number
-  And lgo.assign_rank = 1
-  And lgo.assignment_type = 'LG'
+  cash_credit.*
+  , Case
+      -- Unmanaged
+      When primary_credited_mgr Is Null
+        Or primary_credited_mgr = '0000722156' -- Pending Assignment
+        Then 'Unmanaged'
+      -- Active KSM MGOs
+      When primary_credited_mgr In (
+          Select id_number
+          From ksm_mgrs
+          Where team = 'MG'
+            And cash_credit.date_of_record
+            Between start_dt And nvl(stop_dt, to_date('99990101', 'yyyymmdd'))
+        )
+        Then 'MGO'
+      -- Any KSM LGO
+      When primary_credited_mgr In (
+          Select id_number
+          From ksm_mgrs
+          Where team = 'AF'
+            And cash_credit.date_of_record
+            Between start_dt And nvl(stop_dt, to_date('99990101', 'yyyymmdd'))
+        )
+        Then 'LGO'
+      -- Any other KSM staff
+      When primary_credited_mgr In (
+          Select id_number
+          From ksm_mgrs
+          Where team Not In ('AF', 'MG')
+            And cash_credit.date_of_record
+            Between start_dt And nvl(stop_dt, to_date('99990101', 'yyyymmdd'))
+        )
+        Then 'KSM'
+      -- Active in staff table = NU
+      When primary_credited_mgr In (
+          Select id_number
+          From staff
+          Where active_ind = 'Y'
+            And office_code <> 'KM'
+        )
+        Then 'NU'
+      -- Other past KSM staff = (team)
+      When primary_credited_mgr In (
+          Select id_number
+          From ksm_mgrs
+          Where team = 'MG'
+        )
+        Then 'Unmanaged-MGO'
+      When primary_credited_mgr In (
+          Select id_number
+          From ksm_mgrs
+          Where team = 'AF'
+        )
+        Then 'Unmanaged-LGO'
+      When primary_credited_mgr In (
+          Select id_number
+          From ksm_mgrs
+          Where team Not In ('AF', 'MG')
+        )
+        Then 'Unmanaged-KSM'
+      When primary_credited_mgr In (
+          Select id_number
+          From staff
+          Where active_ind = 'N'
+        )
+        Then 'Unmanaged-NU'
+      -- Fallback = NULL
+      Else NULL
+      End
+    As managed_hierarchy
+From cash_credit
