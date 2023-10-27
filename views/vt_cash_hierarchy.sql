@@ -108,38 +108,41 @@ hhf As (
 )
 
 , attr_cash As (
-  Select *
-  From rpt_pbh634.v_ksm_giving_cash
+  Select
+    kgc.*
+    , Case
+        When substr(managed_hierarchy, 1, 9) = 'Unmanaged'
+          Then 'Unmanaged'
+        Else managed_hierarchy
+        End
+      As managed_grp
+  From rpt_pbh634.v_ksm_giving_cash kgc
 )
 
-SELECT *
-FROM BOARDS_HH
-
-/*, grouped_cash As (
+, grouped_cash As (
   Select
     attr_cash.cash_category
     , hhf.household_id
-    , attr_cash.id_number
     , attr_cash.fiscal_year
-    , sum(attr_cash.legal_amount) As sum_legal_amount
+    , attr_cash.managed_grp
+    , sum(attr_cash.legal_amount)
+      As sum_legal_amount
+    , count(household_id) Over(Partition By cash_category, household_id, fiscal_year)
+      As n_managed_in_group
   From attr_cash
   Inner Join hhf
     On hhf.id_number = attr_cash.id_number
   Group By
     attr_cash.cash_category
     , hhf.household_id
-    , attr_cash.id_number
     , attr_cash.fiscal_year
+    , attr_cash.managed_grp
 )
 
-, merge_ids As (
-  Select household_id
-  From boards_hh
-  Union
-  Select household_id
-  From assigned_hh
-)
+SELECT *
+FROM GROUPED_CASH
 
+/*
 , merge_flags As (
   Select
     merge_ids.household_id
