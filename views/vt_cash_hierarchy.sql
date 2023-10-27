@@ -5,11 +5,6 @@ hhf As (
   From v_entity_ksm_households_fast
 )
 
-, allocs As (
-  Select *
-  From table(rpt_pbh634.ksm_pkg_allocation.tbl_cash_alloc_groups)
-)
-
 , board_ids As (
   Select id_number From table(ksm_pkg_tmp.tbl_committee_gab)
   Union
@@ -116,95 +111,100 @@ hhf As (
   Select
     id_number
     , team
-  From table(ksm_pkg_tmp.tbl_frontline_ksm_staff)
-  Where former_staff Is Null
+    , start_dt
+    , stop_dt
+  From rpt_pbh634.mv_past_ksm_gos
 )
 
-, ksm_lgos As (
-  Select id_number
-  From ksm_mgrs
-  Where team = 'AF'
-)
-
-, ksm_mgos As (
-  Select id_number
-  From ksm_mgrs
-  Where team = 'MG'
-)
-
-, assigned As (
+, pre_cash As (
   Select
-    vas.id_number
-    , hhf.household_id
-    , vas.curr_ksm_manager
-    , vas.prospect_manager_id
-    , vas.prospect_manager
-    , vas.lgos
+    v_ksm_giving_cash.*
     , Case
-        When vas.curr_ksm_manager Is Null
-          And vas.prospect_manager_id Is Not Null
-            Then 'NU'
-        When vas.curr_ksm_manager Is Not Null
-          Then
-          Case 
-            -- Active MGOs
-            When vas.prospect_manager_id In (Select id_number From ksm_mgos)
-              Then 'MGO'
-            -- Any LGO
-            When vas.lgos Is Not Null
-              Then 'LGO'
-            When vas.prospect_manager_id In (Select id_number From ksm_lgos)
-              Then 'LGO'
-            -- Any other KSM staff
-            When vas.prospect_manager_id In (Select id_number From ksm_mgrs)
-              Then 'Unmanaged'
-            Else 'NU'
-            End
-        When vas.prospect_manager Is Null
-          And vas.lgos Is Null
-          Then 'Unmanaged'
+        When proposal_mgr Is Not Null Then proposal_mgr
+        When assigned_pm Is Not Null Then assigned_pm
+        When assigned_lgo Is Not Null Then assigned_lgo
         End
-        As managed_hierarchy
-  From v_assignment_summary vas
-  Inner Join hhf
-    On hhf.id_number = vas.id_number
-)
-
-, assigned_hh As (
-  Select
-    household_id
-    , max(curr_ksm_manager) As curr_ksm_manager
-    , max(prospect_manager_id) As prospect_manager_id
-    , max(prospect_manager) As prospect_manager
-    , max(lgos) As lgos
-    , max(managed_hierarchy) As managed_hierarchy
-  From assigned
-  Group By household_id
+      As primary_credited_mgr
+    , Case
+        When proposal_mgr Is Not Null Then proposal_mgr_name
+        When assigned_pm Is Not Null Then pm_name
+        When assigned_lgo Is Not Null Then lgo_name
+        End
+      As primary_credited_mgr_name
+  From v_ksm_giving_cash
 )
 
 , attr_cash As (
   Select
-    gt.tx_number
-    , ksm_pkg_tmp.get_gift_source_donor_ksm(gt.tx_number)
-      As id_number
-    , gt.allocation_code
-    , gt.fiscal_year
-    , gt.legal_amount
+    pre_cash.*
     , Case
-        When gt.payment_type = 'Gift-in-Kind'
-          Then 'Gift In Kind'
-        Else allocs.cash_category
-        End 
-      As cash_category
-  From v_ksm_giving_trans gt
-  Inner Join allocs
-    On allocs.allocation_code = gt.allocation_code
-  Where gt.legal_amount > 0
-    And gt.tx_gypm_ind <> 'P'
-    And gt.fiscal_year = 2023
+        -- Unmanaged
+        When primary_credited_mgr Is Null
+          Or primary_credited_mgr = '0000722156' -- Pending Assignment
+          Then 'Unmanaged'
+        -- Active KSM MGOs
+        When primary_credited_mgr In (
+            Select id_number
+            From ksm_mgrs
+            Where team = 'MG'
+              And pre_cash.date_of_record
+              Between start_dt And nvl(stop_dt, to_date('99990101', 'yyyymmdd'))
+          )
+          Then 'MGO'
+        -- Any KSM LGO
+        When primary_credited_mgr In (
+            Select id_number
+            From ksm_mgrs
+            Where team = 'AF'
+              And pre_cash.date_of_record
+              Between start_dt And nvl(stop_dt, to_date('99990101', 'yyyymmdd'))
+          )
+          Then 'LGO'
+        -- Any other KSM staff
+        When primary_credited_mgr In (
+            Select id_number
+            From ksm_mgrs
+            Where team Not In ('AF', 'MG')
+              And pre_cash.date_of_record
+              Between start_dt And nvl(stop_dt, to_date('99990101', 'yyyymmdd'))
+          )
+          Then 'KSM'
+        -- Active in staff table = NU
+        When primary_credited_mgr In (
+            Select id_number
+            From staff
+            Where active_ind = 'Y'
+              And office_code <> 'KM'
+          )
+          Then 'NU'
+        -- Other past KSM staff = (team)
+        When primary_credited_mgr In (
+            Select id_number
+            From ksm_mgrs
+            Where team = 'MG'
+          )
+          Then 'pMGO'
+        When primary_credited_mgr In (
+            Select id_number
+            From ksm_mgrs
+            Where team = 'AF'
+          )
+          Then 'pLGO'
+        When primary_credited_mgr In (
+            Select id_number
+            From ksm_mgrs
+            Where team Not In ('AF', 'MG')
+          )
+          Then 'pKSM'
+        -- Fallback = NU
+        Else 'NU'
+        End
+      As managed_hierarchy
+  From pre_cash
 )
 
-, grouped_cash As (
+SELECT * FROM ATTR_CASH
+/*, grouped_cash As (
   Select
     attr_cash.cash_category
     , hhf.household_id
@@ -320,3 +320,4 @@ Select
 From prefinal_data
 Where nonboard_amt > 0
 )
+*/
