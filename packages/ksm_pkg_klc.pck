@@ -11,6 +11,9 @@ pkg_name constant varchar2(64) := 'ksm_pkg_klc';
 type klc_members is Record (
   id_number entity.id_number%type
   ,segment varchar2(64)
+  ,KLC_lev_pfy varchar2(64)
+  ,KLC_lev_cfy varchar2(64)
+  ,fiscal_yr number
 );
 
 /*************************************************************************
@@ -187,9 +190,34 @@ SELECT DISTINCT
          when (KD."YR" between  MD.PFY-5 AND MD.PFY) AND 
              nvl(KGFR.tot_kgifts_pfy,0) >= 1000 THEN 'Recent Grad KLC Member'
          WHEN (KD."YR" between MD.CFY-5 AND MD.CFY) AND
-             nvl(KGFR.tot_kgifts_cfy,0) >= 1000 THEN 'Recent Grad KLC Member'
+             nvl(KGFR.tot_kgifts_cfy,0)+nvl(PCFY.payaf,0) >= 1000 THEN 'Recent Grad KLC Member'
          WHEN E.ID_NUMBER = GC.GIFT_CLUB_ID_NUMBER THEN 'Manual Add KLC Member'
             end segment 
+  ,case when nvl(KGFR.tot_kgifts_pfy,0) = 0 then ' ' 
+            when KGFR.tot_kgifts_pfy >= 1000  and KGFR.tot_kgifts_pfy < 2500  
+                and (KD."YR" between MD.PFY-5 and MD.PFY) then ' $1,000-$2,499'
+            when KGFR.tot_kgifts_pfy >= 2500  and KGFR.tot_kgifts_pfy < 5000   then ' $2,500-$4,999'
+            when KGFR.tot_kgifts_pfy >= 5000  and KGFR.tot_kgifts_pfy < 10000  then ' $5,000-$9,999'
+            when KGFR.tot_kgifts_pfy >= 10000 and KGFR.tot_kgifts_pfy < 25000  then '$10,000-$24,999'
+            when KGFR.tot_kgifts_pfy >= 25000 and KGFR.tot_kgifts_pfy < 50000  then '$25,000-$49,999'
+            WHEN KGFR.TOT_KGIFTS_PFY >= 50000 AND KGFR.TOT_KGIFTS_PFY < 100000 THEN '$50,000-$99,999'
+            when KGFR.tot_kgifts_pfy >= 100000                                 then '$100,000+' 
+            else ' ' end        KLC_lev_pfy
+   ,case when nvl(KGFR.tot_kgifts_cfy,0)+nvl(PCFY.payaf,0)  = 0 then ' ' 
+            when nvl(KGFR.tot_kgifts_cfy,0)+nvl(PCFY.payaf,0)  >= 1000  and nvl(KGFR.tot_kgifts_cfy,0)+nvl(PCFY.payaf,0)  < 2500   
+                and (KD."YR" between MD.CFY-5 and MD.CFY) then ' $1,000-$2,499'
+            when nvl(KGFR.tot_kgifts_cfy,0)+nvl(PCFY.payaf,0)  >= 2500  and nvl(KGFR.tot_kgifts_cfy,0)+nvl(PCFY.payaf,0)  < 5000  
+                                                                               then ' $2,500-$4,999'
+            when nvl(KGFR.tot_kgifts_cfy,0)+nvl(PCFY.payaf,0)  >= 5000  and nvl(KGFR.tot_kgifts_cfy,0)+nvl(PCFY.payaf,0)  < 10000 
+                                                                               then ' $5,000-$9,999'
+            when nvl(KGFR.tot_kgifts_cfy,0)+nvl(PCFY.payaf,0)  >= 10000 and nvl(KGFR.tot_kgifts_cfy,0)+nvl(PCFY.payaf,0)  < 25000  
+                                                                               then '$10,000-$24,999'
+            when nvl(KGFR.tot_kgifts_cfy,0)+nvl(PCFY.payaf,0)  >= 25000 and nvl(KGFR.tot_kgifts_cfy,0)+nvl(PCFY.payaf,0)  < 50000  
+                                                                               then '$25,000-49,999'
+             WHEN NVL(KGFR.tot_kgifts_cfy,0)+nvl(PCFY.payaf,0)  >= 50000 AND NVL(KGFR.tot_kgifts_cfy,0)+nvl(PCFY.payaf,0)  < 100000 THEN '$50,000-$99,999'
+            when NVL(KGFR.tot_kgifts_cfy,0)+nvl(PCFY.payaf,0)  >= 100000                                 then '$100,000+' 
+            else ' ' end                         KLC_lev_cfy 
+  ,MD.CFY AS FISCAL_YR
 FROM ENTITY E
 CROSS JOIN MANUAL_DATES MD
   LEFT JOIN KSM_DEGREES KD
