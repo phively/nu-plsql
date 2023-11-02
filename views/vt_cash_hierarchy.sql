@@ -344,7 +344,7 @@ hhf As (
         When boards_cash_source = 'UKNML'
           Then nullif(least(U + K + N + M + L, total_dues_hh), 0)
         End
-      As "'Boards'"
+      As "Boards"
     -- Zero (null) out the corresponding column if boards_cash_source found that amount is needed for dues
     -- Use greatest() function to ensure remaining amount is at least 0
     , Case
@@ -354,7 +354,7 @@ hhf As (
           Then Null
         Else nullif(U, 0)
         End
-      As "'Unmanaged'"
+      As "Unmanaged"
     , Case
         When boards_cash_source Like '%K'
           Then nullif(greatest(U + K - total_dues_hh, 0), 0)
@@ -362,7 +362,7 @@ hhf As (
           Then Null
         Else nullif(K, 0)
         End
-      As "'KSM'"
+      As "KSM"
     , Case
         When boards_cash_source Like '%N'
           Then nullif(greatest(U + K + N - total_dues_hh, 0), 0)
@@ -370,7 +370,7 @@ hhf As (
           Then Null
         Else nullif(N, 0)
         End
-      As "'NU'"
+      As "NU"
     , Case
         When boards_cash_source Like '%M'
           Then nullif(greatest(U + K + N + M - total_dues_hh, 0), 0)
@@ -378,35 +378,33 @@ hhf As (
           Then Null
         Else nullif(M, 0)
         End
-      As "'MGO'"
+      As "MGO"
     , Case
         When boards_cash_source Like '%L'
           Then nullif(greatest(U + K + N + M + L - total_dues_hh, 0), 0)
         Else nullif(L, 0)
         End
-      As "'LGO'"
+      As "LGO"
   From merged_data
 )
 
-SELECT *
-FROM PREFINAL_DATA
-
-/*
-(
--- All rows where board_amt > 0, based on total_dues_hh
+-- Unpivot final results
 Select
-  prefinal_data.*
-  , 'Boards' As giving_source
-  , board_amt As final_amt
+  cash_category
+  , household_id
+  , fiscal_year
+  , gab
+  , ebfa
+  , amp
+  , re
+  , health
+  , peac
+  , kac
+  , kwlc
+  , total_dues_hh
+  , boards_cash_source
 From prefinal_data
-Where board_amt > 0
-) Union (
--- All rows where nonboard_amt > 0
-Select
-  prefinal_data.*
-  , managed_hierarchy As giving_source
-  , nonboard_amt As final_amt
-From prefinal_data
-Where nonboard_amt > 0
+Unpivot (
+  legal_amount
+  For managed_grp In ("Boards", "Unmanaged", "KSM", "NU", "MGO", "LGO")
 )
-*/
