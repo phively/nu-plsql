@@ -8,6 +8,7 @@ hhf As (
 , attr_cash As (
   Select
     kgc.*
+    -- All past managed grouped into Unmanaged
     , Case
         When substr(managed_hierarchy, 1, 9) = 'Unmanaged'
           Then 'Unmanaged'
@@ -51,6 +52,7 @@ hhf As (
     , committee.committee_status_code
     , committee.start_dt
     , committee.stop_dt
+    -- Start date is used, if present; else fill in Sep 1 for partial dates; else use date added
     , Case
         When rpt_pbh634.ksm_pkg_utility.to_date2(committee.start_dt) Is Not Null
           Then rpt_pbh634.ksm_pkg_utility.to_date2(committee.start_dt)
@@ -59,6 +61,8 @@ hhf As (
         Else trunc(date_added)
         End
       As start_dt_calc
+    -- Stop date is used if present; else fill in Aug 31 for partial dates; else for past participation use date modified
+    -- If committee status is current use a far future date (year 9999)
     , Case
         When rpt_pbh634.ksm_pkg_utility.to_date2(committee.stop_dt) Is Not Null
           Then rpt_pbh634.ksm_pkg_utility.to_date2(committee.stop_dt)
@@ -87,7 +91,7 @@ hhf As (
   )
 )
 
-, boards As (
+, boards_data As (
   Select
     boards_all.*
     , rpt_pbh634.ksm_pkg_calendar.get_fiscal_year(boards_all.start_dt_calc)
@@ -95,43 +99,84 @@ hhf As (
     , rpt_pbh634.ksm_pkg_calendar.get_fiscal_year(boards_all.stop_dt_calc)
       As fy_stop
   From boards_all
+  -- Include only board membership within the cash counting period
   Where rpt_pbh634.ksm_pkg_calendar.get_fiscal_year(boards_all.start_dt_calc) >= (Select min(fiscal_year) From cash_years)
     Or rpt_pbh634.ksm_pkg_calendar.get_fiscal_year(boards_all.stop_dt_calc) >= (Select min(fiscal_year) From cash_years)
 )
 
 , board_ids As (
   Select Distinct id_number
-  From boards
+  From boards_data
 )
 
 , entity_boards As (
+  -- Year-by-year board membership; one year + id_number per row
   Select
-  cash_years.fiscal_year
-  , entity.id_number
-  , entity.report_name
-  , entity.institutional_suffix
-  , Case When gab.id_number Is Not Null Then 'Y' End
-    As gab
-  
+    cash_years.fiscal_year
+    , entity.id_number
+    , entity.report_name
+    , entity.institutional_suffix
+    , Case When gab.id_number Is Not Null Then 'Y' End
+      As gab
+    , Case When ebfa.id_number Is Not Null Then 'Y' End
+      As ebfa
+    , Case When amp.id_number Is Not Null Then 'Y' End
+      As amp
+      , Case When re.id_number Is Not Null Then 'Y' End
+      As re
+      , Case When health.id_number Is Not Null Then 'Y' End
+      As health
+      , Case When peac.id_number Is Not Null Then 'Y' End
+      As peac
+      , Case When kac.id_number Is Not Null Then 'Y' End
+      As kac
+    , Case When kwlc.id_number Is Not Null Then 'Y' End
+      As kwlc
   From board_ids
   Cross Join cash_years
   Inner Join entity
     On entity.id_number = board_ids.id_number
-  Left Join boards gab
+  Left Join boards_data gab
     On gab.id_number = entity.id_number
-    And cash_years.fiscal_year Between fy_start And fy_stop
+    And cash_years.fiscal_year Between gab.fy_start And gab.fy_stop
     And gab.committee_code = 'U'
+  Left Join boards_data ebfa
+    On ebfa.id_number = entity.id_number
+    And cash_years.fiscal_year Between ebfa.fy_start And ebfa.fy_stop
+    And ebfa.committee_code = 'KEBA'
+  Left Join boards_data amp
+    On amp.id_number = entity.id_number
+    And cash_years.fiscal_year Between amp.fy_start And amp.fy_stop
+    And amp.committee_code = 'KAMP'
+  Left Join boards_data re
+    On re.id_number = entity.id_number
+    And cash_years.fiscal_year Between re.fy_start And re.fy_stop
+    And re.committee_code = 'KREAC'
+  Left Join boards_data health
+    On health.id_number = entity.id_number
+    And cash_years.fiscal_year Between health.fy_start And health.fy_stop
+    And health.committee_code = 'HAK'
+  Left Join boards_data peac
+    On peac.id_number = entity.id_number
+    And cash_years.fiscal_year Between peac.fy_start And peac.fy_stop
+    And peac.committee_code = 'KPETC'
+  Left Join boards_data kac
+    On kac.id_number = entity.id_number
+    And cash_years.fiscal_year Between kac.fy_start And kac.fy_stop
+    And kac.committee_code = 'KACNA'
+  Left Join boards_data kwlc
+    On kwlc.id_number = entity.id_number
+    And cash_years.fiscal_year Between kwlc.fy_start And kwlc.fy_stop
+    And kwlc.committee_code = 'KWLC'
   Order By
     entity.report_name Asc
     , cash_years.fiscal_year Asc
 )
 
-SELECT *
-FROM ENTITY_BOARDS
-/*
 , boards As (
   Select
-    id_number
+    fiscal_year
+    , id_number
     , gab
     , ebfa
     , amp
@@ -140,6 +185,7 @@ FROM ENTITY_BOARDS
     , peac
     , kac
     , kwlc
+    -- Sun board dues per person based on memberships that year
     , Case When gab Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_gab') Else 0 End
       + Case When ebfa Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_ebfa') Else 0 End
       + Case When amp Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_amp') Else 0 End
@@ -163,6 +209,7 @@ FROM ENTITY_BOARDS
 , boards_hh As (
   Select
     hhf.household_id
+    , boards.fiscal_year
     , sum(boards.total_dues)
       As total_dues_hh
     , count(boards.gab) As gab
@@ -176,10 +223,16 @@ FROM ENTITY_BOARDS
   From boards
   Inner Join hhf
     On hhf.id_number = boards.id_number
-  Group By hhf.household_id
+  Group By
+    hhf.household_id
+    , boards.fiscal_year
+  Order By
+    hhf.household_id Asc
+    , boards.fiscal_year Asc
 )
-
---/*
+SELECT *
+FROM BOARDS_HH
+/*
 , merge_flags As (
   Select
     merge_ids.household_id
