@@ -1,3 +1,5 @@
+Create Or Replace View vt_cash_hierarchy As
+
 With
 
 hhf As (
@@ -389,20 +391,7 @@ hhf As (
 )
 
 -- Unpivot final results
-Select
-  cash_category
-  , household_id
-  , fiscal_year
-  , gab
-  , ebfa
-  , amp
-  , re
-  , health
-  , peac
-  , kac
-  , kwlc
-  , total_dues_hh
-  , boards_cash_source
+Select *
 From prefinal_data
 Unpivot (
   legal_amount
