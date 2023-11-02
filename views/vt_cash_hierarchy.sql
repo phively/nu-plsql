@@ -5,58 +5,130 @@ hhf As (
   From v_entity_ksm_households_fast
 )
 
+, attr_cash As (
+  Select
+    kgc.*
+    , Case
+        When substr(managed_hierarchy, 1, 9) = 'Unmanaged'
+          Then 'Unmanaged'
+        Else managed_hierarchy
+        End
+      As managed_grp
+  From rpt_pbh634.v_ksm_giving_cash kgc
+)
+
+, grouped_cash As (
+  Select
+    attr_cash.cash_category
+    , hhf.household_id
+    , attr_cash.fiscal_year
+    , attr_cash.managed_grp
+    , sum(attr_cash.legal_amount)
+      As sum_legal_amount
+    , count(household_id) Over(Partition By cash_category, household_id, fiscal_year)
+      As n_managed_in_group
+  From attr_cash
+  Inner Join hhf
+    On hhf.id_number = attr_cash.id_number
+  Group By
+    attr_cash.cash_category
+    , hhf.household_id
+    , attr_cash.fiscal_year
+    , attr_cash.managed_grp
+)
+
+, cash_years As (
+  Select Distinct fiscal_year
+  From attr_cash
+)
+
+, boards_all As (
+  Select
+    committee.id_number
+    , committee.committee_code
+    , committee.committee_title
+    , committee.committee_role_code
+    , committee.committee_status_code
+    , committee.start_dt
+    , committee.stop_dt
+    , Case
+        When rpt_pbh634.ksm_pkg_utility.to_date2(committee.start_dt) Is Not Null
+          Then rpt_pbh634.ksm_pkg_utility.to_date2(committee.start_dt)
+        When committee.start_dt <> '00000000'
+          Then rpt_pbh634.ksm_pkg_utility.date_parse(committee.start_dt, fallback_dt => to_date('20200901', 'yyyymmdd'))
+        Else trunc(date_added)
+        End
+      As start_dt_calc
+    , Case
+        When rpt_pbh634.ksm_pkg_utility.to_date2(committee.stop_dt) Is Not Null
+          Then rpt_pbh634.ksm_pkg_utility.to_date2(committee.stop_dt)
+        When committee_status_code <> 'C' And stop_dt <> '00000000'
+          Then rpt_pbh634.ksm_pkg_utility.date_parse(committee.stop_dt, fallback_dt => to_date('20200831', 'yyyymmdd'))
+        When committee.committee_status_code <> 'C'
+          Then trunc(date_modified)
+        When committee.committee_status_code = 'C'
+          Then to_date('99991231', 'yyyymmdd')
+        End
+      As stop_dt_calc
+    , trunc(committee.date_added)
+      As date_added
+    , trunc(committee.date_modified)
+      As date_modified
+  From committee
+  Where committee.committee_code In (
+    'U' -- gab
+    , 'KEBA' -- ebfa
+    , 'KAMP' -- amp
+    , 'KREAC' -- real estate
+    , 'HAK' -- healthcare
+    , 'KPETC' -- peac
+    , 'KACNA' -- kac
+    , 'KWLC' -- kwlc
+  )
+)
+
+, boards As (
+  Select
+    boards_all.*
+    , rpt_pbh634.ksm_pkg_calendar.get_fiscal_year(boards_all.start_dt_calc)
+      As fy_start
+    , rpt_pbh634.ksm_pkg_calendar.get_fiscal_year(boards_all.stop_dt_calc)
+      As fy_stop
+  From boards_all
+  Where rpt_pbh634.ksm_pkg_calendar.get_fiscal_year(boards_all.start_dt_calc) >= (Select min(fiscal_year) From cash_years)
+    Or rpt_pbh634.ksm_pkg_calendar.get_fiscal_year(boards_all.stop_dt_calc) >= (Select min(fiscal_year) From cash_years)
+)
+
 , board_ids As (
-  Select id_number From table(ksm_pkg_tmp.tbl_committee_gab)
-  Union
-  Select id_number From table(ksm_pkg_tmp.tbl_committee_asia)
-  Union
-  Select id_number From table(ksm_pkg_tmp.tbl_committee_amp)
-  Union
-  Select id_number From table(ksm_pkg_tmp.tbl_committee_realEstCouncil)
-  Union
-  Select id_number From table(ksm_pkg_tmp.tbl_committee_healthcare)
-  Union
-  Select id_number From table(ksm_pkg_tmp.tbl_committee_privateEquity)
-  Union
-  Select id_number From table(ksm_pkg_tmp.tbl_committee_kac)
-  Union
-  Select id_number From table(ksm_pkg_tmp.tbl_committee_womensLeadership)
+  Select Distinct id_number
+  From boards
 )
 
 , entity_boards As (
   Select
-  entity.id_number
+  cash_years.fiscal_year
+  , entity.id_number
   , entity.report_name
   , entity.institutional_suffix
-  , Case When gab.id_number Is Not Null Then 'Y' End As gab
-  , Case When ebfa.id_number Is Not Null Then 'Y' End As ebfa
-  , Case When amp.id_number Is Not Null Then 'Y' End As amp
-  , Case When re.id_number Is Not Null Then 'Y' End As re
-  , Case When health.id_number Is Not Null Then 'Y' End As health
-  , Case When peac.id_number Is Not Null Then 'Y' End As peac
-  , Case When kac.id_number Is Not Null Then 'Y' End As kac
-  , Case When kwlc.id_number Is Not Null Then 'Y' End As kwlc
+  , Case When gab.id_number Is Not Null Then 'Y' End
+    As gab
+  
   From board_ids
+  Cross Join cash_years
   Inner Join entity
     On entity.id_number = board_ids.id_number
-  Left Join table(ksm_pkg_tmp.tbl_committee_gab) gab
+  Left Join boards gab
     On gab.id_number = entity.id_number
-  Left Join table(ksm_pkg_tmp.tbl_committee_asia) ebfa
-    On ebfa.id_number = entity.id_number
-  Left Join table(ksm_pkg_tmp.tbl_committee_amp) amp
-    On amp.id_number = entity.id_number
-  Left Join table(ksm_pkg_tmp.tbl_committee_realEstCouncil) re
-    On re.id_number = entity.id_number
-  Left Join table(ksm_pkg_tmp.tbl_committee_healthcare) health
-    On health.id_number = entity.id_number
-  Left Join table(ksm_pkg_tmp.tbl_committee_privateEquity) peac
-    On peac.id_number = entity.id_number
-  Left Join table(ksm_pkg_tmp.tbl_committee_kac) kac
-    On kac.id_number = entity.id_number
-  Left Join table(ksm_pkg_tmp.tbl_committee_womensLeadership) kwlc
-    On kwlc.id_number = entity.id_number
+    And cash_years.fiscal_year Between fy_start And fy_stop
+    And gab.committee_code = 'U'
+  Order By
+    entity.report_name Asc
+    , cash_years.fiscal_year Asc
 )
 
+SELECT *
+FROM ENTITY_BOARDS
+/*
 , boards As (
   Select
     id_number
@@ -107,42 +179,7 @@ hhf As (
   Group By hhf.household_id
 )
 
-, attr_cash As (
-  Select
-    kgc.*
-    , Case
-        When substr(managed_hierarchy, 1, 9) = 'Unmanaged'
-          Then 'Unmanaged'
-        Else managed_hierarchy
-        End
-      As managed_grp
-  From rpt_pbh634.v_ksm_giving_cash kgc
-)
-
-, grouped_cash As (
-  Select
-    attr_cash.cash_category
-    , hhf.household_id
-    , attr_cash.fiscal_year
-    , attr_cash.managed_grp
-    , sum(attr_cash.legal_amount)
-      As sum_legal_amount
-    , count(household_id) Over(Partition By cash_category, household_id, fiscal_year)
-      As n_managed_in_group
-  From attr_cash
-  Inner Join hhf
-    On hhf.id_number = attr_cash.id_number
-  Group By
-    attr_cash.cash_category
-    , hhf.household_id
-    , attr_cash.fiscal_year
-    , attr_cash.managed_grp
-)
-
-SELECT *
-FROM GROUPED_CASH
-
-/*
+--/*
 , merge_flags As (
   Select
     merge_ids.household_id
