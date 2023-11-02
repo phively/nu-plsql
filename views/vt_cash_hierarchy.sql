@@ -39,6 +39,7 @@ hhf As (
 )
 
 , pivot_cash As (
+  -- Pivot cash category/household/fiscal year by managed group, for later use with board dues
   Select *
   From (
     Select
@@ -248,14 +249,12 @@ hhf As (
     , boards.fiscal_year Asc
 )
 
-, prefinal_data As (
+, merged_data As (
   Select
     gc.cash_category
     , gc.household_id
     , gc.fiscal_year
-    , gc.managed_grp
     , gc.n_managed_in_group
-    , gc.sum_legal_amount
     , boards_hh.gab
     , boards_hh.ebfa
     , boards_hh.amp
@@ -270,29 +269,128 @@ hhf As (
           Then boards_hh.total_dues_hh
         End
       As total_dues_hh
+    -- Board dues: first take from unmanaged, then KSM, then NU, then MGO, then LGO
     -- For expendable, board_amt is at least sum_legal_amount up to total_dues_hh
     , Case
         When cash_category = 'Expendable'
           And total_dues_hh Is Not Null
-          Then least(gc.sum_legal_amount, boards_hh.total_dues_hh)
-        Else 0
+          Then
+        -- Check if Unmanaged >= total_dues_hh
+        Case
+          When nvl("'Unmanaged'", 0) >= boards_hh.total_dues_hh
+            Then 'U'
+        -- Check if Unmanaged + KSM >= total_dues_hh
+          When nvl("'Unmanaged'", 0) + nvl("'KSM'", 0) >= boards_hh.total_dues_hh
+            Then 'UK'
+        -- Check if Unmanaged + KSM + NU >= total_dues_hh
+          When nvl("'Unmanaged'", 0) + nvl("'KSM'", 0) + nvl("'NU'", 0) >= boards_hh.total_dues_hh
+            Then 'UKN'
+        -- Check if Unmanaged + KSM + NU + MGO >= total_dues_hh
+          When nvl("'Unmanaged'", 0) + nvl("'KSM'", 0) + nvl("'NU'", 0) + nvl("'MGO'", 0) >= boards_hh.total_dues_hh
+            Then 'UKNM'
+        -- Fallback: take from everything
+          Else 'UKNML'
+          End
         End
-      As board_amt
-    -- For expendable, nonboard_amt is at most sum_legal_amount - total_dues_hh
-    , Case
-        When cash_category = 'Expendable'
-          And total_dues_hh Is Not Null
-          Then greatest(gc.sum_legal_amount - boards_hh.total_dues_hh, 0)
-        Else gc.sum_legal_amount
-        End
-      As nonboard_amt
-  From grouped_cash gc
+      As boards_cash_source
+    , nvl(gc."'Unmanaged'", 0)
+      As U
+    , nvl(gc."'MGO'", 0)
+      As M
+    , nvl(gc."'LGO'", 0)
+      As L
+    , nvl(gc."'KSM'", 0)
+      As K
+    , nvl(gc."'NU'", 0)
+      As N
+  From pivot_cash gc
   Left Join boards_hh
     On boards_hh.household_id = gc.household_id
     And boards_hh.fiscal_year = gc.fiscal_year
 )
+
+, prefinal_data As (
+  Select
+    merged_data.cash_category
+    , merged_data.household_id
+    , merged_data.fiscal_year
+    , merged_data.n_managed_in_group
+    , merged_data.gab
+    , merged_data.ebfa
+    , merged_data.amp
+    , merged_data.re
+    , merged_data.health
+    , merged_data.peac
+    , merged_data.kac
+    , merged_data.kwlc
+    , merged_data.total_dues_hh
+    , merged_data.boards_cash_source
+    , U
+    , K
+    , N
+    , M
+    , L
+    -- Compute board dues based on the boards_cash_source string
+    -- Use least() function to ensure amount is at most total_dues_hh
+    , Case
+        When boards_cash_source = 'U'
+          Then nullif(least(U, total_dues_hh), 0)
+        When boards_cash_source = 'UK'
+          Then nullif(least(U + K, total_dues_hh), 0)
+        When boards_cash_source = 'UKN'
+          Then nullif(least(U + K + N, total_dues_hh), 0)            
+        When boards_cash_source = 'UKNM'
+          Then nullif(least(U + K + N + M, total_dues_hh), 0)
+        When boards_cash_source = 'UKNML'
+          Then nullif(least(U + K + N + M + L, total_dues_hh), 0)
+        End
+      As "'Boards'"
+    -- Zero (null) out the corresponding column if boards_cash_source found that amount is needed for dues
+    -- Use greatest() function to ensure remaining amount is at least 0
+    , Case
+        When boards_cash_source = 'U'
+          Then nullif(greatest(U - total_dues_hh, 0), 0)
+        When regexp_like(boards_cash_source, 'K|N|M|L')
+          Then Null
+        Else nullif(U, 0)
+        End
+      As "'Unmanaged'"
+    , Case
+        When boards_cash_source Like '%K'
+          Then nullif(greatest(U + K - total_dues_hh, 0), 0)
+        When regexp_like(boards_cash_source, 'N|M|L')
+          Then Null
+        Else nullif(K, 0)
+        End
+      As "'KSM'"
+    , Case
+        When boards_cash_source Like '%N'
+          Then nullif(greatest(U + K + N - total_dues_hh, 0), 0)
+        When regexp_like(boards_cash_source, 'M|L')
+          Then Null
+        Else nullif(N, 0)
+        End
+      As "'NU'"
+    , Case
+        When boards_cash_source Like '%M'
+          Then nullif(greatest(U + K + N + M - total_dues_hh, 0), 0)
+        When regexp_like(boards_cash_source, 'L')
+          Then Null
+        Else nullif(M, 0)
+        End
+      As "'MGO'"
+    , Case
+        When boards_cash_source Like '%L'
+          Then nullif(greatest(U + K + N + M + L - total_dues_hh, 0), 0)
+        Else nullif(L, 0)
+        End
+      As "'LGO'"
+  From merged_data
+)
+
 SELECT *
 FROM PREFINAL_DATA
+
 /*
 (
 -- All rows where board_amt > 0, based on total_dues_hh
