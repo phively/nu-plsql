@@ -38,6 +38,23 @@ hhf As (
     , attr_cash.managed_grp
 )
 
+, pivot_cash As (
+  Select *
+  From (
+    Select
+      cash_category
+      , household_id
+      , fiscal_year
+      , managed_grp
+      , sum_legal_amount
+    , n_managed_in_group
+  From grouped_cash
+  ) Pivot (
+    sum(sum_legal_amount)
+    For managed_grp In ('Unmanaged', 'MGO', 'LGO', 'KSM', 'NU')
+  )
+)
+
 , cash_years As (
   Select Distinct fiscal_year
   From attr_cash
@@ -230,67 +247,34 @@ hhf As (
     hhf.household_id Asc
     , boards.fiscal_year Asc
 )
-SELECT *
-FROM BOARDS_HH
-/*
-, merge_flags As (
-  Select
-    merge_ids.household_id
-    , boards_hh.gab
-    , boards_hh.amp
-    , boards_hh.re
-    , boards_hh.kac
-    , boards_hh.health
-    , boards_hh.total_dues_hh
-    , assigned_hh.curr_ksm_manager
-    , assigned_hh.prospect_manager_id
-    , assigned_hh.prospect_manager
-    , assigned_hh.lgos
-    , assigned_hh.managed_hierarchy
-    From merge_ids
-    Left Join boards_hh
-      On boards_hh.household_id = merge_ids.household_id
-    Left Join assigned_hh
-      On assigned_hh.household_id = merge_ids.household_id
-)
 
 , prefinal_data As (
   Select
     gc.cash_category
     , gc.household_id
-    , gc.id_number
     , gc.fiscal_year
+    , gc.managed_grp
+    , gc.n_managed_in_group
     , gc.sum_legal_amount
-    , merge_flags.gab
-    , merge_flags.amp
-    , merge_flags.re
-    , merge_flags.kac
-    , merge_flags.health
+    , boards_hh.gab
+    , boards_hh.ebfa
+    , boards_hh.amp
+    , boards_hh.re
+    , boards_hh.health
+    , boards_hh.peac
+    , boards_hh.kac
+    , boards_hh.kwlc
     -- Board dues should come out of Expendable funds
     , Case
         When gc.cash_category = 'Expendable'
-          Then merge_flags.total_dues_hh
+          Then boards_hh.total_dues_hh
         End
       As total_dues_hh
-    , merge_flags.curr_ksm_manager
-    , merge_flags.prospect_manager_id
-    , merge_flags.prospect_manager
-    , merge_flags.lgos
-    , nvl(merge_flags.managed_hierarchy, 'Unmanaged')
-      As managed_hierarchy
-    -- For managed_hierarchy = LGO, fill in LGO or PM; otherwise PM
-    , Case
-        When merge_flags.managed_hierarchy = 'LGO'
-          And merge_flags.lgos Is Not Null
-            Then merge_flags.lgos
-        Else prospect_manager
-        End
-      As credited_manager
     -- For expendable, board_amt is at least sum_legal_amount up to total_dues_hh
     , Case
         When cash_category = 'Expendable'
           And total_dues_hh Is Not Null
-          Then least(gc.sum_legal_amount, merge_flags.total_dues_hh)
+          Then least(gc.sum_legal_amount, boards_hh.total_dues_hh)
         Else 0
         End
       As board_amt
@@ -298,15 +282,18 @@ FROM BOARDS_HH
     , Case
         When cash_category = 'Expendable'
           And total_dues_hh Is Not Null
-          Then greatest(gc.sum_legal_amount - merge_flags.total_dues_hh, 0)
+          Then greatest(gc.sum_legal_amount - boards_hh.total_dues_hh, 0)
         Else gc.sum_legal_amount
         End
       As nonboard_amt
   From grouped_cash gc
-  Left Join merge_flags
-    On merge_flags.household_id = gc.household_id
+  Left Join boards_hh
+    On boards_hh.household_id = gc.household_id
+    And boards_hh.fiscal_year = gc.fiscal_year
 )
-
+SELECT *
+FROM PREFINAL_DATA
+/*
 (
 -- All rows where board_amt > 0, based on total_dues_hh
 Select
