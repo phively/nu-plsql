@@ -5,7 +5,9 @@ FROM AFFILIATION A
 WHERE A.AFFIL_CODE = 'KM'
 AND A.AFFIL_LEVEL_CODE = 'RG')
 
----- Reunion Par
+---- Reunion Participants
+
+--- Reunion 2019
 
 ,REUNION_2019_PARTICIPANTS AS (
 Select ep_participant.id_number,
@@ -36,22 +38,14 @@ ON ep_participant.event_id = ep_event.event_id
 Where ep_event.event_name Like '%KSM 2022 Reunion Weekend Two - April 30 & May 1st%'
 )
 
+--- Reunion 2023 
+
 ,REUNION_2023_PARTICIPANTS AS (
 Select ep_participant.id_number
 From ep_event
 Left Join EP_Participant
 ON ep_participant.event_id = ep_event.event_id
 Where ep_event.event_name Like '%KSM23 Reunion Weekend%')
-
-,manual_dates As (
-Select
-  2023 AS pfy
-  ,2024 AS cfy
-  From DUAL
-)
-
-,HOUSE AS (SELECT *
-FROM rpt_pbh634.v_entity_ksm_households)
 
 ,KSM_DEGREES AS (
  SELECT
