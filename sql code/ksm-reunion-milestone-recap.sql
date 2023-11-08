@@ -234,10 +234,5 @@ left join final_giving fg on fg.id_number = a.id_number
 left join REUNION_2023_PARTICIPANTS r23 on r23.id_number = a.id_number
 left join REUNION_2022_PARTICIPANTS r221 on r221.id_number = a.id_number
 left join REUNION_2022_PARTICIPANTS_2 r222 on r222.id_number = a.id_number
-left join REUNION_2019_PARTICIPANTS r19 on r19.id_number = a.id_number 
---- REUNION ATTENDEES ONLY
-WHERE (r23.id_number is not null
-or r222.id_number is not null
-or r221.id_number is not null
-or r19.id_number is not null)
+left join REUNION_2019_PARTICIPANTS r19 on r19.id_number = a.id_number
 

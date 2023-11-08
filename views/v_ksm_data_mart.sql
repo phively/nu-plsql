@@ -130,6 +130,7 @@ business_address As (
     , ADVANCE_NU_RPT.v_geo_code_primary.geo_code_primary_desc
     , geo.LATITUDE
     , geo.LONGITUDE
+    , address.xsequence
   From address
   Left Join ADVANCE_NU_RPT.v_geo_code_primary
     On ADVANCE_NU_RPT.v_geo_code_primary.id_number = address.id_number
@@ -159,6 +160,7 @@ business_address As (
     , ADVANCE_NU_RPT.v_geo_code_primary.geo_code_primary_desc
     , geo.LATITUDE
     , geo.LONGITUDE
+    , address.xsequence
   From address
   Left Join ADVANCE_NU_RPT.v_geo_code_primary
     On ADVANCE_NU_RPT.v_geo_code_primary.id_number = address.id_number
@@ -186,6 +188,7 @@ Select
   , home_address.start_dt As home_start_dt
   , home_address.start_date As home_start_date
   , home_address.date_modified As home_date_modified
+  , home_address.xsequence as home_xsequence
   , business_address.business_job_title
   , business_address.business_company_name
   , business_address.city As business_city
@@ -202,6 +205,7 @@ Select
   , business_address.start_dt As business_start_dt
   , business_address.start_date As business_start_date
   , business_address.date_modified As business_date_modified
+  , business_address.xsequence as business_xsequence
 From ADVANCE_NU_RPT.v_entity_ksm_degrees deg
 Left Join business_address
   On business_address.id_number = deg.id_number --- Join Subquery for Business Address
