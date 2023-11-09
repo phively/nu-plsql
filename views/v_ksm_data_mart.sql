@@ -174,6 +174,7 @@ business_address As (
 
 Select 
   deg.id_number As catracks_id
+  , business_address.xsequence as business_xsequence
   , home_address.city As home_city
   , home_address.state_code As home_state
   , home_address.zipcode AS home_zipcode
@@ -205,7 +206,6 @@ Select
   , business_address.start_dt As business_start_dt
   , business_address.start_date As business_start_date
   , business_address.date_modified As business_date_modified
-  , business_address.xsequence as business_xsequence
 From ADVANCE_NU_RPT.v_entity_ksm_degrees deg
 Left Join business_address
   On business_address.id_number = deg.id_number --- Join Subquery for Business Address
@@ -247,6 +247,7 @@ From dm_ard.dim_employment@catrackstobi)
 
 Select
   employ.id_Number As catracks_id
+  , employ.xsequence
   , employ.start_dt
   , ADVANCE_NU_RPT.ksm_pkg.to_date2(employ.start_dt) As employment_start_date
   , employ.stop_dt
@@ -303,6 +304,7 @@ Create Or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_DEGREES As
 -- Includes Kellogg degrees
 Select
   degrees.id_number As catracks_id
+  , degrees.xsequence
   , degrees.institution_code
   , institution.institution_name
   , degrees.school_code
@@ -1273,6 +1275,7 @@ Select
 
 ---- Select ID Number
 p.Id_Number,
+p.participation_id,
 --- Any Engagement 5FY 
 p.Event_Id,
 p.Event_Name,
