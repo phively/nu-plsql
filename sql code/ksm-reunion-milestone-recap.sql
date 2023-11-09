@@ -82,8 +82,7 @@ where rpt_pbh634.v_ksm_giving_trans_hh.fiscal_year >= 2019)
 From gt
 --- Does not equal pledges and 2019 onwards
 Where gt.tx_gypm_ind <> 'P'
-  And gt.fiscal_year >= 2019
-Group By gt.id_number)
+group by gt.id_number)
 
 --- Commitments - We want annual fund (CRU), but since we wants committments, we wants the pledges 
 ,c as (select gt.id_number,
@@ -93,6 +92,8 @@ sum(Case When gt.cru_flag = 'Y' and gt.fiscal_year = '2021' Then gt.hh_credit El
 sum(Case When gt.cru_flag = 'Y' and gt.fiscal_year = '2022' Then gt.hh_credit Else 0 End) as total_committment_22,
 sum(Case When gt.cru_flag = 'Y' and gt.fiscal_year = '2023' Then gt.hh_credit Else 0 End) as total_committment_23
 from gt
+--- Exclude Pledge Payments 
+Where gt.tx_gypm_ind <> 'Y'
 group by gt.id_number)
 
 --- Bringing together - CRU Cash, total cash and committments 
@@ -235,4 +236,3 @@ left join REUNION_2023_PARTICIPANTS r23 on r23.id_number = a.id_number
 left join REUNION_2022_PARTICIPANTS r221 on r221.id_number = a.id_number
 left join REUNION_2022_PARTICIPANTS_2 r222 on r222.id_number = a.id_number
 left join REUNION_2019_PARTICIPANTS r19 on r19.id_number = a.id_number
-
