@@ -29,6 +29,7 @@ Create Or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_CAREER_INTER As
 -- View of INTEREST (Alumni List) v-datamart_interests
 Select
   interest.id_number As catracks_id
+  , interest.xsequence
   , interest.interest_code As interest_code
   , tms_interest.short_desc As interest_desc
   , interest.start_dt
