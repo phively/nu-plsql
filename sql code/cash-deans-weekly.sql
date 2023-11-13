@@ -34,31 +34,30 @@ cal As (
 -- Current cash transactions
 , cash As (
   Select
-    cru.*
-    , gft.*
+    gft.tx_number
+    , gft.id_number
+    , gft.primary_donor_report_name
+    , gft.allocation_code
+    , gft.alloc_short_name
+    , gft.tx_gypm_ind
+    , gft.transaction_type
+    , gft.fiscal_year
+    , gft.date_of_record
+    , gft.legal_amount
+    , gft.cash_category
     , cal.curr_fy
     , cal.prev_fy
     , cal.prev_day
     , Case
-      When gft.allocation_code = '3203006213301GFT' Then 'Kellogg Education Center'
-      When gft.payment_type = 3 Then 'Other Cash'
-      When gft.allocation_code In (
-        '3303002283701GFT' -- Kellogg Envision Campaign
-        , '3303002280601GFT' -- Kellogg Building Fund
-        , '3203004284701GFT' -- Donald P. Jacobs Wing
-      ) Then 'Expendable Cash'
-      When af_flag Is Not Null Then 'Expendable Cash'
-      When af_flag Is Null Then 'Other Cash'
-      Else 'ZZZ Error'
+      When gft.cash_category Not In ('KEC', 'Expendable', 'Hub Campaign Cash')
+        Then 'Other Cash'
+      Else gft.cash_category
       End
       As cash_type
-  From nu_gft_trp_gifttrans gft
+  From rpt_pbh634.v_ksm_giving_cash gft
   Cross Join cal
   Inner Join ytd_dts On trunc(ytd_dts.dt) = trunc(gft.date_of_record)
-  Left Join table(rpt_pbh634.ksm_pkg_tmp.tbl_alloc_curr_use_ksm) cru On cru.allocation_code = gft.allocation_code
-  Where alloc_school = 'KM'
-    And fiscal_year In (cal.curr_fy, cal.prev_fy)
-    And tx_gypm_ind <> 'P'
+  Where fiscal_year In (cal.curr_fy, cal.prev_fy)
     And ytd_dts.ytd_ind = 'Y'
 )
 
