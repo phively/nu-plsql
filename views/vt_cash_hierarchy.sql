@@ -58,6 +58,45 @@ hhf As (
   )
 )
 
+, pivot_retention As (
+  -- Pivot sum(legal_amount) by fiscal year, to compute retained status
+  Select *
+  From (
+    Select
+      household_id
+      , fiscal_year
+      , sum_legal_amount
+    From grouped_cash
+  ) Pivot (
+    sum(sum_legal_amount)
+    For fiscal_year In (2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030)
+  )
+)
+
+, cash_retention As (
+    Select 
+      pivot_retention.household_id
+      , Case When "2022" > 0 And "2021" > 0 Then 'Y' End As "2022"
+      , Case When "2023" > 0 And "2022" > 0 Then 'Y' End As "2023"
+      , Case When "2024" > 0 And "2023" > 0 Then 'Y' End As "2024"
+      , Case When "2025" > 0 And "2024" > 0 Then 'Y' End As "2025"
+      , Case When "2026" > 0 And "2025" > 0 Then 'Y' End As "2026"
+      , Case When "2027" > 0 And "2026" > 0 Then 'Y' End As "2027"
+      , Case When "2028" > 0 And "2027" > 0 Then 'Y' End As "2028"
+      , Case When "2029" > 0 And "2028" > 0 Then 'Y' End As "2029"
+      , Case When "2030" > 0 And "2029" > 0 Then 'Y' End As "2030"
+    From pivot_retention
+)
+
+, retention_flag As (
+  Select Distinct *
+  From cash_retention
+  Unpivot (
+    retained
+    For retained_year In ("2022", "2023", "2024", "2025", "2026", "2027", "2028", "2029", "2030")
+  )
+)
+
 , cash_years As (
   Select Distinct fiscal_year
   From attr_cash
@@ -391,9 +430,18 @@ hhf As (
 )
 
 -- Unpivot final results
-Select *
-From prefinal_data
-Unpivot (
-  legal_amount
-  For managed_grp In ("Boards", "Unmanaged", "KSM", "NU", "MGO", "LGO")
-)
+Select
+  unpiv.*
+  , retention_flag.retained
+From (
+  Select *
+  From prefinal_data
+  Unpivot (
+    legal_amount
+    For managed_grp In ("Boards", "Unmanaged", "KSM", "NU", "MGO", "LGO")
+  )
+) unpiv
+Left Join retention_flag
+  On retention_flag.household_id = unpiv.household_id
+  And retention_flag.retained_year = unpiv.fiscal_year
+;
