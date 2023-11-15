@@ -29,6 +29,7 @@ Create Or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_CAREER_INTER As
 -- View of INTEREST (Alumni List) v-datamart_interests
 Select
   interest.id_number As catracks_id
+  , interest.xsequence
   , interest.interest_code As interest_code
   , tms_interest.short_desc As interest_desc
   , interest.start_dt
@@ -130,6 +131,7 @@ business_address As (
     , ADVANCE_NU_RPT.v_geo_code_primary.geo_code_primary_desc
     , geo.LATITUDE
     , geo.LONGITUDE
+    , address.xsequence
   From address
   Left Join ADVANCE_NU_RPT.v_geo_code_primary
     On ADVANCE_NU_RPT.v_geo_code_primary.id_number = address.id_number
@@ -159,6 +161,7 @@ business_address As (
     , ADVANCE_NU_RPT.v_geo_code_primary.geo_code_primary_desc
     , geo.LATITUDE
     , geo.LONGITUDE
+    , address.xsequence
   From address
   Left Join ADVANCE_NU_RPT.v_geo_code_primary
     On ADVANCE_NU_RPT.v_geo_code_primary.id_number = address.id_number
@@ -172,6 +175,7 @@ business_address As (
 
 Select 
   deg.id_number As catracks_id
+  , business_address.xsequence as business_xsequence
   , home_address.city As home_city
   , home_address.state_code As home_state
   , home_address.zipcode AS home_zipcode
@@ -186,6 +190,7 @@ Select
   , home_address.start_dt As home_start_dt
   , home_address.start_date As home_start_date
   , home_address.date_modified As home_date_modified
+  , home_address.xsequence as home_xsequence
   , business_address.business_job_title
   , business_address.business_company_name
   , business_address.city As business_city
@@ -243,6 +248,7 @@ From dm_ard.dim_employment@catrackstobi)
 
 Select
   employ.id_Number As catracks_id
+  , employ.xsequence
   , employ.start_dt
   , ADVANCE_NU_RPT.ksm_pkg.to_date2(employ.start_dt) As employment_start_date
   , employ.stop_dt
@@ -299,6 +305,7 @@ Create Or Replace View ADVANCE_NU_RPT.NU_KSM_V_DATAMART_DEGREES As
 -- Includes Kellogg degrees
 Select
   degrees.id_number As catracks_id
+  , degrees.xsequence
   , degrees.institution_code
   , institution.institution_name
   , degrees.school_code
@@ -1269,6 +1276,7 @@ Select
 
 ---- Select ID Number
 p.Id_Number,
+p.participation_id,
 --- Any Engagement 5FY 
 p.Event_Id,
 p.Event_Name,

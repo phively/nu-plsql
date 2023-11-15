@@ -527,7 +527,7 @@ max (TX_NUMBER) keep (dense_rank First Order By DATE_OF_RECORD DESC) as rcpt
           INNER JOIN ENTITY
           ON GIFT.GIFT_DONOR_ID = ENTITY.ID_NUMBER
           WHERE TX_GYPM_IND <> 'P'  AND GIFT.GIFT_SEQUENCE = 1
-          and rpt_pbh634.ksm_pkg_tmp.get_fiscal_year (DATE_OF_RECORD) in ('2022','2023')
+          and rpt_pbh634.ksm_pkg_tmp.get_fiscal_year (DATE_OF_RECORD) in ('2023','2024')
           GROUP BY GIVING_TRANS_DAF.ID_NUMBER),
           
 --- Prospect as a Subquery (instead of left join and taking out another of Bill's Functions)
