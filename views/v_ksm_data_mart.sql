@@ -826,7 +826,7 @@ KSM_Spec AS (Select spec.ID_NUMBER,
        spec.NO_CONTACT,
        spec.NO_EMAIL_IND,
        spec.ACTIVE_WITH_RESTRICTIONS
-From rpt_pbh634.v_entity_special_handling spec),
+From ADVANCE_NU_RPT.v_entity_special_handling spec),
 
 linked as (select distinct ec.id_number,
 max(ec.start_dt) keep(dense_rank First Order By ec.start_dt Desc, ec.econtact asc) As Max_Date,
