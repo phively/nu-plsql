@@ -432,7 +432,14 @@ hhf As (
 -- Unpivot final results
 Select
   unpiv.*
-  , retention_flag.retained
+  -- Use retained_cfy to use CURRENT FY retention with CFY as the denominator
+  -- e.g. count(distinct household_id) where fiscal_year = cal.cfy group by retained_cfy
+  , retain_cfy.retained As retained_cfy
+  , retain_cfy.retained_year As retained_cfy_year
+  -- Use retained_nfy to compute NEXT FY retention with CFY as denominator
+  -- e.g. count(distinct household_id) where fiscal_year = cal.cfy group by retained_nfy
+  , retain_nfy.retained As retained_nfy
+  , retain_nfy.retained_year As retained_nfy_year
 From (
   Select *
   From prefinal_data
@@ -441,7 +448,10 @@ From (
     For managed_grp In ("Boards", "Unmanaged", "KSM", "NU", "MGO", "LGO")
   )
 ) unpiv
-Left Join retention_flag
-  On retention_flag.household_id = unpiv.household_id
-  And retention_flag.retained_year = unpiv.fiscal_year
+Left Join retention_flag retain_cfy
+  On retain_cfy.household_id = unpiv.household_id
+  And retain_cfy.retained_year = unpiv.fiscal_year
+Left Join retention_flag retain_nfy
+  On retain_nfy.household_id = unpiv.household_id
+  And retain_nfy.retained_year - 1 = unpiv.fiscal_year
 ;
