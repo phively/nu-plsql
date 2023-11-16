@@ -139,14 +139,17 @@ hhf As (
       As date_modified
   From committee
   Where committee.committee_code In (
-    'U' -- gab
-    , 'KEBA' -- ebfa
+    'KEBA' -- ebfa
     , 'KAMP' -- amp
     , 'KREAC' -- real estate
     , 'HAK' -- healthcare
     , 'KPETC' -- peac
     , 'KACNA' -- kac
     , 'KWLC' -- kwlc
+  ) Or (
+    -- GAB but not GAB Life
+    committee.committee_code = 'U' -- gab
+    And committee.committee_role_code <> 'F' -- Life Member
   )
 )
 
