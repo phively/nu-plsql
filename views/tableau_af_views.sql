@@ -950,3 +950,104 @@ Order By
   , credit_amount Desc
   , tx_sequence Asc
 ;
+
+/*****************************************
+KLC retention using Amy's views
+******************************************/
+
+Create Or Replace View vt_klc_retention As
+
+-- Pull multiple years of ksm_pkg_klc.tbl_klc_members
+With
+
+klc20 As (
+  Select klc.id_number, klc.fiscal_yr
+  From table(rpt_abm1914.ksm_pkg_klc.tbl_klc_members(2020)) klc
+)
+
+, klc21 As (
+  Select klc.id_number, klc.fiscal_yr
+  From table(rpt_abm1914.ksm_pkg_klc.tbl_klc_members(2021)) klc
+)
+
+, klc22 As (
+  Select klc.id_number, klc.fiscal_yr
+  From table(rpt_abm1914.ksm_pkg_klc.tbl_klc_members(2022)) klc
+)
+
+, klc23 As (
+  Select klc.id_number, klc.fiscal_yr
+  From table(rpt_abm1914.ksm_pkg_klc.tbl_klc_members(2023)) klc
+)
+
+, klc24 As (
+  Select klc.id_number, klc.fiscal_yr
+  From table(rpt_abm1914.ksm_pkg_klc.tbl_klc_members(2024)) klc
+)
+
+, klc25 As (
+  Select klc.id_number, klc.fiscal_yr
+  From table(rpt_abm1914.ksm_pkg_klc.tbl_klc_members(2025)) klc
+)
+
+, klc As (
+  Select * From klc20
+  Union All
+  Select * From klc21
+  Union All
+  Select * From klc22
+  Union All
+  Select * From klc23
+  Union All
+  Select * From klc24
+  Union All
+  Select * From klc25
+)
+
+, last_ksm_gft As (
+  Select Distinct
+    gt.household_id
+    , gt.fiscal_year
+    , max(gt.date_of_record)
+      As last_fy_gift
+  From rpt_pbh634.v_ksm_giving_trans_hh gt
+  Where gt.credit_amount > 0
+    And gt.tx_gypm_ind <> 'P'
+    And gt.fiscal_year >= 2020
+  Group By
+    gt.household_id
+    , gt.fiscal_year
+)
+
+Select
+  hhf.household_id
+  , klc.id_number
+  , hhf.report_name
+  , hhf.degrees_concat
+  , klc.fiscal_yr
+    As fiscal_year
+  , lg.last_fy_gift
+  , ng.last_fy_gift
+    As next_fy_gift
+  , Case
+      When lg.last_fy_gift Is Not Null
+        Then 'Y'
+      End
+    As retained_lfy
+  , Case
+      When lg.last_fy_gift Is Not Null
+        And ng.last_fy_gift Is Not Null
+        Then 'Y'
+      End
+    As retained_nfy
+From klc
+Inner Join rpt_pbh634.v_entity_ksm_households_fast hhf
+  On hhf.id_number = klc.id_number
+Left Join last_ksm_gft lg
+  On lg.household_id = hhf.household_id
+  And lg.fiscal_year = klc.fiscal_yr
+  -- Check if gift made following year
+Left Join last_ksm_gft ng
+  On ng.household_id = hhf.household_id
+  And ng.fiscal_year = (klc.fiscal_yr + 1)
+;
