@@ -1010,6 +1010,8 @@ klc20 As (
     , gt.fiscal_year
     , max(gt.date_of_record)
       As last_fy_gift
+    , sum(gt.legal_amount)
+      As last_fy_total_legal
   From rpt_pbh634.v_ksm_giving_trans_hh gt
   Where gt.credit_amount > 0
     And gt.tx_gypm_ind <> 'P'
@@ -1050,4 +1052,81 @@ Left Join last_ksm_gft lg
 Left Join last_ksm_gft ng
   On ng.household_id = hhf.household_id
   And ng.fiscal_year = (klc.fiscal_yr + 1)
+;
+
+/*****************************************
+10K expendable retention from v_ksm_giving_cash
+******************************************/
+
+Create Or Replace View vt_retention_10k As
+
+With
+
+cash As (
+  Select *
+  From v_ksm_giving_cash gc
+  Where gc.cash_category = 'Expendable'
+)
+
+, hhf As (
+  Select *
+  From v_entity_ksm_households_fast
+)
+
+, fy_totals As (
+  Select
+    hhf.household_id
+    , cash.fiscal_year
+    , max(cash.date_of_record)
+      As last_fy_gift_dt
+    , sum(cash.legal_amount)
+      As fy_total_legal_amount
+  From cash
+  Inner Join hhf
+    On hhf.id_number = cash.id_number
+  Group By
+    hhf.household_id
+    , cash.fiscal_year
+  Having sum(cash.legal_amount) >= 10E3
+)
+
+Select
+  hhf.household_id
+  , hhf.id_number
+  , hhf.report_name
+  , hhf.degrees_concat
+  , fyt.fiscal_year
+    As fiscal_year
+  , fyt.last_fy_gift_dt
+  , ng.last_fy_gift_dt
+    As next_fy_gift_dt
+  , pg.fy_total_legal_amount
+    As prev_fy_total_legal
+  , fyt.fy_total_legal_amount
+    As curr_fy_total_legal
+  , ng.fy_total_legal_amount
+    As next_fy_total_legal
+  , Case
+      When fyt.last_fy_gift_dt Is Not Null
+        Then 'Y'
+      End
+    As retained_lfy
+  , Case
+      When fyt.last_fy_gift_dt Is Not Null
+        And ng.last_fy_gift_dt Is Not Null
+        Then 'Y'
+      End
+    As retained_nfy
+From fy_totals fyt
+Inner Join hhf
+  On hhf.household_id = fyt.household_id
+  And hhf.household_primary = 'Y'
+-- Check if gift made following year
+Left Join fy_totals ng
+  On ng.household_id = fyt.household_id
+  And ng.fiscal_year = (fyt.fiscal_year + 1)
+-- Check if gift made previous year
+Left Join fy_totals pg
+  On pg.household_id = fyt.household_id
+  And pg.fiscal_year = (fyt.fiscal_year - 1)
 ;
