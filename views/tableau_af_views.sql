@@ -1009,9 +1009,9 @@ klc20 As (
     gt.household_id
     , gt.fiscal_year
     , max(gt.date_of_record)
-      As last_fy_gift
+      As max_gift_dt
     , sum(gt.legal_amount)
-      As last_fy_total_legal
+      As total_legal_amount
   From rpt_pbh634.v_ksm_giving_trans_hh gt
   Where gt.credit_amount > 0
     And gt.tx_gypm_ind <> 'P'
@@ -1028,17 +1028,17 @@ Select
   , hhf.degrees_concat
   , klc.fiscal_yr
     As fiscal_year
-  , lg.last_fy_gift
-  , ng.last_fy_gift
+  , lg.max_gift_dt
+  , ng.max_gift_dt
     As next_fy_gift
   , Case
-      When lg.last_fy_gift Is Not Null
+      When lg.max_gift_dt Is Not Null
         Then 'Y'
       End
     As retained_lfy
   , Case
-      When lg.last_fy_gift Is Not Null
-        And ng.last_fy_gift Is Not Null
+      When lg.max_gift_dt Is Not Null
+        And ng.max_gift_dt Is Not Null
         Then 'Y'
       End
     As retained_nfy
@@ -1078,9 +1078,9 @@ cash As (
     hhf.household_id
     , cash.fiscal_year
     , max(cash.date_of_record)
-      As last_fy_gift_dt
+      As max_gift_dt
     , sum(cash.legal_amount)
-      As fy_total_legal_amount
+      As total_legal_amount
   From cash
   Inner Join hhf
     On hhf.id_number = cash.id_number
@@ -1090,43 +1090,90 @@ cash As (
   Having sum(cash.legal_amount) >= 10E3
 )
 
+, multiyear As (
+  Select
+    hhf.household_id
+    , hhf.id_number
+    , hhf.report_name
+    , hhf.degrees_concat
+    , fyt.fiscal_year
+      As fiscal_year
+    , fyt.max_gift_dt
+      As cfy_max_gift_dt
+    , ng.max_gift_dt
+      As nfy_next_gift_dt
+    , ng2.max_gift_dt
+      As nfy2_next_gift_dt
+    , pg.total_legal_amount
+      As pfy_total_legal_amount
+    , fyt.total_legal_amount
+      As cfy_total_legal_amount
+    , ng.total_legal_amount
+      As nfy_total_legal_amount
+    , ng2.total_legal_amount
+      As nfy2_total_legal_amount
+  From fy_totals fyt
+  Inner Join hhf
+    On hhf.household_id = fyt.household_id
+    And hhf.household_primary = 'Y'
+  -- Check if gift made previous year
+  Left Join fy_totals pg
+    On pg.household_id = fyt.household_id
+    And pg.fiscal_year = (fyt.fiscal_year - 1)
+  -- Check if gift made following year
+  Left Join fy_totals ng
+    On ng.household_id = fyt.household_id
+    And ng.fiscal_year = (fyt.fiscal_year + 1)
+  -- Check if gift made nfy2 year
+  Left Join fy_totals ng2
+    On ng2.household_id = fyt.household_id
+    And ng2.fiscal_year = (fyt.fiscal_year + 2)
+)
+
+, merged As (
+  (
+  Select
+    household_id
+    , id_number
+    , report_name
+    , degrees_concat
+    , fiscal_year
+    , cfy_max_gift_dt
+    , nfy_next_gift_dt
+    , pfy_total_legal_amount
+    , cfy_total_legal_amount
+    , nfy_total_legal_amount
+  From multiyear
+  ) Union All (
+  -- Add in dummy 0 rows for LYBUNT churn
+  Select
+    household_id
+    , id_number
+    , report_name
+    , degrees_concat
+    , fiscal_year + 1
+      As fiscal_year
+    , nfy_next_gift_dt
+      As cfy_max_gift_dt
+    , nfy2_next_gift_dt
+      As nfy_next_gift_dt
+    , cfy_total_legal_amount
+      As pfy_total_legal_amount
+    , nfy_total_legal_amount
+      As cfy_total_legal_amount
+    , nfy2_total_legal_amount
+      As nfy_total_legal_amount
+  From multiyear
+  Where nfy_total_legal_amount Is Null
+  )
+)
+
 Select
-  hhf.household_id
-  , hhf.id_number
-  , hhf.report_name
-  , hhf.degrees_concat
-  , fyt.fiscal_year
-    As fiscal_year
-  , fyt.last_fy_gift_dt
-  , ng.last_fy_gift_dt
-    As next_fy_gift_dt
-  , pg.fy_total_legal_amount
-    As prev_fy_total_legal
-  , fyt.fy_total_legal_amount
-    As curr_fy_total_legal
-  , ng.fy_total_legal_amount
-    As next_fy_total_legal
+  merged.*
   , Case
-      When fyt.last_fy_gift_dt Is Not Null
-        Then 'Y'
+      When cfy_total_legal_amount Is Null
+        Then 'Churn'
       End
-    As retained_lfy
-  , Case
-      When fyt.last_fy_gift_dt Is Not Null
-        And ng.last_fy_gift_dt Is Not Null
-        Then 'Y'
-      End
-    As retained_nfy
-From fy_totals fyt
-Inner Join hhf
-  On hhf.household_id = fyt.household_id
-  And hhf.household_primary = 'Y'
--- Check if gift made following year
-Left Join fy_totals ng
-  On ng.household_id = fyt.household_id
-  And ng.fiscal_year = (fyt.fiscal_year + 1)
--- Check if gift made previous year
-Left Join fy_totals pg
-  On pg.household_id = fyt.household_id
-  And pg.fiscal_year = (fyt.fiscal_year - 1)
+    As cfy_segment
+From merged
 ;
