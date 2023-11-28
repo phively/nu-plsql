@@ -1058,7 +1058,7 @@ Left Join last_ksm_gft ng
 10K expendable retention from v_ksm_giving_cash
 ******************************************/
 
-Create Or Replace View vt_retention_10k As
+Create Or Replace View vt_retention_expendable_cash As
 
 With
 
@@ -1079,7 +1079,7 @@ cash As (
     , cash.fiscal_year
     , max(cash.date_of_record)
       As max_gift_dt
-    , sum(cash.legal_amount)
+    , sum(nvl(cash.legal_amount, 0))
       As total_legal_amount
   From cash
   Inner Join hhf
@@ -1087,7 +1087,7 @@ cash As (
   Group By
     hhf.household_id
     , cash.fiscal_year
-  Having sum(cash.legal_amount) >= 10E3
+  Having sum(cash.legal_amount) > 0
 )
 
 , multiyear As (
@@ -1171,8 +1171,32 @@ cash As (
 Select
   merged.*
   , Case
+      When pfy_total_legal_amount >= 10E3
+        Or cfy_total_legal_amount >= 10E3
+        Then 'Y'
+      End
+    As pfy_or_cfy_10k
+  , Case
+      -- Churn
       When cfy_total_legal_amount Is Null
+        And pfy_total_legal_amount > 0
         Then 'Churn'
+      -- Acquisition
+      When cfy_total_legal_amount > 0
+        And pfy_total_legal_amount Is Null
+        Then 'New'
+      -- Retention
+      When cfy_total_legal_amount > 0
+        And pfy_total_legal_amount = cfy_total_legal_amount
+        Then 'Retain'
+      -- Upgrade
+      When cfy_total_legal_amount > 0
+        And pfy_total_legal_amount < cfy_total_legal_amount
+        Then 'Upgrade'
+      -- Downgrade
+      When cfy_total_legal_amount > 0
+        And pfy_total_legal_amount > cfy_total_legal_amount
+        Then 'Downgrade'
       End
     As cfy_segment
 From merged
