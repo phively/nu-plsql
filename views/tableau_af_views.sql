@@ -1042,7 +1042,9 @@ Select
         Then 'Y'
       End
     As retained_nfy
+  , cal.curr_fy
 From klc
+Cross Join rpt_pbh634.v_current_calendar cal
 Inner Join rpt_pbh634.v_entity_ksm_households_fast hhf
   On hhf.id_number = klc.id_number
 Left Join last_ksm_gft lg
@@ -1112,7 +1114,9 @@ cash As (
       As nfy_total_legal_amount
     , ng2.total_legal_amount
       As nfy2_total_legal_amount
+    , cal.curr_fy
   From fy_totals fyt
+  Cross Join rpt_pbh634.v_current_calendar cal
   Inner Join hhf
     On hhf.household_id = fyt.household_id
     And hhf.household_primary = 'Y'
@@ -1199,5 +1203,7 @@ Select
         Then 'Downgrade'
       End
     As cfy_segment
+    , cal.curr_fy
 From merged
+Cross Join rpt_pbh634.v_current_calendar cal
 ;
