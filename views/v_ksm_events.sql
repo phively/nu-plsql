@@ -113,6 +113,9 @@ Select
   , event.event_type
   , tms_et.short_desc
     As event_type_desc
+  , event.event_status_code
+  , tms_es.short_desc
+    As event_status_desc
   , trunc(event.event_start_datetime)
     As start_dt
   , trunc(event.event_stop_datetime)
@@ -181,6 +184,8 @@ Select
 From ep_event event
 Left Join tms_event_type tms_et
   On event.event_type = tms_et.event_type
+Left Join tms_event_status tms_es
+  On event.event_status_code = tms_es.event_status_code
 Left Join ksm_organizers ksm_org
   On event.event_id = ksm_org.event_id
 Left Join ep_event master_event
