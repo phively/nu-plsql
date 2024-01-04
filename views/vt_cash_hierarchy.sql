@@ -306,7 +306,7 @@ hhf As (
     , peac
     , kac
     , kwlc
-    -- Sun board dues per person based on memberships that year
+    -- Sum board dues per person based on memberships that year
     , Case When gab Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_gab') Else 0 End
       + Case When ebfa Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_ebfa') Else 0 End
       + Case When amp Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_amp') Else 0 End
