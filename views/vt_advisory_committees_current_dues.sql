@@ -1,4 +1,4 @@
---Create Or Replace View vt_advisory_committees_dues As
+Create Or Replace View vt_advisory_committees_dues As
 
 With
 
@@ -28,7 +28,7 @@ hhf As (
 , board_ids As (
   Select
     id_number
-    , Listagg(short_desc || '; ' || chr(13)) Within Group (Order By short_desc Asc)
+    , Listagg(short_desc, '; ' || chr(13)) Within Group (Order By short_desc Asc)
       As boards_list
     , count(short_desc)
       As total_boards
@@ -139,6 +139,7 @@ hhf As (
 , boards_hh As (
   Select
     hhf.household_id
+    , hhf.household_rpt_name
     , sum(total_boards)
       As total_boards_hh
     , sum(boards.total_dues)
@@ -157,8 +158,7 @@ hhf As (
     On hhf.id_number = boards.id_number
   Group By
     hhf.household_id
-  Order By
-    hhf.household_id Asc
+    , hhf.household_rpt_name
 )
 
 , boards_hh_cash As (
@@ -181,23 +181,21 @@ hhf As (
 
 Select
   boards_hh.household_id
+  , boards_hh.household_rpt_name
   , boards_hh.total_boards_hh
   , boards_hh.total_dues_hh
   , boards.*
   , cal.curr_fy
+  , cash.fiscal_year
+  , cash.cash_category
+  , cash.total_legal_amt
+  , cash.total_legal_amt_ytd
 From boards
 Cross Join rpt_pbh634.v_current_calendar cal
 Inner Join hhf
   On hhf.id_number = boards.id_number
 Inner Join boards_hh
   On boards_hh.household_id = hhf.household_id
-/*
--- Pivot
-Left Join boards_hh_cash cashcfy
-  On cashcfy.id_number = boards.id_number
-  And cashcfy.fiscal_year = cal.curr_fy
-Left Join boards_hh_cash cashpfy
-  On cashpfy.id_number = boards.id_number
-  And cashpfy.fiscal_year = cal.curr_fy - 1
-
-*/
+-- Giving
+Left Join boards_hh_cash cash
+  On cash.id_number = boards.id_number
