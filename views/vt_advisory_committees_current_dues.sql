@@ -115,7 +115,7 @@ hhf As (
     , kwlc
     -- Sum board dues per person based on memberships that year
     , Case When gab Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_gab') Else 0 End
-      + Case When gab_life Is Not Null Then 10E3 Else 0 End
+      + Case When gab_life Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_gab_life') Else 0 End
       + Case When ebfa Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_ebfa') Else 0 End
       + Case When amp Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_amp') Else 0 End
       + Case When re Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_realestate') Else 0 End
