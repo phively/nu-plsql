@@ -1,4 +1,5 @@
-Create Or Replace View vt_advisory_committees_dues As
+Create Or Replace View v_advisory_boards_w_dues As
+-- One entity per row, indicating advisory boards and total dues
 
 With
 
@@ -43,23 +44,23 @@ hhf As (
     , entity.institutional_suffix
     , board_ids.total_boards
     , board_ids.boards_list
-    , Case When gab.id_number Is Not Null Then 'Y' End
+    , Case When gab.id_number Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_gab') End
       As gab
-    , Case When gab_life.id_number Is Not Null Then 'Y' End
+    , Case When gab_life.id_number Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_gab_life') End
       As gab_life
-    , Case When ebfa.id_number Is Not Null Then 'Y' End
+    , Case When ebfa.id_number Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_ebfa') End
       As ebfa
-    , Case When amp.id_number Is Not Null Then 'Y' End
+    , Case When amp.id_number Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_amp') End
       As amp
-      , Case When re.id_number Is Not Null Then 'Y' End
+      , Case When re.id_number Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_realestate') End
       As re
-      , Case When health.id_number Is Not Null Then 'Y' End
+      , Case When health.id_number Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_healthcare') End
       As health
-      , Case When peac.id_number Is Not Null Then 'Y' End
+      , Case When peac.id_number Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_privateequity') End
       As peac
-      , Case When kac.id_number Is Not Null Then 'Y' End
+      , Case When kac.id_number Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_kac') End
       As kac
-    , Case When kwlc.id_number Is Not Null Then 'Y' End
+    , Case When kwlc.id_number Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_womensleadership') End
       As kwlc
   From board_ids
   Inner Join entity
@@ -114,15 +115,15 @@ hhf As (
     , kac
     , kwlc
     -- Sum board dues per person based on memberships that year
-    , Case When gab Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_gab') Else 0 End
-      + Case When gab_life Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_gab_life') Else 0 End
-      + Case When ebfa Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_ebfa') Else 0 End
-      + Case When amp Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_amp') Else 0 End
-      + Case When re Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_realestate') Else 0 End
-      + Case When health Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_healthcare') Else 0 End
-      + Case When peac Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_privateequity') Else 0 End
-      + Case When kac Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_kac') Else 0 End
-      + Case When kwlc Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_womensleadership') Else 0 End
+    , nvl(gab, 0)
+      + nvl(gab_life, 0)
+      + nvl(ebfa, 0)
+      + nvl(amp, 0)
+      + nvl(re, 0)
+      + nvl(health, 0)
+      + nvl(peac, 0)
+      + nvl(kac, 0)
+      + nvl(kwlc, 0)
       As total_dues
   From entity_boards
   Where gab Is Not Null
@@ -134,6 +135,26 @@ hhf As (
     Or peac Is Not Null
     Or kac Is Not Null
     Or kwlc Is Not Null
+)
+
+Select *
+From boards
+;
+
+Create Or Replace View vt_advisory_committees_dues As
+-- Entity, fiscal year, cash category
+-- Summed board dues per entity, and summed giving per FY and cash category
+
+With
+
+hhf As (
+  Select *
+  From rpt_pbh634.v_entity_ksm_households
+)
+
+, boards As (
+  Select *
+  From v_advisory_boards_w_dues
 )
 
 , boards_hh As (
@@ -199,3 +220,4 @@ Inner Join boards_hh
 -- Giving
 Left Join boards_hh_cash cash
   On cash.id_number = boards.id_number
+;
