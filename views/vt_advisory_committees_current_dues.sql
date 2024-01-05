@@ -3,12 +3,7 @@ Create Or Replace View v_advisory_boards_w_dues As
 
 With
 
-hhf As (
-  Select *
-  From rpt_pbh634.v_entity_ksm_households
-)
-
-, boards_data As (
+boards_data As (
   Select * From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_gab) gab
   Union 
   Select * From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_asia) -- EBFA
@@ -220,4 +215,100 @@ Inner Join boards_hh
 -- Giving
 Left Join boards_hh_cash cash
   On cash.id_number = boards.id_number
+;
+
+Create Or Replace View vt_advisory_committees_long As
+-- Entity, fiscal year, cash category, advisory board
+-- Individual board dues per entity and cash by category
+-- Entities on multiple boards have cash gift split evenly across boards
+
+With
+
+hhf As (
+  Select *
+  From rpt_pbh634.v_entity_ksm_households
+)
+
+, boards As (
+  Select *
+  From v_advisory_boards_w_dues
+)
+
+, boards_hh As (
+  Select
+    hhf.household_id
+    , hhf.household_rpt_name
+    , sum(total_boards)
+      As total_boards_hh
+    , sum(boards.total_dues)
+      As total_dues_hh
+    , count(boards.gab) As gab
+    , count(boards.gab_life) As gab_life
+    , count(boards.ebfa) As ebfa
+    , count(boards.amp) As amp
+    , count(boards.re) As re
+    , count(boards.health) As health
+    , count(boards.peac) As peac
+    , count(boards.kac) As kac
+    , count(boards.kwlc) As kwlc
+  From boards
+  Inner Join hhf
+    On hhf.id_number = boards.id_number
+  Group By
+    hhf.household_id
+    , hhf.household_rpt_name
+)
+
+, boards_hh_cash As (
+  Select
+    gc.id_number
+    , gc.fiscal_year
+    , gc.cash_category
+    , sum(gc.legal_amount)
+      As total_legal_amt
+    , sum(Case When gc.fytd_ind = 'Y' Then gc.legal_amount Else 0 End)
+      As total_legal_amt_ytd
+  From v_ksm_giving_cash gc
+  Cross Join rpt_pbh634.v_current_calendar cal
+  Where gc.fiscal_year Between cal.curr_fy - 1 And cal.curr_fy
+  Group By
+    gc.id_number
+    , gc.fiscal_year
+    , gc.cash_category
+)
+
+, long_data As (
+  Select *
+  From boards
+  Unpivot (
+    dues
+    For board In ("GAB", "GAB_LIFE", "EBFA", "AMP", "RE", "HEALTH", "PEAC", "KAC", "KWLC")
+  )
+)
+
+Select
+  long_data.id_number
+  , long_data.report_name
+  , long_data.institutional_suffix
+  , long_data.total_boards
+  , long_data.boards_list
+  , long_data.total_dues
+  , long_data.board
+  , long_data.dues
+  , cal.curr_fy
+  , cash.fiscal_year
+  , cash.cash_category
+  , cash.total_legal_amt / total_boards
+    As total_legal_amt
+  , cash.total_legal_amt_ytd / total_boards
+    As total_legal_amt_ytd
+From long_data
+Cross Join rpt_pbh634.v_current_calendar cal
+Inner Join hhf
+  On hhf.id_number = long_data.id_number
+Inner Join boards_hh
+  On boards_hh.household_id = hhf.household_id
+-- Giving
+Left Join boards_hh_cash cash
+  On cash.id_number = long_data.id_number
 ;
