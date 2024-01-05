@@ -270,7 +270,7 @@ hhf As (
       As total_legal_amt_ytd
   From v_ksm_giving_cash gc
   Cross Join rpt_pbh634.v_current_calendar cal
-  Where gc.fiscal_year Between cal.curr_fy - 1 And cal.curr_fy
+  Where gc.fiscal_year Between cal.curr_fy - 3 And cal.curr_fy
   Group By
     gc.id_number
     , gc.fiscal_year
