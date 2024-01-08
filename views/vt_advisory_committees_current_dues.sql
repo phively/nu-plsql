@@ -286,6 +286,12 @@ hhf As (
   )
 )
 
+-- Subquery to cross join CFY and PFY
+, deduped_years_and_boards As (
+  Select Distinct fiscal_year
+  From From boards_hh_cash
+)
+
 Select
   long_data.id_number
   , long_data.report_name
@@ -296,7 +302,7 @@ Select
   , long_data.board
   , long_data.dues
   , cal.curr_fy
-  , cash.fiscal_year
+  , dd.fiscal_year
   , cash.cash_category
   , cash.total_legal_amt / total_boards
     As total_legal_amt
@@ -304,6 +310,7 @@ Select
     As total_legal_amt_ytd
 From long_data
 Cross Join rpt_pbh634.v_current_calendar cal
+Cross Join deduped_years_and_boards dd
 Inner Join hhf
   On hhf.id_number = long_data.id_number
 Inner Join boards_hh
@@ -311,4 +318,5 @@ Inner Join boards_hh
 -- Giving
 Left Join boards_hh_cash cash
   On cash.id_number = long_data.id_number
+  And cash.fiscal_year = dd.fiscal_year
 ;
