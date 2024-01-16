@@ -41,7 +41,8 @@ cal As (
     , gft.alloc_short_name
     , gft.tx_gypm_ind
     , gft.transaction_type
-    , gft.fiscal_year
+    , to_char(gft.fiscal_year)
+      As fiscal_year
     , gft.date_of_record
     , gft.legal_amount
     , gft.cash_category
@@ -59,6 +60,36 @@ cal As (
   Inner Join ytd_dts On trunc(ytd_dts.dt) = trunc(gft.date_of_record)
   Where fiscal_year In (cal.curr_fy, cal.prev_fy)
     And ytd_dts.ytd_ind = 'Y'
+  -- Manual exceptions
+  Union
+  Select
+    g.tx_number
+    , g.id_number
+    , entity.report_name
+    , g.allocation_code
+    , g.alloc_short_name
+    , g.tx_gypm_ind
+    , g.transaction_type
+    , g.fiscal_year
+    , g.date_of_record
+    , g.legal_amount
+    , 'Expendable'
+      As cash_category
+    , cal.curr_fy
+    , cal.prev_fy
+    , cal.prev_day
+    , 'Expendable'
+      As cash_type
+  From nu_gft_trp_gifttrans g
+  Inner Join entity
+    On entity.id_number = g.id_number
+  Cross Join cal
+  Inner Join ytd_dts On trunc(ytd_dts.dt) = trunc(g.date_of_record)
+  Where g.fiscal_year In (cal.curr_fy, cal.prev_fy)
+    And ytd_dts.ytd_ind = 'Y'
+    And (
+      g.tx_number = 3012462 And g.tx_sequence = 2
+    )
 )
 
 -- Main query
