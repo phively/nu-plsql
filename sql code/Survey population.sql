@@ -38,8 +38,18 @@ pref_email As (
 
 Select
   deg.id_number
+  -- Dean salutation if available, else first name
+  , Case
+      When trim(sal.p_dean_salut) Is Not Null 
+        Then trim(sal.p_dean_salut)
+      Else trim(entity.first_name)
+      End
+    As first_name_for_qualtrics
+  , entity.report_name
   , sal.p_dean_salut
-  , deg.report_name
+  , entity.first_name
+  , entity.middle_name
+  , entity.last_name
   , deg.record_status_code
   , deg.first_masters_year
   , trunc(deg.first_masters_year/10) * 10
@@ -70,6 +80,7 @@ Select
     As board_fellows_survey_segment
   , sh.special_handling_concat
   , sh.mailing_list_concat
+  , pref_email.email_address
   , pref_email.pref_email
   , pref_email.non_nu_pref_email
 From v_entity_ksm_degrees deg
@@ -90,6 +101,7 @@ Where
   deg.record_status_code = 'A'
   -- MBA only, dropping PHD for 2024
   And deg.first_masters_year Is Not Null
+  And deg.program_group In ('FT', 'TMP', 'EMP')
   -- Exclude international alumni
   And deg.program Not In ('EMP-ISR', 'EMP-CAN', 'EMP-HK', 'EMP-GER', 'EMP-CHI')
   
