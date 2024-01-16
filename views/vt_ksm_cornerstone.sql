@@ -2,7 +2,12 @@ Create Or Replace View vt_ksm_cornerstone As
 
 With
 
-cornerstone As (
+hhf As (
+  Select *
+  From rpt_pbh634.v_entity_ksm_households_fast
+)
+
+, cornerstone As (
   Select
     gc.gift_club_id_number
       As id_number
@@ -37,6 +42,41 @@ cornerstone As (
   Where gift_club_code = 'KCD'
 )
 
+, cash_giving As (
+  Select Distinct
+    hhf.household_id
+    , cash.*
+  From rpt_pbh634.v_ksm_giving_cash cash
+  Inner Join hhf
+    On hhf.id_number = cash.id_number
+  Inner Join cornerstone
+    On cornerstone.id_number = cash.id_number
+  Where cash.fiscal_year Between cash.curr_fy - 3 And cash.curr_fy
+)
+
+, cash_agg As (
+  Select
+    cg.household_id
+    , cg.cash_category
+    , sum(Case When cg.fiscal_year = cg.curr_fy - 0 Then cg.legal_amount Else 0 End)
+      As giving_cfy
+    , sum(Case When cg.fiscal_year = cg.curr_fy - 1 Then cg.legal_amount Else 0 End)
+      As giving_pfy1
+    , sum(Case When cg.fiscal_year = cg.curr_fy - 2 Then cg.legal_amount Else 0 End)
+      As giving_pfy2
+    , sum(Case When cg.fiscal_year = cg.curr_fy - 3 Then cg.legal_amount Else 0 End)
+      As giving_pfy3
+    , sum(Case When cg.fiscal_year = cg.curr_fy - 1 And cg.fytd_ind = 'Y' Then cg.legal_amount Else 0 End)
+      As giving_pfy1_ytd
+    , sum(Case When cg.fiscal_year = cg.curr_fy - 2 And cg.fytd_ind = 'Y' Then cg.legal_amount Else 0 End)
+      As giving_pfy2_ytd
+    , sum(Case When cg.fiscal_year = cg.curr_fy - 3 And cg.fytd_ind = 'Y' Then cg.legal_amount Else 0 End)
+      As giving_pfy3_ytd
+  From cash_giving cg
+  Group By cg.household_id
+    , cg.cash_category
+)
+
 Select
   hhf.household_id
   , hhf.household_rpt_name
@@ -62,10 +102,26 @@ Select
   , cornerstone.date_added
   , cornerstone.date_modified
   , cornerstone.operator_name
+  , expendable.giving_cfy
+    As expendable_cfy
+  , expendable.giving_pfy1
+    As expendable_pfy1
+  , expendable.giving_pfy2
+    As expendable_pfy2
+  , expendable.giving_pfy3
+    As expendable_pfy3
+  , expendable.giving_pfy1_ytd
+    As expendable_pfy1_ytd
+  , expendable.giving_pfy2_ytd
+    As expendable_pfy2_ytd
+  , expendable.giving_pfy3_ytd
+    As expendable_pfy3_ytd
   , cal.curr_fy
 From cornerstone
 Cross Join rpt_pbh634.v_current_calendar cal
-Inner Join rpt_pbh634.v_entity_ksm_households_fast hhf
+Inner Join hhf
   On hhf.id_number = cornerstone.id_number
--- Role is apparently saved under school_code; don't ask
+Left Join cash_agg expendable
+  On expendable.household_id = hhf.household_id
+  And expendable.cash_category = 'Expendable'
 
