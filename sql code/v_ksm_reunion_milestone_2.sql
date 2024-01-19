@@ -93,10 +93,19 @@ sum(Case When gt.cru_flag = 'Y' and gt.fiscal_year = '2023' Then gt.hh_credit El
 from gt
 --- Exclude Pledge Payments
 Where gt.tx_gypm_ind <> 'Y'
-group by gt.id_number)
+group by gt.id_number),
+
+stewardship as (select gt.id_number
+   , sum(Case When gt.cru_flag = 'Y' and gt.fiscal_year = '2019'     Then hh_stewardship_credit Else 0 End) As stewardship_19
+    , sum(Case When gt.cru_flag = 'Y' and gt.fiscal_year = '2020' Then hh_stewardship_credit Else 0 End) As stewardship_20
+    , sum(Case When gt.cru_flag = 'Y' and gt.fiscal_year = '2021' Then hh_stewardship_credit Else 0 End) As stewardship_21
+    , sum(Case When gt.cru_flag = 'Y' and gt.fiscal_year = '2022' Then hh_stewardship_credit Else 0 End) As stewardship_22
+    , sum(Case When gt.cru_flag = 'Y' and gt.fiscal_year = '2023' Then hh_stewardship_credit Else 0 End) As stewardship_23
+from gt
+group by gt.id_number),
 
 --- Bringing together - CRU Cash, total cash and committments
-,final_giving as (select distinct d.id_number,
+final_giving as (select distinct d.id_number,
 cru.cru_cash_19,
 cru.cru_cash_20,
 cru.cru_cash_21,
@@ -111,10 +120,16 @@ c.total_committment_19,
 c.total_committment_20,
 c.total_committment_21,
 c.total_committment_22,
-c.total_committment_23
+c.total_committment_23,
+stewardship.stewardship_19,
+stewardship.stewardship_20,
+stewardship.stewardship_21,
+stewardship.stewardship_22,
+stewardship.stewardship_23
 from rpt_pbh634.v_entity_ksm_degrees d
 left join cru on cru.id_number = d.id_number
-left join c on c.id_number = d.id_number),
+left join c on c.id_number = d.id_number
+left join stewardship on stewardship.id_number = d.id_number),
 
 
 final_query as (SELECT DISTINCT
@@ -228,6 +243,11 @@ EXAMPLE:
 ,fg.total_committment_21
 ,fg.total_committment_22
 ,fg.total_committment_23
+,fg.stewardship_19
+,fg.stewardship_20
+,fg.stewardship_21
+,fg.stewardship_22
+,fg.stewardship_23
 ,case when fg.cru_cash_19 > 0 then 'Y' end as donor_af_FY_19
 ,case when fg.cru_cash_20 > 0 then 'Y' end as donor_af_FY_20
 ,case when fg.cru_cash_21 > 0 then 'Y' end as donor_af_FY_21
@@ -295,6 +315,8 @@ when fq.Reunion_40TH_MILESTONE is not null then 'Reunion 40TH MILESTONE'
 when fq.Reunion_45TH_MILESTONE is not null then 'Reunion 45TH MILESTONE'
 when fq.Reunion_45TH_MILESTONE is not null then 'Reunion 50TH MILESTONE'
 End as Milestone_year
+--- add an eligible flag - used for Tableau later
+,case when fq.id_number is not null then 'Y' end as eligible_IND
 ,fq.cash_19
 ,fq.cash_20
 ,fq.cash_21
@@ -310,6 +332,11 @@ End as Milestone_year
 ,fq.total_committment_21
 ,fq.total_committment_22
 ,fq.total_committment_23
+,fq.stewardship_19
+,fq.stewardship_20
+,fq.stewardship_21
+,fq.stewardship_22
+,fq.stewardship_23
 ,fq.donor_af_FY_19
 ,fq.donor_af_FY_20
 ,fq.donor_af_FY_21
@@ -332,6 +359,8 @@ select fq.id_number
 --- Vertical Stacking ofthe Data
 ,case when fq.Reunion_1ST_MILESTONE is not null then 'Reunion 1ST MILESTONE'
 End as Milestone_year
+--- add an eligible flag - used for Tableau later
+,case when fq.id_number is not null then 'Y' end as eligible_IND
 ,fq.cash_19
 ,fq.cash_20
 ,fq.cash_21
@@ -347,6 +376,11 @@ End as Milestone_year
 ,fq.total_committment_21
 ,fq.total_committment_22
 ,fq.total_committment_23
+,fq.stewardship_19
+,fq.stewardship_20
+,fq.stewardship_21
+,fq.stewardship_22
+,fq.stewardship_23
 ,fq.donor_af_FY_19
 ,fq.donor_af_FY_20
 ,fq.donor_af_FY_21
@@ -365,6 +399,8 @@ select fq.id_number
 --- Vertical Stacking ofthe Data
 , case when fq.Reunion_5TH_MILESTONE is not null then 'Reunion 5TH MILESTONE'
 End as Milestone_year
+--- add an eligible flag - used for Tableau later
+,case when fq.id_number is not null then 'Y' end as eligible_IND
 ,fq.cash_19
 ,fq.cash_20
 ,fq.cash_21
@@ -380,6 +416,11 @@ End as Milestone_year
 ,fq.total_committment_21
 ,fq.total_committment_22
 ,fq.total_committment_23
+,fq.stewardship_19
+,fq.stewardship_20
+,fq.stewardship_21
+,fq.stewardship_22
+,fq.stewardship_23
 ,fq.donor_af_FY_19
 ,fq.donor_af_FY_20
 ,fq.donor_af_FY_21
@@ -408,6 +449,8 @@ when fq.Reunion_40TH_MILESTONE is not null then 'Reunion 40TH MILESTONE'
 when fq.Reunion_45TH_MILESTONE is not null then 'Reunion 45TH MILESTONE'
 when fq.Reunion_45TH_MILESTONE is not null then 'Reunion 50TH MILESTONE'
 End as Milestone_year
+--- add an eligible flag - used for Tableau later
+,case when fq.id_number is not null then 'Y' end as eligible_IND
 ,fq.cash_19
 ,fq.cash_20
 ,fq.cash_21
@@ -423,6 +466,11 @@ End as Milestone_year
 ,fq.total_committment_21
 ,fq.total_committment_22
 ,fq.total_committment_23
+,fq.stewardship_19
+,fq.stewardship_20
+,fq.stewardship_21
+,fq.stewardship_22
+,fq.stewardship_23
 ,fq.donor_af_FY_19
 ,fq.donor_af_FY_20
 ,fq.donor_af_FY_21
