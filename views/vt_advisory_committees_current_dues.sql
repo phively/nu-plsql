@@ -16,8 +16,6 @@ boards_data As (
   Union
   Select * From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_privateEquity)
   Union
-  Select * From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_womensLeadership)
-  Union
   Select * From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_kac)
 )
 
@@ -289,7 +287,7 @@ hhf As (
 -- Subquery to cross join CFY and PFY
 , deduped_years_and_boards As (
   Select Distinct fiscal_year
-  From From boards_hh_cash
+  From boards_hh_cash
 )
 
 Select
