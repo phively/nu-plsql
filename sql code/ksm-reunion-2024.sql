@@ -45,6 +45,13 @@ WHERE (TO_NUMBER(NVL(TRIM(A.CLASS_YEAR),'1')) IN (MD.CFY-1, MD.CFY-5, MD.CFY-10,
 AND A.AFFIL_CODE = 'KM'
 AND A.AFFIL_LEVEL_CODE = 'RG'))
 
+--- Consideration of those with Mult Reunion Years from Our NU
+
+,KR_YEAR_CONCAT AS (Select KR.id_number
+,Listagg (KR.Class_Year, ';  ') Within Group (Order By KR.Class_Year) As ksm_reunion_year_concat
+from KSM_REUNION KR 
+group by KR.id_number)
+
 ,GIVING_SUMMARY AS (select s.ID_NUMBER,
        s.CRU_CFY,
        s.CRU_PFY1,
@@ -658,6 +665,7 @@ SELECT DISTINCT
   ,E.last_name   
   --- Attending Reunion 2024 - I will add this once registratio opens
   ,KR.CLASS_YEAR
+  ,KYCC.ksm_reunion_year_concat AS CLASS_YEAR_CONCAT 
   ,KR.PROGRAM AS DEGREE_PROGRAM
   ,KR.PROGRAM_GROUP
   ,KR.CLASS_SECTION AS COHORT
@@ -868,3 +876,5 @@ LEFT JOIN MD
 ON MD.ID_NUMBER = E.ID_NUMBER
 LEFT JOIN C 
 ON C.ID_NUMBER = E.ID_NUMBER
+Left JOIN KR_YEAR_CONCAT KYCC
+ON KYCC.ID_NUMBER = E.ID_NUMBER
