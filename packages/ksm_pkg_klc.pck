@@ -32,7 +32,14 @@ Function tbl_klc_members(
   fiscal_year  In number
 ) Return t_klc_members Pipelined;
 
+-- Return klc members by fiscal year
+Function tbl_klc_members(
+  fiscal_year1  In number
+  , fiscal_year2 In number
+) Return t_klc_members Pipelined;
+
 End ksm_pkg_klc;
+
 /
 Create Or Replace Package Body ksm_pkg_klc Is
 
@@ -40,7 +47,7 @@ Create Or Replace Package Body ksm_pkg_klc Is
 Private cursors -- data definitions
 *************************************************************************/
 
-Cursor c_klc_member(fiscal_year_in In number) Is
+Cursor c_klc_member(fiscal_year_in In number, fiscal_year2_in) Is
   WITH 
 /*only dates that need to be changed every year to reference
 current FY and previous FY8*/
@@ -48,6 +55,7 @@ current FY and previous FY8*/
 fiscal_year AS (
 SELECT 
   fiscal_year_in AS CURR_FY
+  , fiscal_year2_in As END_FY
 FROM DUAL
 )
 
@@ -253,6 +261,7 @@ Function tbl_klc_members(
   Begin
       Open c_klc_member(
         fiscal_year_in => fiscal_year
+        fiscal_year2_in => fiscal_year
         );
       Fetch c_klc_member Bulk Collect Into klc_members;
       For i in 1..klc_members.count Loop
@@ -262,5 +271,27 @@ Function tbl_klc_members(
     Return;
     End;
     
+-- Return klc members by fiscal year
+Function tbl_klc_members(
+  fiscal_year  In number
+  , fiscal_year2 In number
+) Return t_klc_members Pipelined
+ As
+  -- Declarations
+  klc_members t_klc_members;
+  -- Return table results
+  Begin
+      Open c_klc_member(
+        fiscal_year_in => fiscal_year
+        , fiscal_year2_in => fiscal_year2
+        );
+      Fetch c_klc_member Bulk Collect Into klc_members;
+      For i in 1..klc_members.count Loop
+        Pipe row(klc_members(i));
+      End Loop;
+      Close c_klc_member;
+    Return;
+    End;
+
 End ksm_pkg_klc;
 /
