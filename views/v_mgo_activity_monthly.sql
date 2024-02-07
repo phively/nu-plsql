@@ -16,7 +16,7 @@ proposal_dates As (
 , ksm_cash As (
   Select
     mgc.primary_credited_mgr As id_number
-    , mgc.primary_donor_report_name As report_name
+    , mgc.primary_credited_mgr_name As report_name
     , 'KGC' As goal_type
     , 'KSM Cash' As goal_desc
     , extract(year From mgc.date_of_record) As cal_year
@@ -169,9 +169,9 @@ Select
   , ksm_cash.perf_quarter
   , ksm_cash.fy_goal
   , ksm_cash.py_goal
-  , sum(legal_amount) As progress
-  , sum(legal_amount) As adjusted_progress
-  , sum(legal_amount) As addl_progress_detail
+  , trunc(sum(legal_amount), 2) As progress
+  , trunc(sum(legal_amount), 2) As adjusted_progress
+  , trunc(sum(legal_amount), 2) As addl_progress_detail
 From ksm_cash
 Group By
   ksm_cash.id_number
