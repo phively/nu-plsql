@@ -4,7 +4,7 @@ With
 
 params As (
   Select
-    2020 As start_yr
+    2018 As start_yr
   From DUAL
 )
 
@@ -53,6 +53,8 @@ params As (
     , gt.fiscal_year
     , gt.date_of_record
     , gt.legal_amount
+    , allocs.cash_category
+      As cash_category_detail
     , Case
         When gt.payment_type = 'Gift-in-Kind'
           Then 'Gift In Kind'
@@ -141,6 +143,7 @@ params As (
       As fytd_ind
     , attr_cash.legal_amount
     , attr_cash.cash_category
+    , attr_cash.cash_category_detail
     , attr_cash.pledge_number
     , attr_cash.proposal_id
     , fpc.assignment_id_number As proposal_mgr
