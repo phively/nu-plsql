@@ -40,7 +40,14 @@ Function tbl_klc_members_range(
   ,fiscal_year2 In number
 ) Return t_klc_members_range Pipelined;
 
+-- Return klc members by fiscal year
+Function tbl_klc_members(
+  fiscal_year1  In number
+  , fiscal_year2 In number
+) Return t_klc_members Pipelined;
+
 End ksm_pkg_klc;
+
 /
 Create Or Replace Package Body ksm_pkg_klc Is
 
@@ -340,6 +347,7 @@ Function tbl_klc_members(
     Return;
     End;
     
+
 Function tbl_klc_members_range(
   fiscal_year In number
   , fiscal_year2 In number
@@ -357,6 +365,6 @@ Function tbl_klc_members_range(
     Close c_klc_member_range;
   Return;
   End;
-    
+
 End ksm_pkg_klc;
 /

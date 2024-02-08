@@ -950,3 +950,260 @@ Order By
   , credit_amount Desc
   , tx_sequence Asc
 ;
+
+/*****************************************
+KLC retention using Amy's views
+******************************************/
+
+Create Or Replace View vt_klc_retention As
+
+-- Pull multiple years of ksm_pkg_klc.tbl_klc_members
+With
+
+klc20 As (
+  Select klc.id_number, klc.fiscal_yr
+  From table(rpt_abm1914.ksm_pkg_klc.tbl_klc_members(2020)) klc
+)
+
+, klc21 As (
+  Select klc.id_number, klc.fiscal_yr
+  From table(rpt_abm1914.ksm_pkg_klc.tbl_klc_members(2021)) klc
+)
+
+, klc22 As (
+  Select klc.id_number, klc.fiscal_yr
+  From table(rpt_abm1914.ksm_pkg_klc.tbl_klc_members(2022)) klc
+)
+
+, klc23 As (
+  Select klc.id_number, klc.fiscal_yr
+  From table(rpt_abm1914.ksm_pkg_klc.tbl_klc_members(2023)) klc
+)
+
+, klc24 As (
+  Select klc.id_number, klc.fiscal_yr
+  From table(rpt_abm1914.ksm_pkg_klc.tbl_klc_members(2024)) klc
+)
+
+, klc25 As (
+  Select klc.id_number, klc.fiscal_yr
+  From table(rpt_abm1914.ksm_pkg_klc.tbl_klc_members(2025)) klc
+)
+
+, klc As (
+  Select * From klc20
+  Union All
+  Select * From klc21
+  Union All
+  Select * From klc22
+  Union All
+  Select * From klc23
+  Union All
+  Select * From klc24
+  Union All
+  Select * From klc25
+)
+
+, last_ksm_gft As (
+  Select Distinct
+    gt.household_id
+    , gt.fiscal_year
+    , max(gt.date_of_record)
+      As max_gift_dt
+    , sum(gt.legal_amount)
+      As total_legal_amount
+  From rpt_pbh634.v_ksm_giving_trans_hh gt
+  Where gt.credit_amount > 0
+    And gt.tx_gypm_ind <> 'P'
+    And gt.fiscal_year >= 2020
+  Group By
+    gt.household_id
+    , gt.fiscal_year
+)
+
+Select
+  hhf.household_id
+  , klc.id_number
+  , hhf.report_name
+  , hhf.degrees_concat
+  , klc.fiscal_yr
+    As fiscal_year
+  , lg.max_gift_dt
+  , ng.max_gift_dt
+    As next_fy_gift
+  , Case
+      When lg.max_gift_dt Is Not Null
+        Then 'Y'
+      End
+    As retained_lfy
+  , Case
+      When lg.max_gift_dt Is Not Null
+        And ng.max_gift_dt Is Not Null
+        Then 'Y'
+      End
+    As retained_nfy
+  , cal.curr_fy
+From klc
+Cross Join rpt_pbh634.v_current_calendar cal
+Inner Join rpt_pbh634.v_entity_ksm_households_fast hhf
+  On hhf.id_number = klc.id_number
+Left Join last_ksm_gft lg
+  On lg.household_id = hhf.household_id
+  And lg.fiscal_year = klc.fiscal_yr
+  -- Check if gift made following year
+Left Join last_ksm_gft ng
+  On ng.household_id = hhf.household_id
+  And ng.fiscal_year = (klc.fiscal_yr + 1)
+;
+
+/*****************************************
+10K expendable retention from v_ksm_giving_cash
+******************************************/
+
+Create Or Replace View vt_retention_expendable_cash As
+
+With
+
+cash As (
+  Select *
+  From v_ksm_giving_cash gc
+  Where gc.cash_category = 'Expendable'
+)
+
+, hhf As (
+  Select *
+  From v_entity_ksm_households_fast
+)
+
+, fy_totals As (
+  Select
+    hhf.household_id
+    , cash.fiscal_year
+    , max(cash.date_of_record)
+      As max_gift_dt
+    , sum(nvl(cash.legal_amount, 0))
+      As total_legal_amount
+  From cash
+  Inner Join hhf
+    On hhf.id_number = cash.id_number
+  Group By
+    hhf.household_id
+    , cash.fiscal_year
+  Having sum(cash.legal_amount) > 0
+)
+
+, multiyear As (
+  Select
+    hhf.household_id
+    , hhf.id_number
+    , hhf.report_name
+    , hhf.degrees_concat
+    , fyt.fiscal_year
+      As fiscal_year
+    , fyt.max_gift_dt
+      As cfy_max_gift_dt
+    , ng.max_gift_dt
+      As nfy_next_gift_dt
+    , ng2.max_gift_dt
+      As nfy2_next_gift_dt
+    , pg.total_legal_amount
+      As pfy_total_legal_amount
+    , fyt.total_legal_amount
+      As cfy_total_legal_amount
+    , ng.total_legal_amount
+      As nfy_total_legal_amount
+    , ng2.total_legal_amount
+      As nfy2_total_legal_amount
+    , cal.curr_fy
+  From fy_totals fyt
+  Cross Join rpt_pbh634.v_current_calendar cal
+  Inner Join hhf
+    On hhf.household_id = fyt.household_id
+    And hhf.household_primary = 'Y'
+  -- Check if gift made previous year
+  Left Join fy_totals pg
+    On pg.household_id = fyt.household_id
+    And pg.fiscal_year = (fyt.fiscal_year - 1)
+  -- Check if gift made following year
+  Left Join fy_totals ng
+    On ng.household_id = fyt.household_id
+    And ng.fiscal_year = (fyt.fiscal_year + 1)
+  -- Check if gift made nfy2 year
+  Left Join fy_totals ng2
+    On ng2.household_id = fyt.household_id
+    And ng2.fiscal_year = (fyt.fiscal_year + 2)
+)
+
+, merged As (
+  (
+  Select
+    household_id
+    , id_number
+    , report_name
+    , degrees_concat
+    , fiscal_year
+    , cfy_max_gift_dt
+    , nfy_next_gift_dt
+    , pfy_total_legal_amount
+    , cfy_total_legal_amount
+    , nfy_total_legal_amount
+  From multiyear
+  ) Union All (
+  -- Add in dummy 0 rows for LYBUNT churn
+  Select
+    household_id
+    , id_number
+    , report_name
+    , degrees_concat
+    , fiscal_year + 1
+      As fiscal_year
+    , nfy_next_gift_dt
+      As cfy_max_gift_dt
+    , nfy2_next_gift_dt
+      As nfy_next_gift_dt
+    , cfy_total_legal_amount
+      As pfy_total_legal_amount
+    , nfy_total_legal_amount
+      As cfy_total_legal_amount
+    , nfy2_total_legal_amount
+      As nfy_total_legal_amount
+  From multiyear
+  Where nfy_total_legal_amount Is Null
+  )
+)
+
+Select
+  merged.*
+  , Case
+      When pfy_total_legal_amount >= 10E3
+        Or cfy_total_legal_amount >= 10E3
+        Then 'Y'
+      End
+    As pfy_or_cfy_10k
+  , Case
+      -- Churn
+      When cfy_total_legal_amount Is Null
+        And pfy_total_legal_amount > 0
+        Then 'Churn'
+      -- Acquisition
+      When cfy_total_legal_amount > 0
+        And pfy_total_legal_amount Is Null
+        Then 'New'
+      -- Retention
+      When cfy_total_legal_amount > 0
+        And pfy_total_legal_amount = cfy_total_legal_amount
+        Then 'Retain'
+      -- Upgrade
+      When cfy_total_legal_amount > 0
+        And pfy_total_legal_amount < cfy_total_legal_amount
+        Then 'Upgrade'
+      -- Downgrade
+      When cfy_total_legal_amount > 0
+        And pfy_total_legal_amount > cfy_total_legal_amount
+        Then 'Downgrade'
+      End
+    As cfy_segment
+    , cal.curr_fy
+From merged
+Cross Join rpt_pbh634.v_current_calendar cal
+;

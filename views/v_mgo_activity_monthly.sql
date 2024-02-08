@@ -13,6 +13,29 @@ proposal_dates As (
   From table(rpt_pbh634.metrics_pkg.tbl_proposal_dates)
 )
 
+, ksm_cash As (
+  Select
+    mgc.primary_credited_mgr As id_number
+    , mgc.primary_credited_mgr_name As report_name
+    , 'KGC' As goal_type
+    , 'KSM Cash' As goal_desc
+    , extract(year From mgc.date_of_record) As cal_year
+    , extract(month From mgc.date_of_record) As cal_month
+    , mgc.fiscal_year
+    , rpt_pbh634.ksm_pkg_tmp.get_quarter(mgc.date_of_record, 'fisc') As fiscal_quarter
+    , rpt_pbh634.ksm_pkg_tmp.get_performance_year(mgc.date_of_record) As perf_year
+    , rpt_pbh634.ksm_pkg_tmp.get_quarter(mgc.date_of_record, 'perf') As perf_quarter
+    , 0 As fy_goal
+    , 0 As py_goal
+    , legal_amount
+  From vt_ksm_mg_cash mgc
+  Where
+    -- Expendable only
+    mgc.cash_category = 'Expendable'
+    -- Exclude pledge payments
+    And mgc.tx_gypm_ind <> 'Y'
+)
+
 ----- Main query goal 1, equivalent to lines 4-511 in nu_gft_v_officer_metrics -----
 Select fcd.assignment_id_number As id_number
   , e.report_name
@@ -131,6 +154,38 @@ Group By rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(ack.ask_or_stop_dt)
   , rpt_pbh634.ksm_pkg_tmp.get_performance_year(ack.ask_or_stop_dt)
   , g.goal_2
   , pyg.goal_2
+Union
+----- KSM supplement - expendable cash from non-pledge payments
+Select
+  ksm_cash.id_number
+  , ksm_cash.report_name
+  , ksm_cash.goal_type
+  , ksm_cash.goal_desc
+  , ksm_cash.cal_year
+  , ksm_cash.cal_month
+  , ksm_cash.fiscal_year
+  , ksm_cash.fiscal_quarter
+  , ksm_cash.perf_year
+  , ksm_cash.perf_quarter
+  , ksm_cash.fy_goal
+  , ksm_cash.py_goal
+  , trunc(sum(legal_amount), 2) As progress
+  , trunc(sum(legal_amount), 2) As adjusted_progress
+  , trunc(sum(legal_amount), 2) As addl_progress_detail
+From ksm_cash
+Group By
+  ksm_cash.id_number
+  , ksm_cash.report_name
+  , ksm_cash.goal_type
+  , ksm_cash.goal_desc
+  , ksm_cash.cal_year
+  , ksm_cash.cal_month
+  , ksm_cash.fiscal_year
+  , ksm_cash.fiscal_quarter
+  , ksm_cash.perf_year
+  , ksm_cash.perf_quarter
+  , ksm_cash.fy_goal
+  , ksm_cash.py_goal
 Union
 ----- Main query goal 3, equivalent to lines 848-1391 in nu_gft_v_officer_metrics -----
 Select fr.assignment_id_number As id_number
@@ -375,6 +430,28 @@ With goals As (
     , 1 As perf_quarter
     , goal_3 As fy_goal
     , goal_3 As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+    , NULL As addl_progress_detail
+  From entity
+  Inner Join goal
+    On entity.id_number = goal.id_number
+  Union All
+  -- Goal 3 cash version
+  -- KSM Cash
+  Select
+    goal.id_number
+    , entity.report_name
+    , 'KGC' As goal_type
+    , 'KSM Cash' As goal_desc
+    , goal.year As cal_year
+    , 1 As cal_month
+    , goal.year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.year As perf_year
+    , 1 As perf_quarter
+    , 0 As fy_goal
+    , 0 As py_goal
     , 0 As progress
     , 0 As adjusted_progress
     , NULL As addl_progress_detail

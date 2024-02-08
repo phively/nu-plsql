@@ -4,7 +4,7 @@ With
 
 params As (
   Select
-    2021 As start_yr
+    2018 As start_yr
   From DUAL
 )
 
@@ -53,6 +53,8 @@ params As (
     , gt.fiscal_year
     , gt.date_of_record
     , gt.legal_amount
+    , allocs.cash_category
+      As cash_category_detail
     , Case
         When gt.payment_type = 'Gift-in-Kind'
           Then 'Gift In Kind'
@@ -137,8 +139,11 @@ params As (
     , attr_cash.transaction_type
     , attr_cash.fiscal_year
     , attr_cash.date_of_record
+    , rpt_pbh634.ksm_pkg_calendar.fytd_indicator(attr_cash.date_of_record)
+      As fytd_ind
     , attr_cash.legal_amount
     , attr_cash.cash_category
+    , attr_cash.cash_category_detail
     , attr_cash.pledge_number
     , attr_cash.proposal_id
     , fpc.assignment_id_number As proposal_mgr
@@ -149,7 +154,9 @@ params As (
     , lgo.assignment_id_number As assigned_lgo
     , lgo.assignment_report_name As lgo_name
     , lgo.start_dt_calc As lgo_start_dt
+    , cal.curr_fy
   From attr_cash
+  Cross join rpt_pbh634.v_current_calendar cal
   Inner Join entity
     On entity.id_number = attr_cash.id_number
   Left Join funded_proposal_credit fpc

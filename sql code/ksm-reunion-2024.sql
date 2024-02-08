@@ -45,6 +45,13 @@ WHERE (TO_NUMBER(NVL(TRIM(A.CLASS_YEAR),'1')) IN (MD.CFY-1, MD.CFY-5, MD.CFY-10,
 AND A.AFFIL_CODE = 'KM'
 AND A.AFFIL_LEVEL_CODE = 'RG'))
 
+--- Consideration of those with Mult Reunion Years from Our NU
+
+,KR_YEAR_CONCAT AS (Select KR.id_number
+,Listagg (KR.Class_Year, ';  ') Within Group (Order By KR.Class_Year) As ksm_reunion_year_concat
+from KSM_REUNION KR 
+group by KR.id_number)
+
 ,GIVING_SUMMARY AS (select s.ID_NUMBER,
        s.CRU_CFY,
        s.CRU_PFY1,
@@ -527,7 +534,7 @@ max (TX_NUMBER) keep (dense_rank First Order By DATE_OF_RECORD DESC) as rcpt
           INNER JOIN ENTITY
           ON GIFT.GIFT_DONOR_ID = ENTITY.ID_NUMBER
           WHERE TX_GYPM_IND <> 'P'  AND GIFT.GIFT_SEQUENCE = 1
-          and rpt_pbh634.ksm_pkg_tmp.get_fiscal_year (DATE_OF_RECORD) in ('2022','2023')
+          and rpt_pbh634.ksm_pkg_tmp.get_fiscal_year (DATE_OF_RECORD) in ('2023','2024')
           GROUP BY GIVING_TRANS_DAF.ID_NUMBER),
           
 --- Prospect as a Subquery (instead of left join and taking out another of Bill's Functions)
@@ -567,7 +574,15 @@ md as (select mg.id_number,
        mg.est_probability
 from rpt_pbh634.v_ksm_model_mg mg),
 
-
+V as (SELECT DISTINCT
+   ID_NUMBER,
+   case when committee.id_number is not null then 'Reunion VFT Volunteer' end as Reunion_Volunteer
+  FROM COMMITTEE
+  WHERE COMMITTEE.COMMITTEE_CODE IN ('KRE1','K5RC','KRE10','KRE15','KRE20',
+  'KRE25','KRE30','K35RC','KRE40','KRE45','KRE50')
+  AND COMMITTEE.COMMITTEE_STATUS_CODE = 'C'),
+  
+  
 final as (select  KSM_REUNION.id_number
   , GIVING_SUMMARY.ANONYMOUS_DONOR
   , GIVING_SUMMARY.anonymous_cfy_flag
@@ -636,6 +651,8 @@ final as (select  KSM_REUNION.id_number
   ,EM.FLD_OF_WORK AS INDUSTRY
   ,NP.EVALUATION_RATING
   ,NP.OFFICER_RATING
+  ,case when v.id_number is not null then 'Y' end as Reunion_volunteer
+  ,KYCC.ksm_reunion_year_concat AS CLASS_YEAR_CONCAT 
 from KSM_REUNION 
 left join CURRENT_DONOR CYD on CYD.id_number = KSM_REUNION.id_number
 left join GIVING_SUMMARY on GIVING_SUMMARY.id_number = KSM_REUNION.id_number
@@ -643,7 +660,9 @@ left join s on s.id_number = KSM_REUNION.id_number
 left join foundation on foundation.id_number = KSM_Reunion.id_number
 left join assign on assign.id_number = KSM_Reunion.id_number
 left join em on em.id_number = KSM_Reunion.id_number
-left join np on np.id_number = KSM_Reunion.id_number)
+left join np on np.id_number = KSM_Reunion.id_number
+left join v on v.id_number = KSM_Reunion.id_number
+Left JOIN KR_YEAR_CONCAT KYCC ON KYCC.ID_NUMBER = KSM_Reunion.id_number)
 
 SELECT DISTINCT 
    E.ID_NUMBER
@@ -658,6 +677,7 @@ SELECT DISTINCT
   ,E.last_name   
   --- Attending Reunion 2024 - I will add this once registratio opens
   ,KR.CLASS_YEAR
+  ,FINAL.CLASS_YEAR_CONCAT 
   ,KR.PROGRAM AS DEGREE_PROGRAM
   ,KR.PROGRAM_GROUP
   ,KR.CLASS_SECTION AS COHORT
@@ -701,6 +721,7 @@ SELECT DISTINCT
   ,FINAL.FOUNDATION_RECPT_NUM_CYD_PFY AS FOUNDATION_RECPT_NUM_CYD_FY23
   ,trunc (FINAL.FOUNDATION_DATE_GIFT_CYD_PFY) AS FOUNDATION_DATE_GIFT_CYD_FY23
   ,FINAL.FOUNDATION_OF_GIFT_CYD_PFY AS FOUNDATION_OF_GIFT_CYD_FY23
+  ,FINAL.Reunion_volunteer
   ,CASE WHEN RC19.ID_NUMBER IS NOT NULL THEN 'Y' ELSE '' END AS "REUNION_2019_COMMITTEE"
   ,CASE WHEN PRC.ID_NUMBER IS NOT NULL THEN 'Y'  ELSE ''END AS "REUNION_2014_COMMITTEE"
   ,KCL.CLUB_TITLE AS CLUB_LEADERSHIP_CLUB
