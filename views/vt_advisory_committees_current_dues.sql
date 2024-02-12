@@ -47,7 +47,13 @@ boards_data As (
       As amp
       , Case When re.id_number Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_realestate') End
       As re
-      , Case When health.id_number Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_healthcare') End
+      -- Healthcare has different dues schedule for nonalumni
+      , Case When health.id_number Is Not Null Then
+          Case When entity.institutional_suffix Like '%KSM%'
+            Then ksm_pkg_committee.get_numeric_constant('dues_healthcare')
+            Else ksm_pkg_committee.get_numeric_constant('dues_healthcare_nonalum')
+            End
+          End
       As health
       , Case When peac.id_number Is Not Null Then ksm_pkg_committee.get_numeric_constant('dues_privateequity') End
       As peac

@@ -35,6 +35,7 @@ dues_amp Constant number := 20.0E3;
 dues_privateequity Constant number := 10.0E3;
 dues_realestate Constant number := 7.5E3;
 dues_healthcare Constant number := 5.0E3;
+dues_healthcare_nonalum Constant number := 1.0E3;
 dues_kac Constant number := 2.5E3;
 dues_womensleadership Constant number := 2.5E3;
 
