@@ -960,48 +960,11 @@ Create Or Replace View vt_klc_retention As
 -- Pull multiple years of ksm_pkg_klc.tbl_klc_members
 With
 
-klc20 As (
-  Select klc.id_number, klc.fiscal_yr
-  From table(rpt_abm1914.ksm_pkg_klc.tbl_klc_members(2020)) klc
-)
-
-, klc21 As (
-  Select klc.id_number, klc.fiscal_yr
-  From table(rpt_abm1914.ksm_pkg_klc.tbl_klc_members(2021)) klc
-)
-
-, klc22 As (
-  Select klc.id_number, klc.fiscal_yr
-  From table(rpt_abm1914.ksm_pkg_klc.tbl_klc_members(2022)) klc
-)
-
-, klc23 As (
-  Select klc.id_number, klc.fiscal_yr
-  From table(rpt_abm1914.ksm_pkg_klc.tbl_klc_members(2023)) klc
-)
-
-, klc24 As (
-  Select klc.id_number, klc.fiscal_yr
-  From table(rpt_abm1914.ksm_pkg_klc.tbl_klc_members(2024)) klc
-)
-
-, klc25 As (
-  Select klc.id_number, klc.fiscal_yr
-  From table(rpt_abm1914.ksm_pkg_klc.tbl_klc_members(2025)) klc
-)
-
-, klc As (
-  Select * From klc20
-  Union All
-  Select * From klc21
-  Union All
-  Select * From klc22
-  Union All
-  Select * From klc23
-  Union All
-  Select * From klc24
-  Union All
-  Select * From klc25
+klc As (
+  Select
+    id_number
+    , fiscal_yr
+  From table(rpt_abm1914.ksm_pkg_klc.tbl_klc_members_range(2020, 2025))
 )
 
 , last_ksm_gft As (
