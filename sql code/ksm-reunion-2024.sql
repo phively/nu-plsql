@@ -583,6 +583,40 @@ V as (SELECT DISTINCT
   AND COMMITTEE.COMMITTEE_STATUS_CODE = 'C'),
   
   
+ sol as (select id_number
+,listagg(solicitor_name, '; ') within group (order by solicitor_name) solicitor_name
+from
+(select distinct a.id_number
+,a.assignment_id_number
+--,a.xcomment
+,e.first_name || ' ' || e.last_name solicitor_name
+from assignment a
+join entity e
+on e.id_number=a.assignment_id_number
+where a.assignment_type='VS'
+and a.active_ind='Y'
+and (lower(a.xcomment) LIKE ('%ksm%1st%reunion%')
+    or lower(a.xcomment) LIKE ('%ksm%5th%reunion%')
+    or lower(a.xcomment) LIKE ('%ksm%10th%reunion%')
+    or lower(a.xcomment) LIKE ('%ksm%15th%reunion%')
+    or lower(a.xcomment) LIKE ('%ksm%20th%reunion%')
+    or lower(a.xcomment) LIKE ('%ksm%25th%reunion%')
+    or lower(a.xcomment) LIKE ('%ksm%30th%reunion%')
+    or lower(a.xcomment) LIKE ('%ksm%35th%reunion%')
+    or lower(a.xcomment) LIKE ('%ksm%40th%reunion%')
+    or lower(a.xcomment) LIKE ('%ksm%45th%reunion%')
+    or lower(a.xcomment) LIKE ('%ksm%50th%reunion%')
+    or lower(a.xcomment) LIKE ('%ksm%55th%reunion%')
+    or lower(a.xcomment) LIKE ('%ksm%60th%reunion%')
+    or lower(a.xcomment) LIKE LOWER('%KSM E%W Reunion Committee%')
+    or lower(a.xcomment) LIKE LOWER('%KSM EMBA Reunion Committee%')))
+    group by id_number),
+
+vs as (select sol.id_number,
+sol.solicitor_name
+from sol),
+  
+  
 final as (select  KSM_REUNION.id_number
   , GIVING_SUMMARY.ANONYMOUS_DONOR
   , GIVING_SUMMARY.anonymous_cfy_flag
@@ -653,6 +687,7 @@ final as (select  KSM_REUNION.id_number
   ,NP.OFFICER_RATING
   ,case when v.id_number is not null then 'Y' end as Reunion_volunteer
   ,KYCC.ksm_reunion_year_concat AS CLASS_YEAR_CONCAT 
+  ,VS.solicitor_name
 from KSM_REUNION 
 left join CURRENT_DONOR CYD on CYD.id_number = KSM_REUNION.id_number
 left join GIVING_SUMMARY on GIVING_SUMMARY.id_number = KSM_REUNION.id_number
@@ -662,7 +697,8 @@ left join assign on assign.id_number = KSM_Reunion.id_number
 left join em on em.id_number = KSM_Reunion.id_number
 left join np on np.id_number = KSM_Reunion.id_number
 left join v on v.id_number = KSM_Reunion.id_number
-Left JOIN KR_YEAR_CONCAT KYCC ON KYCC.ID_NUMBER = KSM_Reunion.id_number)
+Left JOIN KR_YEAR_CONCAT KYCC ON KYCC.ID_NUMBER = KSM_Reunion.id_number
+left join vs on vs.id_number = KSM_Reunion.id_number)
 
 SELECT DISTINCT 
    E.ID_NUMBER
@@ -722,6 +758,7 @@ SELECT DISTINCT
   ,trunc (FINAL.FOUNDATION_DATE_GIFT_CYD_PFY) AS FOUNDATION_DATE_GIFT_CYD_FY23
   ,FINAL.FOUNDATION_OF_GIFT_CYD_PFY AS FOUNDATION_OF_GIFT_CYD_FY23
   ,FINAL.Reunion_volunteer
+  ,FINAL.solicitor_name as volunteer_solicitor
   ,CASE WHEN RC19.ID_NUMBER IS NOT NULL THEN 'Y' ELSE '' END AS "REUNION_2019_COMMITTEE"
   ,CASE WHEN PRC.ID_NUMBER IS NOT NULL THEN 'Y'  ELSE ''END AS "REUNION_2014_COMMITTEE"
   ,KCL.CLUB_TITLE AS CLUB_LEADERSHIP_CLUB
