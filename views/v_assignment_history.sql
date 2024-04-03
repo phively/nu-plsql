@@ -80,6 +80,8 @@ Select
     End As assignment_active_calc
   , assignment.assignment_id_number
   , assignee.report_name As assignment_report_name
+  , assignment.office_code
+  , tms_o.short_desc As office_desc
   , assignment.committee_code
   , committee_header.short_desc As committee_desc
   , assignment.xcomment As description
@@ -93,3 +95,4 @@ Left Join active_pe On active_pe.id_number = assignment.id_number
 Left Join entity pe_entity On pe_entity.id_number = prospect_entity.id_number
 Left Join proposal On proposal.proposal_id = assignment.proposal_id
 Left Join committee_header On committee_header.committee_code = assignment.committee_code
+Left Join tms_office tms_o On tms_o.office_code = assignment.office_code

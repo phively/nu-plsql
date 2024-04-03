@@ -681,6 +681,8 @@ hhf As (
 Select
   f.cash_category
   , f.household_id
+  , hhf.household_rpt_name
+  , hhf.household_spouse
   , f.fiscal_year
   , f.n_managed_in_group
   , f.gab
@@ -728,6 +730,8 @@ Select
   , fy.retained_nfy_year
     As ytd_retained_nfy_year
 From finalnonytd f
+Inner Join hhf
+  On hhf.id_number = f.household_id -- This is intended; need to use hhf.id_number for deduping
 Left Join finalytd fy
   On fy.household_id = f.household_id
   And fy.fiscal_year = f.fiscal_year
