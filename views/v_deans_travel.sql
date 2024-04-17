@@ -4,10 +4,19 @@ with p as (select *
 from rpt_pbh634.VT_KSM_PRS_Pool),
 
 
---- Assigned LGOS
+--- Assignment Revision: Now include the Office, so we will use this subquery for PM/LGOs
 assign as (select assign.id_number,
-       assign.lgos
-from rpt_pbh634.v_assignment_summary assign),
+assign.prospect_manager,
+assign.lgos,
+a.office_code,
+assign.manager_ids,
+assign.managers,
+assign.curr_ksm_manager,
+TMS_OFFICE.short_desc
+from rpt_pbh634.v_assignment_summary assign
+left join assignment a on a.id_number = assign.id_number 
+left join TMS_OFFICE ON TMS_OFFICE.office_code = a.office_code 
+),
 
 --- C Suite Alumni
 
@@ -105,6 +114,51 @@ from dean
 where dean.contact_type_code = 'V'
 group by dean.id_number),
 
+--- Count of Dean Visits
+
+dvisit as (select dean.id_number,
+count (dean.id_number) as count_dean_visit 
+from dean 
+group by dean.id_number),
+
+
+--- Dean Event 
+
+de as (select e.id_number,
+       e.first_name,
+       e.last_name,
+       e.Faculty_Job_Title,
+       e.Faculty_Employer,
+       e.faculty_job_status,
+       e.faculty_start_date_employment,
+       e.Volunteer_role_of_event,
+       e.event_id,
+       e.event_name,
+       e.event_start_date,
+       e.event_start_year,
+       e.event_type_description,
+       e.event_organizers
+from v_ksm_faculty_events e 
+where e.id_number = '0000804796'),
+
+defin as (select distinct p.id_number,
+       p.event_name,
+       p.start_dt
+from rpt_pbh634.v_nu_event_participants_fast p
+inner join de on de.event_id = p.event_id), 
+
+--- Count of Folks in Francesca Events 
+
+fran as (select distinct defin.id_number,
+count (defin.id_number) as count_dean_events
+from defin 
+group by defin.id_number),
+
+
+
+/*
+
+--- No Longer Needed 
 
 ---Finding Additonal Faculty and Staff (Outside of KSM ARD)
 KSM_Faculty_Staff as (select aff.id_number,
@@ -118,8 +172,64 @@ inner join rpt_pbh634.v_entity_ksm_degrees d on d.ID_NUMBER = aff.id_number
  WHERE  aff.affil_code = 'KM'
    AND (aff.affil_level_code = 'ES'
     OR  aff.affil_level_code = 'EF')),
+*/
 
-     
+
+--- Modified After Review with Paul (4/10/24)
+
+m as (SELECT h.prospect_id,
+       h.id_number,
+       h.report_name,
+       h.assignment_type,  
+       h.assignment_report_name,
+       h.office_desc
+FROM rpt_pbh634.v_assignment_history h
+WHERE assignment_active_calc = 'Active'),
+
+-- prospect Manager
+
+pm as (select *
+from m
+where m.assignment_type = 'PM'),
+
+--- Lgo 
+lgo as (select *
+from m
+where m.assignment_type = 'LGO'),
+
+--- Managers NOT PM and LGO
+
+o as (select *
+from m
+where m.assignment_type NOT IN ('PM','LG')),
+
+ostag as (select o.id_number,
+Listagg (o.assignment_report_name, ';  ') 
+       Within Group (Order By o.assignment_type) As assignment_report_name,
+Listagg (o.assignment_type, ';  ') 
+       Within Group (Order By o.assignment_type) As assignment_type,       
+Listagg (o.office_desc, ';  ') 
+       Within Group (Order By o.assignment_type) As office_desc
+from o 
+where o.id_number is not null 
+group by o.id_number),
+
+final_manage as (
+select entity.id_number,
+pm.assignment_report_name as prospect_manager,
+pm.assignment_type as pm_assign_type,
+pm.office_desc as office,
+lgo.assignment_report_name as lgo,
+lgo.assignment_type as lgo_assign_type,
+lgo.office_desc as lgo_office,
+ostag.assignment_report_name as other_manager,
+ostag.assignment_type as other_assign_type,
+ostag.office_desc as other_office
+from entity 
+left join pm on pm.id_number = entity.id_number
+left join lgo on lgo.id_number = entity.id_number
+left join ostag on ostag.id_number = entity.id_number),
+   
 
 --- Final subquery since the propsect pool is slow
 
@@ -136,15 +246,18 @@ c.contact_purpose,
 c.contact_name,
 c.contact_date,
 c.description_,
-c.summary,
-case when kfs.id_number is not null then 'KSM_Faculty_staff' end as KSM_Faculty_staff
+c.summary
+
+---case when kfs.id_number is not null then 'KSM_Faculty_staff' end as KSM_Faculty_staff
 from entity 
 left join assign a on a.id_number = entity.id_number
 left join csuite on csuite.id_number = entity.id_number
 left join armod on armod.id_number = entity.id_number
 left join intr on intr.id_number = entity.id_number
 left join c on c.id_number = entity.id_number
-left join KSM_Faculty_Staff kfs on kfs.id_number = entity.id_number)
+---left join KSM_Faculty_Staff kfs on kfs.id_number = entity.id_number
+)
+
 
 
 
@@ -235,15 +348,20 @@ select p.ID_NUMBER,
        p.MGO_ID_SCORE,
        p.MGO_PR_MODEL,
        p.MGO_PR_SCORE,
-       p.PROSPECT_MANAGER_ID,
-       p.PROSPECT_MANAGER,
+       fm.prospect_manager,
+       fm.pm_assign_type,
+       fm.office,
+       fm.lgo,
+       fm.lgo_assign_type,
+       fm.lgo_office,
+       fm.other_manager,
+       fm.other_assign_type,
+       fm.other_office,
        p.TEAM,
        p.PROSPECT_STAGE,
        p.CONTACT_DATE,
        p.CONTACT_AUTHOR,
        p.MANAGER_IDS,
-       p.MANAGERS,
-       p.CURR_KSM_MANAGER,
        p.HH_PRIMARY,
        p.RATING_NUMERIC,
        p.RATING_BIN,
@@ -328,19 +446,25 @@ select p.ID_NUMBER,
        p.task_outreach_desc,
        p.yesterday,
        p.curr_fy,
-       final.lgos,
 final.job_title as c_suite_job_title,
 final.employer_name as c_suite_employer_name,
 final.AE_MODEL_SCORE,
 final.interest,
-final.credited_ID,
-final.credited_name,
-final.contact_type,
-final.contact_purpose,
-final.contact_name,
-final.contact_date,
-final.description_,
-final.summary,
-final.KSM_Faculty_staff
+fran.count_dean_events,
+dvisit.count_dean_visit,
+--- Dean Last Visit (Rename)
+final.credited_ID as credited_ID_dean_LV,
+final.credited_name as credited_name_dean_LV,
+final.contact_type as contact_type_dean_LV,
+final.contact_purpose as contact_purpose_dean_LV,
+final.contact_name as contact_name_dean_LV,
+final.contact_date as contact_date_dean_LV,
+final.description_ as description_dean_LV,
+final.summary as summary_dean_LV
+--- final.KSM_Faculty_staff
 from p
 inner join final on final.id_number = p.id_number 
+left join fran on fran.id_number = p.id_number 
+left join dvisit on dvisit.id_number = p.id_number 
+left join final_manage fm on fm.id_number = p.id_number 
+
