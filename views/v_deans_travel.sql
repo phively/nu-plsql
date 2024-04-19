@@ -117,7 +117,7 @@ group by dean.id_number),
 --- Count of Dean Visits
 
 dvisit as (select dean.id_number,
-count (dean.id_number) as count_dean_visit 
+count (dean.report_id) as count_dean_visit 
 from dean 
 group by dean.id_number),
 
@@ -177,9 +177,12 @@ inner join rpt_pbh634.v_entity_ksm_degrees d on d.ID_NUMBER = aff.id_number
 
 --- Modified After Review with Paul (4/10/24)
 
-m as (SELECT h.prospect_id,
+-- Suggestion: defensive coding. We can clean up dirty data by deduping ahead of time, before the listagg
+-- SELECT DISTINCT, then remove every field that is not used in your listagg() because the extra row might be creating dupes
+m as (--SELECT h.prospect_id,
+        SELECT DISTINCT
        h.id_number,
-       h.report_name,
+       --h.report_name,
        h.assignment_type,  
        h.assignment_report_name,
        h.office_desc
