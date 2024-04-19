@@ -179,7 +179,8 @@ GROUP BY GT.ID_NUMBER
                  max(decode(rw,1,amt)) pamt1,
                  max(decode(rw,1,acct)) pacct1,
                  max(decode(rw,1,bal)) bal1,
-                 max(decode(rw,1,PLG_ACTIVE)) plgActive
+                 max(decode(rw,1,PLG_ACTIVE)) plgActive,
+                 max(decode(rw,1,TRANSACTION_TYPE)) TRANSACTION_TYPE
 
           FROM
              (SELECT
@@ -191,6 +192,7 @@ GROUP BY GT.ID_NUMBER
                  ,ACCT
                  ,STAT
                  ,PLG_ACTIVE
+                 ,TRANSACTION_TYPE
                  ,case when (bal * prop) < 0 then 0
                           else round(bal * prop,2) end bal
                 FROM
@@ -330,6 +332,24 @@ SELECT
  GROUP BY GT.ID_NUMBER
 )
 
+--- Andy Asked for KSM Total for 2024 
+--- Same as KSM_Total23 BUT reference MD.CFY
+
+
+,KSM_TOTAL24 AS (
+  SELECT
+  GT.ID_NUMBER
+  ,SUM(GT.CREDIT_AMOUNT) AS KSM_TOTAL
+ FROM GIVING_TRANS GT
+ CROSS JOIN MANUAL_DATES MD
+ WHERE GT.TX_GYPM_IND NOT IN ('P','M')
+ --- CFY for 2024 !!! 
+   AND GT.FISCAL_YEAR = MD.CFY
+ GROUP BY GT.ID_NUMBER
+)
+
+
+
 ,KSM_MATCH_23 AS (
    SELECT DISTINCT
      GT.ID_NUMBER
@@ -345,11 +365,15 @@ Select HOUSE.id_number
   ,KAFT.KSM_AF_TOTAL
   ,KSM_TOTAL23.KSM_TOTAL AS KSM_TOTAL23
   ,KSM_MATCH_23.ID_NUMBER AS KM23_ID_NUMBER
+  --- Adding in KSM_Total 24 Now (4/18/24 - Honor Role - Andy Requested)
+  ,KSM_TOTAL24.KSM_TOTAL as KSM_TOTAL24
 from HOUSE
 LEFT JOIN KSM_TOTAL KSMT ON HOUSE.ID_NUMBER = KSMT.ID_NUMBER
 LEFT JOIN KSM_AF_TOTAL KAFT ON HOUSE.ID_NUMBER = KAFT.ID_NUMBER
 LEFT JOIN KSM_TOTAL23  ON HOUSE.ID_NUMBER = KSM_TOTAL23.ID_NUMBER
-LEFT JOIN KSM_MATCH_23 ON HOUSE.ID_NUMBER = KSM_MATCH_23.ID_NUMBER)
+LEFT JOIN KSM_MATCH_23 ON HOUSE.ID_NUMBER = KSM_MATCH_23.ID_NUMBER
+LEFT JOIN KSM_TOTAL24 ON HOUSE.ID_NUMBER = KSM_TOTAL24.ID_NUMBER 
+)
  
 
 ,PROPOSALS AS
@@ -635,8 +659,10 @@ from sol),
   Also look for <UPDATE THIS> comment */
 params_cfy As (
   Select
-    2024 As params_cfy -- <UPDATE THIS>
-  From DUAL
+    cfy As params_cfy
+    --2024 As params_cfy -- <UPDATE THIS>
+  --From DUAL
+  From manual_dates
 )
 , params As (
   Select
@@ -1081,6 +1107,7 @@ SELECT DISTINCT
   ,KGM.pledge_modified_cfy
   ,KGM.pledge_modified_pfy5
   ,trunc (PR.last_plg_dt) AS PLG_DATE
+  ,PR.TRANSACTION_TYPE AS Pledge_Transaction_Type
   ,PR.pacct1 AS PLG_ALLOC
   ,PR.pamt1 AS PLG_AMT
   ,PR.bal1 AS PLG_BALANCE
@@ -1134,6 +1161,7 @@ SELECT DISTINCT
   ,KTF.KSM_TOTAL
   ,KTF.KSM_AF_TOTAL
   ,KTF.KSM_TOTAL23
+  ,KTF.KSM_TOTAL24
   ,CASE WHEN KTF.KM23_ID_NUMBER IS NOT NULL THEN 'Y' END AS MATCH_2023
   ,final.NU_MAX_HH_LIFETIME_GIVING
   ,FINAL.EVALUATION_RATING
