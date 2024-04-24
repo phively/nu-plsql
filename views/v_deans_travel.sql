@@ -236,7 +236,7 @@ left join ostag on ostag.id_number = entity.id_number),
 
 --- Final subquery since the propsect pool is slow
 
-final as (select entity.id_number,
+finals as (select distinct entity.id_number,
 a.lgos,
 csuite.job_title,
 csuite.employer_name,
@@ -449,25 +449,24 @@ select p.ID_NUMBER,
        p.task_outreach_desc,
        p.yesterday,
        p.curr_fy,
-final.job_title as c_suite_job_title,
-final.employer_name as c_suite_employer_name,
-final.AE_MODEL_SCORE,
-final.interest,
+finals.job_title as c_suite_job_title,
+finals.employer_name as c_suite_employer_name,
+finals.AE_MODEL_SCORE,
+finals.interest,
 fran.count_dean_events,
 dvisit.count_dean_visit,
 --- Dean Last Visit (Rename)
-final.credited_ID as credited_ID_dean_LV,
-final.credited_name as credited_name_dean_LV,
-final.contact_type as contact_type_dean_LV,
-final.contact_purpose as contact_purpose_dean_LV,
-final.contact_name as contact_name_dean_LV,
-final.contact_date as contact_date_dean_LV,
-final.description_ as description_dean_LV,
-final.summary as summary_dean_LV
+finals.credited_ID as credited_ID_dean_LV,
+finals.credited_name as credited_name_dean_LV,
+finals.contact_type as contact_type_dean_LV,
+finals.contact_purpose as contact_purpose_dean_LV,
+finals.contact_name as contact_name_dean_LV,
+finals.contact_date as contact_date_dean_LV,
+finals.description_ as description_dean_LV,
+finals.summary as summary_dean_LV
 --- final.KSM_Faculty_staff
 from p
-inner join final on final.id_number = p.id_number 
+inner join finals on finals.id_number = p.id_number 
 left join fran on fran.id_number = p.id_number 
 left join dvisit on dvisit.id_number = p.id_number 
 left join final_manage fm on fm.id_number = p.id_number 
-
