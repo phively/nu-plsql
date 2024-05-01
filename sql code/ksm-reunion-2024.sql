@@ -72,6 +72,18 @@ group by KR.id_number)
        s.ANONYMOUS_PFY3,
        s.ANONYMOUS_PFY4,
        s.ANONYMOUS_PFY5,
+       s.STEWARDSHIP_CFY,
+       s.STEWARDSHIP_PFY1,
+       s.STEWARDSHIP_PFY2,
+       s.STEWARDSHIP_PFY3,
+       s.STEWARDSHIP_PFY4,
+       s.STEWARDSHIP_PFY5,
+       s.AF_CFY,
+       s.AF_PFY1,
+       s.AF_PFY2,
+       s.AF_PFY3,
+       s.AF_PFY4,
+       s.AF_PFY5,
        s.NU_MAX_HH_LIFETIME_GIVING
 from rpt_pbh634.v_ksm_giving_summary s)
 
@@ -167,7 +179,8 @@ GROUP BY GT.ID_NUMBER
                  max(decode(rw,1,amt)) pamt1,
                  max(decode(rw,1,acct)) pacct1,
                  max(decode(rw,1,bal)) bal1,
-                 max(decode(rw,1,PLG_ACTIVE)) plgActive
+                 max(decode(rw,1,PLG_ACTIVE)) plgActive,
+                 max(decode(rw,1,TRANSACTION_TYPE)) TRANSACTION_TYPE
 
           FROM
              (SELECT
@@ -179,6 +192,7 @@ GROUP BY GT.ID_NUMBER
                  ,ACCT
                  ,STAT
                  ,PLG_ACTIVE
+                 ,TRANSACTION_TYPE
                  ,case when (bal * prop) < 0 then 0
                           else round(bal * prop,2) end bal
                 FROM
@@ -318,6 +332,24 @@ SELECT
  GROUP BY GT.ID_NUMBER
 )
 
+--- Andy Asked for KSM Total for 2024 
+--- Same as KSM_Total23 BUT reference MD.CFY
+
+
+,KSM_TOTAL24 AS (
+  SELECT
+  GT.ID_NUMBER
+  ,SUM(GT.CREDIT_AMOUNT) AS KSM_TOTAL
+ FROM GIVING_TRANS GT
+ CROSS JOIN MANUAL_DATES MD
+ WHERE GT.TX_GYPM_IND NOT IN ('P','M')
+ --- CFY for 2024 !!! 
+   AND GT.FISCAL_YEAR = MD.CFY
+ GROUP BY GT.ID_NUMBER
+)
+
+
+
 ,KSM_MATCH_23 AS (
    SELECT DISTINCT
      GT.ID_NUMBER
@@ -333,11 +365,15 @@ Select HOUSE.id_number
   ,KAFT.KSM_AF_TOTAL
   ,KSM_TOTAL23.KSM_TOTAL AS KSM_TOTAL23
   ,KSM_MATCH_23.ID_NUMBER AS KM23_ID_NUMBER
+  --- Adding in KSM_Total 24 Now (4/18/24 - Honor Role - Andy Requested)
+  ,KSM_TOTAL24.KSM_TOTAL as KSM_TOTAL24
 from HOUSE
 LEFT JOIN KSM_TOTAL KSMT ON HOUSE.ID_NUMBER = KSMT.ID_NUMBER
 LEFT JOIN KSM_AF_TOTAL KAFT ON HOUSE.ID_NUMBER = KAFT.ID_NUMBER
 LEFT JOIN KSM_TOTAL23  ON HOUSE.ID_NUMBER = KSM_TOTAL23.ID_NUMBER
-LEFT JOIN KSM_MATCH_23 ON HOUSE.ID_NUMBER = KSM_MATCH_23.ID_NUMBER)
+LEFT JOIN KSM_MATCH_23 ON HOUSE.ID_NUMBER = KSM_MATCH_23.ID_NUMBER
+LEFT JOIN KSM_TOTAL24 ON HOUSE.ID_NUMBER = KSM_TOTAL24.ID_NUMBER 
+)
  
 
 ,PROPOSALS AS
@@ -615,10 +651,260 @@ and (lower(a.xcomment) LIKE ('%ksm%1st%reunion%')
 vs as (select sol.id_number,
 sol.solicitor_name
 from sol),
+ 
+ 
+--- Anon Donor Honor Role 
+
+/* Parameters -- update this each year
+  Also look for <UPDATE THIS> comment */
+params_cfy As (
+  Select
+    cfy As params_cfy
+    --2024 As params_cfy -- <UPDATE THIS>
+  --From DUAL
+  From manual_dates
+)
+, params As (
+  Select
+    params_cfy
+    , params_cfy - 1 As params_pfy1
+    , params_cfy - 2 As params_pfy2
+    , params_cfy - 3 As params_pfy3
+    , params_cfy - 4 As params_pfy4
+    , params_cfy - 5 As params_pfy5
+    , params_cfy - 6 As params_pfy6
+    , params_cfy - 7 As params_pfy7
+    , params_cfy - 8 As params_pfy8
+    , params_cfy - 9 As params_pfy9
+    , params_cfy - 10 As params_pfy10
+  From params_cfy
+)
+
+/* Honor roll names
+  CATracks honor roll names, where available */
+, hr_names As (
+  Select
+    id_number
+    , trim(pref_name) As honor_roll_name
+    , Case
+        -- If prefix is at start of name then remove it
+        When pref_name Like (prefix || '%')
+          Then trim(
+            regexp_replace(pref_name, prefix, '', 1) -- Remove first occurrence only
+          )
+        Else pref_name
+        End
+      As honor_roll_name_no_prefix
+  From name
+  Where name_type_code = 'HR'
+)
+
+/* IR names
+  FY19 IR names, if available */
+, ir_names As (
+  Select
+    id_number
+    , ir21_name --<UPDATE THIS>
+    , first_name
+    , middle_name
+    , last_name
+    , suffix
+    -- Check whether suffix is a class year
+    , Case
+        When regexp_like(suffix, '''[0-9]+') -- valid examples: '00 '92 '11 '31
+          Then 'Y'
+        End
+      As replace_year_flag
+  From rpt_pbh634.tbl_ir_FY22_approved_names ian --<UPDATE THIS>
+)
+
+
+/* Degree strings
+  Kellogg and NU strings, according to the updated FY21 degree format.
+  Years and degree types are listed in chronological order and de-duped (listagg) */
+, degs As (
+  Select
+    id_number
+    ,pref_mail_name
+    ,pref_first_name
+    ,last_name
+    ,nu_degrees_string As yrs
+  From rpt_pbh634.v_entity_nametags
+)
+
+/* Household data
+  Household IDs and definitions as defined by ksm_pkg_tmp. Names are based on primary name and personal suffix. */
+, hhs As (
+  Select hh.*, degs.yrs
+  From table(rpt_pbh634.ksm_pkg_tmp.tbl_entity_households_ksm) hh
+  Left Join degs
+    On degs.id_number = hh.id_number
+)
+, hh_name As (
+  Select
+    hhs.id_number
+    , entity.gender_code
+    , entity.record_status_code
+    , entity.jnt_gifts_ind
+    , trim(entity.last_name)
+      As entity_last_name
+    -- First Middle Last Suffix 'YY
+    -- Primary name
+    , trim(
+        trim(
+          trim(
+            -- Choose last year's name or honor roll name
+            Case
+              When ir_names.first_name Is Not Null
+                Then
+                  trim(
+                    trim(
+                      trim(ir_names.first_name) || ' ' || trim(ir_names.middle_name)
+                    ) || ' ' || trim(ir_names.last_name)
+                  ) || ' ' || ir_names.suffix
+              Else
+              -- Choose honor roll name or constructed name
+              Case
+                When hr_names.honor_roll_name_no_prefix Is Not Null
+                  Then hr_names.honor_roll_name_no_prefix
+                Else
+                  trim(
+                    trim(
+                      trim(entity.first_name) || ' ' || trim(entity.middle_name)
+                    ) || ' ' || trim(entity.last_name)
+                  ) || ' ' || entity.pers_suffix
+                End
+              End
+          )
+          -- Add class year if replace_year_flag is null
+          || ' ' || (Case When ir_names.replace_year_flag Is Null Then hhs.yrs End)
+        -- Check for deceased status
+        ) || (Case When entity.record_status_code = 'D' Then '<DECEASED>' End)
+      )
+      As primary_name
+    -- How was the primary_name constructed?
+    , Case
+        When ir_names.first_name Is Not Null
+          Then 'PFY IR'
+        When hr_names.honor_roll_name_no_prefix Is Not Null
+          Then 'NU HR name'
+        Else 'Constructed'
+        End
+      As primary_name_source
+    -- Constructed name
+    , trim(
+        trim(
+          trim(
+            trim(
+              trim(
+                trim(entity.first_name) || ' ' || trim(entity.middle_name)
+              ) || ' ' || trim(entity.last_name)
+            ) || ' ' || entity.pers_suffix
+          ) || ' ' || hhs.yrs
+        ) || (Case When entity.record_status_code = 'D' Then '<DECEASED>' End)
+      )
+      As constructed_name
+    , ir_names.ir21_name --<UPDATE THIS>
+    , hhs.yrs
+    , Case
+        When entity.record_status_code = 'D'
+          And trunc(entity.status_change_date) Between cal.prev_fy_start And cal.today
+          Then 'Y'
+        End
+      As deceased_past_year
+  From hhs
+  Inner Join entity
+    On entity.id_number = hhs.id_number
+  Cross Join rpt_pbh634.v_current_calendar cal
+  Left Join hr_names
+    On hr_names.id_number = hhs.id_number
+  Left Join ir_names
+    On ir_names.id_number = hhs.id_number
+)
+, hh As (
+  Select
+    hhs.*
+    , hh_name.gender_code As gender
+    , hh_name_s.gender_code As gender_spouse
+    , hh_name.record_status_code As record_status
+    , hh_name_s.record_status_code As record_status_spouse
+    , hh_name.deceased_past_year
+    -- Is either spouse no joint gifts?
+    , Case
+        When hhs.household_spouse_rpt_name Is Not Null
+          And (hh_name.jnt_gifts_ind = 'N' Or hh_name_s.jnt_gifts_ind = 'N')
+          Then 'Y'
+        End
+      As no_joint_gifts_flag
+    -- First Middle Last Suffix 'YY
+    , hh_name.primary_name
+    , hh_name.constructed_name
+    , hh_name.primary_name_source
+    , hh_name_s.primary_name As primary_name_spouse
+    , hh_name_s.constructed_name As constructed_name_spouse
+    , hh_name_s.primary_name_source As primary_name_source_spouse
+    , hh_name.yrs As yrs_self
+    , hh_name_s.yrs As yrs_spouse
+    -- Check for entity last name
+    , Case
+        When hh_name.primary_name Not Like '%' || hh_name.entity_last_name || '%'
+          And hh_name.primary_name Not Like '%Anonymous%'
+          Then 'Y'
+        End
+      As check_primary_lastname
+    , Case
+        When hh_name_s.primary_name Not Like '%' || hh_name_s.entity_last_name || '%'
+          And hh_name_s.primary_name Not Like '%Anonymous%'
+          Then 'Y'
+        End
+      As check_primary_lastname_spouse  
+  From hhs hhs
+  -- Names and strings for formatting
+  Inner Join hh_name
+    On hh_name.id_number = hhs.household_id
+  Left Join hh_name hh_name_s
+    On hh_name_s.id_number = hhs.household_spouse_id
+  -- Exclude purgable entities
+  Where hhs.record_status_code <> 'X'
+)
+
+/* Anonymous
+  Anonymous special handling indicator; entity should be anonymous for ALL gifts. Overrides the transaction-level anon flag.
+  Also mark as anonymous people whose names last year were Anonymous. */
+, anon_dat As (
+  (
+  Select
+    hhs.household_id
+    , tms.short_desc As anon
+  From handling
+  Inner Join hhs
+    On hhs.id_number = handling.id_number
+  Inner Join tms_handling_type tms
+    On tms.handling_type = handling.hnd_type_code
+  Where hnd_type_code = 'AN' -- Anonymous
+    And hnd_status_code = 'A' -- Active only
+  ) Union (
+  Select
+    hhs.household_id
+    , 'Anonymous IR Name' As anon
+  From hhs
+  Inner Join ir_names
+    On ir_names.id_number = hhs.id_number
+  Where ir_names.first_name = 'Anonymous'
+  )),
+ 
+anon_dw as (Select
+    household_id
+    , min(anon) As anon -- min() results in the order Anonymous, Anonymous Donor, Anonymous IR Name
+  From anon_dat
+  Group By household_id),
+ 
   
-  
-final as (select  KSM_REUNION.id_number
-  , GIVING_SUMMARY.ANONYMOUS_DONOR
+final as (select  KSM_REUNION.id_number,
+--- Anonymous donor check: giving summary, honor role and special handling 
+case when anon_dw.anon is not null 
+or GIVING_SUMMARY.ANONYMOUS_DONOR is not null
+or s.ANONYMOUS_DONOR is not null then 'Y' end as ANONYMOUS_DONOR
   , GIVING_SUMMARY.anonymous_cfy_flag
   , GIVING_SUMMARY.anonymous_pfy1_flag
   , GIVING_SUMMARY.anonymous_pfy2_flag
@@ -688,6 +974,24 @@ final as (select  KSM_REUNION.id_number
   ,case when v.id_number is not null then 'Y' end as Reunion_volunteer
   ,KYCC.ksm_reunion_year_concat AS CLASS_YEAR_CONCAT 
   ,VS.solicitor_name
+   ,GIVING_SUMMARY.STEWARDSHIP_CFY
+   ,GIVING_SUMMARY.STEWARDSHIP_PFY1
+   ,GIVING_SUMMARY.STEWARDSHIP_PFY2
+   ,GIVING_SUMMARY.STEWARDSHIP_PFY3
+   ,GIVING_SUMMARY.STEWARDSHIP_PFY4
+   ,GIVING_SUMMARY.STEWARDSHIP_PFY5
+   ,GIVING_SUMMARY.AF_CFY
+   ,GIVING_SUMMARY.AF_PFY1
+   ,GIVING_SUMMARY.AF_PFY2
+   ,GIVING_SUMMARY.AF_PFY3
+   ,GIVING_SUMMARY.AF_PFY4
+   ,GIVING_SUMMARY.AF_PFY5
+   ,degs.pref_first_name
+   ,degs.last_name
+   ,degs.yrs
+   ,degs.pref_mail_name
+   ,hr_names.honor_roll_name
+   ,hr_names.honor_roll_name_no_prefix
 from KSM_REUNION 
 left join CURRENT_DONOR CYD on CYD.id_number = KSM_REUNION.id_number
 left join GIVING_SUMMARY on GIVING_SUMMARY.id_number = KSM_REUNION.id_number
@@ -698,7 +1002,11 @@ left join em on em.id_number = KSM_Reunion.id_number
 left join np on np.id_number = KSM_Reunion.id_number
 left join v on v.id_number = KSM_Reunion.id_number
 Left JOIN KR_YEAR_CONCAT KYCC ON KYCC.ID_NUMBER = KSM_Reunion.id_number
-left join vs on vs.id_number = KSM_Reunion.id_number)
+left join vs on vs.id_number = KSM_Reunion.id_number
+left join hr_names on hr_names.id_number = KSM_Reunion.id_number
+left join anon_dw on anon_dw.household_id = KSM_Reunion.id_number
+left join degs on degs.id_number = KSM_Reunion.id_number
+)
 
 SELECT DISTINCT 
    E.ID_NUMBER
@@ -744,6 +1052,7 @@ SELECT DISTINCT
   ,CASE WHEN spouse_RY.SPOUSE_ID_NUMBER is not null then spouse_RY.CLASS_YEAR else '' End as Spouse_Reunion24_Classyr_IND
   ,final.LGOS
   ,final.Prospect_Manager
+  --- CYD Flag 
   ,final.CYD
   --- AF WANTS TO SEE CURRENT FISCAL YEAR
   ,FINAL.FOUNDATION_CYD_CFY AS FOUNDATION_CYD_FY24
@@ -798,11 +1107,13 @@ SELECT DISTINCT
   ,KGM.pledge_modified_cfy
   ,KGM.pledge_modified_pfy5
   ,trunc (PR.last_plg_dt) AS PLG_DATE
+  ,PR.TRANSACTION_TYPE AS Pledge_Transaction_Type
   ,PR.pacct1 AS PLG_ALLOC
   ,PR.pamt1 AS PLG_AMT
   ,PR.bal1 AS PLG_BALANCE
   ,PR.status1 AS PLG_STATUS
-  ,rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(GI.GDT1) AS RECENT_FISAL_YEAR
+  --- recent pledge fiscal year
+  ,rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(GI.GDT1) AS RECENT_PLEDGE_FISCAL_YEAR
   ,trunc (GI.GDT1) AS DATE1
   ,GI.GAMT1 AS AMOUNT1
   ,GI.GACCT1 AS ACC1
@@ -823,7 +1134,6 @@ SELECT DISTINCT
   ,GI.GACCT4 AS ACC4
   ,GI.MATCH4 AS MATCH_AMOUNT4
   ,GI.CLAIM4 AS CLAIM_AMOUNT4
-  ,Final.ANONYMOUS_DONOR
   ,Final.anonymous_cfy_flag
   ,Final.anonymous_pfy1_flag
   ,Final.anonymous_pfy2_flag
@@ -851,6 +1161,7 @@ SELECT DISTINCT
   ,KTF.KSM_TOTAL
   ,KTF.KSM_AF_TOTAL
   ,KTF.KSM_TOTAL23
+  ,KTF.KSM_TOTAL24
   ,CASE WHEN KTF.KM23_ID_NUMBER IS NOT NULL THEN 'Y' END AS MATCH_2023
   ,final.NU_MAX_HH_LIFETIME_GIVING
   ,FINAL.EVALUATION_RATING
@@ -878,6 +1189,27 @@ SELECT DISTINCT
   ,trunc (C.contact_Date) as contact_date
   ,C.description_
   ,C.summary_
+  --- Honor role data -Stewardship, AF, CRU (Had in org code), Anon Donor
+  ,Final.ANONYMOUS_DONOR
+  ,final.STEWARDSHIP_CFY
+  ,final.STEWARDSHIP_PFY1
+  ,final.STEWARDSHIP_PFY2
+  ,final.STEWARDSHIP_PFY3
+  ,final.STEWARDSHIP_PFY4
+  ,final.STEWARDSHIP_PFY5
+  ,final.AF_CFY
+  ,final.AF_PFY1
+  ,final.AF_PFY2
+  ,final.AF_PFY3
+  ,final.AF_PFY4
+  ,final.AF_PFY5
+ --- Nametags for Honor Role (Honor Role from CATracks, Name Tag Names, Give Andy all options)
+  ,final.honor_roll_name
+  ,final.honor_roll_name_no_prefix
+  ,final.pref_mail_name as name_tag_pref_name
+  ,final.pref_first_name as name_tag_first_name
+  ,final.last_name as name_tag_last_name
+  ,final.yrs as name_tag_yrs
 FROM ENTITY E
 INNER JOIN KSM_REUNION KR
 ON E.ID_NUMBER = KR.ID_NUMBER
