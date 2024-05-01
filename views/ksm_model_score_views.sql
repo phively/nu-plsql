@@ -68,3 +68,20 @@ Create Or Replace View v_ksm_model_alumni_engagement As
 Select *
 From rpt_lfs898.ksm_ae_model_scores
 ;
+
+/*************************
+All Brightcrowd connector scores
+**************************/
+
+Create Or Replace View v_ksm_connector_ranking As
+
+Select
+  id_number
+  , segment_code
+  , segment_year
+  , segment_month
+  , rpt_pbh634.ksm_pkg_tmp.to_number2(xcomment)
+    As score
+From segment
+Where segment_code = 'KBCR'
+;
