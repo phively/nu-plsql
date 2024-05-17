@@ -37,6 +37,23 @@ Select
 From DUAL
 ;
 
+-- Fiscal month tests
+Select
+  ksm_pkg_calendar.get_fiscal_month(to_date('20200905', 'yyyymmdd')) As "1"
+  , ksm_pkg_calendar.get_fiscal_month(to_date('20201005', 'yyyymmdd')) As "2"
+  , ksm_pkg_calendar.get_fiscal_month(to_date('20201105', 'yyyymmdd')) As "3"
+  , ksm_pkg_calendar.get_fiscal_month(to_date('20201205', 'yyyymmdd')) As "4"
+  , ksm_pkg_calendar.get_fiscal_month(to_date('20210105', 'yyyymmdd')) As "5"
+  , ksm_pkg_calendar.get_fiscal_month(to_date('20210205', 'yyyymmdd')) As "6"
+  , ksm_pkg_calendar.get_fiscal_month(to_date('20210305', 'yyyymmdd')) As "7"
+  , ksm_pkg_calendar.get_fiscal_month(to_date('20210405', 'yyyymmdd')) As "8"
+  , ksm_pkg_calendar.get_fiscal_month(to_date('20210505', 'yyyymmdd')) As "9"
+  , ksm_pkg_calendar.get_fiscal_month(to_date('20210605', 'yyyymmdd')) As "10"
+  , ksm_pkg_calendar.get_fiscal_month(to_date('20210705', 'yyyymmdd')) As "11"
+  , ksm_pkg_calendar.get_fiscal_month(to_date('20210805', 'yyyymmdd')) As "12"
+From DUAL
+;
+
 Select
     ksm_pkg_calendar.get_fiscal_year('20100831') As "2010"
   , ksm_pkg_calendar.get_fiscal_year(to_date('20110831', 'yyyymmdd')) As "2011"

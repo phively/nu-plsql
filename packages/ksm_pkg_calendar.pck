@@ -65,6 +65,11 @@ Function get_quarter(
   , fisc_or_perf In varchar2 Default 'fiscal' -- 'f'iscal or 'p'erformance quarter
 ) Return number; -- Quarter, 1-4
 
+-- Compute fiscal month from date
+Function get_fiscal_month(
+  dt In date
+) Return number; -- Translates chronological calendar month to fiscal month
+
 -- Takes a date or string and returns the fiscal year
 -- Date version
 Function get_fiscal_year(
@@ -259,6 +264,19 @@ Function get_quarter(dt In date, fisc_or_perf In varchar2 Default 'fiscal')
     End If;
     -- Return appropriate quarter corresponding to month; 3 months per quarter
     Return ceil(chron_month / 3);
+  End;
+
+-- Compute fiscal month from date
+Function get_fiscal_month(
+  dt In date
+) Return number Is
+  -- Declarations
+  this_month number;
+  
+  Begin
+    this_month := extract(month from dt);
+    -- Modulo 12, add 1 so range is 1-12 instead of 0-11
+    Return math_mod(this_month - fy_start_month, 12) + 1;
   End;
 
 -- Compute fiscal year from date parameter
