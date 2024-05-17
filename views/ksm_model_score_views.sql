@@ -73,7 +73,7 @@ From rpt_lfs898.ksm_ae_model_scores
 All Brightcrowd connector scores
 **************************/
 
-Create Or Replace View v_ksm_connector_ranking As
+Create Or Replace View v_ksm_model_connector_ranking As
 
 Select
   id_number
