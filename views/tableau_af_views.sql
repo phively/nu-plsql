@@ -1046,6 +1046,10 @@ cash As (
       As max_gift_dt
     , sum(nvl(cash.legal_amount, 0))
       As total_legal_amount
+    ,  max(Case When cash.fytd_ind = 'Y' Then cash.date_of_record End)
+      As ytd_max_gift_dt
+    , sum(Case When cash.fytd_ind = 'Y' Then cash.legal_amount Else 0 End)
+      As ytd_legal_amount
   From cash
   Inner Join hhf
     On hhf.id_number = cash.id_number
@@ -1077,7 +1081,14 @@ cash As (
       As nfy_total_legal_amount
     , ng2.total_legal_amount
       As nfy2_total_legal_amount
-    , cal.curr_fy
+    , fyt.ytd_legal_amount
+      As cfy_ytd_legal_amount
+    , fyt.ytd_max_gift_dt
+      As cfy_ytd_max_gift_dt
+    , ng.ytd_legal_amount
+      As nfy_ytd_legal_amount
+    , ng.ytd_max_gift_dt
+      As nfy_ytd_max_gift_dt    , cal.curr_fy
   From fy_totals fyt
   Cross Join rpt_pbh634.v_current_calendar cal
   Inner Join hhf
@@ -1110,6 +1121,8 @@ cash As (
     , pfy_total_legal_amount
     , cfy_total_legal_amount
     , nfy_total_legal_amount
+    , cfy_ytd_legal_amount
+    , cfy_ytd_max_gift_dt
   From multiyear
   ) Union All (
   -- Add in dummy 0 rows for LYBUNT churn
@@ -1130,6 +1143,10 @@ cash As (
       As cfy_total_legal_amount
     , nfy2_total_legal_amount
       As nfy_total_legal_amount
+    , nfy_ytd_legal_amount
+      As cfy_ytd_legal_amount
+    , nfy_ytd_max_gift_dt
+      As cfy_ytd_max_gift_dt
   From multiyear
   Where nfy_total_legal_amount Is Null
   )

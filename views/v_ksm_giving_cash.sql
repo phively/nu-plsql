@@ -53,11 +53,17 @@ params As (
     , gt.fiscal_year
     , gt.date_of_record
     , gt.legal_amount
-    , allocs.cash_category
+    , Case
+        When gt.pledge_number = '0002851333' -- NH exception
+          Then 'KEC'
+        Else allocs.cash_category
+        End
       As cash_category_detail
     , Case
         When gt.payment_type = 'Gift-in-Kind'
           Then 'Gift In Kind'
+        When gt.pledge_number = '0002851333' -- NH exception
+          Then 'KEC'
         Else allocs.cash_category
         End 
       As cash_category
