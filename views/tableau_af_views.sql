@@ -1088,7 +1088,8 @@ cash As (
     , ng.ytd_legal_amount
       As nfy_ytd_legal_amount
     , ng.ytd_max_gift_dt
-      As nfy_ytd_max_gift_dt    , cal.curr_fy
+      As nfy_ytd_max_gift_dt
+    , cal.curr_fy
   From fy_totals fyt
   Cross Join rpt_pbh634.v_current_calendar cal
   Inner Join hhf
@@ -1183,6 +1184,29 @@ Select
         Then 'Downgrade'
       End
     As cfy_segment
+    , Case
+      -- Churn
+      When cfy_ytd_legal_amount Is Null
+        And pfy_total_legal_amount > 0
+        Then 'Churn'
+      -- Acquisition
+      When cfy_ytd_legal_amount > 0
+        And pfy_total_legal_amount Is Null
+        Then 'New'
+      -- Retention
+      When cfy_ytd_legal_amount > 0
+        And pfy_total_legal_amount = cfy_ytd_legal_amount
+        Then 'Retain'
+      -- Upgrade
+      When cfy_ytd_legal_amount > 0
+        And pfy_total_legal_amount < cfy_ytd_legal_amount
+        Then 'Upgrade'
+      -- Downgrade
+      When cfy_ytd_legal_amount > 0
+        And pfy_total_legal_amount > cfy_ytd_legal_amount
+        Then 'Downgrade'
+      End
+    As cfy_ytd_segment
     , cal.curr_fy
 From merged
 Cross Join rpt_pbh634.v_current_calendar cal
