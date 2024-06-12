@@ -52,6 +52,9 @@ members As (
     , CASE WHEN KGS."AF_PFY1" >0 THEN 1 ELSE 0 END AS AF_PFY1
     , CASE WHEN KGS."AF_PFY2" >0 THEN 1 ELSE 0 END AS AF_PFY2
     , CASE WHEN KGS."AF_PFY3" >0 THEN 1 ELSE 0 END AS AF_PFY3
+    , KGS.LAST_GIFT_DATE
+    ,KGS.LAST_GIFT_RECOGNITION_CREDIT
+    ,KGS.LAST_GIFT_ALLOC
   From all_committees
   Left Join rpt_pbh634.v_ksm_giving_summary KGS
     On KGS.id_number = all_committees.id_number
@@ -59,6 +62,43 @@ members As (
     On all_committees.id_number = fy_nu_giving.id_number
   Left Join rpt_pbh634.v_ksm_giving_campaign
     On all_committees.id_number = v_ksm_giving_campaign.id_number
+)
+
+,UNIVERSITY_GIFT AS (
+ SELECT
+   NTG.ID_NUMBER
+   ,MIN(NTG.DATE_OF_RECORD) KEEP(DENSE_RANK FIRST ORDER BY NTG.DATE_OF_RECORD DESC) AS "Last University Gift Date"
+   ,MIN(NTG.ALLOC_SHORT_NAME) KEEP(DENSE_RANK FIRST ORDER BY NTG.DATE_OF_RECORD DESC) AS "Last Gift Allocation"
+ FROM nu_gft_trp_gifttrans NTG
+ INNER JOIN all_committees ac
+ ON NTG.ID_NUMBER = ac.ID_NUMBER
+ WHERE NTG.TX_GYPM_IND NOT IN ('P', 'M')
+   AND NTG.ALLOC_SCHOOL <> 'KM'
+ GROUP BY NTG.ID_NUMBER
+)
+
+,FIRST_GIFT AS(
+  SELECT
+   GT.ID_NUMBER
+   ,MIN(GT.DATE_OF_RECORD) AS FIRST_GIFT_DATE
+  FROM RPT_PBH634.V_KSM_GIVING_TRANS GT
+  INNER JOIN all_committees ac
+  ON GT.ID_NUMBER = ac.ID_NUMBER
+  WHERE GT.TX_GYPM_IND NOT IN ('P', 'M')
+  GROUP BY GT.ID_NUMBER
+)
+
+,DEAN_VISITS AS (
+  SELECT
+   CRF.ID_NUMBER
+   ,max(CRF.contact_date) keep(dense_rank First Order By CRF.contact_date Desc) AS "Contact Date with Dean"
+   ,max(CRF.contact_type) keep(dense_rank FIRST ORDER BY CRF.CONTACT_DATE DESC) AS "Contact Type with Dean"
+   ,max(CRF.description) keep(dense_rank First Order By CRF.contact_date Desc) AS "Dean Visit Description"
+ FROM RPT_PBH634.V_CONTACT_REPORTS_FAST CRF
+ INNER JOIN all_committees ac
+ ON crf.id_number = ac.id_number
+    WHERE CRF.credited = '0000804796'
+  GROUP BY CRF.ID_NUMBER
 )
 
 -- KSM proposal data
@@ -102,9 +142,11 @@ members As (
   GROUP BY ID_NUMBER
 )
 -- Main query
-Select
+Select DISTINCT
   prs.id_number
   , prs.pref_mail_name
+  , e.first_name
+  , e.last_name
   , v_entity_ksm_degrees.degrees_concat
   , CASE WHEN T.ID_NUMBER IS NOT NULL THEN 'Y' ELSE 'N' END AS TRUSTEE
   , CASE WHEN E.ETHNIC_CODE IN ('1', '2', '4', '9', '12') THEN 'Y' ELSE 'N' END AS URM 
@@ -115,14 +157,34 @@ Select
        WHEN E.citizen_cntry_code1 = 'US' AND E.citizen_cntry_code2 = ' ' THEN 'N'   
        WHEN E.citizen_cntry_code1 = 'US' AND E.citizen_cntry_code2 <> 'US' THEN 'Y' END AS CITIZENSHIP_OUTSIDE_US
   , CASE WHEN E.GENDER_CODE = 'F' THEN 'Y' ELSE 'N' END AS FEMALE
+  , SH.SPECIAL_HANDLING_CONCAT
+  , DV."Contact Date with Dean"
+  , DV."Contact Type with Dean"
+  , DV."Dean Visit Description"
+  , HA.STREET1 AS HOME_STREET1
+  , HA.STREET2 AS HOME_STREET2
+  , HA.STREET3 AS HOME_STREET3
+  , HA.CITY AS HOME_CITY
+  , HA.STATE_CODE AS HOME_STATE
+  , HA.ZIPCODE AS HOME_ZIPCODE
+  , HTC.short_desc AS HOME_COUNTRY
   , prs.employer_name1
   , prs.business_title
-  , prs.pref_city
+  , BA.STREET1 AS BUSINESS_STREET1
+  , BA.STREET2 AS BUSINESS_STREET2
+  , BA.STREET3 AS BUSINESS_STREET3
+  , BA.CITY AS BUSINESS_CITY
+  , BA.STATE_CODE AS BUSINESS_STATE
+  , BA.ZIPCODE AS BUSINESS_ZIPCODE
+  , BTC.short_desc AS BUSINESS_COUNTRY
+ /* , prs.pref_city
   , prs.pref_state
   , prs.pref_zip
-  , prs.preferred_country
+  , prs.preferred_country*/
+  , asum.lgos
   , prs.prospect_id
   , prs.prospect_manager
+  , prs.prospect_stage
   , prs.evaluation_rating
   , prs.evaluation_date
   , prs.officer_rating
@@ -140,8 +202,14 @@ Select
   , acg.cfy_nult_giving
   , acg.lfy_nult_giving
   , acg.lfy2_nult_giving
+  , UG."Last University Gift Date"
+  , UG."Last Gift Allocation"
   , acg.ksm_lt_giving
   , acg.ksm_campaign_giving
+  , FG.FIRST_GIFT_DATE
+  , acg.LAST_GIFT_DATE
+  , acg.LAST_GIFT_RECOGNITION_CREDIT
+  , acg.LAST_GIFT_ALLOC
   , nvl(proposalcount.proposalcount, 0) As proposal_count
   , acg.af_cfy_sftcredit
   , acg.af_lyfy_sftcredit
@@ -158,9 +226,31 @@ Select
 From all_committees_giving acg
 Inner Join nu_prs_trp_prospect prs
   On prs.id_number = acg.id_number
+LEFT JOIN RPT_PBH634.V_ASSIGNMENT_SUMMARY ASUM
+ON ASUM.id_number = ACG.ID_NUMBER
+LEFT JOIN RPT_PBH634.V_ENTITY_SPECIAL_HANDLING SH
+ON acg.ID_NUMBER = SH.ID_NUMBER
+LEFT JOIN ADDRESS HA
+ON acg.ID_NUMBER  = HA.ID_NUMBER
+  AND HA.ADDR_STATUS_CODE = 'A'
+  AND HA.ADDR_TYPE_CODE = 'H'
+LEFT JOIN TMS_COUNTRY HTC
+ON HA.COUNTRY_CODE = HTC.country_code
+LEFT JOIN ADDRESS BA
+ON acg.ID_NUMBER  = BA.ID_NUMBER
+  AND BA.ADDR_STATUS_CODE = 'A'
+   AND BA.ADDR_TYPE_CODE = 'B'
+LEFT JOIN TMS_COUNTRY BTC
+ON HA.COUNTRY_CODE = BTC.country_code
+LEFT JOIN DEAN_VISITS DV
+ON acg.ID_NUMBER = DV.ID_NUMBER
+LEFT JOIN UNIVERSITY_GIFT UG
+ON acg.ID_NUMBER = UG.ID_NUMBER
+LEFT JOIN FIRST_GIFT FG
+ON acg.ID_NUMBER = FG.ID_NUMBER
 Left Join committee_header ch
   On ch.committee_code = acg.committee_code
-LEFT JOIN TABLE(RPT_PBH634.ksm_pkg_tmp.tbl_committee_trustee) T
+LEFT JOIN TABLE(RPT_PBH634.KSM_PKG_TMP.tbl_committee_trustee) T
 ON T.ID_NUMBER = acg.id_number
 LEFT JOIN ENTITY e
 ON e.id_number = acg.id_number
