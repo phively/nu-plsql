@@ -1,7 +1,58 @@
 Create or Replace View v_deans_travel as 
 
 with p as (select *
-from rpt_pbh634.VT_KSM_PRS_Pool),
+from rpt_pbh634.VT_KSM_PRS_Pool p ),
+
+G as (Select
+gc.*
+From table(rpt_pbh634.ksm_pkg_tmp.tbl_geo_code_primary) gc
+Inner Join address
+On address.id_number = gc.id_number
+And address.xsequence = gc.xsequence),
+
+CO as (select *
+from RPT_PBH634.v_addr_continents),
+
+--- Melanie wants primary address geo - it's not in prospect
+
+prime as (Select DISTINCT
+         a.Id_number
+      ,  tms_address_type.short_desc AS primary_Address_Type
+      ,  a.city as primary_city
+      ,  a.state_code as primary_state_code
+      ,  CO.country as primary_country
+      ,  G.GEO_CODE_PRIMARY_DESC AS PRIMARY_GEO_CODE
+      FROM address a
+      LEFT JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
+      LEFT JOIN tms_address_type ON tms_address_type.addr_type_code = a.addr_type_code
+      LEFT JOIN tms_country ON tms_country.country_code = a.country_code
+      LEFT JOIN CO ON CO.country_code = A.COUNTRY_CODE
+      LEFT JOIN g ON g.id_number = A.ID_NUMBER
+      AND g.xsequence = a.xsequence
+      WHERE a.addr_status_code = 'A'
+      --- Primary Country
+      and a.addr_pref_IND = 'Y'),
+
+
+--- Non Primary Business
+Business As(Select DISTINCT
+        a.Id_number
+      ,  max(tms_address_type.short_desc) AS Address_Type
+      ,  max(a.city) as business_city
+      ,  max (a.state_code) as business_state_code
+      ,  max (CO.country) as business_country
+      ,  max (G.GEO_CODE_PRIMARY_DESC) AS BUSINESS_GEO_CODE
+      FROM address a
+      LEFT JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
+      LEFT JOIN tms_address_type ON tms_address_type.addr_type_code = a.addr_type_code
+      LEFT JOIN tms_country ON tms_country.country_code = a.country_code
+      LEFT JOIN g ON g.id_number = A.ID_NUMBER
+      LEFT JOIN CO ON CO.country_code = A.COUNTRY_CODE
+      AND g.xsequence = a.xsequence
+      WHERE (a.addr_status_code = 'A'
+      and a.addr_pref_IND = 'N'
+      AND a.addr_type_code = 'B')
+      Group By a.id_number),
 
 
 --- Assignment Revision: Now include the Office, so we will use this subquery for PM/LGOs
@@ -17,6 +68,29 @@ from rpt_pbh634.v_assignment_summary assign
 left join assignment a on a.id_number = assign.id_number 
 left join TMS_OFFICE ON TMS_OFFICE.office_code = a.office_code 
 ),
+
+
+--- employment general
+
+em As (
+  Select id_number
+  , job_title
+  , employment.fld_of_work_code
+  , fow.short_desc As fld_of_work
+  , employer_name1,
+    Case
+      When employer_id_number Is Not Null And employer_id_number != ' ' Then (
+        Select pref_mail_name
+        From entity
+        Where id_number = employer_id_number)
+      Else trim(employer_name1 || ' ' || employer_name2)
+    End As employer_name
+  From employment
+  Left Join tms_fld_of_work fow
+       On fow.fld_of_work_code = employment.fld_of_work_code
+  Where employment.primary_emp_ind = 'Y')
+  
+  ,
 
 --- C Suite Alumni
 
@@ -232,14 +306,92 @@ from entity
 left join pm on pm.id_number = entity.id_number
 left join lgo on lgo.id_number = entity.id_number
 left join ostag on ostag.id_number = entity.id_number),
+
+tran as (select distinct HH.ID_NUMBER
+FROM rpt_pbh634.v_ksm_giving_trans_hh HH
+where HH.PLEDGE_STATUS = 'A'),
+
+
+--- Melanie sent me a list of committees, zach had code for this already! 
+
+ GAB as (
+select gab.id_number
+      ,'GAB' as GAB_indicator
+from table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_gab) gab
+)
+
+, REAC as (
+select reac.id_number
+      ,'REAC' as REAC_indicator
+from table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_realEstCouncil) reac
+)
+
+, AMP as (
+select amp.id_number
+     ,'AMP' as AMP_indicator
+from table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_amp) amp
+)
+
+, HCAK as (
+select hcak.id_number
+      ,'HCAK' as HCAK_indicator
+from table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_healthcare) hcak 
+)
+
+, PEAC as (
+select peac.id_number
+      ,'PEAC' as PEAC_indicator
+from table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_privateEquity) peac
+)
+
+, EBFA as (
+select ebfa.id_number
+       ,'EBFA' as EBFA_indicator
+from table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_asia) ebfa
+)
+
+, PEAC_ASIA as (
+select peac_asia.id_number
+      ,'PEAC_ASIA' as PEAC_ASIA_indicator
+from table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_pe_asia) peac_asia
+)
+
+
+,fcom as (
+select e.id_number
+      , listagg(GAB.GAB_indicator || Case When GAB.GAB_indicator Is Not Null Then ', ' End ||  
+               REAC.REAC_indicator || Case When REAC.REAC_indicator Is Not Null Then ', ' End ||  
+               AMP.AMP_indicator || Case When AMP.AMP_indicator Is Not Null Then ', ' End || 
+               HCAK.HCAK_indicator || Case When HCAK.HCAK_indicator Is Not Null Then ', ' End ||  
+               PEAC.PEAC_indicator || Case When PEAC.PEAC_indicator Is Not Null Then ', ' End ||  
+               EBFA.EBFA_indicator || Case When EBFA.EBFA_indicator Is Not Null Then ', ' End ||  
+               PEAC_ASIA.PEAC_ASIA_indicator) 
+             within group ( order by e.id_number ) as list_agg_committees
+from entity e
+left join GAB on e.id_number = GAB.id_number
+left join REAC on e.id_number = REAC.id_number
+left join AMP on e.id_number = AMP.id_number
+left join HCAK on e.id_number = HCAK.id_number
+left join PEAC on e.id_number = PEAC.id_number
+left join EBFA on e.id_number = EBFA.id_number
+left join PEAC_Asia on e.id_number = PEAC_Asia.id_number
+where GAB.GAB_indicator is not null
+or REAC.REAC_indicator is not null
+or AMP.AMP_indicator is not null 
+or HCAK.HCAK_indicator is not null
+or PEAC.PEAC_indicator is not null
+or EBFA.EBFA_indicator is not null
+or PEAC_ASIA.PEAC_ASIA_indicator is not null
+group by e.id_number),
+
    
 
 --- Final subquery since the propsect pool is slow
 
 finals as (select distinct entity.id_number,
 a.lgos,
-csuite.job_title,
-csuite.employer_name,
+csuite.job_title as c_suite_job_title,
+csuite.employer_name as c_suite_employer_name,
 armod.AE_MODEL_SCORE,
 intr.short_desc as interest,
 c.credited_ID,
@@ -249,15 +401,36 @@ c.contact_purpose,
 c.contact_name,
 c.contact_date,
 c.description_,
-c.summary
-
+c.summary,
+b.business_city,
+b.business_state_code, 
+b.BUSINESS_GEO_CODE,
+b.business_country,
+csuite.job_title as csuite_job_title,
+csuite.employer_name as csuite_employer_name,
+csuite.fld_of_work as csuite_fld_of_work,
+em.job_title,
+em.employer_name,
+em.fld_of_work,
+case when tran.id_number is not null then 'Y' else 'N' end as plg_active,
+fcom.list_agg_committees,
+prime.primary_address_type,
+prime.primary_city,
+prime.primary_state_code,
+prime.primary_country,
+prime.PRIMARY_GEO_CODE
 ---case when kfs.id_number is not null then 'KSM_Faculty_staff' end as KSM_Faculty_staff
 from entity 
 left join assign a on a.id_number = entity.id_number
+left join em on em.id_number = entity.id_number
 left join csuite on csuite.id_number = entity.id_number
 left join armod on armod.id_number = entity.id_number
 left join intr on intr.id_number = entity.id_number
 left join c on c.id_number = entity.id_number
+left join Business b on b.id_number = entity.id_number 
+left join tran on tran.id_number = entity.id_number 
+left join fcom on fcom.id_number = entity.id_number 
+left join prime on prime.id_number = entity.id_number 
 ---left join KSM_Faculty_Staff kfs on kfs.id_number = entity.id_number
 )
 
@@ -267,14 +440,14 @@ left join c on c.id_number = entity.id_number
 --- A lot of Melanie's columns already in prospect pool 
 
 select p.ID_NUMBER,
-       /* p.REPORT_NAME,
+        p.REPORT_NAME,
        p.PREF_MAIL_NAME,
        p.RECORD_STATUS_CODE,
-       p.DEGREES_CONCAT,
+       --- p.DEGREES_CONCAT,
        p.FIRST_KSM_YEAR,
        p.PROGRAM,
        p.PROGRAM_GROUP,
-       p.LAST_NONCERT_YEAR,
+       --- p.LAST_NONCERT_YEAR,
        p.INSTITUTIONAL_SUFFIX,
        p.SPOUSE_ID_NUMBER,
        p.SPOUSE_REPORT_NAME,
@@ -284,15 +457,15 @@ select p.ID_NUMBER,
        p.SPOUSE_FIRST_KSM_YEAR,
        p.SPOUSE_PROGRAM,
        p.SPOUSE_PROGRAM_GROUP,
-       p.SPOUSE_LAST_NONCERT_YEAR,
+      /*  p.SPOUSE_LAST_NONCERT_YEAR,
        p.FMR_SPOUSE_ID,
        p.FMR_SPOUSE_NAME,
-       p.FMR_MARITAL_STATUS, */
+       p.FMR_MARITAL_STATUS,*/  
        p.HOUSEHOLD_ID,
        p.HOUSEHOLD_PRIMARY,
-       p.HOUSEHOLD_RECORD,
+       --- p.HOUSEHOLD_RECORD,
        p.PERSON_OR_ORG,
-       p.HOUSEHOLD_NAME,
+       /* p.HOUSEHOLD_NAME,
        p.HOUSEHOLD_RPT_NAME,
        p.HOUSEHOLD_SPOUSE_ID,
        p.HOUSEHOLD_SPOUSE,
@@ -306,29 +479,32 @@ select p.ID_NUMBER,
        p.HOUSEHOLD_LAST_MASTERS_YEAR,
        p.HOUSEHOLD_PROGRAM,
        p.HOUSEHOLD_PROGRAM_GROUP,
-       ---p.XSEQUENCE,
+       ---p.XSEQUENCE,*/
        p.HOUSEHOLD_CITY,
        p.HOUSEHOLD_STATE,
        p.HOUSEHOLD_ZIP,
        p.HOUSEHOLD_GEO_CODES,
-       ---p.HOUSEHOLD_GEO_PRIMARY,
+       p.HOUSEHOLD_GEO_PRIMARY,
        p.HOUSEHOLD_GEO_PRIMARY_DESC,
        p.HOUSEHOLD_COUNTRY,
        p.HOUSEHOLD_CONTINENT,
        p.BUSINESS_TITLE,
        p.EMPLOYER_NAME,
-       p.PREF_ADDR_TYPE,
-       p.PREF_CITY,
-       p.PREF_STATE,
-       p.PREFERRED_COUNTRY,
-       p.BUSINESS_CITY,
-       p.BUSINESS_STATE,
-       p.BUSINESS_COUNTRY,
-       p.HOME_CITY,
+       --- preferred 
+       finals.primary_address_type,
+       finals.primary_city,
+       finals.primary_state_code,
+       finals.primary_country,
+       finals.primary_geo_code,    
+       finals.business_city,
+       finals.business_state_code,
+       finals.business_geo_code,
+       finals.business_country,
+       /* p.HOME_CITY,
        p.HOME_STATE,
-       p.HOME_COUNTRY,
+       p.HOME_COUNTRY, */ 
        p.PROSPECT_ID,
-       p.PRIMARY_IND,
+       ---p.PRIMARY_IND,
        p.PROSPECT_NAME,
        ---p.PROSPECT_NAME_SORT,
        p.UNIVERSITY_STRATEGY,
@@ -336,14 +512,14 @@ select p.ID_NUMBER,
        p.STRATEGY_RESPONSIBLE,
        p.DQ,
        p.DQ_DATE,
-       p.PERMANENT_STEWARDSHIP,
+       --- p.PERMANENT_STEWARDSHIP,
        p.DNS,
        p.EVALUATION_RATING,
        p.EVALUATION_DATE,
-       p.OFFICER_RATING,
+       --- p.OFFICER_RATING,
        p.UOR,
        p.UOR_DATE,
-       p.UOR_EVALUATOR_ID,
+      --- p.UOR_EVALUATOR_ID,
        p.UOR_EVALUATOR,
        p.AF_10K_MODEL,
        p.AF_10K_SCORE,
@@ -360,6 +536,8 @@ select p.ID_NUMBER,
        fm.other_manager,
        fm.other_assign_type,
        fm.other_office,
+       /* Boards and Councils Melanie will send 7/11/24 */
+       finals.list_agg_committees,      
        p.TEAM,
        p.PROSPECT_STAGE,
        p.CONTACT_DATE,
@@ -394,7 +572,8 @@ select p.ID_NUMBER,
        p.longitude,
        p.open_proposals,
        p.open_ksm_proposals,
-       p.total_asks,
+       finals.plg_active, 
+       /* p.total_asks,
        p.total_anticipated,
        p.total_ksm_asks,
        p.total_ksm_anticipated,
@@ -412,7 +591,7 @@ select p.ID_NUMBER,
        p.next_proposal_manager,
        p.next_close_date,
        p.next_ksm_ask,
-       p.next_ksm_anticipated,
+       p.next_ksm_anticipated, */ 
        p.ard_visit_last_365_days,
        p.ard_contact_last_365_days,
        p.last_visit_credited_name,
@@ -428,11 +607,11 @@ select p.ID_NUMBER,
        p.last_credited_unit,
        p.last_credited_ksm,
        p.last_contact_type,
-       p.last_contact_category,
+       ---p.last_contact_category,
        p.last_contact_date,
        p.last_contact_purpose,
        p.last_contact_desc,
-       p.last_assigned_credited_name,
+       /*p.last_assigned_credited_name,
        p.last_assigned_credited_unit,
        p.last_assigned_credited_ksm,
        p.last_assigned_contact_type,
@@ -442,18 +621,18 @@ select p.ID_NUMBER,
        p.last_assigned_contact_desc,
        p.tasks_open,
        p.tasks_open_ksm,
-       p.tasks_open_ksm_outreach,
+       p.tasks_open_ksm_outreach,*/
        p.task_outreach_next_id,
        p.task_outreach_sched_date,
        p.task_outreach_responsible,
        p.task_outreach_desc,
-       p.yesterday,
-       p.curr_fy,
+       ---p.yesterday,
+       ---p.curr_fy,
        --- Melanie wants case a flag
-case when finals.job_title is not null then 'Y' end as c_suite_job_title,
+case when finals.c_suite_job_title is not null then 'Y' end as c_suite_job_title_ind,
 ---finals.employer_name as c_suite_employer_name,
 finals.AE_MODEL_SCORE,
-finals.interest,
+finals.fld_of_work,---- finals.interest, We want fld of work 7/11/24  
 fran.count_dean_events,
 dvisit.count_dean_visit,
 --- Dean Last Visit (Rename)
