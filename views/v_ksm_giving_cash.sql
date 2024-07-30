@@ -137,8 +137,9 @@ params As (
 , cash_plus_mgrs As (
   Select
     attr_cash.tx_number
+    , hhf.household_id
     , attr_cash.id_number
-    , entity.report_name As primary_donor_report_name
+    , hhf.report_name As primary_donor_report_name
     , attr_cash.allocation_code
     , attr_cash.alloc_short_name
     , attr_cash.tx_gypm_ind
@@ -163,8 +164,8 @@ params As (
     , cal.curr_fy
   From attr_cash
   Cross join rpt_pbh634.v_current_calendar cal
-  Inner Join entity
-    On entity.id_number = attr_cash.id_number
+  Inner Join hhf
+    On hhf.id_number = attr_cash.id_number
   Left Join funded_proposal_credit fpc
     On fpc.proposal_id = attr_cash.proposal_id
   Left Join ranked_historical_mgrs pm

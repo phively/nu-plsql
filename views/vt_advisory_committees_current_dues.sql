@@ -136,8 +136,12 @@ boards_data As (
     Or kwlc Is Not Null
 )
 
-Select *
+Select
+  hhf.household_id
+  , boards.*
 From boards
+Inner Join v_entity_ksm_households_fast hhf
+  On hhf.id_number = boards.id_number
 ;
 
 Create Or Replace View vt_advisory_committees_dues As
@@ -183,7 +187,7 @@ hhf As (
 
 , boards_hh_cash As (
   Select
-    gc.id_number
+    gc.household_id
     , gc.fiscal_year
     , gc.cash_category
     , sum(gc.legal_amount)
@@ -194,14 +198,13 @@ hhf As (
   Cross Join rpt_pbh634.v_current_calendar cal
   Where gc.fiscal_year Between cal.curr_fy - 1 And cal.curr_fy
   Group By
-    gc.id_number
+    gc.household_id
     , gc.fiscal_year
     , gc.cash_category
 )
 
 Select
-  boards_hh.household_id
-  , boards_hh.household_rpt_name
+  boards_hh.household_rpt_name
   , boards_hh.total_boards_hh
   , boards_hh.total_dues_hh
   , boards.*
@@ -218,7 +221,7 @@ Inner Join boards_hh
   On boards_hh.household_id = hhf.household_id
 -- Giving
 Left Join boards_hh_cash cash
-  On cash.id_number = boards.id_number
+  On cash.household_id = boards.household_id
 ;
 
 Create Or Replace View vt_advisory_committees_long As
@@ -265,7 +268,7 @@ hhf As (
 
 , boards_hh_cash As (
   Select
-    gc.id_number
+    gc.household_id
     , gc.fiscal_year
     , gc.cash_category
     , sum(gc.legal_amount)
@@ -276,7 +279,7 @@ hhf As (
   Cross Join rpt_pbh634.v_current_calendar cal
   Where gc.fiscal_year Between cal.curr_fy - 3 And cal.curr_fy
   Group By
-    gc.id_number
+    gc.household_id
     , gc.fiscal_year
     , gc.cash_category
 )
@@ -321,6 +324,6 @@ Inner Join boards_hh
   On boards_hh.household_id = hhf.household_id
 -- Giving
 Left Join boards_hh_cash cash
-  On cash.id_number = long_data.id_number
+  On cash.household_id = long_data.household_id
   And cash.fiscal_year = dd.fiscal_year
 ;

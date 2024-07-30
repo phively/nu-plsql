@@ -23,21 +23,19 @@ hhf As (
 , grouped_cash As (
   Select
     attr_cash.cash_category
-    , hhf.household_id
+    , attr_cash.household_id
     , attr_cash.fiscal_year
     , attr_cash.managed_grp
     , sum(attr_cash.legal_amount)
       As sum_legal_amount
     , sum(Case When attr_cash.fytd_ind = 'Y' Then attr_cash.legal_amount Else 0 End)
       As sum_legal_amount_ytd
-    , count(household_id) Over(Partition By cash_category, household_id, fiscal_year)
+    , count(attr_cash.household_id) Over(Partition By cash_category, attr_cash.household_id, fiscal_year)
       As n_managed_in_group
   From attr_cash
-  Inner Join hhf
-    On hhf.id_number = attr_cash.id_number
   Group By
     attr_cash.cash_category
-    , hhf.household_id
+    , attr_cash.household_id
     , attr_cash.fiscal_year
     , attr_cash.managed_grp
 )
