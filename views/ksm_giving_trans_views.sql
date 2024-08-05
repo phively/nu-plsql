@@ -752,6 +752,8 @@ cal As (
 , gift_union As (
   Select
     cgft.*
+    , rpt_pbh634.ksm_pkg_gifts.get_gift_source_donor_ksm(cgft.rcpt_or_plg_number)
+      As src_donor_id
   From v_ksm_giving_campaign_trans cgft
   Union
   Select
@@ -782,6 +784,8 @@ cal As (
     , NULL
     , 'KM'
     , NULL
+    , rpt_pbh634.ksm_pkg_gifts.get_gift_source_donor_ksm(gt.tx_number)
+      As src_donor_id
   From v_ksm_giving_trans gt
   Cross Join cal
   Inner Join entity
@@ -796,6 +800,8 @@ cal As (
 -- Main query
 Select
   gft.*
+  , srcdnr.report_name
+    As src_donor_name
   , cal.curr_fy
   , ytd_dts.ytd_ind
   , entity.report_name
@@ -817,6 +823,7 @@ From gift_union gft
 Cross Join v_current_calendar cal
 Inner Join ytd_dts On ytd_dts.dt = trunc(gft.date_of_record)
 Inner Join entity On entity.id_number = gft.id_number
+Left Join entity srcdnr On srcdnr.id_number = gft.src_donor_id
 Inner Join allocation On allocation.allocation_code = gft.alloc_code
 Left Join deg On deg.id_number = entity.id_number
 Left Join nu_prs_trp_prospect prs On prs.id_number = entity.id_number
