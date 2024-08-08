@@ -295,13 +295,15 @@ Function tbl_committee_mbai
 Function tbl_committee_yab
   Return ksm_pkg_committee.t_committee_members Pipelined;
 
+Function tbl_committee_tech
+  Return ksm_pkg_committee.t_committee_members Pipelined;
+
 /*************************************************************************
 End of package
 *************************************************************************/
 
 End ksm_pkg_tmp;
 /
-
 Create Or Replace Package Body ksm_pkg_tmp Is
 
 /*************************************************************************
@@ -1124,6 +1126,19 @@ Function tbl_special_handling_concat
         
       Begin
         committees := ksm_pkg_committee.c_committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_yab'));
+        For i in 1..committees.count Loop
+          Pipe row(committees(i));
+        End Loop;
+        Return;
+      End;
+
+    --  Kellogg Alumni Tech Council
+    Function tbl_committee_tech
+      Return ksm_pkg_committee.t_committee_members Pipelined As
+      committees ksm_pkg_committee.t_committee_members;
+        
+      Begin
+        committees := ksm_pkg_committee.c_committee_members(my_committee_cd => ksm_pkg_committee.get_string_constant('committee_tech'));
         For i in 1..committees.count Loop
           Pipe row(committees(i));
         End Loop;

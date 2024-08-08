@@ -26,6 +26,7 @@ committee_pe_asia Constant committee.committee_code%type := 'APEAC'; -- KSM Asia
 committee_asia Constant committee.committee_code%type := 'KEBA'; -- Kellogg Executive Board for Asia
 committee_mbai Constant committee.committee_code%type := 'MBAAC'; -- MBAi Advisory Council 
 committee_yab Constant committee.committee_code%type := 'KAYAB'; -- Kellogg Young Alumni Board
+committee_tech Constant committee.committee_code%type := 'KTC'; -- Kellogg Alumni Tech Council
 
 -- Committee dues
 dues_gab Constant number := 25.0E3;
