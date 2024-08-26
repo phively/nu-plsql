@@ -238,6 +238,8 @@ GROUP BY GT.ID_NUMBER
            ,ALLOC_SHORT_NAME acct
            ,AF_FLAG AF
            ,FISCAL_YEAR FY
+           ,ASSOCIATED_CODE
+           ,ASSOCIATED_DESC
           FROM GIVING_TRANS
           WHERE TX_GYPM_IND <> 'P'
 )
@@ -254,6 +256,8 @@ SELECT
            ,g.acct
            ,g.AF
            ,g.FY
+           ,g.ASSOCIATED_CODE
+           ,g.ASSOCIATED_DESC
            FROM (SELECT * FROM MYDATA WHERE TX_GYPM_IND <> 'M') g
            LEFT JOIN (SELECT * FROM MYDATA WHERE TX_GYPM_IND = 'M') m
                 ON g.rcpt = m.m_rcpt AND g.ID_NUMBER = m.ID_NUMBER
@@ -278,24 +282,32 @@ SELECT
      ,max(decode(RW,1,match))   match1
      ,max(decode(RW,1,claim)) claim1
      ,max(decode(RW,1,acct))   gacct1
+     ,max(decode(RW,1,ASSOCIATED_CODE))   ASSOCIATED_CODE1
+     ,max(decode(RW,1,ASSOCIATED_DESC))   ASSOCIATED_DESC1     
      ,max(decode(RW,2,rcpt)) rcpt2
      ,max(decode(RW,2,dt)) gdt2
      ,max(decode(RW,2,amt))     gamt2
      ,max(decode(RW,2,match))   match2
      ,max(decode(RW,2,claim)) claim2
      ,max(decode(RW,2,acct))   gacct2
+     ,max(decode(RW,2,ASSOCIATED_CODE))   ASSOCIATED_CODE2
+     ,max(decode(RW,2,ASSOCIATED_DESC))   ASSOCIATED_DESC2
      ,max(decode(RW,3,rcpt)) rcpt3
      ,max(decode(RW,3,dt)) gdt3
      ,max(decode(RW,3,amt))     gamt3
      ,max(decode(RW,3,match))   match3
      ,max(decode(RW,3,claim)) claim3
      ,max(decode(RW,3,acct))   gacct3
+     ,max(decode(RW,3,ASSOCIATED_CODE))   ASSOCIATED_CODE3
+     ,max(decode(RW,3,ASSOCIATED_DESC))   ASSOCIATED_DESC3
      ,max(decode(RW,4,rcpt)) rcpt4
      ,max(decode(RW,4,dt)) gdt4
      ,max(decode(RW,4,amt))     gamt4
      ,max(decode(RW,4,match))   match4
      ,max(decode(RW,4,claim)) claim4
      ,max(decode(RW,4,acct))   gacct4
+     ,max(decode(RW,4,ASSOCIATED_CODE))   ASSOCIATED_CODE4
+     ,max(decode(RW,4,ASSOCIATED_DESC))   ASSOCIATED_DESC4     
     FROM ROWDATA
     GROUP BY ID_NUMBER
 )
@@ -906,6 +918,36 @@ anon_dw as (Select
     , min(anon) As anon -- min() results in the order Anonymous, Anonymous Donor, Anonymous IR Name
   From anon_dat
   Group By household_id),
+  
+--- Any other Reunions Attended
+
+--- Last Reunions Attended
+last_reunion as (select f.id_number,
+listagg (f.event_id, ';  ') Within Group (order by f.start_dt_calc) as last_reunion_event_id,
+listagg (f.event_name, ';  ') Within Group (order by f.start_dt_calc) as last_reunion_event_name,
+listagg (f.start_dt_calc, ';  ') Within Group (order by f.start_dt_calc) as last_reunion_start_dt
+from rpt_pbh634.v_nu_event_participants_fast f
+where f.Event_Id IN ('9760',
+'7914',
+'7904',
+'7885',
+'7883',
+'7882',
+'7879',
+'8482',
+'9760',
+'12485',
+'14583',
+'21791',
+'21792',
+'21120',
+'22429',
+'26358',
+'26385',
+'28145',
+'30185'
+)
+group by f.id_number),
  
   
 final as (select  KSM_REUNION.id_number,
@@ -960,7 +1002,7 @@ or s.ANONYMOUS_DONOR is not null then 'Y' end as ANONYMOUS_DONOR
   ,S.EBFA as Asia_Executive_Board
   ,S.Trustee
   ,S.GAB
-  
+  ,S.NO_SOLICIT
   
   --- Need to change this when we hit FY 25
 
@@ -1009,6 +1051,9 @@ or s.ANONYMOUS_DONOR is not null then 'Y' end as ANONYMOUS_DONOR
    ,degs.pref_mail_name
    ,hr_names.honor_roll_name
    ,hr_names.honor_roll_name_no_prefix
+   ,lr.last_reunion_event_id
+   ,lr.last_reunion_event_name
+   ,lr.last_reunion_start_dt
 from KSM_REUNION 
 left join CURRENT_DONOR CYD on CYD.id_number = KSM_REUNION.id_number
 left join GIVING_SUMMARY on GIVING_SUMMARY.id_number = KSM_REUNION.id_number
@@ -1023,6 +1068,8 @@ left join vs on vs.id_number = KSM_Reunion.id_number
 left join hr_names on hr_names.id_number = KSM_Reunion.id_number
 left join anon_dw on anon_dw.household_id = KSM_Reunion.id_number
 left join degs on degs.id_number = KSM_Reunion.id_number
+left join last_reunion lr on lr.id_number = KSM_REUNION.id_number
+
 )
 
 SELECT DISTINCT 
@@ -1038,12 +1085,26 @@ SELECT DISTINCT
   ,E.last_name   
   --- Attending Reunion 2024 - I will add this once registratio opens
   ,KR.CLASS_YEAR
+  ,case when KR.class_year = '1975' then '50th Milestone'
+  when KR.class_year = '1980' then '45th Milestone'
+    when KR.class_year = '1985' then '40th Milestone'
+      when KR.class_year = '1990' then '35th Milestone'
+        when KR.class_year = '1995' then '30th Milestone'
+          when KR.class_year = '2000' then '25th Milestone'
+            when KR.class_year = '2005' then '20th Milestone'
+              when KR.class_year = '2010' then '15th Milestone'
+                when KR.class_year = '2015' then '10th Milestone'
+                  when KR.class_year = '2020' then '5th Milestone'
+                    when KR.class_year = '2024' then '1st Milestone' end as Reunion_Milestone
   ,FINAL.CLASS_YEAR_CONCAT 
   ,KR.PROGRAM AS DEGREE_PROGRAM
   ,KR.PROGRAM_GROUP
   ,KR.CLASS_SECTION AS COHORT
   ,CASE WHEN RP15.ID_NUMBER IS NOT NULL THEN 'Y' END AS ATTENDED_REUNION_2015
   ,CASE WHEN RP22.ID_NUMBER IS NOT NULL THEN 'Y' END AS ATTENDED_REUNION_2022
+  ,final.last_reunion_event_id
+  ,final.last_reunion_event_name
+  ,final.last_reunion_start_dt
   ,pfin.Address_Type
   ,pfin.care_of
   ,pfin.Business_Name
@@ -1100,9 +1161,11 @@ SELECT DISTINCT
   ,final.NO_PHONE_SOLICIT
   ,final.RESTRICTIONS
   ,final.NO_CONTACT
+  ,final.NO_SOLICIT
   ,final.JOB_TITLE
   ,final.EMPLOYER
   ,final.INDUSTRY
+  --- Update: Team is okay with just NU Staff, BUT I do get requests to exclude KSM staff that alumni. Take off Tableau instead.  
   ,CASE WHEN KFS.ID_NUMBER IS NOT NULL THEN 'KSM Faculty/Staff' end as KSM_faculty_staff_ind
   ,CASE WHEN NFS.ID_NUMBER IS NOT NULL THEN 'NU Faculty/Staff' end as NU_faculty_staff_ind
   ,CASE WHEN NFS.ID_NUMBER IS NOT NULL THEN NFS.affilation_code end as NU_faculty_staff_school_ind
@@ -1135,21 +1198,29 @@ SELECT DISTINCT
   ,GI.GACCT1 AS ACC1
   ,GI.MATCH1 AS MATCH_AMOUNT1
   ,GI.CLAIM1 AS CLAIM_AMOUNT1
+  ,GI.ASSOCIATED_CODE1
+  ,GI.ASSOCIATED_DESC1
   ,trunc (GI.GDT2) AS DATE2
   ,GI.GAMT2 AS AMOUNT2
   ,GI.GACCT2 AS ACC2
   ,GI.MATCH2 AS MATCH_AMOUNT2
   ,GI.CLAIM2 AS CLAIM_AMOUNT2
+  ,GI.ASSOCIATED_CODE2
+  ,GI.ASSOCIATED_DESC2
   ,trunc (GI.GDT3) AS DATE3
   ,GI.GAMT3 AS AMOUNT3
   ,GI.GACCT3 AS ACC3
   ,GI.MATCH3 AS MATCH_AMOUNT3
   ,GI.CLAIM3 AS CLAIM_AMOUNT3
+  ,GI.ASSOCIATED_CODE3
+  ,GI.ASSOCIATED_DESC3
   ,trunc (GI.GDT4) AS DATE4
   ,GI.GAMT4 AS AMOUNT4
   ,GI.GACCT4 AS ACC4
   ,GI.MATCH4 AS MATCH_AMOUNT4
   ,GI.CLAIM4 AS CLAIM_AMOUNT4
+  ,GI.ASSOCIATED_CODE4
+  ,GI.ASSOCIATED_DESC4
   ,Final.anonymous_cfy_flag
   ,Final.anonymous_pfy1_flag
   ,Final.anonymous_pfy2_flag
