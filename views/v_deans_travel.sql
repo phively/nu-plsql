@@ -46,8 +46,8 @@ Business As(Select DISTINCT
       LEFT JOIN tms_addr_status ON tms_addr_status.addr_status_code = a.addr_status_code
       LEFT JOIN tms_address_type ON tms_address_type.addr_type_code = a.addr_type_code
       LEFT JOIN tms_country ON tms_country.country_code = a.country_code
-      LEFT JOIN g ON g.id_number = A.ID_NUMBER
       LEFT JOIN CO ON CO.country_code = A.COUNTRY_CODE
+      LEFT JOIN g ON g.id_number = A.ID_NUMBER
       AND g.xsequence = a.xsequence
       WHERE (a.addr_status_code = 'A'
       and a.addr_pref_IND = 'N'
@@ -384,6 +384,15 @@ or EBFA.EBFA_indicator is not null
 or PEAC_ASIA.PEAC_ASIA_indicator is not null
 group by e.id_number),
 
+
+linked as (select distinct ec.id_number,
+max(ec.start_dt) keep(dense_rank First Order By ec.start_dt Desc, ec.econtact asc) As Max_Date,
+max (ec.econtact) keep(dense_rank First Order By ec.start_dt Desc, ec.econtact asc) as linkedin_address
+from econtact ec
+where  ec.econtact_status_code = 'A'
+and  ec.econtact_type_code = 'L'
+Group By ec.id_number),
+
    
 
 --- Final subquery since the propsect pool is slow
@@ -412,6 +421,7 @@ csuite.fld_of_work as csuite_fld_of_work,
 em.job_title,
 em.employer_name,
 em.fld_of_work,
+linked.linkedin_address,
 case when tran.id_number is not null then 'Y' else 'N' end as plg_active,
 fcom.list_agg_committees,
 prime.primary_address_type,
@@ -431,6 +441,7 @@ left join Business b on b.id_number = entity.id_number
 left join tran on tran.id_number = entity.id_number 
 left join fcom on fcom.id_number = entity.id_number 
 left join prime on prime.id_number = entity.id_number 
+left join linked on linked.id_number = entity.id_number 
 ---left join KSM_Faculty_Staff kfs on kfs.id_number = entity.id_number
 )
 
@@ -490,6 +501,7 @@ select p.ID_NUMBER,
        p.HOUSEHOLD_CONTINENT,
        p.BUSINESS_TITLE,
        p.EMPLOYER_NAME,
+       finals.linkedin_address,
        --- preferred 
        ---finals.primary_address_type,
        --finals.primary_city,
