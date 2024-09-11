@@ -331,7 +331,7 @@ SELECT
   GROUP BY GT.ID_NUMBER
 )
 
-,KSM_TOTAL23 AS (
+,KSM_TOTAL24 AS (
   SELECT
   GT.ID_NUMBER
   ,SUM(GT.CREDIT_AMOUNT) AS KSM_TOTAL
@@ -345,7 +345,7 @@ SELECT
 --- Need to change this when we hit FY 25
 
 
-,KSM_TOTAL24 AS (
+,KSM_TOTAL25 AS (
   SELECT
   GT.ID_NUMBER
   ,SUM(GT.CREDIT_AMOUNT) AS KSM_TOTAL
@@ -360,7 +360,7 @@ SELECT
 --- Need to change this when we hit FY 25
 
 
-,KSM_MATCH_23 AS (
+,KSM_MATCH_24 AS (
    SELECT DISTINCT
      GT.ID_NUMBER
    FROM GIVING_TRANS GT
@@ -376,16 +376,16 @@ SELECT
 Select HOUSE.id_number
   ,KSMT.KSM_TOTAL
   ,KAFT.KSM_AF_TOTAL
-  ,KSM_TOTAL23.KSM_TOTAL AS KSM_TOTAL23
-  ,KSM_MATCH_23.ID_NUMBER AS KM23_ID_NUMBER
+  ,KSM_TOTAL24.KSM_TOTAL AS KSM_TOTAL24
+  ,KSM_MATCH_24.ID_NUMBER AS KM24_ID_NUMBER
   --- Adding in KSM_Total 24 Now (4/18/24 - Honor Role - Andy Requested)
-  ,KSM_TOTAL24.KSM_TOTAL as KSM_TOTAL24
+  ,KSM_TOTAL25.KSM_TOTAL as KSM_TOTAL25
 from HOUSE
 LEFT JOIN KSM_TOTAL KSMT ON HOUSE.ID_NUMBER = KSMT.ID_NUMBER
 LEFT JOIN KSM_AF_TOTAL KAFT ON HOUSE.ID_NUMBER = KAFT.ID_NUMBER
-LEFT JOIN KSM_TOTAL23  ON HOUSE.ID_NUMBER = KSM_TOTAL23.ID_NUMBER
-LEFT JOIN KSM_MATCH_23 ON HOUSE.ID_NUMBER = KSM_MATCH_23.ID_NUMBER
-LEFT JOIN KSM_TOTAL24 ON HOUSE.ID_NUMBER = KSM_TOTAL24.ID_NUMBER 
+LEFT JOIN KSM_TOTAL24  ON HOUSE.ID_NUMBER = KSM_TOTAL24.ID_NUMBER
+LEFT JOIN KSM_MATCH_24 ON HOUSE.ID_NUMBER = KSM_MATCH_24.ID_NUMBER
+LEFT JOIN KSM_TOTAL25 ON HOUSE.ID_NUMBER = KSM_TOTAL25.ID_NUMBER 
 )
  
 
@@ -586,7 +586,7 @@ max (TX_NUMBER) keep (dense_rank First Order By DATE_OF_RECORD DESC) as rcpt
           INNER JOIN ENTITY
           ON GIFT.GIFT_DONOR_ID = ENTITY.ID_NUMBER
           WHERE TX_GYPM_IND <> 'P'  AND GIFT.GIFT_SEQUENCE = 1
-          and rpt_pbh634.ksm_pkg_tmp.get_fiscal_year (DATE_OF_RECORD) in ('2023','2024')
+          and rpt_pbh634.ksm_pkg_tmp.get_fiscal_year (DATE_OF_RECORD) in ('2024','2025')
           GROUP BY GIVING_TRANS_DAF.ID_NUMBER),
           
 --- Prospect as a Subquery (instead of left join and taking out another of Bill's Functions)
@@ -715,6 +715,7 @@ params_cfy As (
         Else pref_name
         End
       As honor_roll_name_no_prefix
+     , xcomment
   From name
   Where name_type_code = 'HR'
 )
@@ -1008,21 +1009,22 @@ or s.ANONYMOUS_DONOR is not null then 'Y' end as ANONYMOUS_DONOR
 
   
   --- AF WANTS TO SEE CURRENT FISCAL YEAR
-  ,Case when CYD.id_number is not null AND FOUNDATION.YEAR_OF_RECORD = '2024' then FOUNDATION.REPORT_NAME END AS FOUNDATION_CYD_CFY
-  ,Case when CYD.id_number is not null AND FOUNDATION.YEAR_OF_RECORD = '2024' then FOUNDATION.ASSOCIATED_DESC END AS FOUNDATION_DESC_CYD_CFY
-  ,Case when CYD.id_number is not null AND FOUNDATION.YEAR_OF_RECORD = '2024' then FOUNDATION.RCPT END AS FOUNDATION_RECPT_NUM_CYD_CFY
-  ,Case when CYD.id_number is not null AND FOUNDATION.YEAR_OF_RECORD = '2024' then FOUNDATION.DATE_OF_RECORD END AS FOUNDATION_DATE_GIFT_CYD_CFY
-  ,Case when CYD.id_number is not null AND FOUNDATION.YEAR_OF_RECORD = '2024' THEN FOUNDATION.YEAR_OF_RECORD END AS FOUNDATION_CFY_OF_GIFT_CYD
+  ,Case when CYD.id_number is not null AND FOUNDATION.YEAR_OF_RECORD = '2025' then FOUNDATION.REPORT_NAME END AS FOUNDATION_CYD_CFY
+  ,Case when CYD.id_number is not null AND FOUNDATION.YEAR_OF_RECORD = '2025' then FOUNDATION.ASSOCIATED_DESC END AS FOUNDATION_DESC_CYD_CFY
+  ,Case when CYD.id_number is not null AND FOUNDATION.YEAR_OF_RECORD = '2025' then FOUNDATION.RCPT END AS FOUNDATION_RECPT_NUM_CYD_CFY
+  ,Case when CYD.id_number is not null AND FOUNDATION.YEAR_OF_RECORD = '2025' then FOUNDATION.DATE_OF_RECORD END AS FOUNDATION_DATE_GIFT_CYD_CFY
+  ,Case when CYD.id_number is not null AND FOUNDATION.YEAR_OF_RECORD = '2025' THEN FOUNDATION.YEAR_OF_RECORD END AS FOUNDATION_CFY_OF_GIFT_CYD
+  
   
   --- Need to change this when we hit FY 25
 
   
-  --- AF WANTS TO SEE CURRENT FISCAL YEAR, BUT WE NEED TO ADJUST FOR WHEN CALENDAR YEAR CHANGES. SO THIS IS 2023
-  ,Case when CYD.id_number is not null AND FOUNDATION.YEAR_OF_RECORD = '2023' then FOUNDATION.REPORT_NAME END AS FOUNDATION_CYD_PFY
-  ,Case when CYD.id_number is not null AND FOUNDATION.YEAR_OF_RECORD = '2023' then FOUNDATION.ASSOCIATED_DESC END AS FOUNDATION_DESC_CYD_PFY
-  ,Case when CYD.id_number is not null AND FOUNDATION.YEAR_OF_RECORD = '2023' then FOUNDATION.RCPT END AS FOUNDATION_RECPT_NUM_CYD_PFY
-  ,Case when CYD.id_number is not null AND FOUNDATION.YEAR_OF_RECORD = '2023' then FOUNDATION.DATE_OF_RECORD END AS FOUNDATION_DATE_GIFT_CYD_PFY
-  ,Case when CYD.id_number is not null AND FOUNDATION.YEAR_OF_RECORD = '2023' THEN FOUNDATION.YEAR_OF_RECORD END AS FOUNDATION_OF_GIFT_CYD_PFY
+  --- AF WANTS TO SEE CURRENT FISCAL YEAR, BUT WE NEED TO ADJUST FOR WHEN CALENDAR YEAR CHANGES. SO THIS IS 2024
+  ,Case when CYD.id_number is not null AND FOUNDATION.YEAR_OF_RECORD = '2024' then FOUNDATION.REPORT_NAME END AS FOUNDATION_CYD_PFY
+  ,Case when CYD.id_number is not null AND FOUNDATION.YEAR_OF_RECORD = '2024' then FOUNDATION.ASSOCIATED_DESC END AS FOUNDATION_DESC_CYD_PFY
+  ,Case when CYD.id_number is not null AND FOUNDATION.YEAR_OF_RECORD = '2024' then FOUNDATION.RCPT END AS FOUNDATION_RECPT_NUM_CYD_PFY
+  ,Case when CYD.id_number is not null AND FOUNDATION.YEAR_OF_RECORD = '2024' then FOUNDATION.DATE_OF_RECORD END AS FOUNDATION_DATE_GIFT_CYD_PFY
+  ,Case when CYD.id_number is not null AND FOUNDATION.YEAR_OF_RECORD = '2024' THEN FOUNDATION.YEAR_OF_RECORD END AS FOUNDATION_OF_GIFT_CYD_PFY
   ,assign.LGOS
   ,assign.Prospect_Manager
   ,EM.JOB_TITLE AS JOB_TITLE
@@ -1051,6 +1053,7 @@ or s.ANONYMOUS_DONOR is not null then 'Y' end as ANONYMOUS_DONOR
    ,degs.pref_mail_name
    ,hr_names.honor_roll_name
    ,hr_names.honor_roll_name_no_prefix
+   ,hr_names.xcomment
    ,lr.last_reunion_event_id
    ,lr.last_reunion_event_name
    ,lr.last_reunion_start_dt
@@ -1069,7 +1072,6 @@ left join hr_names on hr_names.id_number = KSM_Reunion.id_number
 left join anon_dw on anon_dw.household_id = KSM_Reunion.id_number
 left join degs on degs.id_number = KSM_Reunion.id_number
 left join last_reunion lr on lr.id_number = KSM_REUNION.id_number
-
 )
 
 SELECT DISTINCT 
@@ -1132,17 +1134,17 @@ SELECT DISTINCT
   --- CYD Flag 
   ,final.CYD
   --- AF WANTS TO SEE CURRENT FISCAL YEAR
-  ,FINAL.FOUNDATION_CYD_CFY AS FOUNDATION_CYD_FY24
-  ,FINAL.FOUNDATION_DESC_CYD_CFY AS FOUNDATION_DESC_CYD_FY24
-  ,FINAL.FOUNDATION_RECPT_NUM_CYD_CFY AS FOUNDATION_RECPT_NUM_CYD_FY24
-  ,trunc (FINAL.FOUNDATION_DATE_GIFT_CYD_CFY) AS FOUNDATION_DATE_GIFT_CYD_FY24
-  ,FINAL.FOUNDATION_CFY_OF_GIFT_CYD AS FOUNDATION_OF_GIFT_CYD_FY24
+  ,FINAL.FOUNDATION_CYD_CFY AS FOUNDATION_CYD_FY25
+  ,FINAL.FOUNDATION_DESC_CYD_CFY AS FOUNDATION_DESC_CYD_FY25
+  ,FINAL.FOUNDATION_RECPT_NUM_CYD_CFY AS FOUNDATION_RECPT_NUM_CYD_FY25
+  ,FINAL.FOUNDATION_DATE_GIFT_CYD_CFY AS FOUNDATION_DATE_GIFT_CYD_FY25
+  ,nvl(FINAL.FOUNDATION_CFY_OF_GIFT_CYD,'0') AS FOUNDATION_OF_GIFT_CYD_FY25
   --- AF WANTS TO SEE CURRENT FISCAL YEAR, BUT WE NEED TO ADJUST FOR WHEN CALENDAR YEAR CHANGES. SO THIS IS 2023
-  ,FINAL.FOUNDATION_CYD_PFY AS FOUNDATION_CYD_FY23
-  ,FINAL.FOUNDATION_DESC_CYD_PFY AS FOUNDATION_DESC_CYD_FY23
-  ,FINAL.FOUNDATION_RECPT_NUM_CYD_PFY AS FOUNDATION_RECPT_NUM_CYD_FY23
-  ,trunc (FINAL.FOUNDATION_DATE_GIFT_CYD_PFY) AS FOUNDATION_DATE_GIFT_CYD_FY23
-  ,FINAL.FOUNDATION_OF_GIFT_CYD_PFY AS FOUNDATION_OF_GIFT_CYD_FY23
+  ,FINAL.FOUNDATION_CYD_PFY AS FOUNDATION_CYD_FY24
+  ,FINAL.FOUNDATION_DESC_CYD_PFY AS FOUNDATION_DESC_CYD_FY24
+  ,FINAL.FOUNDATION_RECPT_NUM_CYD_PFY AS FOUNDATION_RECPT_NUM_CYD_FY24
+  ,trunc (FINAL.FOUNDATION_DATE_GIFT_CYD_PFY) AS FOUNDATION_DATE_GIFT_CYD_FY24
+  ,nvl(FINAL.FOUNDATION_OF_GIFT_CYD_PFY,'0') AS FOUNDATION_OF_GIFT_CYD_FY24
   ,FINAL.Reunion_volunteer
   ,FINAL.solicitor_name as volunteer_solicitor
   ,CASE WHEN RC20.ID_NUMBER IS NOT NULL THEN 'Y' ELSE '' END AS "REUNION_2020_COMMITTEE"
@@ -1169,56 +1171,57 @@ SELECT DISTINCT
   ,CASE WHEN KFS.ID_NUMBER IS NOT NULL THEN 'KSM Faculty/Staff' end as KSM_faculty_staff_ind
   ,CASE WHEN NFS.ID_NUMBER IS NOT NULL THEN 'NU Faculty/Staff' end as NU_faculty_staff_ind
   ,CASE WHEN NFS.ID_NUMBER IS NOT NULL THEN NFS.affilation_code end as NU_faculty_staff_school_ind
-  ,final.CRU_CFY
-  ,final.CRU_PFY1
-  ,final.CRU_PFY2
-  ,final.CRU_PFY3
-  ,final.CRU_PFY4
-  ,final.CRU_PFY5
+  ,nvl(final.CRU_CFY,'0')CRU_CFY
+  ,nvl(final.CRU_PFY1,'0')CRU_PFY1
+  ,nvl(final.CRU_PFY2,'0')CRU_PFY2
+  ,nvl(final.CRU_PFY3,'0')CRU_PFY3
+  ,nvl(final.CRU_PFY4,'0')CRU_PFY4
+  ,nvl(final.CRU_PFY5,'0')CRU_PFY5
   , case when final.CRU_PFY1 > 0
   or final.CRU_PFY2 > 0 
   or final.CRU_PFY3 > 0
   or final.CRU_PFY4 > 0
   or final.CRU_PFY5 > 0 then 'Giver_Last_5'
   Else '' END as Giver_Last_5_Years
-  ,KGM.modified_hh_gift_count_cfy
-  ,KGM.modified_hh_gift_credit_pfy5
-  ,KGM.pledge_modified_cfy
-  ,KGM.pledge_modified_pfy5
+  ---,nvl(final.modified_hh_gift_count_cfy,'0')modified_hh_gift_count_cfy
+  ---,nvl(final.modified_hh_gift_credit_pfy5,'0')modified_hh_gift_credit_pfy5
+ --- ,nvl(final.pledge_modified_cfy,'0')pledge_modified_cfy
+  ---,nvl(final.pledge_modified_pfy5,'0')pledge_modified_pfy5
   ,trunc (PR.last_plg_dt) AS PLG_DATE
   ,PR.TRANSACTION_TYPE AS Pledge_Transaction_Type
   ,PR.pacct1 AS PLG_ALLOC
-  ,PR.pamt1 AS PLG_AMT
-  ,PR.bal1 AS PLG_BALANCE
+  ,nvl(PR.pamt1,'0') AS PLG_AMT
+  ,nvl(PR.bal1, '0') AS PLG_BALANCE
   ,PR.status1 AS PLG_STATUS
   --- recent pledge fiscal year
   ,rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(GI.GDT1) AS RECENT_PLEDGE_FISCAL_YEAR
   ,trunc (GI.GDT1) AS DATE1
-  ,GI.GAMT1 AS AMOUNT1
+  ,nvl(GI.GAMT1,'0') AS AMOUNT1
   ,GI.GACCT1 AS ACC1
-  ,GI.MATCH1 AS MATCH_AMOUNT1
-  ,GI.CLAIM1 AS CLAIM_AMOUNT1
+  ,nvl(GI.MATCH1, '0') AS MATCH_AMOUNT1
+  ,nvl(GI.CLAIM1, '0') AS CLAIM_AMOUNT1
   ,GI.ASSOCIATED_CODE1
   ,GI.ASSOCIATED_DESC1
   ,trunc (GI.GDT2) AS DATE2
-  ,GI.GAMT2 AS AMOUNT2
+  ,nvl(GI.GAMT2, '0') AS AMOUNT2
   ,GI.GACCT2 AS ACC2
-  ,GI.MATCH2 AS MATCH_AMOUNT2
-  ,GI.CLAIM2 AS CLAIM_AMOUNT2
+  ,nvl(GI.MATCH2, '0') AS MATCH_AMOUNT2
+  ,nvl(GI.CLAIM2, '0') AS CLAIM_AMOUNT2
   ,GI.ASSOCIATED_CODE2
   ,GI.ASSOCIATED_DESC2
   ,trunc (GI.GDT3) AS DATE3
-  ,GI.GAMT3 AS AMOUNT3
+  ,nvl(GI.GAMT3, '0') AS AMOUNT3
   ,GI.GACCT3 AS ACC3
-  ,GI.MATCH3 AS MATCH_AMOUNT3
-  ,GI.CLAIM3 AS CLAIM_AMOUNT3
+  ,nvl(GI.MATCH3, '0') AS MATCH_AMOUNT3
+  ,nvl(GI.CLAIM3, '0') AS CLAIM_AMOUNT3
   ,GI.ASSOCIATED_CODE3
   ,GI.ASSOCIATED_DESC3
   ,trunc (GI.GDT4) AS DATE4
-  ,GI.GAMT4 AS AMOUNT4
+  ,nvl(GI.MATCH4, '0') AS MATCH_AMOUNT4
+  ,nvl(GI.GAMT4, '0') AS AMOUNT4
   ,GI.GACCT4 AS ACC4
-  ,GI.MATCH4 AS MATCH_AMOUNT4
-  ,GI.CLAIM4 AS CLAIM_AMOUNT4
+  ,nvl(GI.MATCH4, '0') AS MATCH_AMOUNT4
+  ,nvl(GI.CLAIM4, '0') AS CLAIM_AMOUNT4
   ,GI.ASSOCIATED_CODE4
   ,GI.ASSOCIATED_DESC4
   ,Final.anonymous_cfy_flag
@@ -1227,30 +1230,30 @@ SELECT DISTINCT
   ,Final.anonymous_pfy3_flag
   ,Final.anonymous_pfy4_flag
   ,Final.anonymous_pfy5_flag
-  ,Final.ANONYMOUS_CFY
-  ,Final.ANONYMOUS_PFY1
-  ,Final.ANONYMOUS_PFY2
-  ,Final.ANONYMOUS_PFY3
-  ,Final.ANONYMOUS_PFY4
-  ,Final.ANONYMOUS_PFY5
+  ,nvl(Final.ANONYMOUS_CFY,'0')ANONYMOUS_CFY
+  ,nvl(Final.ANONYMOUS_PFY1,'0')ANONYMOUS_PFY1
+  ,nvl(Final.ANONYMOUS_PFY2,'0')ANONYMOUS_PFY2
+  ,nvl(Final.ANONYMOUS_PFY3,'0')ANONYMOUS_PFY3
+  ,nvl(Final.ANONYMOUS_PFY4,'0')ANONYMOUS_PFY4
+  ,nvl(Final.ANONYMOUS_PFY5,'0')ANONYMOUS_PFY5
   , final.Anonymous_cyd_cfy_flag
   , final.Anonymous_cyd_pfy1_flag
   , final.Anonymous_cyd_pfy2_flag
   , final.Anonymous_cyd_pfy3_flag
   , final.Anonymous_cyd_pfy4_flag
-  , final.Anonymous_cyd_pfy5_flag
-  , final.Anonymous_cyd_CFY
-  , final.Anonymous_cyd_pfy1
-  , final.Anonymous_cyd_pfy2
-  , final.Anonymous_cyd_pfy3
-  , final.Anonymous_cyd_pfy4
-  , final.Anonymous_cyd_pfy5
-  ,KTF.KSM_TOTAL
-  ,KTF.KSM_AF_TOTAL
-  ,KTF.KSM_TOTAL23
-  ,KTF.KSM_TOTAL24
-  ,CASE WHEN KTF.KM23_ID_NUMBER IS NOT NULL THEN 'Y' END AS MATCH_2023
-  ,final.NU_MAX_HH_LIFETIME_GIVING
+  , final.Anonymous_cyd_pfy5_flag 
+  ,nvl(final.Anonymous_cyd_CFY,'0')Anonymous_cyd_CFY
+  ,nvl(final.Anonymous_cyd_pfy1,'0')Anonymous_cyd_pfy1
+  ,nvl(final.Anonymous_cyd_pfy2,'0')Anonymous_cyd_pfy2
+  ,nvl(final.Anonymous_cyd_pfy3,'0')Anonymous_cyd_pfy3
+  ,nvl(final.Anonymous_cyd_pfy4,'0')Anonymous_cyd_pfy4
+  ,nvl(final.Anonymous_cyd_pfy5,'0')Anonymous_cyd_pfy5
+  ,nvl(KTF.KSM_TOTAL, '0')KSM_Total
+  ,nvl(KTF.KSM_AF_TOTAL, '0')KSM_AF_TOTAL
+  ,nvl(KTF.KSM_TOTAL24, '0')KSM_TOTAL24
+  ,nvl(KTF.KSM_TOTAL25, '0')KSM_TOTAL25
+  ,CASE WHEN KTF.KM24_ID_NUMBER IS NOT NULL THEN 'Y' END AS MATCH_2024
+  ,nvl(final.NU_MAX_HH_LIFETIME_GIVING, '0')NU_MAX_HH_LIFETIME_GIVNG
   ,FINAL.EVALUATION_RATING
   ,FINAL.OFFICER_RATING
   ,WT0_PARSE(PROPOSAL_STATUS, 1,  '^') PROPOSAL_STATUS
@@ -1278,21 +1281,23 @@ SELECT DISTINCT
   ,C.summary_
   --- Honor role data -Stewardship, AF, CRU (Had in org code), Anon Donor
   ,Final.ANONYMOUS_DONOR
-  ,final.STEWARDSHIP_CFY
-  ,final.STEWARDSHIP_PFY1
-  ,final.STEWARDSHIP_PFY2
-  ,final.STEWARDSHIP_PFY3
-  ,final.STEWARDSHIP_PFY4
-  ,final.STEWARDSHIP_PFY5
-  ,final.AF_CFY
-  ,final.AF_PFY1
-  ,final.AF_PFY2
-  ,final.AF_PFY3
-  ,final.AF_PFY4
-  ,final.AF_PFY5
+,nvl(final.STEWARDSHIP_CFY,'0')STEWARDSHIP_CFY
+,nvl(final.STEWARDSHIP_PFY1,'0')STEWARDSHIP_PFY1
+,nvl(final.STEWARDSHIP_PFY2,'0')STEWARDSHIP_PFY2
+,nvl(final.STEWARDSHIP_PFY3,'0')STEWARDSHIP_PFY3
+,nvl(final.STEWARDSHIP_PFY4,'0')STEWARDSHIP_PFY4
+,nvl(final.STEWARDSHIP_PFY5,'0')STEWARDSHIP_PFY5
+,nvl(final.AF_CFY,'0')AF_CFY
+,nvl(final.AF_PFY1,'0')AF_PFY1
+,nvl(final.AF_PFY2,'0')AF_PFY2
+,nvl(final.AF_PFY3,'0')AF_PFY3
+,nvl(final.AF_PFY4,'0')AF_PFY4
+,nvl(final.AF_PFY5,'0')AF_PFY5
+
  --- Nametags for Honor Role (Honor Role from CATracks, Name Tag Names, Give Andy all options)
   ,final.honor_roll_name
   ,final.honor_roll_name_no_prefix
+  ,final.xcomment as honor_role_name_xcomment
   ,final.pref_mail_name as name_tag_pref_name
   ,final.pref_first_name as name_tag_first_name
   ,final.last_name as name_tag_last_name
