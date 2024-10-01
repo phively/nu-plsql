@@ -71,4 +71,5 @@ Inner Join v_entity_ksm_households_fast hhf
   On hhf.id_number = prp.id_number
 -- Include/exclude
 Where prp.close_date >= params.campaign_start_dt
+  And prp.proposal_active_calc = 'Active'
 )
