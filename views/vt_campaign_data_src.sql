@@ -4,6 +4,10 @@ Create Or Replace View vt_campaign_data_src As
 
 With
 
+-------------------------
+-- OK to edit this
+-------------------------
+
 params As (
   Select
     to_date('20210901', 'yyyymmdd') As campaign_start_dt
@@ -14,6 +18,22 @@ params As (
   Select '0002872022' As excl From DUAL -- Complexity Institute
 )
 
+, dummydata As (
+  Select 75E6 As amount From DUAL
+  Union
+  Select 50E6 As amount From DUAL
+  Union
+  Select 20E6 As amount From DUAL
+  Union
+  Select 10E6 As amount From DUAL
+  Union
+  Select 5E6 As amount From DUAL
+)
+
+-------------------------
+-- Do not edit below this
+-------------------------
+
 , prs As (
   Select
     id_number
@@ -23,6 +43,8 @@ params As (
       As prospect_id
   From nu_prs_trp_prospect
 )
+
+
 
 (
 Select
@@ -72,4 +94,22 @@ Inner Join v_entity_ksm_households_fast hhf
 -- Include/exclude
 Where prp.close_date >= params.campaign_start_dt
   And prp.proposal_active_calc = 'Active'
+) Union (
+-- Dummy proposals
+Select
+  'Dummy' As data_source
+  , NULL
+  , NULL
+  , NULL
+  , NULL
+  , NULL
+  , NULL
+  , 'Dummy' As proposal_status
+  , NULL
+  , NULL
+  , NULL
+  , amount As legal_or_anticipated_amt
+  , NULL
+  , NULL
+From dummydata
 )
