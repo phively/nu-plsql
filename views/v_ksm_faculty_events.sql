@@ -74,8 +74,8 @@ select s.id_number,
        tms_event_role.short_desc as Volunteer_role_of_event,
        n.event_id,
        n.event_name,
-       n.start_fy_calc as event_start_date,
-       n.start_dt_calc as event_start_year,
+       n.start_fy_calc as event_start_year,
+       n.start_dt_calc as event_start_date,
        n.event_type_desc as event_type_description,
        n.event_organizers 
 from RPT_PBH634.V_NU_EVENTS n
