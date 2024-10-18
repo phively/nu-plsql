@@ -442,7 +442,7 @@ when fq.Reunion_30TH_MILESTONE is not null then 'Reunion 30TH MILESTONE'
 when fq.Reunion_35TH_MILESTONE is not null then 'Reunion 35TH MILESTONE'
 when fq.Reunion_40TH_MILESTONE is not null then 'Reunion 40TH MILESTONE'
 when fq.Reunion_45TH_MILESTONE is not null then 'Reunion 45TH MILESTONE'
-when fq.Reunion_45TH_MILESTONE is not null then 'Reunion 50TH MILESTONE'
+when fq.Reunion_50TH_MILESTONE is not null then 'Reunion 50TH MILESTONE'
 End as Milestone_year
 --- add an eligible flag - used for Tableau later
 ,case when fq.id_number is not null then 'Y' end as eligible_IND
