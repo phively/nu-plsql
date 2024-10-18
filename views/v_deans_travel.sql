@@ -393,7 +393,45 @@ where  ec.econtact_status_code = 'A'
 and  ec.econtact_type_code = 'L'
 Group By ec.id_number),
 
-   
+ard as (
+  Select
+    vcrf.credited
+    , vcrf.credited_name
+    , vcrf.contact_credit_type
+    , vcrf.contact_credit_desc
+    , vcrf.job_title
+    , vcrf.employer_unit
+    , vcrf.contact_type_code
+    , vcrf.contact_type
+    , vcrf.contact_purpose
+    , vcrf.report_id
+    , vcrf.id_number
+    , vcrf.contacted_name
+    , vcrf.report_name
+    , vcrf.prospect_id
+    , vcrf.primary_ind
+    , vcrf.prospect_name
+    , vcrf.prospect_name_sort
+    , vcrf.contact_date
+    , vcrf.fiscal_year
+    , vcrf.description
+    , vcrf.summary
+    , vcrf.officer_rating
+    , vcrf.evaluation_rating
+    , vcrf.university_strategy
+    , vcrf.ard_staff
+    , vcrf.frontline_ksm_staff
+    , vcrf.contact_type_category
+    , vcrf.visit_type
+    , vcrf.rating_bin
+    , vcrf.curr_fy
+    , vcrf.prev_fy_start
+    , vcrf.curr_fy_start
+    , vcrf.next_fy_start
+    , vcrf.yesterday
+    , vcrf.ninety_days_ago
+  From rpt_pbh634.v_contact_reports_fast vcrf
+  Where ard_staff = 'Y'),
 
 --- Final subquery since the propsect pool is slow
 
@@ -499,8 +537,8 @@ select p.ID_NUMBER,
        p.HOUSEHOLD_GEO_PRIMARY_DESC,
        p.HOUSEHOLD_COUNTRY,
        p.HOUSEHOLD_CONTINENT,
-       p.BUSINESS_TITLE,
-       p.EMPLOYER_NAME,
+       finals.job_title,
+       finals.EMPLOYER_NAME,
        finals.linkedin_address,
        --- preferred 
        ---finals.primary_address_type,
@@ -654,7 +692,38 @@ dvisit.count_dean_visit,
 ---finals.contact_purpose as contact_purpose_dean_LV,
 ---finals.contact_name as contact_name_dean_LV,
 finals.contact_date as contact_date_dean_LV,
-finals.description_ as description_dean_LV
+finals.description_ as description_dean_LV,
+/*
+      ard.credited
+    , ard.credited_name
+    , ard.contact_credit_type
+    , ard.contact_credit_desc
+    , ard.job_title
+    , ard.employer_unit
+    , ard.contact_type_code
+    , ard.contact_type
+    , ard.contact_purpose
+    , ard.report_id
+    , ard.id_number
+    , ard.contacted_name
+    , ard.report_name
+    , ard.prospect_id
+    , ard.primary_ind
+    , ard.prospect_name
+    , ard.prospect_name_sort
+    , ard.contact_date
+    , ard.fiscal_year
+    , ard.description
+    , ard.summary
+    , ard.officer_rating
+    , ard.evaluation_rating
+    , ard.university_strategy
+    , ard.ard_staff
+    , ard.frontline_ksm_staff
+    , ard.contact_type_category
+    , ard.visit_type  */
+
+
 ---finals.summary as summary_dean_LV
 --- final.KSM_Faculty_staff
 from p
@@ -662,3 +731,4 @@ inner join finals on finals.id_number = p.id_number
 left join fran on fran.id_number = p.id_number 
 left join dvisit on dvisit.id_number = p.id_number 
 left join final_manage fm on fm.id_number = p.id_number 
+----left join ard on ard.id_number = p.id_number 
