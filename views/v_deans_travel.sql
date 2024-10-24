@@ -671,17 +671,17 @@ finals.last_contact_dean_name,
 finals.last_contact_dean_date,
 finals.last_dean_description,
 ---- Last Visit - Any Person - ARD or NON ARD 
-finals.credited,
-finals.credited_name,
-finals.contact_credit_type,
-finals.contact_type,
-finals.contact_purpose,
-finals.report_id,
-finals.contact_name,
-finals.contact_date,
-finals.fiscal_year,
-finals.description,
-finals.summary
+finals.credited as nu_credited,
+finals.credited_name as nu_credited_name,
+finals.contact_credit_type as nu_contact_credit_type,
+finals.contact_type as nu_contact_type,
+finals.contact_purpose as nu_contact_purpose,
+finals.report_id as nu_report_id,
+finals.contact_name as nu_contact_name,
+finals.contact_date as nu_contact_date,
+finals.fiscal_year as nu_fiscal_year,
+finals.description as nu_description,
+finals.summary as nu_summary
 from p
 inner join finals on finals.id_number = p.id_number 
 left join fran on fran.id_number = p.id_number 
