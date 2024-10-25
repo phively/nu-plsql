@@ -452,7 +452,6 @@ fard as (select
 
     
 from ard 
-where ard.contact_type_code = 'V'
 group by ard.id_number),  
   
 
@@ -663,25 +662,25 @@ finals.AE_MODEL_SCORE,
 --- Most Recent Visits with the Dean 
 fran.count_dean_events,
 dvisit.count_dean_visit, 
-finals.last_credited_dean_ID,
-finals.last_credited_dean_name,
-finals.last_contact_dean_type,
-finals.last_contact_dean_purpose,
-finals.last_contact_dean_name,
-finals.last_contact_dean_date,
-finals.last_dean_description,
+finals.last_credited_dean_ID as last_dean_visit_credited_id,
+finals.last_credited_dean_name as last_dean_visit_credited_name,
+finals.last_contact_dean_type as last_dean_visit_type,
+finals.last_contact_dean_purpose as last_dean_visit_purpose,
+finals.last_contact_dean_name as last_dean_visit_contact_name,
+finals.last_contact_dean_date as last_dean_visit_date,
+finals.last_dean_description as last_dean_visit_description,
 ---- Last Visit - Any Person - ARD or NON ARD 
-finals.credited as nu_credited,
-finals.credited_name as nu_credited_name,
-finals.contact_credit_type as nu_contact_credit_type,
-finals.contact_type as nu_contact_type,
-finals.contact_purpose as nu_contact_purpose,
-finals.report_id as nu_report_id,
-finals.contact_name as nu_contact_name,
-finals.contact_date as nu_contact_date,
-finals.fiscal_year as nu_fiscal_year,
-finals.description as nu_description,
-finals.summary as nu_summary
+finals.credited as last_nu_credited,
+finals.credited_name as last_nu_credited_name,
+finals.contact_credit_type as last_nu_contact_credit_type,
+finals.contact_type as last_nu_contact_type,
+finals.contact_purpose as last_nu_contact_purpose,
+finals.report_id as last_nu_report_id,
+finals.contact_name as last_nu_contact_name,
+finals.contact_date as last_nu_contact_date,
+finals.fiscal_year as last_nu_fiscal_year,
+finals.description as last_nu_description,
+finals.summary as last_nu_summary
 from p
 inner join finals on finals.id_number = p.id_number 
 left join fran on fran.id_number = p.id_number 
