@@ -680,7 +680,18 @@ finals.contact_name as last_nu_contact_name,
 finals.contact_date as last_nu_contact_date,
 finals.fiscal_year as last_nu_fiscal_year,
 finals.description as last_nu_description,
-finals.summary as last_nu_summary
+finals.summary as last_nu_summary,
+case when finals.contact_type = 'Visit' then finals.credited end as last_nu_visit_credited,
+case when finals.contact_type = 'Visit' then finals.credited_name end as last_nu_visit_credit_name,
+case when finals.contact_type = 'Visit' then finals.contact_credit_type end as last_nu_visit_credit_type,
+case when finals.contact_type = 'Visit' then finals.contact_type end as last_nu_visit_contact_type,
+case when finals.contact_type = 'Visit' then finals.contact_purpose end as last_nu_visit_contact_purpose, 
+case when finals.contact_type = 'Visit' then finals.report_id end as last_nu_visit_report_id,
+case when finals.contact_type = 'Visit' then finals.contact_name end as last_nu_visit_contact_type,
+case when finals.contact_type = 'Visit' then finals.contact_date end as last_nu_visit_contact_date,
+case when finals.contact_type = 'Visit' then finals.fiscal_year end as last_nu_visit_fiscal_year,
+case when finals.contact_type = 'Visit' then finals.description end as last_nu_visit_description,
+case when finals.contact_type = 'Visit' then finals.summary end as last_nu_visit_summary
 from p
 inner join finals on finals.id_number = p.id_number 
 left join fran on fran.id_number = p.id_number 
