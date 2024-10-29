@@ -453,7 +453,44 @@ fard as (select
     
 from ard 
 group by ard.id_number),  
+
+--- last visit! 
+
+l as (select
+    ard.id_number,
+    max (ard.credited) keep (dense_rank first order by contact_date desc) as credited,
+    max (ard.report_id) keep (dense_rank first order by contact_date desc) as report_id,
+    max (ard.credited_name) keep (dense_rank first order by contact_date desc) as credited_name,
+    max (ard.contact_type) keep (dense_rank first order by contact_date desc) as contact_type,
+    max (ard.contact_credit_type) keep (dense_rank first order by contact_date desc) as contact_credit_type,
+    max (ard.contact_purpose) keep (dense_rank first order by contact_date desc) as contact_purpose,
+    max (ard.contacted_name) keep (dense_rank first order by contact_date desc) as contact_name,
+    max (ard.prospect_name) keep (dense_rank first order by contact_date desc) as prospect_name,
+    max (ard.contact_date) keep (dense_rank first order by contact_date desc) as contact_date,
+    max (ard.fiscal_year) keep (dense_rank first order by contact_date desc) as fiscal_year,
+    max (ard.description) keep (dense_rank first order by contact_date desc) as description,
+    max (ard.summary) keep (dense_rank first order by contact_date desc) as summary   
+from ard 
+where ard.contact_type = 'Visit'
+group by ard.id_number),
   
+ 
+lnuv as (select l.id_number,
+l.credited as last_nu_visit_credited,
+l.credited_name as last_nu_visit_credit_name,
+l.contact_credit_type as last_nu_visit_credit_type,
+l.contact_type as last_nu_visit_contact_type,
+l.contact_purpose as last_nu_visit_contact_purpose,
+l.report_id as last_nu_visit_report_id,
+l.contact_name as last_nu_visit_contact_name,
+l.contact_date as last_nu_visit_contact_date,
+l.fiscal_year as last_nu_visit_fiscal_year,
+l.description as last_nu_visit_description,
+l.summary as last_nu_visit_summary
+from l 
+where l.contact_type = 'Visit'
+), 
+
 
 --- Final subquery since the propsect pool is slow
 
@@ -502,7 +539,17 @@ fard.contact_name,
 fard.contact_date,
 fard.fiscal_year,
 fard.description,
-fard.summary
+fard.summary,
+lnuv.last_nu_visit_credited,
+lnuv.last_nu_visit_credit_name,
+lnuv.last_nu_visit_credit_type,
+lnuv.last_nu_visit_contact_type,
+lnuv.last_nu_visit_contact_purpose, 
+lnuv.last_nu_visit_report_id,
+lnuv.last_nu_visit_contact_date,
+lnuv.last_nu_visit_fiscal_year,
+lnuv.last_nu_visit_description,
+lnuv.last_nu_visit_summary
 from entity 
 ---left join assign a on a.id_number = entity.id_number
 left join em on em.id_number = entity.id_number
@@ -516,6 +563,7 @@ left join fcom on fcom.id_number = entity.id_number
 left join prime on prime.id_number = entity.id_number 
 left join linked on linked.id_number = entity.id_number 
 left join fard on fard.id_number = entity.id_number 
+left join lnuv on lnuv.id_number = entity.id_number
 
 ---left join KSM_Faculty_Staff kfs on kfs.id_number = entity.id_number
 )
@@ -681,17 +729,16 @@ finals.contact_date as last_nu_contact_date,
 finals.fiscal_year as last_nu_fiscal_year,
 finals.description as last_nu_description,
 finals.summary as last_nu_summary,
-case when finals.contact_type = 'Visit' then finals.credited end as last_nu_visit_credited,
-case when finals.contact_type = 'Visit' then finals.credited_name end as last_nu_visit_credit_name,
-case when finals.contact_type = 'Visit' then finals.contact_credit_type end as last_nu_visit_credit_type,
-case when finals.contact_type = 'Visit' then finals.contact_type end as last_nu_visit_contact_type,
-case when finals.contact_type = 'Visit' then finals.contact_purpose end as last_nu_visit_contact_purpose, 
-case when finals.contact_type = 'Visit' then finals.report_id end as last_nu_visit_report_id,
-case when finals.contact_type = 'Visit' then finals.contact_name end as last_nu_visit_contact_type,
-case when finals.contact_type = 'Visit' then finals.contact_date end as last_nu_visit_contact_date,
-case when finals.contact_type = 'Visit' then finals.fiscal_year end as last_nu_visit_fiscal_year,
-case when finals.contact_type = 'Visit' then finals.description end as last_nu_visit_description,
-case when finals.contact_type = 'Visit' then finals.summary end as last_nu_visit_summary
+finals.last_nu_visit_credited,
+finals.last_nu_visit_credit_name,
+finals.last_nu_visit_credit_type,
+finals.last_nu_visit_contact_type,
+finals.last_nu_visit_contact_purpose, 
+finals.last_nu_visit_report_id,
+finals.last_nu_visit_contact_date,
+finals.last_nu_visit_fiscal_year,
+finals.last_nu_visit_description,
+finals.last_nu_visit_summary
 from p
 inner join finals on finals.id_number = p.id_number 
 left join fran on fran.id_number = p.id_number 
