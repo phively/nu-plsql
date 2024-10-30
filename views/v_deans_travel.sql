@@ -185,7 +185,6 @@ c as (select
     max (dean.description) keep (dense_rank first order by contact_date desc) as description_,
     max (dean.summary) keep (dense_rank first order by contact_date desc) as summary
 from dean 
-where dean.contact_type_code = 'V'
 group by dean.id_number),
 
 --- Count of Dean Visits
@@ -393,24 +392,122 @@ where  ec.econtact_status_code = 'A'
 and  ec.econtact_type_code = 'L'
 Group By ec.id_number),
 
-   
+--- Melanie wants everyone - Outside of ARD too! 
+
+ard as (
+  Select
+    vcrf.credited
+    , vcrf.credited_name
+    , vcrf.contact_credit_type
+    , vcrf.contact_credit_desc
+    , vcrf.job_title
+    , vcrf.employer_unit
+    , vcrf.contact_type_code
+    , vcrf.contact_type
+    , vcrf.contact_purpose
+    , vcrf.report_id
+    , vcrf.id_number
+    , vcrf.contacted_name
+    , vcrf.report_name
+    , vcrf.prospect_id
+    , vcrf.primary_ind
+    , vcrf.prospect_name
+    , vcrf.prospect_name_sort
+    , vcrf.contact_date
+    , vcrf.fiscal_year
+    , vcrf.description
+    , vcrf.summary
+    , vcrf.officer_rating
+    , vcrf.evaluation_rating
+    , vcrf.university_strategy
+    , vcrf.ard_staff
+    , vcrf.frontline_ksm_staff
+    , vcrf.contact_type_category
+    , vcrf.visit_type
+    , vcrf.rating_bin
+    , vcrf.curr_fy
+    , vcrf.prev_fy_start
+    , vcrf.curr_fy_start
+    , vcrf.next_fy_start
+    , vcrf.yesterday
+    , vcrf.ninety_days_ago
+  From rpt_pbh634.v_contact_reports_fast vcrf),
+  
+  
+--- Melanie wants to see Visits by everyone! 
+fard as (select
+    ard.id_number,
+    max (ard.credited) keep (dense_rank first order by contact_date desc) as credited,
+    max (ard.report_id) keep (dense_rank first order by contact_date desc) as report_id,
+    max (ard.credited_name) keep (dense_rank first order by contact_date desc) as credited_name,
+    max (ard.contact_type) keep (dense_rank first order by contact_date desc) as contact_type,
+    max (ard.contact_credit_type) keep (dense_rank first order by contact_date desc) as contact_credit_type,
+    max (ard.contact_purpose) keep (dense_rank first order by contact_date desc) as contact_purpose,
+    max (ard.contacted_name) keep (dense_rank first order by contact_date desc) as contact_name,
+    max (ard.prospect_name) keep (dense_rank first order by contact_date desc) as prospect_name,
+    max (ard.contact_date) keep (dense_rank first order by contact_date desc) as contact_date,
+    max (ard.fiscal_year) keep (dense_rank first order by contact_date desc) as fiscal_year,
+    max (ard.description) keep (dense_rank first order by contact_date desc) as description,
+    max (ard.summary) keep (dense_rank first order by contact_date desc) as summary   
+
+    
+from ard 
+group by ard.id_number),  
+
+--- last visit! 
+
+l as (select
+    ard.id_number,
+    max (ard.credited) keep (dense_rank first order by contact_date desc) as credited,
+    max (ard.report_id) keep (dense_rank first order by contact_date desc) as report_id,
+    max (ard.credited_name) keep (dense_rank first order by contact_date desc) as credited_name,
+    max (ard.contact_type) keep (dense_rank first order by contact_date desc) as contact_type,
+    max (ard.contact_credit_type) keep (dense_rank first order by contact_date desc) as contact_credit_type,
+    max (ard.contact_purpose) keep (dense_rank first order by contact_date desc) as contact_purpose,
+    max (ard.contacted_name) keep (dense_rank first order by contact_date desc) as contact_name,
+    max (ard.prospect_name) keep (dense_rank first order by contact_date desc) as prospect_name,
+    max (ard.contact_date) keep (dense_rank first order by contact_date desc) as contact_date,
+    max (ard.fiscal_year) keep (dense_rank first order by contact_date desc) as fiscal_year,
+    max (ard.description) keep (dense_rank first order by contact_date desc) as description,
+    max (ard.summary) keep (dense_rank first order by contact_date desc) as summary   
+from ard 
+where ard.contact_type = 'Visit'
+group by ard.id_number),
+  
+ 
+lnuv as (select l.id_number,
+l.credited as last_nu_visit_credited,
+l.credited_name as last_nu_visit_credit_name,
+l.contact_credit_type as last_nu_visit_credit_type,
+l.contact_type as last_nu_visit_contact_type,
+l.contact_purpose as last_nu_visit_contact_purpose,
+l.report_id as last_nu_visit_report_id,
+l.contact_name as last_nu_visit_contact_name,
+l.contact_date as last_nu_visit_contact_date,
+l.fiscal_year as last_nu_visit_fiscal_year,
+l.description as last_nu_visit_description,
+l.summary as last_nu_visit_summary
+from l 
+where l.contact_type = 'Visit'
+), 
+
 
 --- Final subquery since the propsect pool is slow
 
-finals as (select distinct entity.id_number,
-a.lgos,
+finals as (select entity.id_number,
+---a.lgos,
 csuite.job_title as c_suite_job_title,
 csuite.employer_name as c_suite_employer_name,
 armod.AE_MODEL_SCORE,
 intr.short_desc as interest,
-c.credited_ID,
-c.credited_name,
-c.contact_type,
-c.contact_purpose,
-c.contact_name,
-c.contact_date,
-c.description_,
-c.summary,
+c.credited_ID as last_credited_dean_ID,
+c.credited_name as last_credited_dean_name,
+c.contact_type as last_contact_dean_type,
+c.contact_purpose as last_contact_dean_purpose,
+c.contact_name as last_contact_dean_name,
+c.contact_date as last_contact_dean_date,
+c.description_ as last_dean_description,
+c.summary as last_dean_summary,
 b.business_city,
 b.business_state_code, 
 b.BUSINESS_GEO_CODE,
@@ -428,10 +525,33 @@ prime.primary_address_type,
 prime.primary_city,
 prime.primary_state_code,
 prime.primary_country,
-prime.PRIMARY_GEO_CODE
----case when kfs.id_number is not null then 'KSM_Faculty_staff' end as KSM_Faculty_staff
+prime.PRIMARY_GEO_CODE,
+
+---- Contact Reports - ARD or NON ARD 
+
+fard.credited,
+fard.credited_name,
+fard.contact_credit_type,
+fard.contact_type,
+fard.contact_purpose,
+fard.report_id,
+fard.contact_name,
+fard.contact_date,
+fard.fiscal_year,
+fard.description,
+fard.summary,
+lnuv.last_nu_visit_credited,
+lnuv.last_nu_visit_credit_name,
+lnuv.last_nu_visit_credit_type,
+lnuv.last_nu_visit_contact_type,
+lnuv.last_nu_visit_contact_purpose, 
+lnuv.last_nu_visit_report_id,
+lnuv.last_nu_visit_contact_date,
+lnuv.last_nu_visit_fiscal_year,
+lnuv.last_nu_visit_description,
+lnuv.last_nu_visit_summary
 from entity 
-left join assign a on a.id_number = entity.id_number
+---left join assign a on a.id_number = entity.id_number
 left join em on em.id_number = entity.id_number
 left join csuite on csuite.id_number = entity.id_number
 left join armod on armod.id_number = entity.id_number
@@ -442,15 +562,14 @@ left join tran on tran.id_number = entity.id_number
 left join fcom on fcom.id_number = entity.id_number 
 left join prime on prime.id_number = entity.id_number 
 left join linked on linked.id_number = entity.id_number 
+left join fard on fard.id_number = entity.id_number 
+left join lnuv on lnuv.id_number = entity.id_number
+
 ---left join KSM_Faculty_Staff kfs on kfs.id_number = entity.id_number
 )
 
 
-
-
---- A lot of Melanie's columns already in prospect pool 
-
-select p.ID_NUMBER,
+select distinct p.ID_NUMBER,
         p.REPORT_NAME,
        p.PREF_MAIL_NAME,
        p.RECORD_STATUS_CODE,
@@ -464,11 +583,11 @@ select p.ID_NUMBER,
        p.SPOUSE_REPORT_NAME,
        p.SPOUSE_PREF_MAIL_NAME,
        p.SPOUSE_SUFFIX,
-      --- p.SPOUSE_DEGREES_CONCAT,
+     /* --- p.SPOUSE_DEGREES_CONCAT,
        --p.SPOUSE_FIRST_KSM_YEAR,
        --p.SPOUSE_PROGRAM,
        --p.SPOUSE_PROGRAM_GROUP,
-      /*  p.SPOUSE_LAST_NONCERT_YEAR,
+        p.SPOUSE_LAST_NONCERT_YEAR,
        p.FMR_SPOUSE_ID,
        p.FMR_SPOUSE_NAME,
        p.FMR_MARITAL_STATUS,*/  
@@ -499,8 +618,10 @@ select p.ID_NUMBER,
        p.HOUSEHOLD_GEO_PRIMARY_DESC,
        p.HOUSEHOLD_COUNTRY,
        p.HOUSEHOLD_CONTINENT,
-       p.BUSINESS_TITLE,
-       p.EMPLOYER_NAME,
+       finals.job_title,
+       finals.EMPLOYER_NAME,
+       case when finals.c_suite_job_title is not null then 'Y' end as c_suite_job_title_ind,
+       finals.fld_of_work,---- finals.interest, We want fld of work 7/11/24  
        finals.linkedin_address,
        --- preferred 
        ---finals.primary_address_type,
@@ -538,17 +659,17 @@ select p.ID_NUMBER,
        p.MGO_ID_MODEL,
        ---p.MGO_ID_SCORE,
        p.MGO_PR_MODEL,
-       ---p.MGO_PR_SCORE,
-       fm.prospect_manager,
+     /*  ---p.MGO_PR_SCORE,
+       ---fm.prospect_manager,
        ---fm.pm_assign_type,
        ---fm.office,
-       fm.lgo,
+       ---fm.lgo,
        ---fm.lgo_assign_type,
        ---fm.lgo_office,
        ---fm.other_manager,
        ---fm.other_assign_type,
        ---fm.other_office,
-       /* Boards and Councils Melanie will send 7/11/24 */
+        Boards and Councils Melanie will send 7/11/24 */
        finals.list_agg_committees,      
        p.TEAM,
        p.PROSPECT_STAGE,
@@ -585,80 +706,40 @@ select p.ID_NUMBER,
        p.open_proposals,
        p.open_ksm_proposals,
        finals.plg_active, 
-       /* p.total_asks,
-       p.total_anticipated,
-       p.total_ksm_asks,
-       p.total_ksm_anticipated,
-       p.most_recent_proposal_id,
-       p.recent_proposal_manager,
-       p.recent_proposal_assist,
-       p.recent_proposal_status,
-       p.recent_start_date,
-       p.recent_ask_date,
-       p.recent_close_date,
-       p.recent_date_modified,
-       p.recent_ksm_ask,
-       p.recent_ksm_anticipated,
-       p.next_proposal_id,
-       p.next_proposal_manager,
-       p.next_close_date,
-       p.next_ksm_ask,
-       p.next_ksm_anticipated, */ 
-       p.ard_visit_last_365_days,
-       p.ard_contact_last_365_days,
-       p.last_visit_credited_name,
-       p.last_visit_credited_unit,
-       p.last_visit_credited_ksm,
-       ---p.last_visit_contact_type,
-       ---p.last_visit_category,
-       p.last_visit_date,
-       ---p.last_visit_purpose,
-       ---p.last_visit_type,
-       p.last_visit_desc,
-       p.last_credited_name,
-       ---p.last_credited_unit,
-       ---p.last_credited_ksm,
-       p.last_contact_type,
-       ---p.last_contact_category,
-       p.last_contact_date,
-       ---p.last_contact_purpose,
-       p.last_contact_desc,
-       /*p.last_assigned_credited_name,
-       p.last_assigned_credited_unit,
-       p.last_assigned_credited_ksm,
-       p.last_assigned_contact_type,
-       p.last_assigned_contact_category,
-       p.last_assigned_contact_date,
-       p.last_assigned_contact_purpose,
-       p.last_assigned_contact_desc,
-       p.tasks_open,
-       p.tasks_open_ksm,
-       p.tasks_open_ksm_outreach,*/
-       ---p.task_outreach_next_id,
-       ---p.task_outreach_sched_date,
-       p.task_outreach_responsible,
-       p.task_outreach_desc,
-       ---p.yesterday,
-       ---p.curr_fy,
-       --- Melanie wants case a flag
-case when finals.c_suite_job_title is not null then 'Y' end as c_suite_job_title_ind,
----finals.employer_name as c_suite_employer_name,
 finals.AE_MODEL_SCORE,
-finals.fld_of_work,---- finals.interest, We want fld of work 7/11/24  
+--- Most Recent Visits with the Dean 
 fran.count_dean_events,
-dvisit.count_dean_visit,
---- Dean Last Visit (Rename)
----finals.credited_ID as credited_ID_dean_LV,
----finals.credited_name as credited_name_dean_LV,
----finals.contact_type as contact_type_dean_LV,
----finals.contact_purpose as contact_purpose_dean_LV,
----finals.contact_name as contact_name_dean_LV,
-finals.contact_date as contact_date_dean_LV,
-finals.description_ as description_dean_LV
----finals.summary as summary_dean_LV
---- final.KSM_Faculty_staff
+dvisit.count_dean_visit, 
+finals.last_credited_dean_ID as last_dean_visit_credited_id,
+finals.last_credited_dean_name as last_dean_visit_credited_name,
+finals.last_contact_dean_type as last_dean_visit_type,
+finals.last_contact_dean_purpose as last_dean_visit_purpose,
+finals.last_contact_dean_name as last_dean_visit_contact_name,
+finals.last_contact_dean_date as last_dean_visit_date,
+finals.last_dean_description as last_dean_visit_description,
+---- Last Visit - Any Person - ARD or NON ARD 
+finals.credited as last_nu_credited,
+finals.credited_name as last_nu_credited_name,
+finals.contact_credit_type as last_nu_contact_credit_type,
+finals.contact_type as last_nu_contact_type,
+finals.contact_purpose as last_nu_contact_purpose,
+finals.report_id as last_nu_report_id,
+finals.contact_name as last_nu_contact_name,
+finals.contact_date as last_nu_contact_date,
+finals.fiscal_year as last_nu_fiscal_year,
+finals.description as last_nu_description,
+finals.summary as last_nu_summary,
+finals.last_nu_visit_credited,
+finals.last_nu_visit_credit_name,
+finals.last_nu_visit_credit_type,
+finals.last_nu_visit_contact_type,
+finals.last_nu_visit_contact_purpose, 
+finals.last_nu_visit_report_id,
+finals.last_nu_visit_contact_date,
+finals.last_nu_visit_fiscal_year,
+finals.last_nu_visit_description,
+finals.last_nu_visit_summary
 from p
 inner join finals on finals.id_number = p.id_number 
 left join fran on fran.id_number = p.id_number 
 left join dvisit on dvisit.id_number = p.id_number 
-left join final_manage fm on fm.id_number = p.id_number 
