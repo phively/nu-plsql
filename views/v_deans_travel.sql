@@ -431,7 +431,12 @@ ard as (
     , vcrf.next_fy_start
     , vcrf.yesterday
     , vcrf.ninety_days_ago
-  From rpt_pbh634.v_contact_reports_fast vcrf),
+    , s.report_name as ksm_staff 
+    , s.id_number as ksm_staff_id
+  From rpt_pbh634.v_contact_reports_fast vcrf
+  left join rpt_pbh634.v_frontline_ksm_staff s on s.id_number = vcrf.id_number 
+  
+  ),
   
   
 --- Melanie wants to see Visits by everyone! 
@@ -448,7 +453,9 @@ fard as (select
     max (ard.contact_date) keep (dense_rank first order by contact_date desc) as contact_date,
     max (ard.fiscal_year) keep (dense_rank first order by contact_date desc) as fiscal_year,
     max (ard.description) keep (dense_rank first order by contact_date desc) as description,
-    max (ard.summary) keep (dense_rank first order by contact_date desc) as summary   
+    max (ard.summary) keep (dense_rank first order by contact_date desc) as summary,   
+    max (ard.ksm_staff) keep (dense_rank first order by contact_date desc) as ksm_staff, 
+    max (ard.ksm_staff_id) keep (dense_rank first order by contact_date desc) as ksm_staff_id 
 
     
 from ard 
@@ -469,7 +476,11 @@ l as (select
     max (ard.contact_date) keep (dense_rank first order by contact_date desc) as contact_date,
     max (ard.fiscal_year) keep (dense_rank first order by contact_date desc) as fiscal_year,
     max (ard.description) keep (dense_rank first order by contact_date desc) as description,
-    max (ard.summary) keep (dense_rank first order by contact_date desc) as summary   
+    max (ard.summary) keep (dense_rank first order by contact_date desc) as summary,   
+    max (ard.ksm_staff) keep (dense_rank first order by contact_date desc) as ksm_staff, 
+    max (ard.ksm_staff_id) keep (dense_rank first order by contact_date desc) as ksm_staff_id 
+
+       
 from ard 
 where ard.contact_type = 'Visit'
 group by ard.id_number),
@@ -486,7 +497,8 @@ l.contact_name as last_nu_visit_contact_name,
 l.contact_date as last_nu_visit_contact_date,
 l.fiscal_year as last_nu_visit_fiscal_year,
 l.description as last_nu_visit_description,
-l.summary as last_nu_visit_summary
+l.summary as last_nu_visit_summary,
+case when l.ksm_staff_id is not null or l.credited = '0000804796' then 'Y' end as ksm_staff
 from l 
 where l.contact_type = 'Visit'
 ), 
@@ -540,6 +552,7 @@ fard.contact_date,
 fard.fiscal_year,
 fard.description,
 fard.summary,
+case when fard.ksm_staff_id is not null or fard.credited = '0000804796' then 'Y' end as ksm_staff,
 lnuv.last_nu_visit_credited,
 lnuv.last_nu_visit_credit_name,
 lnuv.last_nu_visit_credit_type,
@@ -549,7 +562,8 @@ lnuv.last_nu_visit_report_id,
 lnuv.last_nu_visit_contact_date,
 lnuv.last_nu_visit_fiscal_year,
 lnuv.last_nu_visit_description,
-lnuv.last_nu_visit_summary
+lnuv.last_nu_visit_summary,
+lnuv.ksm_staff as last_nu_visit_ksm_staff
 from entity 
 ---left join assign a on a.id_number = entity.id_number
 left join em on em.id_number = entity.id_number
@@ -720,6 +734,7 @@ finals.last_dean_description as last_dean_visit_description,
 ---- Last Visit - Any Person - ARD or NON ARD 
 finals.credited as last_nu_credited,
 finals.credited_name as last_nu_credited_name,
+finals.ksm_staff as ksm_staff_flag,
 finals.contact_credit_type as last_nu_contact_credit_type,
 finals.contact_type as last_nu_contact_type,
 finals.contact_purpose as last_nu_contact_purpose,
@@ -731,6 +746,7 @@ finals.description as last_nu_description,
 finals.summary as last_nu_summary,
 finals.last_nu_visit_credited,
 finals.last_nu_visit_credit_name,
+finals.last_nu_visit_ksm_staff,
 finals.last_nu_visit_credit_type,
 finals.last_nu_visit_contact_type,
 finals.last_nu_visit_contact_purpose, 
