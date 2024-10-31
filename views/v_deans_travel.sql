@@ -434,7 +434,7 @@ ard as (
     , s.report_name as ksm_staff 
     , s.id_number as ksm_staff_id
   From rpt_pbh634.v_contact_reports_fast vcrf
-  left join rpt_pbh634.v_frontline_ksm_staff s on s.id_number = vcrf.id_number 
+  left join rpt_pbh634.v_frontline_ksm_staff s on s.id_number = vcrf.credited 
   
   ),
   
@@ -456,8 +456,6 @@ fard as (select
     max (ard.summary) keep (dense_rank first order by contact_date desc) as summary,   
     max (ard.ksm_staff) keep (dense_rank first order by contact_date desc) as ksm_staff, 
     max (ard.ksm_staff_id) keep (dense_rank first order by contact_date desc) as ksm_staff_id 
-
-    
 from ard 
 group by ard.id_number),  
 
@@ -479,8 +477,6 @@ l as (select
     max (ard.summary) keep (dense_rank first order by contact_date desc) as summary,   
     max (ard.ksm_staff) keep (dense_rank first order by contact_date desc) as ksm_staff, 
     max (ard.ksm_staff_id) keep (dense_rank first order by contact_date desc) as ksm_staff_id 
-
-       
 from ard 
 where ard.contact_type = 'Visit'
 group by ard.id_number),
