@@ -14,8 +14,8 @@ seg_mg_pr Constant segment.segment_code%type := 'KMPR_'; -- MG prioritization mo
 -- Most recent models
 seg_af_10k_mo Constant integer := 9;
 seg_af_10k_yr Constant integer := 2022;
-seg_mg_mo Constant integer := 10;
-seg_mg_yr Constant Integer := 2019;
+seg_mg_mo Constant integer := 9;
+seg_mg_yr Constant Integer := 2024;
 
 /*************************************************************************
 Public type declarations
