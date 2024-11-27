@@ -64,13 +64,13 @@ adv_dates As (
   Union All Select '0000842004', 'MG', to_date('20210419', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000857030', 'MG', to_date('20211208', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000777423', 'AR', to_date('20211122', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
-  Union All Select '0000860423', 'AF', to_date('20220404', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000860423', 'AF', to_date('20220404', 'yyyymmdd'), to_date('20240920', 'yyyymmdd') From DUAL
   Union All Select '0000819851', 'AF', to_date('20190930', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000887951', 'AF', to_date('20220919', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000889141', 'AF', to_date('20221128', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000889424', 'AF', to_date('20221205', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000809084', 'AR', to_date('20221117', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
-  Union All Select '0000757346', 'AF', to_date('20230424', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000757346', 'AF', to_date('20230424', 'yyyymmdd'), to_date('20230915', 'yyyymmdd') From DUAL
   Union All Select '0000767254', 'AF', to_date('20230705', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000897607', 'MG', to_date('20230717', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000311972', 'MG', to_date('20230717', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
@@ -81,6 +81,7 @@ adv_dates As (
   Union All Select '0000793042', 'ADV', to_date('20220221', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000856353', 'ADV', to_date('20211115', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000712447', 'MG', to_date('20240318', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000888785', 'AF', to_date('20241118', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
 )
 
 Select
