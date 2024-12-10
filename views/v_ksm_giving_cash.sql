@@ -15,7 +15,7 @@ params As (
 
 , allocs As (
   Select *
-  From table(rpt_pbh634.ksm_pkg_allocation_tst.tbl_cash_alloc_groups)
+  From table(rpt_pbh634.ksm_pkg_allocation.tbl_cash_alloc_groups)
 )
 
 , funded_proposal_credit As (
