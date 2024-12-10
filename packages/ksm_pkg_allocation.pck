@@ -278,6 +278,9 @@ Cursor c_cash_alloc_groups Is
         -- Inactive
         When allocation.status_code <> 'A'
           Then 'Inactive'
+        -- Exceptions
+        When allocation.allocation_code In ('3203006993001GFT')
+          Then 'Other/TBD'
         -- Kellogg Education Center
         When allocation.allocation_code = '3203006213301GFT'
           Then 'KEC'
