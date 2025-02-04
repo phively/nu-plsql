@@ -207,6 +207,19 @@ params As (
   From rpt_pbh634.mv_past_ksm_gos
 )
 
+-- Corporate and foundation relations
+, cfr As (
+  Select
+    id_number
+    , name
+    , active_ind
+    , office_code
+    , start_date
+    , stop_date
+  From staff
+  Where office_code In ('CR', 'CFR', 'FDR', 'FR')
+)
+
 Select
   cash_credit.*
   , Case
@@ -244,6 +257,13 @@ Select
       -- Active in staff table = NU
       When primary_credited_mgr In (
           Select id_number
+          From cfr
+          Where active_ind = 'Y'
+            And office_code <> 'KM'
+        )
+        Then 'CFR'
+      When primary_credited_mgr In (
+          Select id_number
           From staff
           Where active_ind = 'Y'
             And office_code <> 'KM'
@@ -270,12 +290,19 @@ Select
         Then 'Unmanaged-KSM'
       When primary_credited_mgr In (
           Select id_number
+          From cfr
+          Where active_ind = 'N'
+            And office_code <> 'KM'
+        )
+        Then 'Unmanaged-CFR'
+      When primary_credited_mgr In (
+          Select id_number
           From staff
           Where active_ind = 'N'
         )
         Then 'Unmanaged-NU'
-      -- Fallback = NULL
-      Else NULL
+      -- Fallback = Unmanaged
+      Else 'Unmanaged'
       End
     As managed_hierarchy
 From cash_credit
