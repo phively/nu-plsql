@@ -6,8 +6,8 @@ With
 
 dts As (
   Select
-      to_date('20210614', 'yyyymmdd') As start_dt
-    , to_date('20210621', 'yyyymmdd') As stop_dt
+      to_date('20250204', 'yyyymmdd') As start_dt
+    , to_date('20250210', 'yyyymmdd') As stop_dt
   From DUAL
 )
 
@@ -57,7 +57,7 @@ OR pre_ad.pref_mail_name <> 'Anonymous'
 , payment_years As (
   Select
     ps.payment_schedule_pledge_nbr
-    , count(distinct extract(year from rpt_pbh634.ksm_pkg.to_date2(ps.payment_schedule_date, 'yyyymmdd'))) As payment_schedule_year_count
+    , count(distinct extract(year from rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'yyyymmdd'))) As payment_schedule_year_count
   From payment_schedule ps
   Group By ps.payment_schedule_pledge_nbr
 )
@@ -66,6 +66,7 @@ OR pre_ad.pref_mail_name <> 'Anonymous'
 Select Distinct
     gft.tx_number
   , gft.id_number
+  , gft.TRANSACTION_TYPE
   , gft.tx_gypm_ind
   , tms_rt.short_desc As record_type
   , entity.pref_mail_name As primary_donor
@@ -92,7 +93,7 @@ Where
         (gft.date_of_record Between dts.start_dt And dts.stop_dt)
      Or (g.first_processed_date Between dts.start_dt And dts.stop_dt)
  )
-  And gft.fiscal_year = '2021'
+  And gft.fiscal_year = '2025'
   -- Only $10K+
   And gft.legal_amount >= 10000
   -- Only outright gifts and pledges; ignore payments, match
