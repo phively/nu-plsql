@@ -66,7 +66,7 @@ OR pre_ad.pref_mail_name <> 'Anonymous'
 Select Distinct
     gft.tx_number
   , gft.id_number
-  , gft.TRANSACTION_TYPE
+  , gft.transaction_type
   , gft.tx_gypm_ind
   , tms_rt.short_desc As record_type
   , entity.pref_mail_name As primary_donor

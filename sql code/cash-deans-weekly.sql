@@ -96,7 +96,11 @@ cal As (
   Where g.fiscal_year Between cal.prev_fy And cal.curr_fy
     And ytd_dts.ytd_ind = 'Y'
     And (
+      (
       g.tx_number = 3012462 And g.tx_sequence = 2
+      ) Or (
+      g.tx_number = 3084920 And g.tx_sequence = 2
+      )
     )
 )
 
