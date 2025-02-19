@@ -69,6 +69,24 @@ Select *
 From rpt_lfs898.ksm_ae_model_scores
 ;
 
+Create Or Replace View v_ksm_model_student_supporter As 
+
+Select
+  segment.id_number
+  , segment.segment_code
+  , sh.description
+    As segment
+  , segment.segment_year
+  , segment.segment_month
+  , segment.xcomment
+    As score
+From segment
+Inner Join segment_header sh
+  On sh.segment_code = segment.segment_code
+Where segment.segment_code = 'KAESS'
+  And segment_year = 2024
+;
+
 /*************************
 All Brightcrowd connector scores
 **************************/
