@@ -743,9 +743,9 @@ dvisit.count_dean_visit,
 ---finals.last_contact_dean_name as last_dean_visit_contact_name,
 finals.last_contact_dean_date as CONTACT_DATE_DEAN_LV,
 finals.last_dean_description as DESCRIPTION_DEAN_LV,
----- Last Visit - Any Person - ARD or NON ARD 
-finals.credited as last_nu_credited,
-finals.credited_name as last_visit_credited_name,
+---- Last contact - Any Person - ARD or NON ARD 
+---finals.credited as last_nu_credited,
+finals.credited_name as last_credited_name,
 finals.frontline_ksm_staff as ksm_frontline_staff_flag,
 --finals.contact_credit_type as last_contact_type,
 finals.contact_type as last_contact_type,
@@ -754,7 +754,7 @@ finals.report_id as last_nu_report_id,
 ----finals.contact_name as last_nu_contact_name,
 finals.contact_date as last_contact_date,
 ---finals.fiscal_year as last_nu_fiscal_year,
-finals.description as last_concat_desc,
+finals.description as last_contact_desc,
 ---finals.summary as last_nu_summary,
 
 /*

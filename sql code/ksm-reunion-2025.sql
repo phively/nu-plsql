@@ -949,6 +949,13 @@ where f.Event_Id IN ('9760',
 '30185'
 )
 group by f.id_number),
+
+--- 2025 Reunion Committee Members 
+
+c25 as (SELECT DISTINCT
+   ID_NUMBER
+  FROM COMMITTEE
+  WHERE COMMITTEE_CODE = '227' AND COMMITTEE_STATUS_CODE = 'C'),
  
   
 final as (select  KSM_REUNION.id_number,
@@ -1057,6 +1064,7 @@ or s.ANONYMOUS_DONOR is not null then 'Y' end as ANONYMOUS_DONOR
    ,lr.last_reunion_event_id
    ,lr.last_reunion_event_name
    ,lr.last_reunion_start_dt
+   ,case when c25.id_number is not null then '2025 Reunion Volunteer' end as Reunion_2025_volunteer
 from KSM_REUNION 
 left join CURRENT_DONOR CYD on CYD.id_number = KSM_REUNION.id_number
 left join GIVING_SUMMARY on GIVING_SUMMARY.id_number = KSM_REUNION.id_number
@@ -1072,6 +1080,7 @@ left join hr_names on hr_names.id_number = KSM_Reunion.id_number
 left join anon_dw on anon_dw.household_id = KSM_Reunion.id_number
 left join degs on degs.id_number = KSM_Reunion.id_number
 left join last_reunion lr on lr.id_number = KSM_REUNION.id_number
+left join c25 on c25.id_number = KSM_REUNION.id_number
 )
 
 SELECT DISTINCT 
@@ -1302,6 +1311,8 @@ SELECT DISTINCT
   ,final.pref_first_name as name_tag_first_name
   ,final.last_name as name_tag_last_name
   ,final.yrs as name_tag_yrs
+  ,final.Reunion_2025_volunteer
+
 FROM ENTITY E
 INNER JOIN KSM_REUNION KR
 ON E.ID_NUMBER = KR.ID_NUMBER
