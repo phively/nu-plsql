@@ -11,7 +11,7 @@ Public function declarations
 *************************************************************************/
 
 -- Mathematical modulo operator
-Function math_mod(
+Function mod_math(
   m In number
   , n In number
 ) Return number; -- m % n
@@ -29,13 +29,13 @@ Function to_date2(
 
 -- Parse yyyymmdd string into a date
 -- If there are invalid date parts, overwrite with the corresponding element from fallback_dt
-Function date_parse(
+Function to_date_parse(
   date_str In varchar2
   , fallback_dt In date Default current_date()
 ) Return date;
 
 -- Take a string containing a dollar amount and extract the (first) numeric value
-Function get_number_from_dollar(
+Function to_number_from_dollar(
   str In varchar2
 ) Return number;
 
@@ -49,7 +49,7 @@ Functions
 *************************************************************************/
 
 -- Calculates the modulo function; needed to correct Oracle mod() weirdness
-Function math_mod(m In number, n In number)
+Function mod_math(m In number, n In number)
   Return number Is
   -- Declarations
   remainder number;
@@ -85,7 +85,7 @@ Function to_date2(str In varchar2, format In varchar2)
   End;
 
 -- Takes a yyyymmdd string and an optional fallback date argument and produces a date type
-Function date_parse(date_str In varchar2, fallback_dt In date)
+Function to_date_parse(date_str In varchar2, fallback_dt In date)
   Return date Is
   -- Declarations
   dt_out date;
@@ -139,7 +139,7 @@ Function date_parse(date_str In varchar2, fallback_dt In date)
   End;
 
 -- Take a string containing a dollar amount and extract the (first) numeric value
-Function get_number_from_dollar(str In varchar2) 
+Function to_number_from_dollar(str In varchar2) 
   Return number Is
   -- Delcarations
   trimmed varchar2(32);
