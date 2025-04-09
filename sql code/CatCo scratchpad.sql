@@ -157,3 +157,34 @@ From DM_ALUMNI.DIM_DEGREE_DETAIL degree
 Inner Join degmap
   On degmap.donor_id = degree.constituent_donor_id
 ;
+
+-- Organization
+Select *
+From dm_alumni.dim_organization org
+;
+
+Select
+  organization_salesforce_id
+  As salesforce_id
+  , organization_ultimate_parent_donor_id
+    As household_id
+  , organization_donor_id
+    As donor_id
+  , Case When organization_donor_id = organization_ultimate_parent_donor_id Then 'Y' End
+    As household_primary
+  , organization_name
+  , organization_name
+    As sort_name
+  , organization_inactive_indicator
+  , organization_type
+  , organization_ultimate_parent_donor_id
+    As org_ult_parent_donor_id
+  , organization_ultimate_parent_name
+    As org_ult_parent_name
+  , preferred_address_city
+  , preferred_address_state
+  , preferred_address_country_name
+  , trunc(etl_update_date)
+    As etl_update_date
+From dm_alumni.dim_organization org
+;

@@ -22,6 +22,7 @@ pkg_name Constant varchar2(64) := 'dw_pkg_base';
 Public type declarations
 *************************************************************************/
 
+--------------------------------------
 Type rec_constituent Is Record (
   salesforce_id dm_alumni.dim_constituent.constituent_salesforce_id%type
   , household_id dm_alumni.dim_constituent.constituent_household_account_salesforce_id%type
@@ -41,11 +42,30 @@ Type rec_constituent Is Record (
   , etl_update_date dm_alumni.dim_constituent.etl_update_date%type
 );
 
+--------------------------------------
+Type rec_organization Is Record (
+  salesforce_id dm_alumni.dim_organization.organization_salesforce_id%type
+  , household_id dm_alumni.dim_organization.organization_ultimate_parent_donor_id%type
+  , donor_id dm_alumni.dim_organization.organization_donor_id%type
+  , household_primary dm_alumni.dim_constituent.household_primary_constituent_indicator%type
+  , organization_name dm_alumni.dim_organization.organization_name%type
+  , sort_name dm_alumni.dim_organization.organization_name%type
+  , organization_inactive_indicator dm_alumni.dim_organization.organization_inactive_indicator%type
+  , organization_type dm_alumni.dim_organization.organization_type%type
+  , org_ult_parent_donor_id dm_alumni.dim_organization.organization_ultimate_parent_donor_id%type
+  , org_ult_parent_name dm_alumni.dim_organization.organization_ultimate_parent_name%type
+  , preferred_address_city dm_alumni.dim_organization.preferred_address_city%type
+  , preferred_address_state dm_alumni.dim_organization.preferred_address_state%type
+  , preferred_address_country_name dm_alumni.dim_organization.preferred_address_country_name%type
+  , etl_update_date dm_alumni.dim_organization.etl_update_date%type
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
 
 Type constituent Is Table Of rec_constituent;
+Type organization Is Table Of rec_organization;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -53,6 +73,9 @@ Public pipelined functions declarations
 
 Function tbl_constituent
   Return constituent Pipelined;
+
+Function tbl_organization
+  Return organization Pipelined;
 
 /*********************** About pipelined functions ***********************
 Q: What is a pipelined function?
@@ -81,6 +104,7 @@ Create Or Replace Package Body dw_pkg_base Is
 Private cursors -- data definitions
 *************************************************************************/
 
+--------------------------------------
 Cursor c_constituent Is
   Select
       constituent_salesforce_id
@@ -109,11 +133,39 @@ Cursor c_constituent Is
   From dm_alumni.dim_constituent entity
 ;
 
+--------------------------------------
+Cursor c_organization is
+  Select
+    organization_salesforce_id
+    As salesforce_id
+    , organization_ultimate_parent_donor_id
+      As household_id
+    , organization_donor_id
+      As donor_id
+    , Case When organization_donor_id = organization_ultimate_parent_donor_id Then 'Y' End
+      As household_primary
+    , organization_name
+    , organization_name
+      As sort_name
+    , organization_inactive_indicator
+    , organization_type
+    , organization_ultimate_parent_donor_id
+      As org_ult_parent_donor_id
+    , organization_ultimate_parent_name
+      As org_ult_parent_name
+    , preferred_address_city
+    , preferred_address_state
+    , preferred_address_country_name
+    , trunc(etl_update_date)
+      As etl_update_date
+  From dm_alumni.dim_organization org
+;
+
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
 
--- Returns a pipelined table
+--------------------------------------
 Function tbl_constituent
   Return constituent Pipelined As
     -- Declarations
@@ -129,6 +181,24 @@ Function tbl_constituent
     End Loop;
     Return;
   End;
+
+--------------------------------------
+Function tbl_organization
+  Return organization Pipelined As
+    -- Declarations
+    o organization;
+
+  Begin
+    Open c_organization; -- Annual Fund allocations cursor
+      Fetch c_organization Bulk Collect Into o;
+    Close c_organization;
+    -- Pipe out the allocations
+    For i in 1..(o.count) Loop
+      Pipe row(o(i));
+    End Loop;
+    Return;
+  End;
+
 
 End dw_pkg_base;
 /
