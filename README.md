@@ -10,6 +10,20 @@ Concept: lower level tables should be defined based on SF objects, then joined/t
 
 ![data_hierarchy.png](images/data_hierarchy.png "Proposed data hierarchy")
 
+# Naming conventions
+
+`id_type_description`
+
+ * `dw_pkg_`: package/view accessing SF objects or DW tables; should be very fast
+ * `ksm_pkg_`: KSM specific package/view dependent on other packages/views
+ * `v_`: general views
+ * `tableau_v_`: Tableau views
+
+Examples
+
+ * `ksm_pkg_utility` wraps various utility functions, such as to_number_from_dollar()
+ * `dw_pkg_base` contains the cursor/logic to format base objects/tables including constituent, organization, etc.
+
 # Important views
 
 TBD
