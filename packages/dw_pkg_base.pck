@@ -45,9 +45,9 @@ Type rec_constituent Is Record (
 --------------------------------------
 Type rec_organization Is Record (
   salesforce_id dm_alumni.dim_organization.organization_salesforce_id%type
-  , household_id dm_alumni.dim_organization.organization_ultimate_parent_donor_id%type
+  , ult_parent_id dm_alumni.dim_organization.organization_ultimate_parent_donor_id%type
   , donor_id dm_alumni.dim_organization.organization_donor_id%type
-  , household_primary dm_alumni.dim_constituent.household_primary_constituent_indicator%type
+  , org_primary dm_alumni.dim_constituent.household_primary_constituent_indicator%type
   , organization_name dm_alumni.dim_organization.organization_name%type
   , sort_name dm_alumni.dim_organization.organization_name%type
   , organization_inactive_indicator dm_alumni.dim_organization.organization_inactive_indicator%type
@@ -60,12 +60,39 @@ Type rec_organization Is Record (
   , etl_update_date dm_alumni.dim_organization.etl_update_date%type
 );
 
+--------------------------------------
+Type rec_designation Is Record (
+      designation_record_id dm_alumni.dim_designation.designation_record_id%type
+    , designation_name dm_alumni.dim_designation.designation_name%type
+    , designation_status dm_alumni.dim_designation.designation_status%type
+    , legacy_allocation_code dm_alumni.dim_designation.legacy_allocation_code%type
+    , fin_fund dm_alumni.dim_designation.fin_fund%type
+    , fin_fund_id dm_alumni.dim_designation.fin_fund%type
+    , fin_project_id dm_alumni.dim_designation.fin_project%type
+    , fin_activity dm_alumni.dim_designation.designation_activity%type
+    , fin_department_id dm_alumni.dim_designation.designation_fin_department_id%type
+    , ksm_flag varchar2(1)
+    , designation_school dm_alumni.dim_designation.designation_school%type
+    , department_program dm_alumni.dim_designation.designation_department_program_code%type
+    , fasb_type dm_alumni.dim_designation.fasb_type%type
+    , case_type dm_alumni.dim_designation.case_type%type
+    , case_purpose dm_alumni.dim_designation.case_purpose%type
+    , designation_tier_1 dm_alumni.dim_designation.designation_tier_1%type
+    , designation_tier_2 dm_alumni.dim_designation.designation_tier_2%type
+    , designation_comment dm_alumni.dim_designation.designation_comment%type
+    , designation_date_added dm_alumni.dim_designation.designation_date_added%type
+    , designation_date_modified dm_alumni.dim_designation.designation_date_modified%type
+    , gl_effective_date dm_alumni.dim_designation.gl_effective_date%type
+    , gl_expiration_date dm_alumni.dim_designation.gl_expiration_date%type
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
 
 Type constituent Is Table Of rec_constituent;
 Type organization Is Table Of rec_organization;
+Type designation Is Table Of rec_designation;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -76,6 +103,9 @@ Function tbl_constituent
 
 Function tbl_organization
   Return organization Pipelined;
+
+Function tbl_designation
+  Return designation Pipelined;
 
 /*********************** About pipelined functions ***********************
 Q: What is a pipelined function?
@@ -134,16 +164,16 @@ Cursor c_constituent Is
 ;
 
 --------------------------------------
-Cursor c_organization is
+Cursor c_organization Is
   Select
     organization_salesforce_id
     As salesforce_id
     , organization_ultimate_parent_donor_id
-      As household_id
+      As ult_parent_id
     , organization_donor_id
       As donor_id
     , Case When organization_donor_id = organization_ultimate_parent_donor_id Then 'Y' End
-      As household_primary
+      As org_primary
     , organization_name
     , organization_name
       As sort_name
@@ -159,6 +189,53 @@ Cursor c_organization is
     , trunc(etl_update_date)
       As etl_update_date
   From dm_alumni.dim_organization org
+;
+
+--------------------------------------
+Cursor c_designation Is
+  Select
+    designation_record_id
+    , designation_name
+    , designation_status
+    , legacy_allocation_code
+    , fin_fund
+    , Case
+        When fin_fund Not In ('Historical Data', '-')
+          Then substr(fin_fund, 0, 3)
+        End
+      As fin_fund_id
+    , fin_project
+      As fin_project_id
+    , Case
+        When designation_activity != '-'
+          Then designation_activity
+        End
+      As fin_activity
+    , Case
+        When designation_fin_department_id != '-'
+          Then designation_fin_department_id
+        End
+      As fin_department_id
+    , Case
+        When designation_school = 'Kellogg'
+          Or designation_department_program_code Like '%Kellogg%'
+        Then 'Y'
+        End
+      As ksm_flag
+    , designation_school
+    , designation_department_program_code
+      As department_program
+    , fasb_type
+    , case_type
+    , case_purpose
+    , designation_tier_1
+    , designation_tier_2
+    , designation_comment
+    , designation_date_added
+    , designation_date_modified
+    , gl_effective_date
+    , gl_expiration_date
+  From dm_alumni.dim_designation
 ;
 
 /*************************************************************************
@@ -199,6 +276,22 @@ Function tbl_organization
     Return;
   End;
 
+--------------------------------------
+Function tbl_designation
+  Return designation Pipelined As
+    -- Declarations
+    d designation;
+
+  Begin
+    Open c_designation; -- Annual Fund allocations cursor
+      Fetch c_designation Bulk Collect Into d;
+    Close c_designation;
+    -- Pipe out the allocations
+    For i in 1..(d.count) Loop
+      Pipe row(d(i));
+    End Loop;
+    Return;
+  End;
 
 End dw_pkg_base;
 /

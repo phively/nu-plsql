@@ -188,3 +188,53 @@ Select
     As etl_update_date
 From dm_alumni.dim_organization org
 ;
+
+-- Designation (allocation)
+Select *
+From dm_alumni.dim_designation
+;
+
+Select
+  designation_record_id
+  , designation_name
+  , designation_status
+  , legacy_allocation_code
+  , fin_fund
+  , Case
+      When fin_fund Not In ('Historical Data', '-')
+        Then substr(fin_fund, 0, 3)
+      End
+    As fin_fund_id
+  , fin_project
+    As fin_project_id
+  , Case
+      When designation_activity != '-'
+        Then designation_activity
+      End
+    As fin_activity
+  , Case
+      When designation_fin_department_id != '-'
+        Then designation_fin_department_id
+      End
+    As fin_department_id
+  , Case
+      When designation_school = 'Kellogg'
+        Or designation_department_program_code Like '%Kellogg%'
+      Then 'Y'
+      End
+    As ksm_flag
+  , designation_school
+  , designation_department_program_code
+    As department_program
+  , fasb_type
+  , case_type
+  , case_purpose
+  , designation_tier_1
+  , designation_tier_2
+  , designation_comment
+  , designation_date_added
+  , designation_date_modified
+  , gl_effective_date
+  , gl_expiration_date
+From dm_alumni.dim_designation
+;
