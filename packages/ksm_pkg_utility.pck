@@ -1,6 +1,16 @@
 Create Or Replace Package ksm_pkg_utility Is
 
 /*************************************************************************
+Author  : PBH634
+Created : 4/9/2025
+Purpose : Shared functions library for other packages to call.
+Dependencies: none
+
+Suggested naming conventions:
+  Pure functions: [function type]_[description]
+*************************************************************************/
+
+/*************************************************************************
 Public constant declarations
 *************************************************************************/
 
@@ -41,7 +51,6 @@ Function to_number_from_dollar(
 
 End ksm_pkg_utility;
 /
-
 Create Or Replace Package Body ksm_pkg_utility Is
 
 /*************************************************************************

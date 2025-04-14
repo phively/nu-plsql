@@ -3,7 +3,8 @@ Create Or Replace Package dw_pkg_base Is
 /*************************************************************************
 Author  : PBH634
 Created : 4/9/2025
-Purpose : description
+Purpose : Zero dependency tables constructed directly from SF or DW objects.
+  Should run very quickly.
 Dependencies: none
 
 Suggested naming conventions:
