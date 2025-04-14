@@ -1,6 +1,19 @@
 Create Or Replace Package ksm_pkg_calendar Is
 
 /*************************************************************************
+Author  : PBH634
+Created : 4/14/2025
+Purpose : Provide key NU and KSM dates to other code in a consistent way.
+  Combined into a package for ease of parameter checks/updates.
+Dependencies: ksm_pkg_utility
+
+Suggested naming conventions:
+  Pure functions: [function type]_[description]
+  Row-by-row retrieval (slow): get_[object type]_[action or description] e.g.
+  Table or cursor retrieval (fast): tbl_[object type]_[action or description]
+*************************************************************************/
+
+/*************************************************************************
 Public constant declarations
 *************************************************************************/
 
@@ -223,9 +236,9 @@ Function fytd_indicator(dt In date, day_offset In number)
   Begin
     -- extract dt fiscal month and day
     today_fisc_day := extract(day from sysdate);
-    today_fisc_mo  := math_mod(m => extract(month from sysdate) - fy_start_month, n => 12) + 1;
+    today_fisc_mo  := ksm_pkg_utility.mod_math(m => extract(month from sysdate) - fy_start_month, n => 12) + 1;
     dt_fisc_day    := extract(day from dt);
-    dt_fisc_mo     := math_mod(m => extract(month from dt) - fy_start_month, n => 12) + 1;
+    dt_fisc_mo     := ksm_pkg_utility.mod_math(m => extract(month from dt) - fy_start_month, n => 12) + 1;
     -- logic to construct output
     If dt_fisc_mo < today_fisc_mo Then
       -- if dt_fisc_mo is earlier than today_fisc_mo no need to continue checking
@@ -258,9 +271,9 @@ Function get_quarter(dt In date, fisc_or_perf In varchar2 Default 'fiscal')
     this_month := extract(month from dt);
     -- Convert to chronological month number, where FY/PY start month = 1
     If lower(fisc_or_perf) Like 'f%' Then
-      chron_month := math_mod(this_month - fy_start_month, 12) + 1;
+      chron_month := ksm_pkg_utility.mod_math(this_month - fy_start_month, 12) + 1;
     ElsIf lower(fisc_or_perf) Like 'p%' Then
-      chron_month := math_mod(this_month - py_start_month, 12) + 1;
+      chron_month := ksm_pkg_utility.mod_math(this_month - py_start_month, 12) + 1;
     End If;
     -- Return appropriate quarter corresponding to month; 3 months per quarter
     Return ceil(chron_month / 3);
@@ -276,7 +289,7 @@ Function get_fiscal_month(
   Begin
     this_month := extract(month from dt);
     -- Modulo 12, add 1 so range is 1-12 instead of 0-11
-    Return math_mod(this_month - fy_start_month, 12) + 1;
+    Return ksm_pkg_utility.mod_math(this_month - fy_start_month, 12) + 1;
   End;
 
 -- Compute fiscal year from date parameter
