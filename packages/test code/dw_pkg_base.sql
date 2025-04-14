@@ -14,3 +14,7 @@ From table(dw_pkg_base.tbl_organization)
 Select *
 From table(dw_pkg_base.tbl_designation)
 ;
+
+Select *
+From table(dw_pkg_base.tbl_opportunity)
+;

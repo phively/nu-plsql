@@ -86,6 +86,30 @@ Type rec_designation Is Record (
     , gl_expiration_date dm_alumni.dim_designation.gl_expiration_date%type
 );
 
+--------------------------------------
+Type rec_opportunity Is Record (
+    opportunity_salesforce_id dm_alumni.dim_opportunity.opportunity_salesforce_id%type
+    , opportunity_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
+    , legacy_receipt_number dm_alumni.dim_opportunity.legacy_receipt_number%type
+    , opportunity_stage dm_alumni.dim_opportunity.opportunity_stage%type
+    , opportunity_record_type dm_alumni.dim_opportunity.opportunity_record_type%type
+    , opportunity_type dm_alumni.dim_opportunity.opportunity_type%type
+    , opportunity_donor_id dm_alumni.dim_opportunity.opportunity_donor_id%type
+    , opportunity_donor_name dm_alumni.dim_opportunity.opportunity_constituent_name%type
+    , credit_date dm_alumni.dim_opportunity.opportunity_credit_date%type
+    , fiscal_year dm_alumni.dim_opportunity.opportunity_funded_fiscal_year%type
+    , amount dm_alumni.dim_opportunity.opportunity_amount%type
+    , designation_salesforce_id dm_alumni.dim_opportunity.designation_salesforce_id%type
+    , is_anonymous_indicator dm_alumni.dim_opportunity.is_anonymous_indicator%type
+    , anonymous_type dm_alumni.dim_opportunity.anonymous_type%type
+    , linked_proposal_record_id dm_alumni.dim_opportunity.linked_proposal_record_id%type
+    , linked_proposal_active_proposal_manager dm_alumni.dim_opportunity.linked_proposal_active_proposal_manager%type
+    , next_scheduled_payment_date dm_alumni.dim_opportunity.next_scheduled_payment_date%type
+    , next_scheduled_payment_amount dm_alumni.dim_opportunity.next_scheduled_payment_amount%type
+    , matched_gift_record_id dm_alumni.dim_opportunity.matched_gift_record_id%type
+    , matching_gift_stage dm_alumni.dim_opportunity.matching_gift_stage%type
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
@@ -93,6 +117,7 @@ Public table declarations
 Type constituent Is Table Of rec_constituent;
 Type organization Is Table Of rec_organization;
 Type designation Is Table Of rec_designation;
+Type opportunity Is Table Of rec_opportunity;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -106,6 +131,9 @@ Function tbl_organization
 
 Function tbl_designation
   Return designation Pipelined;
+
+Function tbl_opportunity
+  Return opportunity Pipelined;
 
 /*********************** About pipelined functions ***********************
 Q: What is a pipelined function?
@@ -238,6 +266,40 @@ Cursor c_designation Is
   From dm_alumni.dim_designation
 ;
 
+--------------------------------------
+Cursor c_opportunity Is
+  Select
+    opportunity_salesforce_id
+    , opportunity_record_id
+    , legacy_receipt_number
+    , opportunity_stage
+    , opportunity_record_type
+    , opportunity_type
+    , opportunity_donor_id
+    , Case
+        When opportunity_constituent_name != '-'
+          Then opportunity_constituent_name
+          Else opportunity_organization_name
+        End
+      As opportunity_donor_name
+    , opportunity_credit_date
+      As credit_date
+    , opportunity_funded_fiscal_year
+      As fiscal_year
+    , opportunity_amount
+      As amount
+    , designation_salesforce_id
+    , is_anonymous_indicator
+    , anonymous_type
+    , linked_proposal_record_id
+    , linked_proposal_active_proposal_manager
+    , next_scheduled_payment_date
+    , next_scheduled_payment_amount
+    , matched_gift_record_id
+    , matching_gift_stage
+  From dm_alumni.dim_opportunity
+;
+
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
@@ -289,6 +351,23 @@ Function tbl_designation
     -- Pipe out the allocations
     For i in 1..(d.count) Loop
       Pipe row(d(i));
+    End Loop;
+    Return;
+  End;
+  
+--------------------------------------
+Function tbl_opportunity
+  Return opportunity Pipelined As
+    -- Declarations
+    o opportunity;
+
+  Begin
+    Open c_opportunity; -- Annual Fund allocations cursor
+      Fetch c_opportunity Bulk Collect Into o;
+    Close c_opportunity;
+    -- Pipe out the allocations
+    For i in 1..(o.count) Loop
+      Pipe row(o(i));
     End Loop;
     Return;
   End;

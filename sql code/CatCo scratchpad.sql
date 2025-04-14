@@ -238,3 +238,50 @@ Select
   , gl_expiration_date
 From dm_alumni.dim_designation
 ;
+
+-- Opportunity (trans)
+Select *
+From dm_alumni.dim_opportunity d
+Where d.matched_gift_record_id != '-'
+;
+
+Select
+  opportunity_salesforce_id
+  , opportunity_record_id
+  , opportunity_stage
+  , opportunity_record_type
+  , opportunity_type
+  -- GYPM WIP
+  , Case
+      -- G = outright Gifts
+      When opportunity_record_type = 'Gift'
+        And opportunity_type = 'Outright'
+        Then 'G'
+      -- Y = pledge paYments
+      When opportunity_record_type = 'Gift'
+        
+      -- M = Matching gifts
+      When opportunity_record_type = 'Matching Gift'
+        -- Matched donor
+        Or opportunity_record_type = 'Gift'
+          And opportunity_type = 'Matching'
+        Then 'M'
+      -- P = all pledge types
+      When opportunity_record_type In ('Pledge', 'Recurring Gift')
+        Then 'P'
+      End
+    As gypm_ind
+  , opportunity_donor_id
+  , Case
+      When opportunity_constituent_name != '-'
+        Then opportunity_constituent_name
+        Else opportunity_organization_name
+      End
+    As opportunity_donor_name
+  , opportunity_amount
+  , is_anonymous_indicator
+  , anonymous_type
+  , linked_proposal_record_id
+  , matched_gift_record_id
+  , matching_gift_stage
+From dm_alumni.dim_opportunity
