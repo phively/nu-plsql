@@ -61,6 +61,11 @@ Type rec_organization Is Record (
 );
 
 --------------------------------------
+Type rec_degrees Is Record (
+  placeholder varchar2(1)
+);
+
+--------------------------------------
 Type rec_designation Is Record (
       designation_record_id dm_alumni.dim_designation.designation_record_id%type
     , designation_name dm_alumni.dim_designation.designation_name%type
@@ -110,14 +115,33 @@ Type rec_opportunity Is Record (
     , matching_gift_stage dm_alumni.dim_opportunity.matching_gift_stage%type
 );
 
+--------------------------------------
+Type rec_gift_credit Is Record (
+  placeholder varchar2(1)
+);
+
+--------------------------------------
+Type rec_involvement Is Record (
+  placeholder varchar2(1)
+);
+
+--------------------------------------
+Type rec_service_indicators Is Record (
+  placeholder varchar2(1)
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
 
 Type constituent Is Table Of rec_constituent;
 Type organization Is Table Of rec_organization;
+Type degrees Is Table Of rec_degrees;
 Type designation Is Table Of rec_designation;
 Type opportunity Is Table Of rec_opportunity;
+Type gift_credit Is Table Of rec_gift_credit;
+Type involvement Is Table Of rec_involvement;
+Type service_indicators Is Table Of rec_service_indicators;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -129,11 +153,23 @@ Function tbl_constituent
 Function tbl_organization
   Return organization Pipelined;
 
+Function tbl_degrees
+  Return degrees Pipelined;
+
 Function tbl_designation
   Return designation Pipelined;
 
 Function tbl_opportunity
   Return opportunity Pipelined;
+
+Function tbl_gift_credit
+  Return gift_credit Pipelined;
+
+Function tbl_involvement
+  Return involvement Pipelined;
+
+Function tbl_service_indicators
+  Return service_indicators Pipelined;
 
 /*********************** About pipelined functions ***********************
 Q: What is a pipelined function?
@@ -220,6 +256,12 @@ Cursor c_organization Is
 ;
 
 --------------------------------------
+Cursor c_degrees Is
+  Select NULL
+  From dm_alumni.dim_degree_detail
+;
+
+--------------------------------------
 Cursor c_designation Is
   Select
     designation_record_id
@@ -300,6 +342,24 @@ Cursor c_opportunity Is
   From dm_alumni.dim_opportunity
 ;
 
+--------------------------------------
+Cursor c_gift_credit Is
+  Select NULL
+  From dm_alumni.fact_giving_credit_details
+;
+
+--------------------------------------
+Cursor c_involvement Is
+  Select NULL
+  From dm_alumni.dim_involvement
+;
+
+--------------------------------------
+Cursor c_service_indicators Is
+  Select NULL
+  From stg_alumni.ucinn_ascendv2__service_indicator__c
+;
+
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
@@ -308,15 +368,15 @@ Pipelined functions
 Function tbl_constituent
   Return constituent Pipelined As
     -- Declarations
-    c constituent;
+    con constituent;
 
   Begin
-    Open c_constituent; -- Annual Fund allocations cursor
-      Fetch c_constituent Bulk Collect Into c;
+    Open c_constituent;
+      Fetch c_constituent Bulk Collect Into con;
     Close c_constituent;
-    -- Pipe out the allocations
-    For i in 1..(c.count) Loop
-      Pipe row(c(i));
+    -- Pipe out the rows
+    For i in 1..(con.count) Loop
+      Pipe row(con(i));
     End Loop;
     Return;
   End;
@@ -325,15 +385,32 @@ Function tbl_constituent
 Function tbl_organization
   Return organization Pipelined As
     -- Declarations
-    o organization;
+    org organization;
 
   Begin
-    Open c_organization; -- Annual Fund allocations cursor
-      Fetch c_organization Bulk Collect Into o;
+    Open c_organization;
+      Fetch c_organization Bulk Collect Into org;
     Close c_organization;
-    -- Pipe out the allocations
-    For i in 1..(o.count) Loop
-      Pipe row(o(i));
+    -- Pipe out the rows
+    For i in 1..(org.count) Loop
+      Pipe row(org(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_degrees
+  Return degrees Pipelined As
+    -- Declarations
+    deg degrees;
+
+  Begin
+    Open c_degrees;
+      Fetch c_degrees Bulk Collect Into deg;
+    Close c_degrees;
+    -- Pipe out the rows
+    For i in 1..(deg.count) Loop
+      Pipe row(deg(i));
     End Loop;
     Return;
   End;
@@ -342,15 +419,15 @@ Function tbl_organization
 Function tbl_designation
   Return designation Pipelined As
     -- Declarations
-    d designation;
+    des designation;
 
   Begin
-    Open c_designation; -- Annual Fund allocations cursor
-      Fetch c_designation Bulk Collect Into d;
+    Open c_designation;
+      Fetch c_designation Bulk Collect Into des;
     Close c_designation;
-    -- Pipe out the allocations
-    For i in 1..(d.count) Loop
-      Pipe row(d(i));
+    -- Pipe out the rows
+    For i in 1..(des.count) Loop
+      Pipe row(des(i));
     End Loop;
     Return;
   End;
@@ -359,15 +436,66 @@ Function tbl_designation
 Function tbl_opportunity
   Return opportunity Pipelined As
     -- Declarations
-    o opportunity;
+    opp opportunity;
 
   Begin
-    Open c_opportunity; -- Annual Fund allocations cursor
-      Fetch c_opportunity Bulk Collect Into o;
+    Open c_opportunity;
+      Fetch c_opportunity Bulk Collect Into opp;
     Close c_opportunity;
-    -- Pipe out the allocations
-    For i in 1..(o.count) Loop
-      Pipe row(o(i));
+    -- Pipe out the rows
+    For i in 1..(opp.count) Loop
+      Pipe row(opp(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_gift_credit
+  Return gift_credit Pipelined As
+    -- Declarations
+    gcr gift_credit;
+
+  Begin
+    Open c_gift_credit;
+      Fetch c_gift_credit Bulk Collect Into gcr;
+    Close c_gift_credit;
+    -- Pipe out the rows
+    For i in 1..(gcr.count) Loop
+      Pipe row(gcr(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_involvement
+  Return involvement Pipelined As
+    -- Declarations
+    inv involvement;
+
+  Begin
+    Open c_involvement;
+      Fetch c_involvement Bulk Collect Into inv;
+    Close c_involvement;
+    -- Pipe out the rows
+    For i in 1..(inv.count) Loop
+      Pipe row(inv(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_service_indicators
+  Return service_indicators Pipelined As
+    -- Declarations
+    si service_indicators;
+
+  Begin
+    Open c_service_indicators;
+      Fetch c_service_indicators Bulk Collect Into si;
+    Close c_service_indicators;
+    -- Pipe out the rows
+    For i in 1..(si.count) Loop
+      Pipe row(si(i));
     End Loop;
     Return;
   End;
