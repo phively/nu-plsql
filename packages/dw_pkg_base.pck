@@ -63,7 +63,28 @@ Type rec_organization Is Record (
 
 --------------------------------------
 Type rec_degrees Is Record (
-  placeholder varchar2(1)
+    constituent_donor_id dm_alumni.dim_degree_detail.constituent_donor_id%type
+    , constituent_name dm_alumni.dim_degree_detail.constituent_name%type
+    , degree_record_id dm_alumni.dim_degree_detail.degree_record_id%type
+    , degree_status dm_alumni.dim_degree_detail.degree_status%type
+    , degree_northwestern_university_indicator dm_alumni.dim_degree_detail.degree_northwestern_university_indicator%type
+    , degree_organization_name dm_alumni.dim_degree_detail.degree_organization_name%type
+    , degree_school_name dm_alumni.dim_degree_detail.degree_school_name%type
+    , degree_level dm_alumni.dim_degree_detail.degree_level%type
+    , degree_year dm_alumni.dim_degree_detail.degree_year%type
+    , degree_conferred_year dm_alumni.dim_degree_detail.degree_conferred_year%type
+    , degree_reunion_year dm_alumni.dim_degree_detail.degree_reunion_year%type
+    , degree_code dm_alumni.dim_degree_detail.degree_code%type
+    , degree_name dm_alumni.dim_degree_detail.degree_name%type
+    , degree_concentration_desc dm_alumni.dim_degree_detail.degree_concentration_desc%type
+    , department_code stg_alumni.ucinn_ascendv2__academic_organization__c.ucinn_ascendv2__code__c%type
+    , department_desc stg_alumni.ucinn_ascendv2__academic_organization__c.ucinn_ascendv2__description_short__c%type
+    , department_desc_full stg_alumni.ucinn_ascendv2__academic_organization__c.ucinn_ascendv2__description_long__c%type
+    , degree_campus dm_alumni.dim_degree_detail.degree_campus%type
+    , degree_major_name dm_alumni.dim_degree_detail.degree_major_name%type
+    , degree_minor_name dm_alumni.dim_degree_detail.degree_minor_name%type
+    , degree_notes stg_alumni.ucinn_ascendv2__degree_information__c.ap_notes__c%type
+    , etl_update_date dm_alumni.dim_degree_detail.etl_update_date%type
 );
 
 --------------------------------------
@@ -266,8 +287,42 @@ Cursor c_organization Is
 
 --------------------------------------
 Cursor c_degrees Is
-  Select NULL
-  From dm_alumni.dim_degree_detail
+  Select
+    degdet.constituent_donor_id
+    , degdet.constituent_name
+    , degdet.degree_record_id
+    , degdet.degree_status
+    , degdet.degree_northwestern_university_indicator
+    , degdet.degree_organization_name
+    , degdet.degree_school_name
+    , degdet.degree_level
+    , degdet.degree_year
+    , degdet.degree_conferred_year
+    , degdet.degree_reunion_year
+    , degdet.degree_code
+    , degdet.degree_name
+    , nullif(degdet.degree_concentration_desc, '-')
+      As degree_concentration_desc
+    , acaorg.ucinn_ascendv2__code__c
+      As department_code
+    , acaorg.ucinn_ascendv2__description_short__c
+      As department_desc
+    , acaorg.ucinn_ascendv2__description_long__c
+      As department_desc_full
+    , degdet.degree_campus
+    , degdet.degree_major_name
+    , degdet.degree_minor_name
+    , deginf.ap_notes__c
+      As degree_notes
+    , trunc(degdet.etl_update_date)
+      As etl_update_date
+  From dm_alumni.dim_degree_detail degdet
+  -- Degree information detail
+  Inner Join stg_alumni.ucinn_ascendv2__degree_information__c deginf
+    On deginf.name = degdet.degree_record_id
+  -- Academic orgs, aka department
+  Left Join stg_alumni.ucinn_ascendv2__academic_organization__c acaorg
+    On acaorg.id = deginf.ap_academic_group__c
 ;
 
 --------------------------------------
