@@ -226,7 +226,8 @@ Cursor c_constituent Is
       As preferred_address_country
     , trunc(etl_update_date)
       As etl_update_date
-  From dm_alumni.dim_constituent entity
+  From dm_alumni.dim_constituent con
+  Where con.constituent_salesforce_id != '-'
 ;
 
 --------------------------------------
@@ -260,6 +261,7 @@ Cursor c_organization Is
     , trunc(etl_update_date)
       As etl_update_date
   From dm_alumni.dim_organization org
+  Where org.organization_salesforce_id != '-'
 ;
 
 --------------------------------------

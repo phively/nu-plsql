@@ -79,15 +79,22 @@ Cursor c_entity Is
     , c.sort_name
     , c.is_deceased_indicator
     , c.primary_constituent_type As primary_record_type
-    , c.institutional_suffix
-    , c.spouse_donor_id
-    , c.spouse_name
-    , c.spouse_instituitional_suffix
+    , nullif(c.institutional_suffix, '-')
+      As institutional_suffix
+    , nullif(c.spouse_donor_id, '-')
+      As spouse_donor_id
+    , nullif(c.spouse_name, '-')
+      As spouse_name
+    , nullif(c.spouse_instituitional_suffix, '-')
+      As spouse_instituitional_suffix
     , NULL As org_ult_parent_donor_id
     , NULL As org_ult_parent_name
-    , c.preferred_address_city
-    , c.preferred_address_state
-    , c.preferred_address_country
+    , nullif(c.preferred_address_city, '-')
+      As preferred_address_city
+    , nullif(c.preferred_address_state, '-')
+      As preferred_address_state
+    , nullif(c.preferred_address_country, '-')
+      As preferred_address_country
     , c.etl_update_date
   From table(dw_pkg_base.tbl_constituent) c
   ) Union All ( 
@@ -107,9 +114,12 @@ Cursor c_entity Is
     , NULL As spouse_institutional_suffix
     , o.org_ult_parent_donor_id
     , o.org_ult_parent_name
-    , o.preferred_address_city
-    , o.preferred_address_state
-    , o.preferred_address_country
+    , nullif(o.preferred_address_city, '-')
+      As preferred_address_city
+    , nullif(o.preferred_address_state, '-')
+      As preferred_address_state
+    , nullif(o.preferred_address_country, '-')
+      As preferred_address_country
     , o.etl_update_date
   From table(dw_pkg_base.tbl_organization) o
   )
