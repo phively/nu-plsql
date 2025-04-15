@@ -28,7 +28,7 @@ py_start_month_py21 Constant number := 6; -- performance start month, 6 = June i
 Public type declarations
 *************************************************************************/
 
-Type calendar Is Record (
+Type rec_calendar Is Record (
   today date
   , yesterday date
   , yesterday_last_year date
@@ -55,7 +55,7 @@ Type calendar Is Record (
 Public table declarations
 *************************************************************************/
 
-Type t_calendar Is Table Of calendar;
+Type calendar Is Table Of rec_calendar;
 
 /*************************************************************************
 Public function declarations
@@ -107,10 +107,14 @@ Public pipelined functions declarations
 -- Returns a 1-row table with selectable date objects (safe to cross join)
 -- Pipelined version
 Function tbl_current_calendar
-  Return t_calendar Pipelined;
+  Return calendar Pipelined;
+
+End ksm_pkg_calendar;
+/
+Create Or Replace Package Body ksm_pkg_calendar Is
 
 /*************************************************************************
-Public cursors -- data definitions
+Private cursors -- data definitions
 *************************************************************************/
 
 -- Compiles useful dates together for use in other functions.
@@ -193,10 +197,6 @@ Cursor c_current_calendar (
   From curr_date
   ;
 
-End ksm_pkg_calendar;
-/
-Create Or Replace Package Body ksm_pkg_calendar Is
-
 /*************************************************************************
 Functions
 *************************************************************************/
@@ -223,6 +223,7 @@ Function get_numeric_constant(const_name In varchar2)
       Return val;
   End;
 
+--------------------------------------
 -- Fiscal year to date indicator: Takes as an argument any date object and returns Y/N
 Function fytd_indicator(dt In date, day_offset In number)
   Return character Is
@@ -259,6 +260,7 @@ Function fytd_indicator(dt In date, day_offset In number)
     Return(output);
   End;
 
+--------------------------------------
 -- Compute fiscal or performance quarter from date
 -- Defaults to fiscal quarter
 Function get_quarter(dt In date, fisc_or_perf In varchar2 Default 'fiscal')
@@ -279,6 +281,7 @@ Function get_quarter(dt In date, fisc_or_perf In varchar2 Default 'fiscal')
     Return ceil(chron_month / 3);
   End;
 
+--------------------------------------
 -- Compute fiscal month from date
 Function get_fiscal_month(
   dt In date
@@ -292,6 +295,7 @@ Function get_fiscal_month(
     Return ksm_pkg_utility.mod_math(this_month - fy_start_month, 12) + 1;
   End;
 
+--------------------------------------
 -- Compute fiscal year from date parameter
 -- Date version
 Function get_fiscal_year(dt In date)
@@ -326,6 +330,7 @@ Function get_fiscal_year(dt In varchar2, format In varchar2 Default 'yyyy/mm/dd'
     Return (this_year + 1);
   End;
 
+--------------------------------------
 -- Compute performance year from date parameter
 -- Date version
 Function get_performance_year(dt In date)
@@ -357,9 +362,9 @@ Pipelined functions
 
 -- Pipelined function returning the current calendar definition
 Function tbl_current_calendar
-  Return t_calendar Pipelined As
+  Return calendar Pipelined As
   -- Declarations
-  cal t_calendar;
+  cal calendar;
     
   Begin
     Open c_current_calendar(fy_start_month, py_start_month);
