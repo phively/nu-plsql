@@ -39,7 +39,7 @@ Type rec_constituent Is Record (
   , spouse_instituitional_suffix dm_alumni.dim_constituent.spouse_instituitional_suffix%type
   , preferred_address_city dm_alumni.dim_constituent.preferred_address_city%type
   , preferred_address_state dm_alumni.dim_constituent.preferred_address_state%type
-  , preferred_address_country_name dm_alumni.dim_constituent.preferred_address_country_name%type
+  , preferred_address_country dm_alumni.dim_constituent.preferred_address_country_name%type
   , etl_update_date dm_alumni.dim_constituent.etl_update_date%type
 );
 
@@ -57,7 +57,7 @@ Type rec_organization Is Record (
   , org_ult_parent_name dm_alumni.dim_organization.organization_ultimate_parent_name%type
   , preferred_address_city dm_alumni.dim_organization.preferred_address_city%type
   , preferred_address_state dm_alumni.dim_organization.preferred_address_state%type
-  , preferred_address_country_name dm_alumni.dim_organization.preferred_address_country_name%type
+  , preferred_address_country dm_alumni.dim_organization.preferred_address_country_name%type
   , etl_update_date dm_alumni.dim_organization.etl_update_date%type
 );
 
@@ -223,6 +223,7 @@ Cursor c_constituent Is
     , preferred_address_city
     , preferred_address_state
     , preferred_address_country_name
+      As preferred_address_country
     , trunc(etl_update_date)
       As etl_update_date
   From dm_alumni.dim_constituent entity
@@ -237,7 +238,11 @@ Cursor c_organization Is
       As ult_parent_id
     , organization_donor_id
       As donor_id
-    , Case When organization_donor_id = organization_ultimate_parent_donor_id Then 'Y' End
+    , Case
+        When organization_donor_id = organization_ultimate_parent_donor_id
+          Then 'Y'
+        Else 'N'
+        End
       As org_primary
     , organization_name
     , organization_name
@@ -251,6 +256,7 @@ Cursor c_organization Is
     , preferred_address_city
     , preferred_address_state
     , preferred_address_country_name
+      As preferred_address_country
     , trunc(etl_update_date)
       As etl_update_date
   From dm_alumni.dim_organization org
