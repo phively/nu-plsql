@@ -59,3 +59,13 @@ Select
     , ksm_pkg_utility.to_number_from_dollar('$$10') As "NULL: too many dollar signs"
 From DUAL
 ;
+
+-- nvl_set
+Select
+      ksm_pkg_utility.nvl_set('AB') As "AB"
+    , ksm_pkg_utility.nvl_set('A-') As "A-"
+    , ksm_pkg_utility.nvl_set('-B') As "-B"
+    , ksm_pkg_utility.nvl_set('-') As "NULL"
+    , ksm_pkg_utility.nvl_set('--') As "--"
+From DUAL
+;
