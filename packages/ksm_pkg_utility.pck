@@ -54,14 +54,6 @@ Function to_number_from_dollar(
   str In varchar2
 ) Return number;
 
---------------------------------------
--- Return NULL if string equals mask
--- For handling '-' fields in dm_alumni tables
-Function nvl_set(
-  data In string
-  , mask In string Default '-'
-) Return string;
-
 End ksm_pkg_utility;
 /
 Create Or Replace Package Body ksm_pkg_utility Is
@@ -205,22 +197,6 @@ Function to_number_from_dollar(str In varchar2)
     From DUAL;
     
     Return amt * mult;
-  End;
-
---------------------------------------
--- Return NULL if string equals mask
--- For handling '-' fields in dm_alumni tables
-Function nvl_set(
-  data In string
-  , mask In string Default '-'
-  ) Return string Is
-  
-  Begin
-    If data = mask
-      Then return NULL;
-    Else
-      Return data;
-    End If;
   End;
 
 End ksm_pkg_utility;
