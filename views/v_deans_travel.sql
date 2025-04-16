@@ -3,6 +3,9 @@ Create or Replace View v_deans_travel as
 with p as (select *
 from rpt_pbh634.VT_KSM_PRS_Pool p ),
 
+e as (select *
+from entity),
+
 G as (Select
 gc.*
 From table(rpt_pbh634.ksm_pkg_tmp.tbl_geo_code_primary) gc
@@ -56,7 +59,10 @@ Business As(Select DISTINCT
 
 
 --- Assignment Revision: Now include the Office, so we will use this subquery for PM/LGOs
-assign as (select assign.id_number,
+
+--- Don't think we need this now! Just the assingment view 
+
+/* assign as (select assign.id_number,
 assign.prospect_manager,
 assign.lgos,
 a.office_code,
@@ -67,7 +73,7 @@ TMS_OFFICE.short_desc
 from rpt_pbh634.v_assignment_summary assign
 left join assignment a on a.id_number = assign.id_number 
 left join TMS_OFFICE ON TMS_OFFICE.office_code = a.office_code 
-),
+), */
 
 
 --- employment general
@@ -290,8 +296,10 @@ from o
 where o.id_number is not null 
 group by o.id_number),
 
+/*
+
 final_manage as (
-select entity.id_number,
+select e.id_number,
 pm.assignment_report_name as prospect_manager,
 pm.assignment_type as pm_assign_type,
 pm.office_desc as office,
@@ -301,10 +309,17 @@ lgo.office_desc as lgo_office,
 ostag.assignment_report_name as other_manager,
 ostag.assignment_type as other_assign_type,
 ostag.office_desc as other_office
-from entity 
-left join pm on pm.id_number = entity.id_number
-left join lgo on lgo.id_number = entity.id_number
-left join ostag on ostag.id_number = entity.id_number),
+from e
+left join pm on pm.id_number = e.id_number
+left join lgo on lgo.id_number = e.id_number
+left join ostag on ostag.id_number = e.id_number),  */
+
+assignment as (select assign.id_number,
+       assign.prospect_manager,
+       assign.lgos,
+       assign.managers,
+       assign.curr_ksm_manager
+from rpt_pbh634.v_assignment_summary assign),
 
 tran as (select distinct HH.ID_NUMBER
 FROM rpt_pbh634.v_ksm_giving_trans_hh HH
@@ -366,7 +381,7 @@ select e.id_number
                EBFA.EBFA_indicator || Case When EBFA.EBFA_indicator Is Not Null Then ', ' End ||  
                PEAC_ASIA.PEAC_ASIA_indicator) 
              within group ( order by e.id_number ) as list_agg_committees
-from entity e
+from e
 left join GAB on e.id_number = GAB.id_number
 left join REAC on e.id_number = REAC.id_number
 left join AMP on e.id_number = AMP.id_number
@@ -431,7 +446,8 @@ ard as (
     , vcrf.next_fy_start
     , vcrf.yesterday
     , vcrf.ninety_days_ago
-  From rpt_pbh634.v_contact_reports_fast vcrf),
+  From rpt_pbh634.v_contact_reports_fast vcrf  
+  ),
   
   
 --- Melanie wants to see Visits by everyone! 
@@ -448,10 +464,9 @@ fard as (select
     max (ard.contact_date) keep (dense_rank first order by contact_date desc) as contact_date,
     max (ard.fiscal_year) keep (dense_rank first order by contact_date desc) as fiscal_year,
     max (ard.description) keep (dense_rank first order by contact_date desc) as description,
-    max (ard.summary) keep (dense_rank first order by contact_date desc) as summary   
-
-    
-from ard 
+    max (ard.summary) keep (dense_rank first order by contact_date desc) as summary,   
+    max (ard.frontline_ksm_staff) keep (dense_rank first order by contact_date desc) as frontline_ksm_staff
+    from ard 
 group by ard.id_number),  
 
 --- last visit! 
@@ -469,7 +484,8 @@ l as (select
     max (ard.contact_date) keep (dense_rank first order by contact_date desc) as contact_date,
     max (ard.fiscal_year) keep (dense_rank first order by contact_date desc) as fiscal_year,
     max (ard.description) keep (dense_rank first order by contact_date desc) as description,
-    max (ard.summary) keep (dense_rank first order by contact_date desc) as summary   
+    max (ard.summary) keep (dense_rank first order by contact_date desc) as summary,
+    max (ard.frontline_ksm_staff) keep (dense_rank first order by contact_date desc) as frontline_ksm_staff
 from ard 
 where ard.contact_type = 'Visit'
 group by ard.id_number),
@@ -486,7 +502,8 @@ l.contact_name as last_nu_visit_contact_name,
 l.contact_date as last_nu_visit_contact_date,
 l.fiscal_year as last_nu_visit_fiscal_year,
 l.description as last_nu_visit_description,
-l.summary as last_nu_visit_summary
+l.summary as last_nu_visit_summary,
+case when l.frontline_ksm_staff = 'Y' or l.credited = '0000804796' then 'Y' end as frontline_ksm_staff
 from l 
 where l.contact_type = 'Visit'
 ), 
@@ -494,7 +511,7 @@ where l.contact_type = 'Visit'
 
 --- Final subquery since the propsect pool is slow
 
-finals as (select entity.id_number,
+finals as (select e.id_number,
 ---a.lgos,
 csuite.job_title as c_suite_job_title,
 csuite.employer_name as c_suite_employer_name,
@@ -540,8 +557,10 @@ fard.contact_date,
 fard.fiscal_year,
 fard.description,
 fard.summary,
+case when fard.frontline_ksm_staff = 'Y' or fard.credited = '0000804796' then 'Y' end as frontline_ksm_staff,
 lnuv.last_nu_visit_credited,
 lnuv.last_nu_visit_credit_name,
+lnuv.frontline_ksm_staff as last_nu_visit_front_ksm_staff,
 lnuv.last_nu_visit_credit_type,
 lnuv.last_nu_visit_contact_type,
 lnuv.last_nu_visit_contact_purpose, 
@@ -549,22 +568,26 @@ lnuv.last_nu_visit_report_id,
 lnuv.last_nu_visit_contact_date,
 lnuv.last_nu_visit_fiscal_year,
 lnuv.last_nu_visit_description,
-lnuv.last_nu_visit_summary
-from entity 
+lnuv.last_nu_visit_summary,
+assignment.lgos,
+assignment.prospect_manager 
+from e
 ---left join assign a on a.id_number = entity.id_number
-left join em on em.id_number = entity.id_number
-left join csuite on csuite.id_number = entity.id_number
-left join armod on armod.id_number = entity.id_number
-left join intr on intr.id_number = entity.id_number
-left join c on c.id_number = entity.id_number
-left join Business b on b.id_number = entity.id_number 
-left join tran on tran.id_number = entity.id_number 
-left join fcom on fcom.id_number = entity.id_number 
-left join prime on prime.id_number = entity.id_number 
-left join linked on linked.id_number = entity.id_number 
-left join fard on fard.id_number = entity.id_number 
-left join lnuv on lnuv.id_number = entity.id_number
-
+left join em on em.id_number = e.id_number
+left join csuite on csuite.id_number = e.id_number
+left join armod on armod.id_number = e.id_number
+left join intr on intr.id_number = e.id_number
+left join c on c.id_number = e.id_number
+left join Business b on b.id_number = e.id_number 
+left join tran on tran.id_number = e.id_number 
+left join fcom on fcom.id_number = e.id_number 
+left join prime on prime.id_number = e.id_number 
+left join linked on linked.id_number = e.id_number 
+left join fard on fard.id_number = e.id_number 
+left join lnuv on lnuv.id_number = e.id_number
+--- Since Melanie only wants prospect manager and LGo, then let's take out this query which makes my code run forever, replace view paul's assignment view
+---left join final_manage on final_manage.id_number = e.id_number 
+left join assignment on assignment.id_number = e.id_number 
 ---left join KSM_Faculty_Staff kfs on kfs.id_number = entity.id_number
 )
 
@@ -623,6 +646,10 @@ select distinct p.ID_NUMBER,
        case when finals.c_suite_job_title is not null then 'Y' end as c_suite_job_title_ind,
        finals.fld_of_work,---- finals.interest, We want fld of work 7/11/24  
        finals.linkedin_address,
+       P.task_outreach_next_id AS task_id,
+       P.task_outreach_sched_date,
+       P.task_outreach_responsible, 
+       P.task_outreach_desc,
        --- preferred 
        ---finals.primary_address_type,
        --finals.primary_city,
@@ -655,21 +682,20 @@ select distinct p.ID_NUMBER,
       --- p.UOR_EVALUATOR_ID,
        p.UOR_EVALUATOR,
        p.AF_10K_MODEL,
-       p.AF_10K_SCORE,
+       ---p.AF_10K_SCORE,
        p.MGO_ID_MODEL,
        ---p.MGO_ID_SCORE,
        p.MGO_PR_MODEL,
-     /*  ---p.MGO_PR_SCORE,
-       ---fm.prospect_manager,
+      ---p.MGO_PR_SCORE,
+       finals.prospect_manager,
        ---fm.pm_assign_type,
        ---fm.office,
-       ---fm.lgo,
+       finals.lgos,
        ---fm.lgo_assign_type,
        ---fm.lgo_office,
        ---fm.other_manager,
        ---fm.other_assign_type,
        ---fm.other_office,
-        Boards and Councils Melanie will send 7/11/24 */
        finals.list_agg_committees,      
        p.TEAM,
        p.PROSPECT_STAGE,
@@ -710,35 +736,53 @@ finals.AE_MODEL_SCORE,
 --- Most Recent Visits with the Dean 
 fran.count_dean_events,
 dvisit.count_dean_visit, 
-finals.last_credited_dean_ID as last_dean_visit_credited_id,
-finals.last_credited_dean_name as last_dean_visit_credited_name,
-finals.last_contact_dean_type as last_dean_visit_type,
-finals.last_contact_dean_purpose as last_dean_visit_purpose,
-finals.last_contact_dean_name as last_dean_visit_contact_name,
-finals.last_contact_dean_date as last_dean_visit_date,
-finals.last_dean_description as last_dean_visit_description,
----- Last Visit - Any Person - ARD or NON ARD 
-finals.credited as last_nu_credited,
-finals.credited_name as last_nu_credited_name,
-finals.contact_credit_type as last_nu_contact_credit_type,
-finals.contact_type as last_nu_contact_type,
-finals.contact_purpose as last_nu_contact_purpose,
+---finals.last_credited_dean_ID as last_dean_visit_credited_id,
+---finals.last_credited_dean_name as last_dean_visit_credited_name,
+---finals.last_contact_dean_type as last_dean_visit_type,
+---finals.last_contact_dean_purpose as last_dean_visit_purpose,
+---finals.last_contact_dean_name as last_dean_visit_contact_name,
+finals.last_contact_dean_date as CONTACT_DATE_DEAN_LV,
+finals.last_dean_description as DESCRIPTION_DEAN_LV,
+---- Last contact - Any Person - ARD or NON ARD 
+---finals.credited as last_nu_credited,
+finals.credited_name as last_credited_name,
+finals.frontline_ksm_staff as ksm_frontline_staff_flag,
+--finals.contact_credit_type as last_contact_type,
+finals.contact_type as last_contact_type,
+finals.contact_purpose as last_contact_purpose,
 finals.report_id as last_nu_report_id,
-finals.contact_name as last_nu_contact_name,
-finals.contact_date as last_nu_contact_date,
-finals.fiscal_year as last_nu_fiscal_year,
-finals.description as last_nu_description,
-finals.summary as last_nu_summary,
-finals.last_nu_visit_credited,
-finals.last_nu_visit_credit_name,
-finals.last_nu_visit_credit_type,
-finals.last_nu_visit_contact_type,
-finals.last_nu_visit_contact_purpose, 
-finals.last_nu_visit_report_id,
-finals.last_nu_visit_contact_date,
-finals.last_nu_visit_fiscal_year,
-finals.last_nu_visit_description,
-finals.last_nu_visit_summary
+----finals.contact_name as last_nu_contact_name,
+finals.contact_date as last_contact_date,
+---finals.fiscal_year as last_nu_fiscal_year,
+finals.description as last_contact_desc,
+---finals.summary as last_nu_summary,
+
+/*
+
+lnuv.last_nu_visit_credited,
+lnuv.last_nu_visit_credit_name,
+lnuv.frontline_ksm_staff as last_nu_visit_front_ksm_staff,
+lnuv.last_nu_visit_credit_type,
+lnuv.last_nu_visit_contact_type,
+lnuv.last_nu_visit_contact_purpose, 
+lnuv.last_nu_visit_report_id,
+lnuv.last_nu_visit_contact_date,
+lnuv.last_nu_visit_fiscal_year,
+lnuv.last_nu_visit_description,
+lnuv.last_nu_visit_summary */
+
+
+finals.last_nu_visit_credited as last_visit_credited,
+finals.last_nu_visit_credit_name as last_visit_credit_name,
+finals.last_nu_visit_front_ksm_staff,
+---finals.last_nu_visit_credit_type,
+---finals.last_nu_visit_contact_type,
+finals.last_nu_visit_contact_purpose as last_visit_contact_purpose, 
+finals.last_nu_visit_report_id as last_nu_visit_report_id,
+finals.last_nu_visit_contact_date as last_visit_contact_date,
+---finals.last_nu_visit_fiscal_year,
+finals.last_nu_visit_description as last_visit_description
+---finals.last_nu_visit_summary
 from p
 inner join finals on finals.id_number = p.id_number 
 left join fran on fran.id_number = p.id_number 
