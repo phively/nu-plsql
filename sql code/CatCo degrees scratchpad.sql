@@ -111,19 +111,21 @@ Inner Join degmap
 
 -- Reduce use of dm_alumni.dim_degree_detail
   Select
-    ddd.constituent_donor_id
-    , ddd.constituent_name
+    dcon.constituent_donor_id
+    , dcon.full_name
+      As constituent_name
     , deginf.name
       As degree_record_id
     , deginf.ap_status__c
       As degree_status
     , Case
-        When deginf.Ucinn_Ascendv2__Degree_Institution__c = '001O800000B8YHhIAN'
+        When deginf.Ucinn_Ascendv2__Degree_Institution__c = '001O800000B8YHhIAN' -- Northwestern University
           Then 'Y'
           Else 'N'
         End
       As degree_northwestern_university_indicator
-    , ddd.degree_organization_name
+    , dorg.organization_name
+      As degree_organization_name
     , deginf.ap_school_name_formula__c
       As degree_school_name
     , deginf.ap_degree_type_from_degreecode__c
@@ -132,6 +134,8 @@ Inner Join degmap
       As degree_year
     , deginf.ucinn_ascendv2__reunion_year__c
       As degree_reunion_year
+    , deginf.ucinn_ascendv2__degree_date__c
+      As degree_grad_date
     , degcd.ucinn_ascendv2__degree_code__c
       As degree_code
     , degcd.ucinn_ascendv2__description__c
@@ -146,20 +150,39 @@ Inner Join degmap
       As department_desc_full
     , deginf.ap_campus__c
       As degree_campus
-    , ddd.degree_major_name
-    , ddd.degree_minor_name
+    , postcd.ap_major_code__c
+      As degree_major_code_1
+    , postcd2.ap_major_code__c
+      As degree_major_code_2
+    , postcd3.ap_major_code__c
+      As degree_major_code_3
+    , postcd.name
+      As degree_major_1
+    , postcd2.name
+      As degree_major_2
+    , postcd3.name
+      As degree_major_3
     , deginf.ap_notes__c
       As degree_notes
-    , trunc(deginf.etl_update_date)
+    , trunc(deginf.etl_update_date) -- data refresh timestamp
       As etl_update_date
   -- Degree information detail
   From stg_alumni.ucinn_ascendv2__degree_information__c deginf
-  -- Constituent/org donor ID helper table
-  Inner Join dm_alumni.dim_degree_detail ddd
-    On ddd.degree_record_id = deginf.name
+  -- Constituent and organization lookup tables
+  Inner Join dm_alumni.dim_constituent dcon
+    On dcon.constituent_salesforce_id = deginf.ucinn_ascendv2__contact__c
+  Left Join dm_alumni.dim_organization dorg
+    On dorg.organization_salesforce_id = deginf.ucinn_ascendv2__degree_institution__c
   -- Degree code
   Left Join stg_alumni.ucinn_ascendv2__degree_code__c degcd
     On degcd.id = deginf.ucinn_ascendv2__degree_code__c
+  -- Major codes
+  Left Join stg_alumni.ucinn_ascendv2__post_code__c postcd
+    On postcd.id = deginf.ucinn_ascendv2__post_code__c
+  Left Join stg_alumni.ucinn_ascendv2__post_code__c postcd2
+    On postcd2.id = deginf.ucinn_ascendv2__second_major_post_code__c
+  Left Join stg_alumni.ucinn_ascendv2__post_code__c postcd3
+    On postcd3.id = deginf.ap_third_major_post_code__c
   -- Specialty code
   Left Join stg_alumni.ucinn_ascendv2__specialty__c spec
     On spec.id = deginf.ucinn_ascendv2__concentration_specialty__c
