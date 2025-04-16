@@ -816,7 +816,7 @@ Function get_gift_source_donor_ksm(receipt In varchar2, debug In boolean Default
         dbms_output.put_line('==== Matching Gift! ====' || chr(10) || '*Matching receipt: ' || receipt);
       End If;
       -- Pull the matched receipt into id_tmp
-      Select gift.matched_receipt_nbr
+      Select min(gift.matched_receipt_nbr)
       Into id_tmp
       From nu_gft_trp_gifttrans gift
       Where gift.tx_number = receipt;
