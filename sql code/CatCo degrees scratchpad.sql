@@ -108,3 +108,62 @@ Left Join stg_alumni.ucinn_ascendv2__academic_organization__c acaorg
 Inner Join degmap
   On degmap.donor_id = degdet.constituent_donor_id
 ;
+
+-- Reduce use of dm_alumni.dim_degree_detail
+  Select
+    ddd.constituent_donor_id
+    , ddd.constituent_name
+    , deginf.name
+      As degree_record_id
+    , deginf.ap_status__c
+      As degree_status
+    , Case
+        When deginf.Ucinn_Ascendv2__Degree_Institution__c = '001O800000B8YHhIAN'
+          Then 'Y'
+          Else 'N'
+        End
+      As degree_northwestern_university_indicator
+    , ddd.degree_organization_name
+    , deginf.ap_school_name_formula__c
+      As degree_school_name
+    , deginf.ap_degree_type_from_degreecode__c
+      As degree_level
+    , deginf.ucinn_ascendv2__conferred_degree_year__c
+      As degree_year
+    , deginf.ucinn_ascendv2__reunion_year__c
+      As degree_reunion_year
+    , degcd.ucinn_ascendv2__degree_code__c
+      As degree_code
+    , degcd.ucinn_ascendv2__description__c
+      As degree_name
+    , spec.name
+      As degree_concentration_desc
+    , acaorg.ucinn_ascendv2__code__c
+      As department_code
+    , acaorg.ucinn_ascendv2__description_short__c
+      As department_desc
+    , acaorg.ucinn_ascendv2__description_long__c
+      As department_desc_full
+    , deginf.ap_campus__c
+      As degree_campus
+    , ddd.degree_major_name
+    , ddd.degree_minor_name
+    , deginf.ap_notes__c
+      As degree_notes
+    , trunc(deginf.etl_update_date)
+      As etl_update_date
+  -- Degree information detail
+  From stg_alumni.ucinn_ascendv2__degree_information__c deginf
+  -- Constituent/org donor ID helper table
+  Inner Join dm_alumni.dim_degree_detail ddd
+    On ddd.degree_record_id = deginf.name
+  -- Degree code
+  Left Join stg_alumni.ucinn_ascendv2__degree_code__c degcd
+    On degcd.id = deginf.ucinn_ascendv2__degree_code__c
+  -- Specialty code
+  Left Join stg_alumni.ucinn_ascendv2__specialty__c spec
+    On spec.id = deginf.ucinn_ascendv2__concentration_specialty__c
+  -- Academic orgs, aka department
+  Left Join stg_alumni.ucinn_ascendv2__academic_organization__c acaorg
+    On acaorg.id = deginf.ap_academic_group__c
+;
