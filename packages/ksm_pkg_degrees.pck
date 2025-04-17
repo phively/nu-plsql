@@ -1,17 +1,28 @@
 Create Or Replace Package ksm_pkg_degrees Is
 
 /*************************************************************************
+Author  : PBH634
+Created : 4/17/2025
+Purpose : Kellogg alumni definition, program hierarchy, and degree strings.
+Dependencies: dw_pkg_base
+
+Suggested naming conventions:
+  Pure functions: [function type]_[description]
+  Row-by-row retrieval (slow): get_[object type]_[action or description] e.g.
+  Table or cursor retrieval (fast): tbl_[object type]_[action or description]
+*************************************************************************/
+
+/*************************************************************************
 Public constant declarations
 *************************************************************************/
 
 pkg_name Constant varchar2(64) := 'ksm_pkg_degrees';
-collect_default_limit Constant pls_integer := 50;
 
 /*************************************************************************
 Public type declarations
 *************************************************************************/
 
-Type degreed_alumni Is Record (
+Type rec_entity_degrees_concat Is Record (
   id_number entity.id_number%type
   , report_name entity.report_name%type
   , record_status_code entity.record_status_code%type
@@ -34,33 +45,40 @@ Type degreed_alumni Is Record (
 Public table declarations
 *************************************************************************/
 
-Type t_degreed_alumni Is Table Of degreed_alumni;
-
-/*************************************************************************
-Public functions declarations
-*************************************************************************/
-
--- Quick SQL-only retrieval of KSM degrees concat
-Function get_entity_degrees_concat_fast(
-  id In varchar2
-) Return varchar2;
+Type entity_degrees_concat Is Table Of rec_entity_degrees_concat;
 
 /*************************************************************************
 Public pipelined functions declarations
 *************************************************************************/
 
--- Table functions
-Function tbl_entity_degrees_concat_ksm(
-    limit_size In pls_integer Default collect_default_limit
-  )
-  Return t_degreed_alumni Pipelined;
+Function tbl_entity_degrees_concat
+  Return entity_degrees_concat Pipelined;
+
+/*********************** About pipelined functions ***********************
+Q: What is a pipelined function?
+
+A: Pipelined functions are used to return the results of a cursor row by row.
+This is an efficient way to re-use a cursor between multiple programs. Pipelined
+tables can be queried in SQL exactly like a table when embedded in the table()
+function. My experience has been that thanks to the magic of the Oracle compiler,
+joining on a table() function scales hugely better than running a function once
+on each element of a returned column. Note that the exact columns returned need
+to be specified as a public type, which I did in the type and table declarations
+above, or the pipelined function can't be run in pure SQL. Alternately, the
+pipelined function could return a generic table, but the columns would still need
+to be individually named.
+*************************************************************************/
+
+End ksm_pkg_degrees;
+/
+Create Or Replace Package Body ksm_pkg_degrees Is
 
 /*************************************************************************
-Public cursors -- data definitions
+Private cursors -- data definitions
 *************************************************************************/
 
 -- Kellogg degrees concatenated
-Cursor c_entity_degrees_concat_ksm Is
+Cursor c_entity_degrees_concat Is
   With
   -- Stewardship concatenated years: uses Distinct to de-dupe multiple degrees in one year
   stwrd_yrs As (
@@ -363,65 +381,25 @@ Cursor c_entity_degrees_concat_ksm Is
     Left Join stwrd_deg On stwrd_deg.id_number = concat.id_number
     ;
 
-End ksm_pkg_degrees;
-/
-
-Create Or Replace Package Body ksm_pkg_degrees Is
-
-/*************************************************************************
-Functions
-*************************************************************************/
-
--- Row by row degree years concat
-Function get_entity_degrees_concat_fast(id In varchar2)
-  Return varchar2 Is
-  -- Declarations
-  deg_conc varchar2(1024);
-  
-  Begin
-  
-    Select
-      -- Concatenated degrees string
-      Listagg(
-        trim(degree_year || ' ' || degree_code || ' ' || school_code || ' ' || 
-          tms_dept_code.short_desc || ' ' || class_section), '; '
-      ) Within Group (Order By degree_year) As degrees_concat
-    Into deg_conc
-    From degrees
-      Left Join tms_dept_code On degrees.dept_code = tms_dept_code.dept_code
-    Where institution_code = '31173'
-      And school_code in('BUS', 'KSM')
-      And id_number = id
-    Group By id_number;
-    
-    Return deg_conc;
-  End;
 
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
 
 -- Table function
-Function tbl_entity_degrees_concat_ksm(
-    limit_size In pls_integer Default collect_default_limit
-  )
-  Return t_degreed_alumni Pipelined As
+Function tbl_entity_degrees_concat
+  Return entity_degrees_concat Pipelined As
   -- Declarations
-  degrees t_degreed_alumni;
+  deg entity_degrees_concat;
     
   Begin
-    If c_entity_degrees_concat_ksm %ISOPEN then
-      Close c_entity_degrees_concat_ksm;
-    End If;
-    Open c_entity_degrees_concat_ksm;
-    Loop
-      Fetch c_entity_degrees_concat_ksm Bulk Collect Into degrees Limit limit_size;
-      Exit When degrees.count = 0;
-      For i in 1..(degrees.count) Loop
-        Pipe row(degrees(i));
-      End Loop;
+    Open c_entity_degrees_concat;
+      Fetch c_entity_degrees_concat Bulk Collect Into deg;
+    Close c_entity_degrees_concat;
+    -- Pipe out the rows
+    For i in 1..(deg.count) Loop
+      Pipe row(deg(i));
     End Loop;
-    Close c_entity_degrees_concat_ksm;
     Return;
   End;
 

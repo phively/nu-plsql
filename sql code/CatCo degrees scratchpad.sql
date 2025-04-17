@@ -1,30 +1,6 @@
--- Previously "Department" in CATracks
-Select *
-From stg_alumni.ucinn_ascendv2__academic_organization__c
-;
-
-Select *
-From dm_alumni.dim_academic_organization
-;
-
--- Degree types
-Select *
-From stg_alumni.ucinn_ascendv2__degree_code__c
-;
-
--- Degrees
-Select *
-From stg_alumni.ucinn_ascendv2__degree_information__c
-;
-
-Select *
-From dm_alumni.dim_degree_detail
-;
-
 -- Test records
-With
+Create Or Replace View test_v_degmap As
 
-degmap As (
   Select NULL as donor_id, NULL as deg_short_desc From DUAL
   -- FT
   Union All Select '0000002207' as donor_id, 'FT' as deg_short_desc From DUAL
@@ -66,7 +42,30 @@ degmap As (
   Union All Select '0000717174' as donor_id, 'EXECED' as deg_short_desc From DUAL
   Union All Select '0000837120' as donor_id, 'EXECED' as deg_short_desc From DUAL
   -- NONGRD - various; spot check above
-)
+;
+
+-- Previously "Department" in CATracks
+Select *
+From stg_alumni.ucinn_ascendv2__academic_organization__c
+;
+
+Select *
+From dm_alumni.dim_academic_organization
+;
+
+-- Degree types
+Select *
+From stg_alumni.ucinn_ascendv2__degree_code__c
+;
+
+-- Degrees
+Select *
+From stg_alumni.ucinn_ascendv2__degree_information__c
+;
+
+Select *
+From dm_alumni.dim_degree_detail
+;
 
 Select
   degmap.deg_short_desc
@@ -85,7 +84,7 @@ Select
   , degdet.degree_name
   , nullif(degdet.degree_concentration_desc, '-')
     As degree_concentration_desc
-  , acaorg.acaorg.ucinn_ascendv2__code__c
+  , acaorg.ucinn_ascendv2__code__c
     As department_code
   , acaorg.ucinn_ascendv2__description_short__c
     As department_desc
@@ -105,7 +104,7 @@ Inner Join stg_alumni.ucinn_ascendv2__degree_information__c deginf
 -- Academic orgs, aka department
 Left Join stg_alumni.ucinn_ascendv2__academic_organization__c acaorg
   On acaorg.id = deginf.ap_academic_group__c
-Inner Join degmap
+Inner Join test_v_degmap degmap
   On degmap.donor_id = degdet.constituent_donor_id
 ;
 
@@ -140,8 +139,6 @@ Inner Join degmap
       As degree_code
     , degcd.ucinn_ascendv2__description__c
       As degree_name
-    , spec.name
-      As degree_concentration_desc
     , acaorg.ucinn_ascendv2__code__c
       As department_code
     , acaorg.ucinn_ascendv2__description_short__c
@@ -150,6 +147,12 @@ Inner Join degmap
       As department_desc_full
     , deginf.ap_campus__c
       As degree_campus
+    , prog.ap_program_code__c
+      As degree_program_code
+    , prog.name
+      As degree_program
+    , spec.name
+      As degree_concentration_desc
     , postcd.ap_major_code__c
       As degree_major_code_1
     , postcd2.ap_major_code__c
@@ -183,10 +186,27 @@ Inner Join degmap
     On postcd2.id = deginf.ucinn_ascendv2__second_major_post_code__c
   Left Join stg_alumni.ucinn_ascendv2__post_code__c postcd3
     On postcd3.id = deginf.ap_third_major_post_code__c
+  -- Program/cohort
+  Left Join stg_alumni.ap_program__c prog
+    On prog.id = deginf.ap_program_class_section__c
   -- Specialty code
   Left Join stg_alumni.ucinn_ascendv2__specialty__c spec
     On spec.id = deginf.ucinn_ascendv2__concentration_specialty__c
   -- Academic orgs, aka department
   Left Join stg_alumni.ucinn_ascendv2__academic_organization__c acaorg
     On acaorg.id = deginf.ap_academic_group__c
+;
+
+-- Check dw_pkg for completeness
+Select
+  degmap.deg_short_desc
+  , deg.*
+From table(dw_pkg_base.tbl_degrees) deg
+Inner Join test_v_degmap degmap
+  On degmap.donor_id = deg.constituent_donor_id
+Where deg.nu_indicator = 'Y'
+;
+
+-- Cleanup
+Drop View test_v_degmap
 ;
