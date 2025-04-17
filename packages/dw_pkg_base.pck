@@ -67,7 +67,7 @@ Type rec_degrees Is Record (
     , constituent_name dm_alumni.dim_degree_detail.constituent_name%type
     , degree_record_id stg_alumni.ucinn_ascendv2__degree_information__c.name%type
     , degree_status stg_alumni.ucinn_ascendv2__degree_information__c.ap_status__c%type
-    , degree_northwestern_university_indicator varchar2(1)
+    , nu_indicator varchar2(1)
     , degree_organization_name dm_alumni.dim_degree_detail.degree_organization_name%type
     , degree_school_name stg_alumni.ucinn_ascendv2__degree_information__c.ap_school_name_formula__c%type
     , degree_level stg_alumni.ucinn_ascendv2__degree_information__c.ap_degree_type_from_degreecode__c%type
@@ -76,11 +76,13 @@ Type rec_degrees Is Record (
     , degree_grad_date stg_alumni.ucinn_ascendv2__degree_information__c.ucinn_ascendv2__degree_date__c%type
     , degree_code stg_alumni.ucinn_ascendv2__degree_code__c.ucinn_ascendv2__degree_code__c%type
     , degree_name stg_alumni.ucinn_ascendv2__degree_code__c.ucinn_ascendv2__description__c%type
-    , degree_concentration_desc stg_alumni.ucinn_ascendv2__specialty__c.name%type
     , department_code stg_alumni.ucinn_ascendv2__academic_organization__c.ucinn_ascendv2__code__c%type
     , department_desc stg_alumni.ucinn_ascendv2__academic_organization__c.ucinn_ascendv2__description_short__c%type
     , department_desc_full stg_alumni.ucinn_ascendv2__academic_organization__c.ucinn_ascendv2__description_long__c%type
     , degree_campus stg_alumni.ucinn_ascendv2__degree_information__c.ap_campus__c%type
+    , degree_program_code stg_alumni.ap_program__c.ap_program_code__c%type
+    , degree_program stg_alumni.ap_program__c.name%type
+    , degree_concentration_desc stg_alumni.ucinn_ascendv2__specialty__c.name%type
     , degree_major_code_1 stg_alumni.ucinn_ascendv2__post_code__c.ap_major_code__c%type
     , degree_major_code_2 stg_alumni.ucinn_ascendv2__post_code__c.ap_major_code__c%type 
     , degree_major_code_3 stg_alumni.ucinn_ascendv2__post_code__c.ap_major_code__c%type
@@ -321,8 +323,6 @@ Cursor c_degrees Is
       As degree_code
     , degcd.ucinn_ascendv2__description__c
       As degree_name
-    , spec.name
-      As degree_concentration_desc
     , acaorg.ucinn_ascendv2__code__c
       As department_code
     , acaorg.ucinn_ascendv2__description_short__c
@@ -331,6 +331,12 @@ Cursor c_degrees Is
       As department_desc_full
     , deginf.ap_campus__c
       As degree_campus
+    , prog.ap_program_code__c
+      As degree_program_code
+    , prog.name
+      As degree_program
+    , spec.name
+      As degree_concentration_desc
     , postcd.ap_major_code__c
       As degree_major_code_1
     , postcd2.ap_major_code__c
@@ -364,6 +370,9 @@ Cursor c_degrees Is
     On postcd2.id = deginf.ucinn_ascendv2__second_major_post_code__c
   Left Join stg_alumni.ucinn_ascendv2__post_code__c postcd3
     On postcd3.id = deginf.ap_third_major_post_code__c
+  -- Program/cohort
+  Left Join stg_alumni.ap_program__c prog
+    On prog.id = deginf.ap_program_class_section__c
   -- Specialty code
   Left Join stg_alumni.ucinn_ascendv2__specialty__c spec
     On spec.id = deginf.ucinn_ascendv2__concentration_specialty__c
