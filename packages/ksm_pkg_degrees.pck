@@ -80,8 +80,17 @@ Private cursors -- data definitions
 -- Kellogg degrees concatenated
 Cursor c_entity_degrees_concat Is
   With
+  -- Double check academic organization inclusions
+  acaorg As (
+    Select id
+    From stg_alumni.ucinn_ascendv2__academic_organization__c
+    Where ucinn_ascendv2__code__c In (
+        '95BCH', '96BEV' -- College of Commerce
+        , 'AMP', 'AMPI', 'EDP', 'KSMEE' -- KSMEE certificate
+      )
+  )
   -- Concatenated degrees subqueries
-  deg_data As (
+  , deg_data As (
     Select
       deg.constituent_donor_id
       , deg.constituent_name
@@ -95,7 +104,29 @@ Cursor c_entity_degrees_concat Is
       , deg.degree_name
       , deg.degree_school_name
       , deg.department_code
-      , deg.department_desc
+      , Case
+          When deg.department_code = '01MDB' -- Joint Feinberg
+            Then 'MDMBA'
+          When deg.department_code Like '01%' -- Full-time, joint full-time
+            Then substr(deg.department_code, 3)
+          When deg.department_code = '13JDM' -- Joint Law
+            Then 'JDMBA'
+          When deg.department_code = '13LCM' -- Law certificate
+            Then 'LLM'
+          When deg.department_code Like '41%' -- EMBA and IEMBA
+            Then substr(deg.department_code, 3)
+          When deg.department_code = '95BCH' -- College of Commerce 1
+            Then 'BCH'
+          When deg.department_code = '96BEV' -- College of Commerce 2
+            Then 'BEV'
+          When deg.department_code In ('AMP', 'AMPI', 'EDP', 'KSMEE')  -- KSM certificates
+            Then deg.department_code
+          When deg.department_code = '01MBI' -- Joint McCormick
+            Then 'MBAI'
+          When deg.department_code = '0000000' -- None
+            Then ''
+          Else deg.department_desc
+        End As department_desc_short
       , deg.department_desc_full
       , deg.degree_program_code
       , deg.degree_program
@@ -107,26 +138,14 @@ Cursor c_entity_degrees_concat Is
           ) || Case When deg.degree_major_3 Is Not Null Then ', ' End ||
           deg.degree_major_3
         ) As majors
-/*      
-      , Case
-          When degrees.dept_code = '01MDB' Then 'MDMBA'
-          When degrees.dept_code Like '01%' Then substr(degrees.dept_code, 3)
-          When degrees.dept_code = '13JDM' Then 'JDMBA'
-          When degrees.dept_code = '13LLM' Then 'LLM'
-          When degrees.dept_code Like '41%' Then substr(degrees.dept_code, 3)
-          When degrees.dept_code = '95BCH' Then 'BCH'
-          When degrees.dept_code = '96BEV' Then 'BEV'
-          When degrees.dept_code In ('AMP', 'AMPI', 'EDP', 'KSMEE') Then degrees.dept_code
-          When degrees.dept_code = '01MBI' Then 'MBAi'
-          When degrees.dept_code = '0000000' Then ''
-          Else tms_dept_code.short_desc
-        End As dept_short_desc
-*/    From tmp_mv_degree deg
+    From tmp_mv_degree deg
     Where deg.nu_indicator = 'Y' -- Northwestern University
       And (
         deg.degree_school_name In ('Kellogg', 'Undergraduate Business') -- Kellogg and College of Business school codes
-        Or deg.degree_code = 'MBAI' -- MBAi
+        Or deg.degree_code = 'MBAI' -- MBAI
+        Or deginf.ap_academic_group__c In (Select id From acaorg)
       )
+  )
   /*
   -- Listagg all degrees, including incomplete
   , concat As (

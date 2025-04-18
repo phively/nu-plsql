@@ -378,7 +378,7 @@ Cursor c_degrees Is
     On spec.id = deginf.ucinn_ascendv2__concentration_specialty__c
   -- Academic orgs, aka department
   Left Join stg_alumni.ucinn_ascendv2__academic_organization__c acaorg
-    On acaorg.id = deginf.ap_academic_group__c
+    On acaorg.id = deginf.ap_department__c
 ;
 
 --------------------------------------

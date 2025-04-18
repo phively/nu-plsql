@@ -199,7 +199,29 @@ Create Materialized View tmp_mv_degree As
     On spec.id = deginf.ucinn_ascendv2__concentration_specialty__c
   -- Academic orgs, aka department
   Left Join stg_alumni.ucinn_ascendv2__academic_organization__c acaorg
-    On acaorg.id = deginf.ap_academic_group__c
+    On acaorg.id = deginf.ap_department__c
+;
+
+-- KSM alumni definition
+With
+
+acaorg As (
+  Select id
+  From stg_alumni.ucinn_ascendv2__academic_organization__c
+  Where ucinn_ascendv2__code__c In (
+      '95BCH', '96BEV' -- College of Commerce
+      , 'AMP', 'AMPI', 'EDP', 'KSMEE' -- KSMEE certificate
+    )
+)
+
+Select count(Distinct ucinn_ascendv2__contact__c) -- Unique contact IDs
+From stg_alumni.ucinn_ascendv2__degree_information__c deginf
+Where deginf.Ucinn_Ascendv2__Degree_Institution__c = '001O800000B8YHhIAN' -- Northwestern University
+  And (
+    deginf.ap_school_name_formula__c In ('Kellogg', 'Undergraduate Business') -- Kellogg and College of Business school codes
+    Or deginf.ucinn_ascendv2__degree_code__c = 'a0UO8000000nURSMA2' -- MBAi
+    Or deginf.ap_academic_group__c In (Select id From acaorg)
+  )
 ;
 
 -- Check dw_pkg for completeness
