@@ -80,47 +80,34 @@ Private cursors -- data definitions
 -- Kellogg degrees concatenated
 Cursor c_entity_degrees_concat Is
   With
-  -- Stewardship concatenated years: uses Distinct to de-dupe multiple degrees in one year
-  stwrd_yrs As (
-    Select Distinct
-      id_number
-      , degree_year
-      , trim('''' || substr(trim(degree_year), -2)) As degree_yr
-    From degrees
-    Where institution_code = '31173' -- Northwestern institution code
-      And (
-        degrees.school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
-        Or degrees.dept_code = '01MBI' -- MBAi
-      )
-      And degree_year <> ' ' -- Exclude rows with blank year
-      And non_grad_code <> 'N' -- Exclude non-grads
-  )
-  , stwrd_deg As (
-    Select Distinct
-      id_number
-      , Listagg(degree_yr, ', ') Within Group (Order By degree_year Asc) As stewardship_years
-    From stwrd_yrs
-    Where degree_year <> ''''
-    Group By id_number
-  )
   -- Concatenated degrees subqueries
-  , deg_data As (
+  deg_data As (
     Select
-      degrees.id_number
-      , grad_dt
-      , degree_year
-      , non_grad_code
-      , Case When non_grad_code = 'N' Then 'Nongrad ' End As nongrad
-      , Case When non_grad_code = 'N' Then 'NONGRD ' End As nongrd
-      , degrees.degree_level_code
-      , tms_degree_level.short_desc As degree_level
-      , degrees.degree_code
-      , tms_degrees.short_desc As degree_desc
-      , degrees.school_code
-      , degrees.dept_code
-      , tms_dept_code.short_desc As dept_desc
-      , degrees.division_code
-      , tms_division.short_desc As division_desc
+      deg.constituent_donor_id
+      , deg.constituent_name
+      , deg.degree_record_id
+      , deg.degree_grad_date
+      , deg.degree_year
+      , deg.degree_reunion_year
+      , deg.degree_status
+      , deg.degree_level
+      , deg.degree_code
+      , deg.degree_name
+      , deg.degree_school_name
+      , deg.department_code
+      , deg.department_desc
+      , deg.department_desc_full
+      , deg.degree_program_code
+      , deg.degree_program
+      , trim(
+          trim(
+            deg.degree_major_1 ||
+            Case When deg.degree_major_2 Is Not Null Then ', ' End ||
+            deg.degree_major_2
+          ) || Case When deg.degree_major_3 Is Not Null Then ', ' End ||
+          deg.degree_major_3
+        ) As majors
+/*      
       , Case
           When degrees.dept_code = '01MDB' Then 'MDMBA'
           When degrees.dept_code Like '01%' Then substr(degrees.dept_code, 3)
@@ -134,42 +121,13 @@ Cursor c_entity_degrees_concat Is
           When degrees.dept_code = '0000000' Then ''
           Else tms_dept_code.short_desc
         End As dept_short_desc
-      , class_section
-      , tms_class_section.short_desc As class_section_desc
-      -- Concatenated majors: separate by , within a single degree
-      , trim(
-          trim(
-            m1.short_desc ||
-            Case When m2.short_desc Is Not Null Then ', ' End ||
-            m2.short_desc
-          ) || Case When m3.short_desc Is Not Null Then ', ' End ||
-          m3.short_desc
-        ) As majors
-    -- Table joins, etc.
-    From degrees
-    Left Join tms_class_section -- For class section short_desc
-      On degrees.class_section = tms_class_section.section_code
-    Left Join tms_dept_code -- For department short_desc
-      On degrees.dept_code = tms_dept_code.dept_code
-    Left Join tms_division -- For division short_desc
-      On degrees.division_code = tms_division.division_code
-    Left Join tms_degree_level -- For degree level short_desc
-      On degrees.degree_level_code = tms_degree_level.degree_level_code
-    Left Join tms_degrees -- For degreee short_desc (to replace degree_code)
-      On degrees.degree_code = tms_degrees.degree_code
-    -- Major codes
-    Left Join tms_majors m1
-      On m1.major_code = degrees.major_code1
-    Left Join tms_majors m2
-      On m2.major_code = degrees.major_code2
-    Left Join tms_majors m3
-      On m3.major_code = degrees.major_code3
-    Where institution_code = '31173' -- Northwestern institution code
+*/    From tmp_mv_degree deg
+    Where deg.nu_indicator = 'Y' -- Northwestern University
       And (
-        degrees.school_code In ('KSM', 'BUS') -- Kellogg and College of Business school codes
-        Or degrees.dept_code = '01MBI' -- MBAi
+        deg.degree_school_name In ('Kellogg', 'Undergraduate Business') -- Kellogg and College of Business school codes
+        Or deg.degree_code = 'MBAI' -- MBAi
       )
-  )
+  /*
   -- Listagg all degrees, including incomplete
   , concat As (
     Select
@@ -352,7 +310,6 @@ Cursor c_entity_degrees_concat Is
       , first_masters_year
       , last_masters_year
       , last_noncert_year
-      , stwrd_deg.stewardship_years
       , prg.program
       -- program_group and program_group_rank: make sure to keep entries in the same order
       , Case
@@ -378,7 +335,6 @@ Cursor c_entity_degrees_concat Is
     From concat
     Inner Join entity On entity.id_number = concat.id_number
     Inner Join prg On concat.id_number = prg.id_number
-    Left Join stwrd_deg On stwrd_deg.id_number = concat.id_number
     ;
 
 

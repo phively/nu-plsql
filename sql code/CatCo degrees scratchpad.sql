@@ -11,7 +11,7 @@ Create Or Replace View test_v_degmap As
   Union All Select '0000291995' as donor_id, 'FT-JDMBA' as deg_short_desc From DUAL
   Union All Select '0000647203' as donor_id, 'FT-KENNEDY' as deg_short_desc From DUAL
   Union All Select '0000856140' as donor_id, 'FT-MBAi' as deg_short_desc From DUAL
-  Union All Select '0000724349' as donor_id, 'FT-MDMBA' as deg_short_desc From DUAL
+  Union All Select '0000668233' as donor_id, 'FT-MDMBA' as deg_short_desc From DUAL
   Union All Select '0000441243' as donor_id, 'FT-MMGT' as deg_short_desc From DUAL
   Union All Select '0000298407' as donor_id, 'FT-MMM' as deg_short_desc From DUAL
   Union All Select '0000390813' as donor_id, 'FT-MS' as deg_short_desc From DUAL
@@ -109,6 +109,11 @@ Inner Join test_v_degmap degmap
 ;
 
 -- Reduce use of dm_alumni.dim_degree_detail
+Drop Materialized View tmp_mv_degree
+;
+
+Create Materialized View tmp_mv_degree As 
+
   Select
     dcon.constituent_donor_id
     , dcon.full_name
@@ -122,7 +127,7 @@ Inner Join test_v_degmap degmap
           Then 'Y'
           Else 'N'
         End
-      As degree_northwestern_university_indicator
+      As nu_indicator
     , dorg.organization_name
       As degree_organization_name
     , deginf.ap_school_name_formula__c
@@ -201,12 +206,8 @@ Inner Join test_v_degmap degmap
 Select
   degmap.deg_short_desc
   , deg.*
-From table(dw_pkg_base.tbl_degrees) deg
+From tmp_mv_degree deg
 Inner Join test_v_degmap degmap
   On degmap.donor_id = deg.constituent_donor_id
 Where deg.nu_indicator = 'Y'
-;
-
--- Cleanup
-Drop View test_v_degmap
 ;

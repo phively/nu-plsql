@@ -306,7 +306,7 @@ Cursor c_degrees Is
           Then 'Y'
           Else 'N'
         End
-      As degree_northwestern_university_indicator
+      As nu_indicator
     , dorg.organization_name
       As degree_organization_name
     , deginf.ap_school_name_formula__c
