@@ -99,6 +99,11 @@ Cursor c_entity_degrees_concat Is
       , deg.degree_year
       , deg.degree_reunion_year
       , deg.degree_status
+      , Case
+          When deg.degree_status = 'Inactive'
+            Then 'NONGRAD'
+          End
+        As nongrad
       , deg.degree_level
       , deg.degree_code
       , deg.degree_name
@@ -143,91 +148,95 @@ Cursor c_entity_degrees_concat Is
       And (
         deg.degree_school_name In ('Kellogg', 'Undergraduate Business') -- Kellogg and College of Business school codes
         Or deg.degree_code = 'MBAI' -- MBAI
-        Or deginf.ap_academic_group__c In (Select id From acaorg)
+        Or deg.degree_program_code In (Select id From acaorg)
       )
   )
-  /*
   -- Listagg all degrees, including incomplete
   , concat As (
     Select
-      id_number
+      constituent_donor_id
       -- Verbose degrees
       , Listagg(
-          trim(degree_year || ' ' || nongrad || degree_level || ' ' || degree_desc || ' ' || school_code ||
-            ' ' || dept_desc || ' ' || class_section_desc)
+          trim(degree_year || ' ' || nongrad || degree_level || ' ' || degree_name || ' ' || degree_school_name ||
+            ' ' || department_desc_full || ' ' || degree_program)
           , '; '
-        ) Within Group (Order By degree_year) As degrees_verbose
+        ) Within Group (Order By degree_year)
+        As degrees_verbose
       -- Terse degrees
       , Listagg(
-          trim(degree_year || ' ' || nongrd || degree_code || ' ' || school_code || ' ' || dept_short_desc ||
+          trim(degree_year || ' ' || nongrad || degree_code || ' ' || degree_school_name || ' ' || department_desc_short ||
             -- Class section code
-            ' ' || class_section)
+            ' ' || degree_program_code)
           , '; '
-        ) Within Group (Order By degree_year) As degrees_concat
+        ) Within Group (Order By degree_year)
+        As degrees_concat
       -- Class sections
       , Listagg(
-          trim(Case When trim(class_section) Is Not Null Then dept_short_desc End || ' ' || class_section)
+          trim(Case When trim(degree_program) Is Not Null Then department_desc_short End || ' ' || degree_program)
           , '; '
-        ) Within Group (Order By degree_year) As class_section
+        ) Within Group (Order By degree_year)
+        As class_section
       -- Majors
-      , Listagg(
-        trim(majors)  
-        , '; '
-      ) Within Group (Order By degree_year) As majors_concat
+      , max(majors)
+        As majors
       -- First Kellogg grad date
-      , min(grad_dt) keep(dense_rank First Order By non_grad_code Desc, degree_year Asc, grad_dt Asc)
-        As first_ksm_grad_dt
+      , min(degree_grad_date) keep(dense_rank First Order By nongrad Desc, degree_year Asc, degree_grad_date Asc)
+        As first_ksm_grad_date
       -- First Kellogg year: exclude non-grad years
-      , min(trim(Case When non_grad_code = 'N' Then NULL Else degree_year End))
+      , min(trim(Case When nongrad Is Not NULL Then NULL Else degree_year End))
         As first_ksm_year
       -- First MBA or other Master's year: exclude non-grad years
-      , min(Case
-          When degree_level_code = 'M' -- Master's level
-            Or degree_code In('MBA', 'MMGT', 'MS', 'MSDI', 'MSHA', 'MSMS') -- In case of data errors
-            Then trim(Case When non_grad_code = 'N' Then NULL Else degree_year End)
-          Else NULL
-        End)
-        As first_masters_year
-      , max(Case
-          When degree_level_code = 'M' -- Master's level
-            Or degree_code In('MBA', 'MMGT', 'MS', 'MSDI', 'MSHA', 'MSMS') -- In case of data errors
-            Then trim(Case When non_grad_code = 'N' Then NULL Else degree_year End)
-          Else NULL
-        End)
-        As last_masters_year
+      , min(
+          Case
+            When degree_level = 'Masters Degree'
+              Or degree_code In('MBA', 'MMGT', 'MS', 'MSDI', 'MSHA', 'MSMS', 'MMM', 'MBAI') -- In case of data errors
+              Then trim(Case When nongrad Is Not NULL Then NULL Else degree_year End)
+            Else NULL
+          End
+        ) As first_masters_year
+      , max(
+          Case
+            When degree_level = 'Masters Degree'
+              Or degree_code In('MBA', 'MMGT', 'MS', 'MSDI', 'MSHA', 'MSMS', 'MMM', 'MBAI') -- In case of data errors
+              Then trim(Case When nongrad Is Not NULL Then NULL Else degree_year End)
+            Else NULL
+          End
+        ) As last_masters_year
       -- Last non-certificate year, e.g. for young alumni status, excluding non-grad years
       , max(Case
-          When degree_level_code In('B', 'D', 'M')
-          Then trim(Case When non_grad_code = 'N' Then NULL Else degree_year End)
+          When degree_level In('Masters Degree', 'Doctorate Degree', 'Undergraduate Degree')
+          Then trim(Case When nongrad Is Not NULL Then NULL Else degree_year End)
           Else NULL
         End)
         As last_noncert_year
       From deg_data
-      Group By id_number
+      Group By constituent_donor_id
     )
     -- Completed degrees only
     -- ***** IMPORTANT: If updating, update concat.degrees_concat above as well *****
     , clean_concat As (
       Select
-        id_number
+        constituent_donor_id
         -- Verbose degrees
       , Listagg(
-          trim(degree_year || ' ' || nongrad || degree_level || ' ' || degree_desc || ' ' || school_code ||
-            ' ' || dept_desc || ' ' || class_section_desc)
+          trim(degree_year || ' ' || nongrad || degree_level || ' ' || degree_name || ' ' || degree_school_name ||
+            ' ' || department_desc_full || ' ' || degree_program)
           , '; '
-        ) Within Group (Order By degree_year) As clean_degrees_verbose
+        ) Within Group (Order By degree_year)
+        As clean_degrees_verbose
         -- Terse degrees
-        , Listagg(
-          trim(degree_year || ' ' || nongrd || degree_code || ' ' || school_code || ' ' || dept_short_desc ||
+      , Listagg(
+          trim(degree_year || ' ' || nongrad || degree_code || ' ' || degree_school_name || ' ' || department_desc_short ||
             -- Class section code
-            ' ' || class_section)
+            ' ' || degree_program_code)
           , '; '
-        ) Within Group (Order By degree_year) As clean_degrees_concat
+        ) Within Group (Order By degree_year)
+        As clean_degrees_concat
       From deg_data
-      Where non_grad_code = ' ' Or non_grad_code Is Null
-      Group By id_number
+      Where nongrad Is Null
+      Group By constituent_donor_id
     )
-    -- Extract program
+/*    -- Extract program
     , prg As (
       Select
         concat.id_number
@@ -317,7 +326,7 @@ Cursor c_entity_degrees_concat Is
       From concat
       Left Join clean_concat On concat.id_number = clean_concat.id_number
     )
-    -- Final results
+/*    -- Final results
     Select
       concat.id_number
       , entity.report_name
@@ -355,7 +364,6 @@ Cursor c_entity_degrees_concat Is
     Inner Join entity On entity.id_number = concat.id_number
     Inner Join prg On concat.id_number = prg.id_number
     ;
-
 
 /*************************************************************************
 Pipelined functions
