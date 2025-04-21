@@ -22,20 +22,22 @@ pkg_name Constant varchar2(64) := 'ksm_pkg_degrees';
 Public type declarations
 *************************************************************************/
 
-Type rec_entity_degrees_concat Is Record (
-  id_number entity.id_number%type
-  , report_name entity.report_name%type
-  , record_status_code entity.record_status_code%type
+--table(dw_pkg_base.tbl_constituent)
+--table(dw_pkg_base.tbl_degrees) 
+
+Type rec_entity_ksm_degrees Is Record (
+  donor_id tmp_mv_degree.constituent_donor_id%type
+  , full_name tmp_mv_constituent.full_name%type
+  , sort_name tmp_mv_constituent.sort_name%type
   , degrees_verbose varchar2(1024)
   , degrees_concat varchar2(512)
-  , first_ksm_grad_dt degrees.grad_dt%type
-  , first_ksm_year degrees.degree_year%type
-  , first_masters_year degrees.degree_year%type
-  , last_masters_year degrees.degree_year%type
-  , last_noncert_year degrees.degree_year%type
-  , stewardship_years varchar2(80)
-  , program tms_dept_code.short_desc%type
-  , program_group varchar2(20)
+  , first_ksm_grad_date tmp_mv_degree.degree_grad_date%type
+  , first_ksm_year tmp_mv_degree.degree_year%type
+  , first_masters_year tmp_mv_degree.degree_year%type
+  , last_masters_year tmp_mv_degree.degree_year%type
+  , last_noncert_year tmp_mv_degree.degree_year%type
+  , program varchar2(32)
+  , program_group varchar2(10)
   , program_group_rank number
   , class_section varchar2(80)
   , majors_concat varchar2(512)
@@ -45,14 +47,14 @@ Type rec_entity_degrees_concat Is Record (
 Public table declarations
 *************************************************************************/
 
-Type entity_degrees_concat Is Table Of rec_entity_degrees_concat;
+Type entity_ksm_degrees Is Table Of rec_entity_ksm_degrees;
 
 /*************************************************************************
 Public pipelined functions declarations
 *************************************************************************/
 
-Function tbl_entity_degrees_concat
-  Return entity_degrees_concat Pipelined;
+Function tbl_entity_ksm_degrees
+  Return entity_ksm_degrees Pipelined;
 
 /*********************** About pipelined functions ***********************
 Q: What is a pipelined function?
@@ -83,7 +85,7 @@ Cursor c_entity_degrees_concat Is
   -- Double check academic organization inclusions
   acaorg As (
     Select id
-    From stg_alumni.ucinn_ascendv2__academic_organization__c
+    From tmp_mv_academic_org --stg_alumni.ucinn_ascendv2__academic_organization__c
     Where ucinn_ascendv2__code__c In (
         '95BCH', '96BEV' -- College of Commerce
         , 'AMP', 'AMPI', 'EDP', 'KSMEE' -- KSMEE certificate
@@ -145,7 +147,7 @@ Cursor c_entity_degrees_concat Is
           ) || Case When deg.degree_major_3 Is Not Null Then ', ' End ||
           deg.degree_major_3
         ) As majors
-    From tmp_mv_degree deg
+    From tmp_mv_degree deg --table(dw_pkg_base.tbl_degrees)
     Where deg.nu_indicator = 'Y' -- Northwestern University
       And (
         deg.degree_school_name In ('Kellogg', 'Undergraduate Business') -- Kellogg and College of Business school codes
@@ -372,7 +374,7 @@ Cursor c_entity_degrees_concat Is
       , class_section
       , majors_concat
     From concat
-    Inner Join tmp_mv_constituent constituent
+    Inner Join tmp_mv_constituent constituent --table(dw_pkg_base.tbl_constituent)
       On concat.constituent_donor_id = constituent.donor_id
     Inner Join prg
       On concat.constituent_donor_id = prg.constituent_donor_id
@@ -383,10 +385,10 @@ Pipelined functions
 *************************************************************************/
 
 -- Table function
-Function tbl_entity_degrees_concat
-  Return entity_degrees_concat Pipelined As
+Function tbl_entity_ksm_degrees
+  Return entity_ksm_degrees Pipelined As
   -- Declarations
-  deg entity_degrees_concat;
+  deg entity_ksm_degrees;
     
   Begin
     Open c_entity_degrees_concat;
