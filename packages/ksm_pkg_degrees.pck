@@ -101,7 +101,9 @@ Cursor c_entity_degrees_concat Is
       , deg.degree_status
       , Case
           When deg.degree_status = 'Inactive'
-            Then 'NONGRAD'
+            Then 'NONGRAD '
+          When deg.degree_code Like '%-STU'
+            Then 'STUDENT '
           End
         As nongrad
       , deg.degree_level
@@ -155,14 +157,25 @@ Cursor c_entity_degrees_concat Is
   , concat As (
     Select
       constituent_donor_id
+      , constituent_name
       -- Verbose degrees
+      -- ***** IMPORTANT: If updating, make sure normal and clean definitions match *****
       , Listagg(
           trim(degree_year || ' ' || nongrad || degree_level || ' ' || degree_name || ' ' || degree_school_name ||
             ' ' || department_desc_full || ' ' || degree_program)
           , '; '
         ) Within Group (Order By degree_year)
         As degrees_verbose
+      , Listagg(
+          Case When nongrad Is NULL Then (
+            trim(degree_year || ' ' || nongrad || degree_level || ' ' || degree_name || ' ' || degree_school_name ||
+              ' ' || department_desc_full || ' ' || degree_program)
+          ) End
+          , '; '
+        ) Within Group (Order By degree_year)
+        As clean_degrees_verbose
       -- Terse degrees
+      -- ***** IMPORTANT: If updating, make sure normal and clean definitions match *****
       , Listagg(
           trim(degree_year || ' ' || nongrad || degree_code || ' ' || degree_school_name || ' ' || department_desc_short ||
             -- Class section code
@@ -170,6 +183,15 @@ Cursor c_entity_degrees_concat Is
           , '; '
         ) Within Group (Order By degree_year)
         As degrees_concat
+      , Listagg(
+          Case When nongrad Is NULL Then (
+            trim(degree_year || ' ' || nongrad || degree_code || ' ' || degree_school_name || ' ' || department_desc_short ||
+              -- Class section code
+              ' ' || degree_program_code)
+          ) End
+          , '; '
+        ) Within Group (Order By degree_year)
+        As clean_degrees_concat
       -- Class sections
       , Listagg(
           trim(Case When trim(degree_program) Is Not Null Then department_desc_short End || ' ' || degree_program)
@@ -177,8 +199,11 @@ Cursor c_entity_degrees_concat Is
         ) Within Group (Order By degree_year)
         As class_section
       -- Majors
-      , max(majors)
-        As majors
+      , Listagg(
+          majors
+          , '; '
+        ) Within Group (Order By degree_year)
+        As majors_concat
       -- First Kellogg grad date
       , min(degree_grad_date) keep(dense_rank First Order By nongrad Desc, degree_year Asc, degree_grad_date Asc)
         As first_ksm_grad_date
@@ -210,36 +235,14 @@ Cursor c_entity_degrees_concat Is
         End)
         As last_noncert_year
       From deg_data
-      Group By constituent_donor_id
-    )
-    -- Completed degrees only
-    -- ***** IMPORTANT: If updating, update concat.degrees_concat above as well *****
-    , clean_concat As (
-      Select
+      Group By
         constituent_donor_id
-        -- Verbose degrees
-      , Listagg(
-          trim(degree_year || ' ' || nongrad || degree_level || ' ' || degree_name || ' ' || degree_school_name ||
-            ' ' || department_desc_full || ' ' || degree_program)
-          , '; '
-        ) Within Group (Order By degree_year)
-        As clean_degrees_verbose
-        -- Terse degrees
-      , Listagg(
-          trim(degree_year || ' ' || nongrad || degree_code || ' ' || degree_school_name || ' ' || department_desc_short ||
-            -- Class section code
-            ' ' || degree_program_code)
-          , '; '
-        ) Within Group (Order By degree_year)
-        As clean_degrees_concat
-      From deg_data
-      Where nongrad Is Null
-      Group By constituent_donor_id
+        , constituent_name
     )
-/*    -- Extract program
+    -- Extract program
     , prg As (
       Select
-        concat.id_number
+        concat.constituent_donor_id
         , Case
             -- Account for certificate degree level/degree program mismatch by choosing exec ed
             When last_noncert_year Is Null And clean_degrees_concat Is Not Null Then
@@ -289,51 +292,54 @@ Cursor c_entity_degrees_concat Is
             When clean_degrees_verbose Like '%Certificate%' Then 'CERT'
             -- People who don't have a completed degree
             -- ***** IMPORTANT: Keep in same order as above *****
-            When degrees_concat Like '%KGS2Y%' Then 'FT-2Y NONGRD'
-            When degrees_concat Like '%KGS1Y%' Then 'FT-1Y NONGRD'
-            When degrees_concat Like '%JDMBA%' Then 'FT-JDMBA NONGRD'
-            When degrees_concat Like '%MMM%' Then 'FT-MMM NONGRD'
-            When degrees_concat Like '%MDMBA%' Then 'FT-MDMBA NONGRD'
-            When degrees_concat Like '%MBAI%' Then 'FT-MBAi NONGRD'
-            When degrees_concat Like '%KSM KEN%' Then 'FT-KENNEDY NONGRD'
-            When degrees_concat Like '%KSM TMP%' Then 'TMP NONGRD'
-            When degrees_concat Like '%KSM PTS%' Then 'TMP-SAT NONGRD'
-            When degrees_concat Like '%KSM PSA%' Then 'TMP-SATXCEL NONGRD'
-            When degrees_concat Like '%KSM PTA%' Then 'TMP-XCEL NONGRD'
-            When degrees_concat Like '% EMP%' Then 'EMP NONGRD'
-            When degrees_concat Like '%KSM NAP%' Then 'EMP-IL NONGRD'
-            When degrees_concat Like '%KSM WHU%' Then 'EMP-GER NONGRD'
-            When degrees_concat Like '%KSM SCH%' Then 'EMP-CAN NONGRD'
-            When degrees_concat Like '%KSM LAP%' Then 'EMP-FL NONGRD'
-            When degrees_concat Like '%KSM HK%' Then 'EMP-HK NONGRD'
-            When degrees_concat Like '%KSM JNA%' Then 'EMP-JAN NONGRD'
-            When degrees_concat Like '%KSM RU%' Then 'EMP-ISR NONGRD'
-            When degrees_concat Like '%KGS%' Then 'FT NONGRD'
-            When degrees_concat Like '%BEV%' Then 'FT-EB NONGRD'
-            When degrees_concat Like '%BCH%' Then 'FT-CB NONGRD'
-            When degrees_concat Like '%PHD%' Then 'PHD NONGRD'
-            When degrees_concat Like '%KSM AEP%' Then 'CERT-AEP NONGRD'
-            When degrees_concat Like '%KSMEE%' Then 'EXECED NONGRD'
-            When degrees_concat Like '%MBA %' Then 'FT NONGRD'
-            When degrees_concat Like '%CERT%' Then 'EXECED NONGRD'
-            When degrees_concat Like '%Institute for Mgmt%' Then 'EXECED NONGRD'
-            When degrees_concat Like '%MS %' Then 'FT-MS NONGRD'
-            When degrees_concat Like '%LLM%' Then 'CERT-LLM NONGRD'
-            When degrees_concat Like '%MMGT%' Then 'FT-MMGT NONGRD'
-            When degrees_verbose Like '%Certificate%' Then 'CERT NONGRD'
-            Else 'UNK' -- Unable to determine program
+            When degrees_concat Like '%KGS2Y%' Then 'FT-2Y NONGRAD'
+            When degrees_concat Like '%KGS1Y%' Then 'FT-1Y NONGRAD'
+            When degrees_concat Like '%JDMBA%' Then 'FT-JDMBA NONGRAD'
+            When degrees_concat Like '%MMM%' Then 'FT-MMM NONGRAD'
+            When degrees_concat Like '%MDMBA%' Then 'FT-MDMBA NONGRAD'
+            When degrees_concat Like '%MBAI%' Then 'FT-MBAi NONGRAD'
+            When degrees_concat Like '%KSM KEN%' Then 'FT-KENNEDY NONGRAD'
+            When degrees_concat Like '%KSM TMP%' Then 'TMP NONGRAD'
+            When degrees_concat Like '%KSM PTS%' Then 'TMP-SAT NONGRAD'
+            When degrees_concat Like '%KSM PSA%' Then 'TMP-SATXCEL NONGRAD'
+            When degrees_concat Like '%KSM PTA%' Then 'TMP-XCEL NONGRAD'
+            When degrees_concat Like '% EMP%' Then 'EMP NONGRAD'
+            When degrees_concat Like '%KSM NAP%' Then 'EMP-IL NONGRAD'
+            When degrees_concat Like '%KSM WHU%' Then 'EMP-GER NONGRAD'
+            When degrees_concat Like '%KSM SCH%' Then 'EMP-CAN NONGRAD'
+            When degrees_concat Like '%KSM LAP%' Then 'EMP-FL NONGRAD'
+            When degrees_concat Like '%KSM HK%' Then 'EMP-HK NONGRAD'
+            When degrees_concat Like '%KSM JNA%' Then 'EMP-JAN NONGRAD'
+            When degrees_concat Like '%KSM RU%' Then 'EMP-ISR NONGRAD'
+            When degrees_concat Like '%KGS%' Then 'FT NONGRAD'
+            When degrees_concat Like '%BEV%' Then 'FT-EB NONGRAD'
+            When degrees_concat Like '%BCH%' Then 'FT-CB NONGRAD'
+            When degrees_concat Like '%PHD%' Then 'PHD NONGRAD'
+            When degrees_concat Like '%KSM AEP%' Then 'CERT-AEP NONGRAD'
+            When degrees_concat Like '%KSMEE%' Then 'EXECED NONGRAD'
+            When degrees_concat Like '%MBA %' Then 'FT NONGRAD'
+            When degrees_concat Like '%CERT%' Then 'EXECED NONGRAD'
+            When degrees_concat Like '%Institute for Mgmt%' Then 'EXECED NONGRAD'
+            When degrees_concat Like '%MS %' Then 'FT-MS NONGRAD'
+            When degrees_concat Like '%LLM%' Then 'CERT-LLM NONGRAD'
+            When degrees_concat Like '%MMGT%' Then 'FT-MMGT NONGRAD'
+            When degrees_verbose Like '%Certificate%' Then 'CERT NONGRAD'
+            -- Students
+            When degrees_concat Like 'STUDENT%' Then 'STUDENT'
+            -- Unable to determine program
+            Else 'UNK'
           End As program
       From concat
-      Left Join clean_concat On concat.id_number = clean_concat.id_number
     )
-/*    -- Final results
+    -- Final results
     Select
-      concat.id_number
-      , entity.report_name
-      , entity.record_status_code
+        concat.constituent_donor_id
+        As donor_id
+      , constituent.full_name
+      , constituent.sort_name
       , degrees_verbose
       , degrees_concat
-      , first_ksm_grad_dt
+      , first_ksm_grad_date
       , first_ksm_year
       , first_masters_year
       , last_masters_year
@@ -341,28 +347,32 @@ Cursor c_entity_degrees_concat Is
       , prg.program
       -- program_group and program_group_rank: make sure to keep entries in the same order
       , Case
-          When program Like '%NONGRD%' Then 'NONGRD'
+          When program Like '%NONGRAD%' Then 'NONGRAD'
           When program Like 'FT%' Then  'FT'
           When program Like 'TMP%' Then 'TMP'
           When program Like 'EMP%' Then 'EMP'
           When program Like 'PHD%' Then 'PHD'
           When program Like 'EXEC%' Or program Like 'CERT%' Then 'EXECED'
+          When program Like '%STUDENT%' Then 'STUDENT'
           Else program
         End As program_group
       , Case
-          When program Like '%NONGRD%' Then 100000
+          When program Like '%NONGRAD%' Then 100000
           When program Like 'FT%' Then 10
           When program Like 'TMP%' Then 20
           When program Like 'EMP%' Then 30
           When program Like 'PHD%' Then 40
           When program Like 'EXEC%' Or program Like 'CERT%' Then 100
+          When program Like '%STUDENT%' Then 1000
           Else 9999999999
         End As program_group_rank
       , class_section
       , majors_concat
     From concat
-    Inner Join entity On entity.id_number = concat.id_number
-    Inner Join prg On concat.id_number = prg.id_number
+    Inner Join tmp_mv_constituent constituent
+      On concat.constituent_donor_id = constituent.donor_id
+    Inner Join prg
+      On concat.constituent_donor_id = prg.constituent_donor_id
     ;
 
 /*************************************************************************
