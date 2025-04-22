@@ -1,4 +1,4 @@
-Create Or Replace Package ksm_pkg_allocation Is
+Create Or Replace Package ksm_pkg_designation Is
 
 /*************************************************************************
 Author  : PBH634
@@ -16,22 +16,23 @@ Suggested naming conventions:
 Public constant declarations
 *************************************************************************/
 
-pkg_name Constant varchar2(64) := 'ksm_pkg_allocation';
+pkg_name Constant varchar2(64) := 'ksm_pkg_designation';
 
 /*************************************************************************
 Public type declarations
 *************************************************************************/
 
 --------------------------------------
-Type rec_alloc_list Is Record (
-  allocation_code allocation.allocation_code%type
-  , status_code allocation.status_code%type
-  , short_name allocation.short_name%type
-  , af_flag allocation.annual_sw%type
+Type rec_designation_list Is Record (
+  designation_record_id dm_alumni.dim_designation.designation_record_id%type
+  , designation_name dm_alumni.dim_designation.designation_name%type
+  , designation_status dm_alumni.dim_designation.designation_status%type
+  , legacy_allocation_code dm_alumni.dim_designation.legacy_allocation_code%type
+  , ksm_af_flag varchar2(1)
 );
-
+/*
 --------------------------------------
-Type rec_cash_alloc Is Record (
+Type rec_cash_designation Is Record (
   allocation_code allocation.allocation_code%type
   , alloc_name allocation.short_name%type
   , status_code allocation.status_code%type
@@ -40,7 +41,7 @@ Type rec_cash_alloc Is Record (
 );
 
 --------------------------------------
-Type rec_campaign_alloc Is Record (
+Type rec_campaign_designation Is Record (
   allocation_code allocation.allocation_code%type
   , status_code allocation.status_code%type
   , alloc_name allocation.short_name%type
@@ -54,27 +55,27 @@ Type rec_campaign_alloc Is Record (
 Public table declarations
 *************************************************************************/
 
-Type alloc_list Is Table Of rec_alloc_list;
-Type cash_alloc_groups Is Table Of rec_cash_alloc;
-Type campaign_allocs Is Table Of rec_campaign_alloc;
+Type designation_list Is Table Of rec_designation_list;
+/*Type cash_designation Is Table Of rec_cash_designation;
+Type campaign_designation Is Table Of rec_campaign_designation;
 
 /*************************************************************************
 Public pipelined functions declarations
 *************************************************************************/
 
 -- Table functions
-Function tbl_alloc_annual_fund_ksm
-  Return t_alloc_list Pipelined;
-  
-Function tbl_cash_alloc_groups
-  Return cash_alloc_groups Pipelined;
+Function tbl_designation_ksm_af
+  Return designation_list Pipelined;
 
-Function tbl_alloc_campaign_kfc
-  Return campaign_allocs Pipelined;
+/*Function tbl_designation_cash
+  Return cash_designation Pipelined;
 
-End ksm_pkg_allocation;
+Function tbl_designation_campaign_kfc
+  Return campaign_designation Pipelined;
+*/
+End ksm_pkg_designation;
 /
-Create Or Replace Package Body ksm_pkg_allocation Is
+Create Or Replace Package Body ksm_pkg_designation Is
 
 /*************************************************************************
 Private cursors -- data definitions
@@ -83,18 +84,22 @@ Private cursors -- data definitions
 --------------------------------------
 -- Definition of current and historical Kellogg Annual Fund allocations
 -- Add any custom allocations in the indicated section below
-Cursor c_alloc_annual_fund_ksm Is
+Cursor c_designation_ksm_af Is
   Select Distinct
-    allocation_code
-    , status_code
-    , short_name
-    , 'Y' As af_flag
-  From allocation
+    designation_record_id
+    , designation_name
+    , designation_status
+    , legacy_allocation_code
+    , 'Y' As ksm_af_flag
+  From table(dw_pkg_base.tbl_designation) des
   Where
-    -- KSM af-flagged allocations
-    (annual_sw = 'Y' And alloc_school = 'KM')
+    -- KSM AF-flagged allocations
+    (
+      nu_af_flag = 'Y'
+      And ksm_flag = 'Y'
+    )
     -- Include additional fields
-    Or allocation_code In (
+    Or legacy_allocation_code In (
       /************ UPDATE BELOW HERE ************/
         '3203003665401GFT' -- Expendable Excellence Grant (JRF)
       , '3203004227201GFT' -- Expendable Excellence Grant (DC)
@@ -139,10 +144,10 @@ Cursor c_alloc_annual_fund_ksm Is
       /************ UPDATE ABOVE HERE ************/
     )
   ;
-
+/*
 --------------------------------------
 -- Definition of KSM cash allocation categories for reconciliation with Finance counting rules
-Cursor c_cash_alloc_groups Is
+Cursor c_designation_cash Is
     Select
       allocation.allocation_code
       , allocation.short_name As alloc_name
@@ -187,7 +192,7 @@ Cursor c_cash_alloc_groups Is
     
 --------------------------------------
 -- Definition of KSM 2022 campaign allocation categories
-Cursor c_alloc_campaign_kfc Is
+Cursor c_designation_campaign_kfc Is
   With
 
   -- Filter for NGC transactions since campaign start
@@ -244,15 +249,32 @@ Pipelined functions
 *************************************************************************/
 
 --------------------------------------
-Function tbl_alloc_annual_fund_ksm
-  Returt_alloc_list Pipelined As
+Function tbl_designation_ksm_af
+  Return designation_list Pipelined As
     -- Declarations
-    alloct_alloc_list;
+    dl designation_list;
 
   Begin
-    Open c_alloc_annual_fund_ksm; -- Annual Fund allocations cursor
-      Fetch c_alloc_annual_fund_ksm Bulk Collect Into allocs;
-    Close c_alloc_annual_fund_ksm;
+    Open c_designation_ksm_af; -- Annual Fund allocations cursor
+      Fetch c_designation_ksm_af Bulk Collect Into dl;
+    Close c_designation_ksm_af;
+    -- Pipe out the allocations
+    For i in 1..(dl.count) Loop
+      Pipe row(dl(i));
+    End Loop;
+    Return;
+  End;
+/*
+--------------------------------------
+Function tbl_designation_cash
+  Return cash_designation Pipelined As
+    -- Declarations
+    allocs cash_designation;
+
+  Begin
+    Open c_designation_cash; -- Annual Fund allocations cursor
+      Fetch c_designation_cash Bulk Collect Into allocs;
+    Close c_designation_cash;
     -- Pipe out the allocations
     For i in 1..(allocs.count) Loop
       Pipe row(allocs(i));
@@ -261,38 +283,21 @@ Function tbl_alloc_annual_fund_ksm
   End;
 
 --------------------------------------
-Function tbl_cash_alloc_groups
-  Return cash_alloc_groups Pipelined As
-    -- Declarations
-    allocs cash_alloc_groups;
-
-  Begin
-    Open c_cash_alloc_groups; -- Annual Fund allocations cursor
-      Fetch c_cash_alloc_groups Bulk Collect Into allocs;
-    Close c_cash_alloc_groups;
-    -- Pipe out the allocations
-    For i in 1..(allocs.count) Loop
-      Pipe row(allocs(i));
-    End Loop;
-    Return;
-  End;
-
---------------------------------------
-Function tbl_alloc_campaign_kfc
+Function tbl_designation_campaign_kfc
   Return campaign_allocs Pipelined As
     -- Declarations
-    allocs campaign_allocs;
+    allocs campaign_designation;
 
   Begin
-    Open c_alloc_campaign_kfc; -- Annual Fund allocations cursor
-      Fetch c_alloc_campaign_kfc Bulk Collect Into allocs;
-    Close c_alloc_campaign_kfc;
+    Open c_designation_campaign_kfc; -- Annual Fund allocations cursor
+      Fetch c_designation_campaign_kfc Bulk Collect Into allocs;
+    Close c_designation_campaign_kfc;
     -- Pipe out the allocations
     For i in 1..(allocs.count) Loop
       Pipe row(allocs(i));
     End Loop;
     Return;
   End;
-
-End ksm_pkg_allocation;
+*/
+End ksm_pkg_designation;
 /

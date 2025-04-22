@@ -105,6 +105,7 @@ Type rec_designation Is Record (
     , fin_activity dm_alumni.dim_designation.designation_activity%type
     , fin_department_id dm_alumni.dim_designation.designation_fin_department_id%type
     , ksm_flag varchar2(1)
+    , nu_af_flag dm_alumni.dim_designation.annual_fund_designation_indicator%type
     , designation_school dm_alumni.dim_designation.designation_school%type
     , department_program dm_alumni.dim_designation.designation_department_program_code%type
     , fasb_type dm_alumni.dim_designation.fasb_type%type
@@ -414,6 +415,8 @@ Cursor c_designation Is
         Then 'Y'
         End
       As ksm_flag
+    , annual_fund_designation_indicator
+      As nu_af_flag
     , designation_school
     , designation_department_program_code
       As department_program
