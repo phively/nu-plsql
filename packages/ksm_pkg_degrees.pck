@@ -26,16 +26,16 @@ Public type declarations
 --table(dw_pkg_base.tbl_degrees) 
 
 Type rec_entity_ksm_degrees Is Record (
-  donor_id tmp_mv_degree.constituent_donor_id%type
-  , full_name tmp_mv_constituent.full_name%type
-  , sort_name tmp_mv_constituent.sort_name%type
+  donor_id dm_alumni.dim_constituent.constituent_donor_id%type
+  , full_name dm_alumni.dim_constituent.full_name%type
+  , sort_name dm_alumni.dim_constituent.full_name%type
   , degrees_verbose varchar2(1024)
   , degrees_concat varchar2(512)
-  , first_ksm_grad_date tmp_mv_degree.degree_grad_date%type
-  , first_ksm_year tmp_mv_degree.degree_year%type
-  , first_masters_year tmp_mv_degree.degree_year%type
-  , last_masters_year tmp_mv_degree.degree_year%type
-  , last_noncert_year tmp_mv_degree.degree_year%type
+  , first_ksm_grad_date stg_alumni.ucinn_ascendv2__degree_information__c.ucinn_ascendv2__degree_date__c%type
+  , first_ksm_year stg_alumni.ucinn_ascendv2__degree_information__c.ucinn_ascendv2__conferred_degree_year__c%type
+  , first_masters_year stg_alumni.ucinn_ascendv2__degree_information__c.ucinn_ascendv2__conferred_degree_year__c%type
+  , last_masters_year stg_alumni.ucinn_ascendv2__degree_information__c.ucinn_ascendv2__conferred_degree_year__c%type
+  , last_noncert_year stg_alumni.ucinn_ascendv2__degree_information__c.ucinn_ascendv2__conferred_degree_year__c%type
   , program varchar2(32)
   , program_group varchar2(10)
   , program_group_rank number
@@ -85,7 +85,7 @@ Cursor c_entity_degrees_concat Is
   -- Double check academic organization inclusions
   acaorg As (
     Select id
-    From tmp_mv_academic_org --stg_alumni.ucinn_ascendv2__academic_organization__c
+    From stg_alumni.ucinn_ascendv2__academic_organization__c
     Where ucinn_ascendv2__code__c In (
         '95BCH', '96BEV' -- College of Commerce
         , 'AMP', 'AMPI', 'EDP', 'KSMEE' -- KSMEE certificate
@@ -147,7 +147,7 @@ Cursor c_entity_degrees_concat Is
           ) || Case When deg.degree_major_3 Is Not Null Then ', ' End ||
           deg.degree_major_3
         ) As majors
-    From tmp_mv_degree deg --table(dw_pkg_base.tbl_degrees)
+    From table(dw_pkg_base.tbl_degrees) deg
     Where deg.nu_indicator = 'Y' -- Northwestern University
       And (
         deg.degree_school_name In ('Kellogg', 'Undergraduate Business') -- Kellogg and College of Business school codes
@@ -374,7 +374,7 @@ Cursor c_entity_degrees_concat Is
       , class_section
       , majors_concat
     From concat
-    Inner Join tmp_mv_constituent constituent --table(dw_pkg_base.tbl_constituent)
+    Inner Join table(dw_pkg_base.tbl_constituent) constituent
       On concat.constituent_donor_id = constituent.donor_id
     Inner Join prg
       On concat.constituent_donor_id = prg.constituent_donor_id
