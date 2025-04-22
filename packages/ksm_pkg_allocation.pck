@@ -1,6 +1,18 @@
 Create Or Replace Package ksm_pkg_allocation Is
 
 /*************************************************************************
+Author  : PBH634
+Created : 4/22/2025
+Purpose : Kellogg NGC, expendable cash, and campaign priority definitions.
+Dependencies: dw_pkg_base
+
+Suggested naming conventions:
+  Pure functions: [function type]_[description]
+  Row-by-row retrieval (slow): get_[object type]_[action or description] e.g.
+  Table or cursor retrieval (fast): tbl_[object type]_[action or description]
+*************************************************************************/
+
+/*************************************************************************
 Public constant declarations
 *************************************************************************/
 
@@ -10,29 +22,16 @@ pkg_name Constant varchar2(64) := 'ksm_pkg_allocation';
 Public type declarations
 *************************************************************************/
 
-Type alloc_list Is Record (
+--------------------------------------
+Type rec_alloc_list Is Record (
   allocation_code allocation.allocation_code%type
   , status_code allocation.status_code%type
   , short_name allocation.short_name%type
   , af_flag allocation.annual_sw%type
 );
 
-Type alloc_info Is Record (
-  allocation_code allocation.allocation_code%type
-  , status_code allocation.status_code%type
-  , short_name allocation.short_name%type
-  , af_flag allocation.annual_sw%type
-  , sweepable allocation.annual_sw%type
-  , budget_relieving allocation.annual_sw%type 
-);
-
-Type thresh_alloc Is Record (
-    allocation_code  allocation.allocation_code%type
-    , short_name allocation.short_name%type
-    , max_gift nu_gft_trp_gifttrans.legal_amount%type
-);
-
-Type t_cash_alloc Is Record (
+--------------------------------------
+Type rec_cash_alloc Is Record (
   allocation_code allocation.allocation_code%type
   , alloc_name allocation.short_name%type
   , status_code allocation.status_code%type
@@ -40,7 +39,8 @@ Type t_cash_alloc Is Record (
   , cash_category varchar2(64)
 );
 
-Type t_campaign_alloc Is Record (
+--------------------------------------
+Type rec_campaign_alloc Is Record (
   allocation_code allocation.allocation_code%type
   , status_code allocation.status_code%type
   , alloc_name allocation.short_name%type
@@ -54,11 +54,9 @@ Type t_campaign_alloc Is Record (
 Public table declarations
 *************************************************************************/
 
-Type t_alloc_list Is Table Of alloc_list;
-Type t_alloc_info Is Table Of alloc_info;
-Type t_thresh_allocs Is Table Of thresh_alloc;
-Type t_cash_alloc_groups Is Table Of t_cash_alloc;
-Type t_campaign_allocs Is Table Of t_campaign_alloc;
+Type alloc_list Is Table Of rec_alloc_list;
+Type cash_alloc_groups Is Table Of rec_cash_alloc;
+Type campaign_allocs Is Table Of rec_campaign_alloc;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -67,23 +65,22 @@ Public pipelined functions declarations
 -- Table functions
 Function tbl_alloc_annual_fund_ksm
   Return t_alloc_list Pipelined;
-
-Function tbl_alloc_curr_use_ksm
-  Return t_alloc_info Pipelined;
-
-Function tbl_threshold_allocs
-  Return t_thresh_allocs Pipelined;
   
 Function tbl_cash_alloc_groups
-  Return t_cash_alloc_groups Pipelined;
+  Return cash_alloc_groups Pipelined;
 
 Function tbl_alloc_campaign_kfc
-  Return t_campaign_allocs Pipelined;
+  Return campaign_allocs Pipelined;
+
+End ksm_pkg_allocation;
+/
+Create Or Replace Package Body ksm_pkg_allocation Is
 
 /*************************************************************************
-Public cursors -- data definitions
+Private cursors -- data definitions
 *************************************************************************/
 
+--------------------------------------
 -- Definition of current and historical Kellogg Annual Fund allocations
 -- Add any custom allocations in the indicated section below
 Cursor c_alloc_annual_fund_ksm Is
@@ -143,144 +140,7 @@ Cursor c_alloc_annual_fund_ksm Is
     )
   ;
 
--- Definition of Kellogg Current Use allocations for Annual Giving
-Cursor c_alloc_curr_use_ksm Is
-  With
-  ksm_af As (
-    Select *
-    From table(ksm_pkg_allocation.tbl_alloc_annual_fund_ksm)
-  )
-  , sweepable As (
-    Select
-      allocation.allocation_code
-      , allocation.short_name
-      , allocation.long_name
-      , Case
-          -- Unrestricted scholarships
-          When allocation.alloc_purpose In (
-              'SFO' -- Scholarships/Fellowships: General
-            , 'SFG' -- Scholarships/Fellowships: Graduate
-          )
-            Then 'Y'
-          -- Allocation name contains
-          When lower(allocation.long_name) Like '%excellence%'
-            Or lower(allocation.long_name) Like '%kellogg%annual%fund%'
-            Or lower(allocation.long_name) Like '%discretionary%'
-            Or lower(allocation.long_name) Like '%dean%innovation%'
-            Or lower(allocation.long_name) Like '%to%be%designated%'
-            Or lower(allocation.long_name) Like '%unrestricted%bequest%'
-            Or lower(allocation.long_name) Like '%provost%fund%kellogg%'
-            Then 'Y'
-          -- Fallback: not sweepable
-          Else 'N'
-          End
-        As sweepable
-    From allocation
-  )
-  , br As (
-    Select
-      allocation.allocation_code
-      , allocation.short_name
-      , allocation.long_name
-      , sweepable.sweepable
-      , Case
-          -- Is sweepable
-          When sweepable.sweepable = 'Y'
-            Then 'Y'
-          -- Fund name contains
-          When lower(allocation.long_name) Like '%class of%'
-            Or lower(allocation.long_name) Like '%class%gift%'
-            Then 'Y'
-          -- Fund name exclude
-          When lower(allocation.long_name) Like '%event%'
-            Or lower(allocation.long_name) Like '%conference%'
-            Or lower(allocation.long_name) Like '%summit%'
-            Or lower(allocation.long_name) Like '%challenge%'
-            Or lower(allocation.long_name) Like '%competition%'
-            Then 'N'
-          -- Alloc purpose is:
-          -- Lectures & Seminars - Women's Summit only
-          When allocation.alloc_purpose = 'LSM'
-            Then Case
-              When lower(allocation.long_name) Like '%women%leadership%'
-                Then 'Y'
-              Else 'N'
-              End
-          -- Alloc purpose is:
-          When allocation.alloc_purpose In (
-                'MNT' -- Maintenance
-              , 'CIS' -- Center & Institute Support
-              , 'SLF' -- Student Life
-            )
-            Then 'Y'
-          -- Alloc purpose exclude
-          When allocation.alloc_purpose In (
-              'NAA' -- Non-Academic Administration
-            , 'NCP' -- Named Chairs & Professorships
-            , 'PRZ' -- Prizes
-            , 'SFU' -- Scholarships/Fellowships: Undergraduate
-            , 'TBD' -- TBD/Miscellaneous
-          )
-            Then 'N'
-          -- Center/priority, but flagged department
-          When allocation.allocation_code In (
-              '3203000855901GFT' -- HCAK
-            , '3203000860901GFT' -- AMP
-            , '3203004013501GFT' -- KIEI
-            , '3203005114401GFT' -- GPRL
-            , '3203005795201GFT' -- DEI
-            , '3203004957901GFT' -- Ward Center
-          )
-            Then 'Y'
-          -- CFAE purpose is
-          When allocation.cfae_purpose_code In (
-            'CU' -- Current Operations - Unrestricted
-          )
-            Then 'Y'
-          -- Fallback
-          Else 'N'
-          End
-        As budget_relieving
-    From allocation
-    Inner Join sweepable
-      On sweepable.allocation_code = allocation.allocation_code
-  )
-  Select Distinct
-    alloc.allocation_code
-    , alloc.status_code
-    , alloc.short_name
-    , nvl(af_flag, 'N') As af_flag
-    , br.sweepable
-    , br.budget_relieving
-  From allocation alloc
-  Left Join ksm_af On ksm_af.allocation_code = alloc.allocation_code
-  Left Join br On br.allocation_code = alloc.allocation_code
-  Where (agency = 'CRU' And alloc_school = 'KM'
-      And alloc.allocation_code <> '3303002283701GFT' -- Exclude Envision building gifts
-    )
-    Or alloc.allocation_code In ksm_af.allocation_code -- Include AF allocations that happen to not match criteria
-  ;
-
-End ksm_pkg_allocation;
-/
-Create Or Replace Package Body ksm_pkg_allocation Is
-
-/*************************************************************************
-Private cursors -- data definitions
-*************************************************************************/
-
--- AF thresholded allocations: count up to max_gift dollars
-Cursor c_thresh_allocs Is
-  Select
-    allocation.allocation_code
-    , allocation.short_name
-    , 100E3 As max_gift
-  From allocation
-  Where allocation_code In (
-    '3203006213301GFT' -- KEC Fund
-  )
-  ;
-
+--------------------------------------
 -- Definition of KSM cash allocation categories for reconciliation with Finance counting rules
 Cursor c_cash_alloc_groups Is
     Select
@@ -325,6 +185,7 @@ Cursor c_cash_alloc_groups Is
       alloc_school = 'KM'
     ;
     
+--------------------------------------
 -- Definition of KSM 2022 campaign allocation categories
 Cursor c_alloc_campaign_kfc Is
   With
@@ -382,11 +243,11 @@ Cursor c_alloc_campaign_kfc Is
 Pipelined functions
 *************************************************************************/
 
--- Returns a pipelined table
+--------------------------------------
 Function tbl_alloc_annual_fund_ksm
-  Return t_alloc_list Pipelined As
+  Returt_alloc_list Pipelined As
     -- Declarations
-    allocs t_alloc_list;
+    alloct_alloc_list;
 
   Begin
     Open c_alloc_annual_fund_ksm; -- Annual Fund allocations cursor
@@ -399,45 +260,11 @@ Function tbl_alloc_annual_fund_ksm
     Return;
   End;
 
--- Returns a pipelined table
-Function tbl_alloc_curr_use_ksm
-  Return t_alloc_info Pipelined As
-    -- Declarations
-    allocs t_alloc_info;
-
-  Begin
-    Open c_alloc_curr_use_ksm; -- Annual Fund allocations cursor
-      Fetch c_alloc_curr_use_ksm Bulk Collect Into allocs;
-    Close c_alloc_curr_use_ksm;
-    -- Pipe out the allocations
-    For i in 1..(allocs.count) Loop
-      Pipe row(allocs(i));
-    End Loop;
-    Return;
-  End;
-
--- Returns a pipelined table
-Function tbl_threshold_allocs
-  Return t_thresh_allocs Pipelined As
-    -- Declarations
-    allocs t_thresh_allocs;
-
-  Begin
-    Open c_thresh_allocs; -- Annual Fund allocations cursor
-      Fetch c_thresh_allocs Bulk Collect Into allocs;
-    Close c_thresh_allocs;
-    -- Pipe out the allocations
-    For i in 1..(allocs.count) Loop
-      Pipe row(allocs(i));
-    End Loop;
-    Return;
-  End;
-
--- Returns a pipelined table
+--------------------------------------
 Function tbl_cash_alloc_groups
-  Return t_cash_alloc_groups Pipelined As
+  Return cash_alloc_groups Pipelined As
     -- Declarations
-    allocs t_cash_alloc_groups;
+    allocs cash_alloc_groups;
 
   Begin
     Open c_cash_alloc_groups; -- Annual Fund allocations cursor
@@ -450,11 +277,11 @@ Function tbl_cash_alloc_groups
     Return;
   End;
 
--- Returns a pipelined table
+--------------------------------------
 Function tbl_alloc_campaign_kfc
-  Return t_campaign_allocs Pipelined As
+  Return campaign_allocs Pipelined As
     -- Declarations
-    allocs t_campaign_allocs;
+    allocs campaign_allocs;
 
   Begin
     Open c_alloc_campaign_kfc; -- Annual Fund allocations cursor
