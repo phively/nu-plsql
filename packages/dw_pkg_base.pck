@@ -242,14 +242,19 @@ Cursor c_constituent Is
       As sort_name
     , is_deceased_indicator
     , primary_constituent_type
-    , institutional_suffix
-    , spouse_constituent_donor_id
+    , nullif(institutional_suffix, '-')
+      As institutional_suffix
+    , nullif(spouse_constituent_donor_id, '-')
       As spouse_donor_id
-    , spouse_name
-    , spouse_instituitional_suffix
-    , preferred_address_city
-    , preferred_address_state
-    , preferred_address_country_name
+    , nullif(spouse_name, '-')
+      As spouse_name
+    , nullif(spouse_instituitional_suffix, '-')
+      As spouse_instituitional_suffix
+    , nullif(preferred_address_city, '-')
+      As preferred_address_city
+    , nullif(preferred_address_state, '-')
+      As preferred_address_state
+    , nullif(preferred_address_country_name, '-')
       As preferred_address_country
     , trunc(etl_update_date)
       As etl_update_date
@@ -281,9 +286,11 @@ Cursor c_organization Is
       As org_ult_parent_donor_id
     , organization_ultimate_parent_name
       As org_ult_parent_name
-    , preferred_address_city
-    , preferred_address_state
-    , preferred_address_country_name
+    , nullif(preferred_address_city, '-')
+      As preferred_address_city
+    , nullif(preferred_address_state, '-')
+      As preferred_address_state
+    , nullif(preferred_address_country_name, '-')
       As preferred_address_country
     , trunc(etl_update_date)
       As etl_update_date
@@ -388,7 +395,8 @@ Cursor c_designation Is
     , designation_name
     , designation_status
     , legacy_allocation_code
-    , fin_fund
+    , nullif(fin_fund, '-')
+      As fin_fund
     , Case
         When fin_fund Not In ('Historical Data', '-')
           Then substr(fin_fund, 0, 3)
@@ -396,15 +404,9 @@ Cursor c_designation Is
       As fin_fund_id
     , fin_project
       As fin_project_id
-    , Case
-        When designation_activity != '-'
-          Then designation_activity
-        End
+    , nullif(designation_activity, '-')
       As fin_activity
-    , Case
-        When designation_fin_department_id != '-'
-          Then designation_fin_department_id
-        End
+    , nullif(designation_fin_department_id, '-')
       As fin_department_id
     , Case
         When designation_school = 'Kellogg'
@@ -415,17 +417,24 @@ Cursor c_designation Is
     , designation_school
     , designation_department_program_code
       As department_program
-    , fasb_type
-    , case_type
-    , case_purpose
-    , designation_tier_1
-    , designation_tier_2
-    , designation_comment
+    , nullif(fasb_type, '-')
+      As fasb_type
+    , nullif(case_type, '-')
+      case_type
+    , nullif(case_purpose, '-')
+      As case_purpose
+    , nullif(designation_tier_1, '-')
+      As designation_tier_1
+    , nullif(designation_tier_2, '-')
+      As designation_tier_2
+    , nullif(designation_comment, '-')
+      As designation_comment
     , designation_date_added
     , designation_date_modified
     , gl_effective_date
     , gl_expiration_date
   From dm_alumni.dim_designation
+  Where designation_record_id != '-'
 ;
 
 --------------------------------------
@@ -451,15 +460,20 @@ Cursor c_opportunity Is
     , opportunity_amount
       As amount
     , designation_salesforce_id
-    , is_anonymous_indicator
-    , anonymous_type
-    , linked_proposal_record_id
-    , linked_proposal_active_proposal_manager
+    , nullif(is_anonymous_indicator, '-')
+      As is_anonymous_indicator
+    , nullif(anonymous_type, '-')
+      As anonymous_type
+    , nullif(linked_proposal_record_id, '-')
+      As linked_proposal_record_id
+    , nullif(linked_proposal_active_proposal_manager, '-')
+      As linked_proposal_active_proposal_manager
     , next_scheduled_payment_date
     , next_scheduled_payment_amount
     , matched_gift_record_id
     , matching_gift_stage
   From dm_alumni.dim_opportunity
+  Where opportunity_record_id != '-'
 ;
 
 --------------------------------------
