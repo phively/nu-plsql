@@ -22,9 +22,6 @@ pkg_name Constant varchar2(64) := 'ksm_pkg_degrees';
 Public type declarations
 *************************************************************************/
 
---table(dw_pkg_base.tbl_constituent)
---table(dw_pkg_base.tbl_degrees) 
-
 Type rec_entity_ksm_degrees Is Record (
   donor_id dm_alumni.dim_constituent.constituent_donor_id%type
   , full_name dm_alumni.dim_constituent.full_name%type
@@ -41,6 +38,7 @@ Type rec_entity_ksm_degrees Is Record (
   , program_group_rank number
   , class_section varchar2(80)
   , majors_concat varchar2(512)
+  , etl_update_date dm_alumni.dim_constituent.etl_update_date%type
 );
 
 /*************************************************************************
@@ -147,6 +145,7 @@ Cursor c_entity_degrees_concat Is
           ) || Case When deg.degree_major_3 Is Not Null Then ', ' End ||
           deg.degree_major_3
         ) As majors
+       , deg.etl_update_date
     From table(dw_pkg_base.tbl_degrees) deg
     Where deg.nu_indicator = 'Y' -- Northwestern University
       And (
@@ -236,6 +235,8 @@ Cursor c_entity_degrees_concat Is
           Else NULL
         End)
         As last_noncert_year
+      , min(etl_update_date)
+        As etl_update_date
       From deg_data
       Group By
         constituent_donor_id
@@ -373,6 +374,12 @@ Cursor c_entity_degrees_concat Is
         End As program_group_rank
       , class_section
       , majors_concat
+      , Case
+          When concat.etl_update_date < constituent.etl_update_date
+            Then concat.etl_update_date
+            Else constituent.etl_update_date
+          End
+        As etl_update_date
     From concat
     Inner Join table(dw_pkg_base.tbl_constituent) constituent
       On concat.constituent_donor_id = constituent.donor_id
