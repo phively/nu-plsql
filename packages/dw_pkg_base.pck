@@ -411,7 +411,11 @@ Cursor c_designation Is
       As fin_department_id
     , Case
         When designation_school = 'Kellogg'
-          Or designation_department_program_code Like '%Kellogg%'
+          Or (
+            -- Include any historical funds missing designation school
+            designation_department_program_code Like '%Kellogg%'
+            And nullif(designation_school, '-') Is Null
+          )
         Then 'Y'
         End
       As ksm_flag

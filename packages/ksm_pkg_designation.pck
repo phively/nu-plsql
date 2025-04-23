@@ -29,6 +29,7 @@ Type rec_designation_list Is Record (
   , designation_status dm_alumni.dim_designation.designation_status%type
   , legacy_allocation_code dm_alumni.dim_designation.legacy_allocation_code%type
   , ksm_af_flag varchar2(1)
+  , ksm_cru_flag varchar2(1)
 );
 /*
 --------------------------------------
@@ -67,7 +68,10 @@ Public pipelined functions declarations
 Function tbl_designation_ksm_af
   Return designation_list Pipelined;
 
-/*Function tbl_designation_cash
+Function tbl_designation_ksm_cru
+  Return designation_list Pipelined;
+/*
+Function tbl_designation_cash
   Return cash_designation Pipelined;
 
 Function tbl_designation_campaign_kfc
@@ -91,6 +95,7 @@ Cursor c_designation_ksm_af Is
     , designation_status
     , legacy_allocation_code
     , 'Y' As ksm_af_flag
+    , 'Y' As ksm_cru_flag
   From table(dw_pkg_base.tbl_designation) des
   Where
     -- KSM AF-flagged allocations
@@ -98,7 +103,7 @@ Cursor c_designation_ksm_af Is
       nu_af_flag = 'Y'
       And ksm_flag = 'Y'
     )
-    -- Include additional fields
+    -- Include additional funds
     Or legacy_allocation_code In (
       /************ UPDATE BELOW HERE ************/
         '3203003665401GFT' -- Expendable Excellence Grant (JRF)
@@ -144,8 +149,30 @@ Cursor c_designation_ksm_af Is
       /************ UPDATE ABOVE HERE ************/
     )
   ;
-/*
+
 --------------------------------------
+Cursor c_designation_ksm_cru Is
+  Select Distinct
+    des.designation_record_id
+    , des.designation_name
+    , des.designation_status
+    , des.legacy_allocation_code
+    , af.ksm_af_flag
+    , 'Y' As ksm_cru_flag
+  From table(dw_pkg_base.tbl_designation) des
+  Left Join table(ksm_pkg_designation.tbl_designation_ksm_af) af
+    On af.designation_record_id = des.designation_record_id
+  Where (
+      -- Base CRU definition
+      ksm_flag = 'Y'
+      And designation_tier_1 = 'Current Use'
+    ) Or (
+      -- Additional AF funds, if any
+      des.designation_record_id In af.designation_record_id
+    )
+  ;
+
+/*--------------------------------------
 -- Definition of KSM cash allocation categories for reconciliation with Finance counting rules
 Cursor c_designation_cash Is
     Select
@@ -189,7 +216,7 @@ Cursor c_designation_cash Is
       -- KSM allocations
       alloc_school = 'KM'
     ;
-    
+
 --------------------------------------
 -- Definition of KSM 2022 campaign allocation categories
 Cursor c_designation_campaign_kfc Is
@@ -264,20 +291,37 @@ Function tbl_designation_ksm_af
     End Loop;
     Return;
   End;
-/*
+
 --------------------------------------
-Function tbl_designation_cash
+Function tbl_designation_ksm_cru
+  Return designation_list Pipelined As
+    -- Declarations
+    dl designation_list;
+
+  Begin
+    Open c_designation_ksm_cru; -- Annual Fund allocations cursor
+      Fetch c_designation_ksm_cru Bulk Collect Into dl;
+    Close c_designation_ksm_cru;
+    -- Pipe out the allocations
+    For i in 1..(dl.count) Loop
+      Pipe row(dl(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+/*Function tbl_designation_cash
   Return cash_designation Pipelined As
     -- Declarations
-    allocs cash_designation;
+    cd cash_designation;
 
   Begin
     Open c_designation_cash; -- Annual Fund allocations cursor
-      Fetch c_designation_cash Bulk Collect Into allocs;
+      Fetch c_designation_cash Bulk Collect Into cd;
     Close c_designation_cash;
     -- Pipe out the allocations
-    For i in 1..(allocs.count) Loop
-      Pipe row(allocs(i));
+    For i in 1..(cd.count) Loop
+      Pipe row(cd(i));
     End Loop;
     Return;
   End;
