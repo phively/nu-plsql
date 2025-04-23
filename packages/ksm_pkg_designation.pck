@@ -31,16 +31,18 @@ Type rec_designation_list Is Record (
   , ksm_af_flag varchar2(1)
   , ksm_cru_flag varchar2(1)
 );
-/*
+
 --------------------------------------
 Type rec_cash_designation Is Record (
-  allocation_code allocation.allocation_code%type
-  , alloc_name allocation.short_name%type
-  , status_code allocation.status_code%type
-  , alloc_school allocation.alloc_school%type
+  designation_record_id dm_alumni.dim_designation.designation_record_id%type
+  , designation_name dm_alumni.dim_designation.designation_name%type
+  , designation_status dm_alumni.dim_designation.designation_status%type
+  , legacy_allocation_code dm_alumni.dim_designation.legacy_allocation_code%type
+  , ksm_af_flag varchar2(1)
+  , ksm_cru_flag varchar2(1)
   , cash_category varchar2(64)
 );
-
+/*
 --------------------------------------
 Type rec_campaign_designation Is Record (
   allocation_code allocation.allocation_code%type
@@ -57,8 +59,8 @@ Public table declarations
 *************************************************************************/
 
 Type designation_list Is Table Of rec_designation_list;
-/*Type cash_designation Is Table Of rec_cash_designation;
-Type campaign_designation Is Table Of rec_campaign_designation;
+Type cash_designation Is Table Of rec_cash_designation;
+/*Type campaign_designation Is Table Of rec_campaign_designation;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -70,10 +72,10 @@ Function tbl_designation_ksm_af
 
 Function tbl_designation_ksm_cru
   Return designation_list Pipelined;
-/*
+
 Function tbl_designation_cash
   Return cash_designation Pipelined;
-
+/*
 Function tbl_designation_campaign_kfc
   Return campaign_designation Pipelined;
 */
@@ -172,51 +174,51 @@ Cursor c_designation_ksm_cru Is
     )
   ;
 
-/*--------------------------------------
+--------------------------------------
 -- Definition of KSM cash allocation categories for reconciliation with Finance counting rules
 Cursor c_designation_cash Is
     Select
-      allocation.allocation_code
-      , allocation.short_name As alloc_name
-      , allocation.status_code
-      , allocation.alloc_school
+      des.designation_record_id
+      , des.designation_name
+      , des.designation_status
+      , des.legacy_allocation_code
+      , cru.ksm_af_flag
+      , cru.ksm_cru_flag
       , Case
           -- Inactive
-          When allocation.status_code <> 'A'
+          When des.designation_status != 'Active'
             Then 'Inactive'
           -- Exceptions
-          When allocation.allocation_code In ('3203006993001GFT')
+          When des.legacy_allocation_code In ('3203006993001GFT')
             Then 'Other/TBD'
           -- Kellogg Education Center
-          When allocation.allocation_code In ('3203006213301GFT', '3203000860801GFT')
+          When des.legacy_allocation_code In ('3203006213301GFT', '3203000860801GFT')
             Then 'KEC'
           -- Global Hub
-          When allocation.allocation_code In ('3303002280601GFT', '3303002283701GFT', '3203004284701GFT')
+          When des.legacy_allocation_code In ('3303002280601GFT', '3303002283701GFT', '3203004284701GFT')
             Then 'Hub Campaign Cash'
           -- Gift In Kind
-          When allocation.allocation_code = '3303001899301GFT'
+          When des.legacy_allocation_code = '3303001899301GFT'
             Then 'Gift In Kind'
           -- All endowed
-          When allocation.agency = 'END'
+          When des.fin_fund_id Like '4%'
             Then 'Endowed'
           -- All current use
-          When cru.allocation_code Is Not Null
+          When cru.ksm_cru_flag Is Not Null
             Then 'Expendable'
           -- Grant chartstring
-          When allocation.account Like '6%'
+          When des.fin_fund_id Like '6%'
             Then 'Grants'
           --  Fallback - to reconcile
           Else 'Other/TBD'
         End
         As cash_category
-    From allocation
-    Left Join v_alloc_curr_use cru
-      On cru.allocation_code = allocation.allocation_code
-    Where
-      -- KSM allocations
-      alloc_school = 'KM'
+    From table(dw_pkg_base.tbl_designation) des
+    Left Join table(ksm_pkg_designation.tbl_designation_ksm_cru) cru
+      On cru.designation_record_id = des.designation_record_id
+    Where ksm_flag = 'Y'
     ;
-
+/*
 --------------------------------------
 -- Definition of KSM 2022 campaign allocation categories
 Cursor c_designation_campaign_kfc Is
@@ -310,7 +312,7 @@ Function tbl_designation_ksm_cru
   End;
 
 --------------------------------------
-/*Function tbl_designation_cash
+Function tbl_designation_cash
   Return cash_designation Pipelined As
     -- Declarations
     cd cash_designation;
@@ -325,7 +327,7 @@ Function tbl_designation_ksm_cru
     End Loop;
     Return;
   End;
-
+/*
 --------------------------------------
 Function tbl_designation_campaign_kfc
   Return campaign_allocs Pipelined As
