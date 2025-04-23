@@ -4,7 +4,7 @@ Create Or Replace Package ksm_pkg_designation Is
 Author  : PBH634
 Created : 4/22/2025
 Purpose : Kellogg NGC, expendable cash, and campaign priority definitions.
-Dependencies: dw_pkg_base, ksm_pkg_utility
+Dependencies: dw_pkg_base
 
 Suggested naming conventions:
   Pure functions: [function type]_[description]
@@ -17,7 +17,6 @@ Public constant declarations
 *************************************************************************/
 
 pkg_name Constant varchar2(64) := 'ksm_pkg_designation';
-campaign_kfc_start_fy Constant integer := 2022;
 
 /*************************************************************************
 Public type declarations
@@ -57,6 +56,36 @@ Type rec_campaign_designation Is Record (
   , campaign_priority varchar2(64)
 );
 
+--------------------------------------
+Type rec_ksm_designation Is Record (
+  designation_record_id dm_alumni.dim_designation.designation_record_id%type
+  , designation_name dm_alumni.dim_designation.designation_name%type
+  , designation_status dm_alumni.dim_designation.designation_status%type
+  , legacy_allocation_code dm_alumni.dim_designation.legacy_allocation_code%type
+  , cash_category varchar2(64)
+  , full_circle_campaign_priority varchar2(64)
+  , ksm_af_flag varchar2(1)
+  , ksm_cru_flag varchar2(1)
+  , nu_af_flag dm_alumni.dim_designation.annual_fund_designation_indicator%type
+  , fin_fund dm_alumni.dim_designation.fin_fund%type
+  , fin_fund_id dm_alumni.dim_designation.fin_fund%type
+  , fin_project_id dm_alumni.dim_designation.fin_project%type
+  , fin_activity dm_alumni.dim_designation.designation_activity%type
+  , designation_school dm_alumni.dim_designation.designation_school%type
+  , department_program dm_alumni.dim_designation.designation_department_program_code%type
+  , fasb_type dm_alumni.dim_designation.fasb_type%type
+  , case_type dm_alumni.dim_designation.case_type%type
+  , case_purpose dm_alumni.dim_designation.case_purpose%type
+  , designation_tier_1 dm_alumni.dim_designation.designation_tier_1%type
+  , designation_tier_2 dm_alumni.dim_designation.designation_tier_2%type
+  , designation_comment dm_alumni.dim_designation.designation_comment%type
+  , designation_start_date dm_alumni.dim_designation.gl_effective_date%type
+  , designation_stop_date dm_alumni.dim_designation.gl_expiration_date%type
+  , designation_date_added dm_alumni.dim_designation.designation_date_added%type
+  , designation_date_modified dm_alumni.dim_designation.designation_date_modified%type
+  , etl_update_date dm_alumni.dim_designation.etl_update_date%type
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
@@ -64,6 +93,7 @@ Public table declarations
 Type designation_list Is Table Of rec_designation_list;
 Type cash_designation Is Table Of rec_cash_designation;
 Type campaign_designation Is Table Of rec_campaign_designation;
+Type ksm_designation Is Table Of rec_ksm_designation;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -81,6 +111,9 @@ Function tbl_designation_cash
 
 Function tbl_designation_campaign_kfc
   Return campaign_designation Pipelined;
+
+Function tbl_ksm_designation
+  Return ksm_designation Pipelined;
 
 End ksm_pkg_designation;
 /
@@ -259,6 +292,46 @@ Cursor c_designation_campaign_kfc Is
   Where ksm_flag = 'Y'
   ;
 
+--------------------------------------
+-- Unified KSM designations view
+Cursor c_ksm_designation Is
+  Select
+    des.designation_record_id 
+    , des.designation_name
+    , des.designation_status
+    , des.legacy_allocation_code
+    , cash.cash_category
+    , kfc.campaign_priority
+      As full_circle_campaign_priority
+    , cash.ksm_af_flag
+    , cash.ksm_cru_flag
+    , des.nu_af_flag
+    , des.fin_fund
+    , des.fin_fund_id
+    , des.fin_project_id
+    , des.fin_activity
+    , des.designation_school
+    , des.department_program
+    , des.fasb_type
+    , des.case_type
+    , des.case_purpose
+    , des.designation_tier_1
+    , des.designation_tier_2
+    , des.designation_comment
+    , des.gl_effective_date
+      As designation_start_date
+    , des.gl_expiration_date
+      As designation_stop_date
+    , des.designation_date_added
+    , des.designation_date_modified
+    , des.etl_update_date
+  From table(dw_pkg_base.tbl_designation) des
+  Inner Join table(ksm_pkg_designation.tbl_designation_cash) cash
+    On cash.designation_record_id = des.designation_record_id 
+  Inner Join table(ksm_pkg_designation.tbl_designation_campaign_kfc) kfc
+    On kfc.designation_record_id = des.designation_record_id 
+  ;
+
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
@@ -318,15 +391,32 @@ Function tbl_designation_cash
 Function tbl_designation_campaign_kfc
   Return campaign_designation Pipelined As
     -- Declarations
-    allocs campaign_designation;
+    cam campaign_designation;
 
   Begin
     Open c_designation_campaign_kfc; -- Annual Fund allocations cursor
-      Fetch c_designation_campaign_kfc Bulk Collect Into allocs;
+      Fetch c_designation_campaign_kfc Bulk Collect Into cam;
     Close c_designation_campaign_kfc;
     -- Pipe out the allocations
-    For i in 1..(allocs.count) Loop
-      Pipe row(allocs(i));
+    For i in 1..(cam.count) Loop
+      Pipe row(cam(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_ksm_designation
+  Return ksm_designation Pipelined As
+    -- Declarations
+    des ksm_designation;
+
+  Begin
+    Open c_ksm_designation; -- Annual Fund allocations cursor
+      Fetch c_ksm_designation Bulk Collect Into des;
+    Close c_ksm_designation;
+    -- Pipe out the allocations
+    For i in 1..(des.count) Loop
+      Pipe row(des(i));
     End Loop;
     Return;
   End;

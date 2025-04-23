@@ -118,6 +118,7 @@ Type rec_designation Is Record (
     , designation_date_modified dm_alumni.dim_designation.designation_date_modified%type
     , gl_effective_date dm_alumni.dim_designation.gl_effective_date%type
     , gl_expiration_date dm_alumni.dim_designation.gl_expiration_date%type
+    , etl_update_date dm_alumni.dim_designation.etl_update_date%type
 );
 
 --------------------------------------
@@ -440,6 +441,8 @@ Cursor c_designation Is
     , designation_date_modified
     , gl_effective_date
     , gl_expiration_date
+    , trunc(etl_update_date)
+      As etl_update_date
   From dm_alumni.dim_designation
   Where designation_record_id != '-'
 ;
