@@ -4,9 +4,9 @@ Contains SQL and PL/SQL code for various Kellogg data definitions and best pract
 
 # Data hierarchy
 
-WIP as of Apr 2025.
-
 Concept: lower level tables should be defined based on SF objects, then joined/transformed into higher level definitions. Data packages should have clear hierarchical dependencies, and a single responsibility.
+
+WIP as of Apr 2025. Blue are available for testing in dev.
 
 ![data_hierarchy.png](images/data_hierarchy.png "Proposed data hierarchy")
 
@@ -16,6 +16,7 @@ Concept: lower level tables should be defined based on SF objects, then joined/t
 
  * `dw_pkg_`: package/view accessing SF objects or DW tables; should be very fast
  * `ksm_pkg_`: KSM specific package/view dependent on other packages/views
+ * `mv_`: materialized views, fast indexed versions of ksm_pkg definitions
  * `v_`: general views
  * `tableau_v_`: Tableau views
 
