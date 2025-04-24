@@ -179,7 +179,6 @@ Cursor c_entity_degrees_concat Is
       -- ***** IMPORTANT: If updating, make sure normal and clean definitions match *****
       , Listagg(
           trim(degree_year || ' ' || nongrad || degree_code || ' ' || degree_school_name || ' ' || department_desc_short ||
-            -- Class section code
             ' ' || degree_program_code)
           , '; '
         ) Within Group (Order By degree_year)
@@ -187,7 +186,6 @@ Cursor c_entity_degrees_concat Is
       , Listagg(
           Case When nongrad Is NULL Then (
             trim(degree_year || ' ' || nongrad || degree_code || ' ' || degree_school_name || ' ' || department_desc_short ||
-              -- Class section code
               ' ' || degree_program_code)
           ) End
           , '; '
@@ -391,7 +389,6 @@ Cursor c_entity_degrees_concat Is
 Pipelined functions
 *************************************************************************/
 
--- Table function
 Function tbl_entity_ksm_degrees
   Return entity_ksm_degrees Pipelined As
   -- Declarations
@@ -401,7 +398,6 @@ Function tbl_entity_ksm_degrees
     Open c_entity_degrees_concat;
       Fetch c_entity_degrees_concat Bulk Collect Into deg;
     Close c_entity_degrees_concat;
-    -- Pipe out the rows
     For i in 1..(deg.count) Loop
       Pipe row(deg(i));
     End Loop;

@@ -145,14 +145,10 @@ Cursor c_current_calendar (
   )
   -- Final table with definitions
   Select
-    -- Current day
     curr_date.today As today
-    -- Yesterday
     , curr_date.today - 1 As yesterday
     , add_months(curr_date.today - 1, -12) As yesterday_last_year
-    -- 90 days ago (for clearance)
     , curr_date.today - 90 As ninety_days_ago
-    -- Current fiscal year
     , curr_date.yr As curr_fy
     -- Start of fiscal year objects
     , to_date(fy_start_month || '/01/' || (curr_date.yr - yr_dif - 1), 'mm/dd/yyyy')
@@ -161,9 +157,8 @@ Cursor c_current_calendar (
       As curr_fy_start
     , to_date(fy_start_month || '/01/' || (curr_date.yr - yr_dif + 1), 'mm/dd/yyyy')
       As next_fy_start
-    -- Current performance year
+    -- Performance year
     , curr_date.perf_yr As curr_py
-    -- Start of performance year objects
     -- Previous PY correction for 2021
     , Case
         When perf_yr - 1 = 2021
@@ -216,7 +211,6 @@ Function get_numeric_constant(const_name In varchar2)
     Else
       var := const_name;
     End If;
-    -- Run command
     Execute Immediate
       'Begin :val := ' || var || '; End;'
       Using Out val;
@@ -253,7 +247,6 @@ Function fytd_indicator(dt In date, day_offset In number)
         output := 'N';
       End If;
     Else
-      -- fallback condition
       output := NULL;
     End If;
     

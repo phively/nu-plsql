@@ -518,7 +518,6 @@ Function tbl_constituent
     Open c_constituent;
       Fetch c_constituent Bulk Collect Into con;
     Close c_constituent;
-    -- Pipe out the rows
     For i in 1..(con.count) Loop
       Pipe row(con(i));
     End Loop;
@@ -535,7 +534,6 @@ Function tbl_organization
     Open c_organization;
       Fetch c_organization Bulk Collect Into org;
     Close c_organization;
-    -- Pipe out the rows
     For i in 1..(org.count) Loop
       Pipe row(org(i));
     End Loop;
@@ -552,7 +550,6 @@ Function tbl_degrees
     Open c_degrees;
       Fetch c_degrees Bulk Collect Into deg;
     Close c_degrees;
-    -- Pipe out the rows
     For i in 1..(deg.count) Loop
       Pipe row(deg(i));
     End Loop;
@@ -569,7 +566,6 @@ Function tbl_designation
     Open c_designation;
       Fetch c_designation Bulk Collect Into des;
     Close c_designation;
-    -- Pipe out the rows
     For i in 1..(des.count) Loop
       Pipe row(des(i));
     End Loop;
@@ -586,7 +582,6 @@ Function tbl_opportunity
     Open c_opportunity;
       Fetch c_opportunity Bulk Collect Into opp;
     Close c_opportunity;
-    -- Pipe out the rows
     For i in 1..(opp.count) Loop
       Pipe row(opp(i));
     End Loop;
@@ -603,7 +598,6 @@ Function tbl_gift_credit
     Open c_gift_credit;
       Fetch c_gift_credit Bulk Collect Into gcr;
     Close c_gift_credit;
-    -- Pipe out the rows
     For i in 1..(gcr.count) Loop
       Pipe row(gcr(i));
     End Loop;
@@ -620,7 +614,6 @@ Function tbl_involvement
     Open c_involvement;
       Fetch c_involvement Bulk Collect Into inv;
     Close c_involvement;
-    -- Pipe out the rows
     For i in 1..(inv.count) Loop
       Pipe row(inv(i));
     End Loop;
@@ -637,7 +630,6 @@ Function tbl_service_indicators
     Open c_service_indicators;
       Fetch c_service_indicators Bulk Collect Into si;
     Close c_service_indicators;
-    -- Pipe out the rows
     For i in 1..(si.count) Loop
       Pipe row(si(i));
     End Loop;

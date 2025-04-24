@@ -166,8 +166,8 @@ Function to_number_from_dollar(str In varchar2)
   amt number;
   
   Begin
-    -- Regular expression: extract string starting with $ up to the last digit, period, or comma,
     Select
+      -- Regular expression: extract string starting with $ up to the last digit, period, or comma,
       -- Target substring starts with a dollar sign and may contain 0-9,.KMB
       regexp_substr(upper(str), '\$[0-9,KMB\.]*')
     Into trimmed
@@ -186,12 +186,11 @@ Function to_number_from_dollar(str In varchar2)
     
     -- Strip the $ and commas and letters and treat as numeric
     Select
-      -- Convert string to numeric
       to_number(
         regexp_replace(
           trimmed
           , '[^0-9\.]' -- Remove non-numeric characters
-          , '') -- Replace non-numeric characters with null
+          , '')
         )
     Into amt
     From DUAL;

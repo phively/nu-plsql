@@ -128,7 +128,6 @@ Function tbl_entity
     Open c_entity;
       Fetch c_entity Bulk Collect Into ent;
     Close c_entity;
-    -- Pipe out the rows
     For i in 1..(ent.count) Loop
       Pipe row(ent(i));
     End Loop;
