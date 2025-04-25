@@ -484,7 +484,7 @@ Cursor c_opportunity Is
       As opportunity_donor_name
     , opportunity_credit_date
       As credit_date
-    , opportunity_funded_fiscal_year
+    , to_number(nullif(opportunity_funded_fiscal_year, '-'))
       As fiscal_year
     , opportunity_amount
       As amount
