@@ -70,7 +70,7 @@ ON kdes.designation_record_id = des.designation_record_id
 WHERE gc.fiscal_year BETWEEN 2022 AND 2024
 ;
 */
-
+/*
 -- Experimenting with combined pull
 With
 gc As (
@@ -112,8 +112,6 @@ gc As (
     On don.donor_sid = gc.donor_sid
   Left Join dm_alumni.dim_donor srcdon
     On srcdon.donor_sid = gc.giving_source_donor_sid
-Left Join dm_alumni.dim_designation des
-  On des.designation_sid = gc.designation_sid
 )
 
 Select
@@ -158,4 +156,64 @@ Inner Join table(dw_pkg_base.tbl_opportunity) opp
 Inner Join mv_ksm_designation d
   On d.designation_salesforce_id = gc.designation_salesforce_id
 Where gc.fiscal_year Between 2022 And 2024
+;
+*/
+
+-- Rewrite from base object
+-- Appears that donor info is only filled in when it diverges from the opportunity interestingly
+-- So hard and soft credit should not try to map out all gift credit linkages; leave that for ksm_pkg layer
+Select
+    hsc.id
+    As hard_and_soft_credit_salesforce_id
+  , hsc.ucinn_ascendv2__receipt_number__c
+    As receipt_number
+  , hsc.name
+    As hard_and_soft_credit_record_id
+  , hsc.ucinn_ascendv2__credit_amount__c
+    As credit_amount
+    -- Hard credit calculation
+  , Case
+      When hsc.ucinn_ascendv2__credit_type__c = 'Hard'
+        Then hsc.ucinn_ascendv2__credit_amount__c
+        Else 0
+      End
+    As hard_credit_amount
+  , NULL
+    As discounted_pledge_amount
+  , hsc.ucinn_ascendv2__credit_date_formula__c
+    As credit_date
+  , hsc.nu_fiscal_year__c
+    As fiscal_year
+  , hsc.ucinn_ascendv2__credit_type__c
+    As credit_type
+  , hsc.ucinn_ascendv2__source__c
+  , NULL
+    As gypm_ind
+  , hsc.ucinn_ascendv2__opportunity__c
+    As opportunity_salesforce_id
+  , hsc.ucinn_ascendv2__designation__c
+    As designation_salesforce_id
+  , hsc.ucinn_ascendv2__designation_code_formula__c
+    As designation_record_id
+  , hsc.ucinn_ascendv2__credit_id__c
+    As donor_salesforce_id
+  , e.donor_id
+  , e.full_name
+    As donor_name
+  , hsc.ucinn_ascendv2__hard_credit_recipient_account__c
+    As hard_credit_salesforce_id
+  , e2.donor_id
+    As hard_credit_donor_id
+  , hsc.ucinn_ascendv2__hard_credit_formula__c
+    As hard_credit_donor_name
+From stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c hsc
+Left Join mv_entity e
+  On e.salesforce_id = hsc.ucinn_ascendv2__credit_id__c
+Left Join mv_entity e2
+  On e2.salesforce_id = hsc.ucinn_ascendv2__hard_credit_recipient_account__c
+Left Join dm_alumni.dim_opportunity opp
+  On opp.opportunity_salesforce_id = hsc.ucinn_ascendv2__opportunity__c
+INNER JOIN mv_ksm_designation des
+  ON des.designation_salesforce_id = hsc.ucinn_ascendv2__designation__c
+  AND hsc.nu_fiscal_year__c BETWEEN 2022 AND 2024
 ;
