@@ -95,7 +95,8 @@ Type rec_degrees Is Record (
 
 --------------------------------------
 Type rec_designation Is Record (
-      designation_record_id dm_alumni.dim_designation.designation_record_id%type
+    designation_salesforce_id dm_alumni.dim_designation.designation_salesforce_id%type
+    , designation_record_id dm_alumni.dim_designation.designation_record_id%type
     , designation_name dm_alumni.dim_designation.designation_name%type
     , designation_status dm_alumni.dim_designation.designation_status%type
     , legacy_allocation_code dm_alumni.dim_designation.legacy_allocation_code%type
@@ -147,20 +148,22 @@ Type rec_opportunity Is Record (
 
 --------------------------------------
 Type rec_gift_credit Is Record (
-  opportunity_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
+  hard_and_soft_credit_salesforce_id dm_alumni.fact_giving_credit_details.hard_and_soft_credit_salesforce_id%type
   , receipt_number dm_alumni.fact_giving_credit_details.receipt_number%type
   , hard_and_soft_credit_record_id dm_alumni.fact_giving_credit_details.hard_and_soft_credit_record_id%type
   , credit_amount dm_alumni.fact_giving_credit_details.credit_amount%type
   , hard_credit_amount dm_alumni.fact_giving_credit_details.hard_credit_amount%type
+  , hard_credit_countable_amount dm_alumni.fact_giving_credit_details.hard_credit_countable_amount%type
+  , hard_credit_discounted_pledge_amount dm_alumni.fact_giving_credit_details.hard_credit_discounted_pledge_amount%type
+  , soft_credit_discounted_pledge_amount dm_alumni.fact_giving_credit_details.soft_credit_discounted_pledge_amount%type
   , credit_date dm_alumni.fact_giving_credit_details.credit_date%type
   , fiscal_year dm_alumni.fact_giving_credit_details.fiscal_year%type
   , credit_type dm_alumni.fact_giving_credit_details.credit_type%type
   , source dm_alumni.fact_giving_credit_details.source%type
   , source_type dm_alumni.fact_giving_credit_details.source_type%type
   , gypm_ind varchar2(1)
-  , designation_record_id dm_alumni.dim_designation.designation_record_id%type
-  , designation_name dm_alumni.dim_designation.designation_name%type
-  , legacy_allocation_code dm_alumni.dim_designation.legacy_allocation_code%type
+  , opportunity_salesforce_id dm_alumni.fact_giving_credit_details.opportunity_salesforce_id%type
+  , designation_salesforce_id dm_alumni.fact_giving_credit_details.designation_salesforce_id%type
   , payment_record_id dm_alumni.fact_giving_credit_details.payment_record_id%type
   , donor_id dm_alumni.dim_donor.donor_id%type
   , donor_name dm_alumni.dim_donor.donor_name%type
@@ -412,7 +415,8 @@ Cursor c_degrees Is
 --------------------------------------
 Cursor c_designation Is
   Select
-    designation_record_id
+    designation_salesforce_id
+    , designation_record_id
     , designation_name
     , designation_status
     , legacy_allocation_code
@@ -501,18 +505,21 @@ Cursor c_opportunity Is
     , next_scheduled_payment_amount
     , matched_gift_record_id
     , matching_gift_stage
-  From dm_alumni.dim_opportunity
+  From dm_alumni.dim_opportunity opp
   Where opportunity_record_id != '-'
 ;
 
 --------------------------------------
 Cursor c_gift_credit Is
   Select
-    opp.opportunity_record_id
+    gc.hard_and_soft_credit_salesforce_id
     , gc.receipt_number
     , gc.hard_and_soft_credit_record_id
     , gc.credit_amount
     , gc.hard_credit_amount
+    , gc.hard_credit_countable_amount
+    , gc.hard_credit_discounted_pledge_amount
+    , gc.soft_credit_discounted_pledge_amount
     , gc.credit_date
     , gc.fiscal_year
     , gc.credit_type
@@ -527,9 +534,8 @@ Cursor c_gift_credit Is
         When gc.source_type Like '%Payment%' Then 'Y'
         End
       As gypm_ind
-    , des.designation_record_id
-    , des.designation_name
-    , des.legacy_allocation_code
+    , gc.opportunity_salesforce_id
+    , gc.designation_salesforce_id
     , gc.payment_record_id
     , don.donor_id
     , don.donor_name
@@ -539,14 +545,10 @@ Cursor c_gift_credit Is
     , srcdon.donor_name
       As bi_source_donor_name
   From dm_alumni.fact_giving_credit_details gc
-  Left Join dm_alumni.dim_opportunity opp
-    On opp.opportunity_sid = gc.opportunity_sid
   Left Join dm_alumni.dim_donor don
     On don.donor_sid = gc.donor_sid
   Left Join dm_alumni.dim_donor srcdon
     On srcdon.donor_sid = gc.giving_source_donor_sid
-  Left Join dm_alumni.dim_designation des
-    On des.designation_sid = gc.designation_sid
 ;
 
 --------------------------------------

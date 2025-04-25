@@ -59,6 +59,7 @@ Type rec_campaign_designation Is Record (
 --------------------------------------
 Type rec_ksm_designation Is Record (
   designation_record_id dm_alumni.dim_designation.designation_record_id%type
+  , designation_salesforce_id dm_alumni.dim_designation.designation_salesforce_id%type
   , designation_name dm_alumni.dim_designation.designation_name%type
   , designation_status dm_alumni.dim_designation.designation_status%type
   , legacy_allocation_code dm_alumni.dim_designation.legacy_allocation_code%type
@@ -301,6 +302,7 @@ Cursor c_designation_campaign_kfc Is
 Cursor c_ksm_designation Is
   Select
     des.designation_record_id 
+    , des.designation_salesforce_id
     , des.designation_name
     , des.designation_status
     , des.legacy_allocation_code
