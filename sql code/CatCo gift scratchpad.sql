@@ -178,8 +178,6 @@ Select
         Else 0
       End
     As hard_credit_amount
-  , NULL
-    As discounted_pledge_amount
   , hsc.ucinn_ascendv2__credit_date_formula__c
     As credit_date
   , hsc.nu_fiscal_year__c
@@ -187,8 +185,6 @@ Select
   , hsc.ucinn_ascendv2__credit_type__c
     As credit_type
   , hsc.ucinn_ascendv2__source__c
-  , NULL
-    As gypm_ind
   , hsc.ucinn_ascendv2__opportunity__c
     As opportunity_salesforce_id
   , hsc.ucinn_ascendv2__designation__c
@@ -211,8 +207,6 @@ Left Join mv_entity e
   On e.salesforce_id = hsc.ucinn_ascendv2__credit_id__c
 Left Join mv_entity e2
   On e2.salesforce_id = hsc.ucinn_ascendv2__hard_credit_recipient_account__c
-Left Join dm_alumni.dim_opportunity opp
-  On opp.opportunity_salesforce_id = hsc.ucinn_ascendv2__opportunity__c
 INNER JOIN mv_ksm_designation des
   ON des.designation_salesforce_id = hsc.ucinn_ascendv2__designation__c
   AND hsc.nu_fiscal_year__c BETWEEN 2022 AND 2024

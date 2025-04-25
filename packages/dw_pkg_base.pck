@@ -148,28 +148,24 @@ Type rec_opportunity Is Record (
 
 --------------------------------------
 Type rec_gift_credit Is Record (
-  hard_and_soft_credit_salesforce_id dm_alumni.fact_giving_credit_details.hard_and_soft_credit_salesforce_id%type
-  , receipt_number dm_alumni.fact_giving_credit_details.receipt_number%type
-  , hard_and_soft_credit_record_id dm_alumni.fact_giving_credit_details.hard_and_soft_credit_record_id%type
-  , credit_amount dm_alumni.fact_giving_credit_details.credit_amount%type
-  , hard_credit_amount dm_alumni.fact_giving_credit_details.hard_credit_amount%type
-  , hard_credit_countable_amount dm_alumni.fact_giving_credit_details.hard_credit_countable_amount%type
-  , hard_credit_discounted_pledge_amount dm_alumni.fact_giving_credit_details.hard_credit_discounted_pledge_amount%type
-  , soft_credit_discounted_pledge_amount dm_alumni.fact_giving_credit_details.soft_credit_discounted_pledge_amount%type
-  , credit_date dm_alumni.fact_giving_credit_details.credit_date%type
-  , fiscal_year dm_alumni.fact_giving_credit_details.fiscal_year%type
-  , credit_type dm_alumni.fact_giving_credit_details.credit_type%type
-  , source dm_alumni.fact_giving_credit_details.source%type
-  , source_type dm_alumni.fact_giving_credit_details.source_type%type
-  , gypm_ind varchar2(1)
-  , opportunity_salesforce_id dm_alumni.fact_giving_credit_details.opportunity_salesforce_id%type
-  , designation_salesforce_id dm_alumni.fact_giving_credit_details.designation_salesforce_id%type
-  , payment_record_id dm_alumni.fact_giving_credit_details.payment_record_id%type
-  , donor_id dm_alumni.dim_donor.donor_id%type
-  , donor_name dm_alumni.dim_donor.donor_name%type
-  , constituent_or_organization dm_alumni.dim_donor.constituent_or_organization%type
-  , bi_source_donor_id dm_alumni.dim_donor.donor_id%type
-  , bi_source_donor_name dm_alumni.dim_donor.donor_name%type
+  hard_and_soft_credit_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.id%type
+    , receipt_number stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__receipt_number__c%type
+    , hard_and_soft_credit_record_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.name%type
+    , credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
+    , hard_credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
+    , credit_date stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_date_formula__c%type
+    , fiscal_year stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.nu_fiscal_year__c%type
+    , credit_type stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_type__c%type
+    , source stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__source__c%type
+    , opportunity_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__opportunity__c%type
+    , designation_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__designation__c%type
+    , designation_record_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__designation_code_formula__c%type
+    , donor_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_id__c%type
+    , donor_id dm_alumni.dim_donor.donor_id%type
+    , donor_name dm_alumni.dim_donor.donor_name%type
+    , hard_credit_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__hard_credit_recipient_account__c%type
+    , hard_credit_donor_id dm_alumni.dim_donor.donor_id%type
+    , hard_credit_donor_name stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__hard_credit_formula__c%type
 );
 
 --------------------------------------
@@ -512,43 +508,51 @@ Cursor c_opportunity Is
 --------------------------------------
 Cursor c_gift_credit Is
   Select
-    gc.hard_and_soft_credit_salesforce_id
-    , gc.receipt_number
-    , gc.hard_and_soft_credit_record_id
-    , gc.credit_amount
-    , gc.hard_credit_amount
-    , gc.hard_credit_countable_amount
-    , gc.hard_credit_discounted_pledge_amount
-    , gc.soft_credit_discounted_pledge_amount
-    , gc.credit_date
-    , gc.fiscal_year
-    , gc.credit_type
-    , gc.source
-    , gc.source_type
-    -- GYPM deliberately leaves some source as NULL
-    -- Business purpose is to distinguish between GYM cash and GPM NGC
+      hsc.id
+      As hard_and_soft_credit_salesforce_id
+    , hsc.ucinn_ascendv2__receipt_number__c
+      As receipt_number
+    , hsc.name
+      As hard_and_soft_credit_record_id
+    , hsc.ucinn_ascendv2__credit_amount__c
+      As credit_amount
+      -- Hard credit calculation
     , Case
-        When gc.source_type = 'Outright Gift' Then 'G'
-        When gc.source_type = 'Matching Gift Payment' Then 'M'
-        When gc.source_type = 'Pledge' Then 'P'
-        When gc.source_type Like '%Payment%' Then 'Y'
+        When hsc.ucinn_ascendv2__credit_type__c = 'Hard'
+          Then hsc.ucinn_ascendv2__credit_amount__c
+          Else 0.0
         End
-      As gypm_ind
-    , gc.opportunity_salesforce_id
-    , gc.designation_salesforce_id
-    , gc.payment_record_id
-    , don.donor_id
-    , don.donor_name
-    , don.constituent_or_organization
-    , srcdon.donor_id
-      As bi_source_donor_id
-    , srcdon.donor_name
-      As bi_source_donor_name
-  From dm_alumni.fact_giving_credit_details gc
-  Left Join dm_alumni.dim_donor don
-    On don.donor_sid = gc.donor_sid
-  Left Join dm_alumni.dim_donor srcdon
-    On srcdon.donor_sid = gc.giving_source_donor_sid
+      As hard_credit_amount
+    , hsc.ucinn_ascendv2__credit_date_formula__c
+      As credit_date
+    , hsc.nu_fiscal_year__c
+      As fiscal_year
+    , hsc.ucinn_ascendv2__credit_type__c
+      As credit_type
+    , hsc.ucinn_ascendv2__source__c
+      As source
+    , hsc.ucinn_ascendv2__opportunity__c
+      As opportunity_salesforce_id
+    , hsc.ucinn_ascendv2__designation__c
+      As designation_salesforce_id
+    , hsc.ucinn_ascendv2__designation_code_formula__c
+      As designation_record_id
+    , hsc.ucinn_ascendv2__credit_id__c
+      As donor_salesforce_id
+    , e.donor_id
+    , e.full_name
+      As donor_name
+    , hsc.ucinn_ascendv2__hard_credit_recipient_account__c
+      As hard_credit_salesforce_id
+    , e2.donor_id
+      As hard_credit_donor_id
+    , hsc.ucinn_ascendv2__hard_credit_formula__c
+      As hard_credit_donor_name
+  From stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c hsc
+  Left Join mv_entity e
+    On e.salesforce_id = hsc.ucinn_ascendv2__credit_id__c
+  Left Join mv_entity e2
+    On e2.salesforce_id = hsc.ucinn_ascendv2__hard_credit_recipient_account__c
 ;
 
 --------------------------------------
