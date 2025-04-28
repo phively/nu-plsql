@@ -212,11 +212,11 @@ INNER JOIN mv_ksm_designation des
   AND hsc.nu_fiscal_year__c BETWEEN 2022 AND 2024
 ;
 */
-
+/*
 With
 
 gcred As (
-    Select
+  Select
       hsc.id
       As hard_and_soft_credit_salesforce_id
     , hsc.ucinn_ascendv2__receipt_number__c
@@ -246,9 +246,14 @@ gcred As (
       As designation_salesforce_id
     , hsc.ucinn_ascendv2__designation_code_formula__c
       As designation_record_id
+    , hsc.ucinn_ascendv2__contact_name_and_donor_id_formula__c
+      As donor_name_and_id
+    , regexp_substr(substr(hsc.ucinn_ascendv2__contact_name_and_donor_id_formula__c, -10), '[0-9]+')
+      As donor_id
     , hsc.ucinn_ascendv2__credit_id__c
       As donor_salesforce_id
     , e.donor_id
+      As entity_donor_id
     , e.full_name
       As donor_name
     , hsc.ucinn_ascendv2__hard_credit_recipient_account__c
@@ -265,14 +270,161 @@ gcred As (
 )
 
 Select
-  gcred.fiscal_year, sum(gcred.hard_credit_amount)
+    gcred.donor_name_and_id
+  , gcred.donor_id
+  , gcred.entity_donor_id
+    As credited_donor_id
+  , gcred.donor_name
+    As credited_donor_name
+  , opp.opportunity_donor_id
+  , opp.opportunity_donor_name
+  , mve.donor_id
+    As entity_donor_id
+  , mve.full_name
+    As entity_donor_name
+  , opp.opportunity_record_id
+  , opp.anonymous_type
+  , opp.legacy_receipt_number
+    As opp_receipt_number
+  , opp.opportunity_stage
+  , opp.opportunity_record_type
+  , opp.opportunity_type
+  -- GYPM deliberately leaves some source as NULL
+  -- Business purpose is to distinguish between GYM cash and GPM NGC
+  , Case
+      When gcred.source = 'Outright Gift' Then 'G'
+      When gcred.source = 'Matching Gift Payment' Then 'M'
+      When gcred.source = 'Pledge' Then 'P'
+      When gcred.source Like '%Payment%' Then 'Y'
+      End
+    As gypm_ind
+  , gcred.hard_and_soft_credit_salesforce_id
+  , gcred.receipt_number
+    As credit_receipt_number
+  , opp.matched_gift_record_id
+  , Case
+      When gcred.source = 'Pledge'
+        Then opp.opportunity_record_id
+      End
+    As pledge_record_id
+  , opp.linked_proposal_record_id
+  , kdes.designation_record_id
+  , kdes.designation_status
+  , kdes.legacy_allocation_code
+  , kdes.designation_name
+  , kdes.ksm_af_flag
+  , kdes.ksm_cru_flag
+  , kdes.cash_category
+  , kdes.full_circle_campaign_priority
+  , gcred.credit_date
+  , gcred.fiscal_year
+  , gcred.credit_type
+  , gcred.credit_amount
+  , gcred.hard_credit_amount
 From table(dw_pkg_base.tbl_opportunity) opp
 Inner Join gcred
   On gcred.opportunity_salesforce_id = opp.opportunity_salesforce_id
 Inner Join mv_ksm_designation kdes
   On kdes.designation_salesforce_id = gcred.designation_salesforce_id
-Inner Join mv_entity mve
+Left Join mv_entity mve
   On mve.donor_id = opp.opportunity_donor_id
 Where gcred.fiscal_year Between 2022 And 2024
-Group By gcred.fiscal_year
+--Where gcred.hard_and_soft_credit_record_id = 'Credit-250126-9195172'
+;
+
+-- How does the custom donor name/id field work?
+With gcd As (
+Select Distinct donor_name_and_id
+, substr(donor_name_and_id, -10)
+  As did
+, regexp_substr(substr(donor_name_and_id, -10), '[0-9]+')
+  As expdid
+From dm_alumni.fact_giving_credit_details gcd
+)
+Select *
+From gcd
+Where substr(did, 1, 1) != '0'
+;
+*/
+
+With
+
+gcred As (
+  Select
+    gc.*
+    -- Fill in or extract Donor ID
+    , Case
+        When gc.donor_salesforce_id Is Not Null
+          Then mv_entity.donor_id
+        Else
+          regexp_substr(
+            -- Take last 10 characters of concatenated name/id field
+            substr(donor_name_and_id, -10)
+            -- Return consecutive digits
+            , '[0-9]+'
+          )
+        End
+      As credited_donor_id
+  From table(dw_pkg_base.tbl_gift_credit) gc
+  Left Join mv_entity
+    On mv_entity.salesforce_id = gc.donor_salesforce_id
+)
+
+Select
+  gcred.credited_donor_id
+  , mve.full_name
+    As credited_donor_name
+  , mve.sort_name
+    As credited_donor_sort_name
+  , gcred.donor_name_and_id
+    As credited_donor_audit
+  , opp.opportunity_donor_id
+  , opp.opportunity_donor_name
+  , opp.opportunity_record_id
+  , opp.anonymous_type
+  , opp.legacy_receipt_number
+    As opp_receipt_number
+  , opp.opportunity_stage
+  , opp.opportunity_record_type
+  , opp.opportunity_type
+  -- GYPM deliberately leaves some source as NULL
+  -- Business purpose is to distinguish between GYM cash and GPM NGC
+  , Case
+      When gcred.source = 'Outright Gift' Then 'G'
+      When gcred.source = 'Matching Gift Payment' Then 'M'
+      When gcred.source = 'Pledge' Then 'P'
+      When gcred.source Like '%Payment%' Then 'Y'
+      End
+    As gypm_ind
+  , gcred.hard_and_soft_credit_salesforce_id
+  , gcred.receipt_number
+    As credit_receipt_number
+  , opp.matched_gift_record_id
+  , Case
+      When gcred.source = 'Pledge'
+        Then opp.opportunity_record_id
+      End
+    As pledge_record_id
+  , opp.linked_proposal_record_id
+  , kdes.designation_record_id
+  , kdes.designation_status
+  , kdes.legacy_allocation_code
+  , kdes.designation_name
+  , kdes.ksm_af_flag
+  , kdes.ksm_cru_flag
+  , kdes.cash_category
+  , kdes.full_circle_campaign_priority
+  , gcred.credit_date
+  , gcred.fiscal_year
+  , gcred.credit_type
+  , gcred.credit_amount
+  , gcred.hard_credit_amount
+From table(dw_pkg_base.tbl_opportunity) opp
+Inner Join gcred
+  On gcred.opportunity_salesforce_id = opp.opportunity_salesforce_id
+Inner Join mv_ksm_designation kdes
+  On kdes.designation_salesforce_id = gcred.designation_salesforce_id
+Left Join mv_entity mve
+  On mve.donor_id = gcred.credited_donor_id
+Where gcred.fiscal_year Between 2022 And 2024
 ;

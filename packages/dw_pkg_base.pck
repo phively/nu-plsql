@@ -160,11 +160,9 @@ Type rec_gift_credit Is Record (
     , opportunity_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__opportunity__c%type
     , designation_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__designation__c%type
     , designation_record_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__designation_code_formula__c%type
+    , donor_name_and_id varchar2(255) -- Original is varchar2(1300)
     , donor_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_id__c%type
-    , donor_id dm_alumni.dim_donor.donor_id%type
-    , donor_name dm_alumni.dim_donor.donor_name%type
     , hard_credit_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__hard_credit_recipient_account__c%type
-    , hard_credit_donor_id dm_alumni.dim_donor.donor_id%type
     , hard_credit_donor_name stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__hard_credit_formula__c%type
 );
 
@@ -499,7 +497,8 @@ Cursor c_opportunity Is
       As linked_proposal_active_proposal_manager
     , next_scheduled_payment_date
     , next_scheduled_payment_amount
-    , matched_gift_record_id
+    , nullif(matched_gift_record_id, '-')
+      As matched_gift_record_id
     , matching_gift_stage
   From dm_alumni.dim_opportunity opp
   Where opportunity_record_id != '-'
@@ -525,7 +524,7 @@ Cursor c_gift_credit Is
       As hard_credit_amount
     , hsc.ucinn_ascendv2__credit_date_formula__c
       As credit_date
-    , hsc.nu_fiscal_year__c
+    , to_number(hsc.nu_fiscal_year__c)
       As fiscal_year
     , hsc.ucinn_ascendv2__credit_type__c
       As credit_type
@@ -537,22 +536,15 @@ Cursor c_gift_credit Is
       As designation_salesforce_id
     , hsc.ucinn_ascendv2__designation_code_formula__c
       As designation_record_id
+    , hsc.ucinn_ascendv2__contact_name_and_donor_id_formula__c
+      As donor_name_and_id
     , hsc.ucinn_ascendv2__credit_id__c
       As donor_salesforce_id
-    , e.donor_id
-    , e.full_name
-      As donor_name
     , hsc.ucinn_ascendv2__hard_credit_recipient_account__c
       As hard_credit_salesforce_id
-    , e2.donor_id
-      As hard_credit_donor_id
     , hsc.ucinn_ascendv2__hard_credit_formula__c
       As hard_credit_donor_name
   From stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c hsc
-  Left Join mv_entity e
-    On e.salesforce_id = hsc.ucinn_ascendv2__credit_id__c
-  Left Join mv_entity e2
-    On e2.salesforce_id = hsc.ucinn_ascendv2__hard_credit_recipient_account__c
 ;
 
 --------------------------------------
