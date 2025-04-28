@@ -42,3 +42,18 @@ Select
   , sysdate as mv_last_refresh
 From table(ksm_pkg_designation.tbl_ksm_designation) des
 ;
+
+--------------------------------------
+-- ksm_pkg_gifts
+-- tbl_ksm_transactions
+Create Materialized View mv_ksm_transactions
+Refresh Complete
+Start With sysdate
+-- 7:30 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.5/24)
+As
+Select
+  des.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_gifts.tbl_ksm_transactions) des
+;

@@ -387,13 +387,15 @@ Select
   , opp.opportunity_stage
   , opp.opportunity_record_type
   , opp.opportunity_type
+  , gcred.source_type
+  , gcred.source_type_detail
   -- GYPM deliberately leaves some source as NULL
   -- Business purpose is to distinguish between GYM cash and GPM NGC
   , Case
-      When gcred.source = 'Outright Gift' Then 'G'
-      When gcred.source = 'Matching Gift Payment' Then 'M'
-      When gcred.source = 'Pledge' Then 'P'
-      When gcred.source Like '%Payment%' Then 'Y'
+      When gcred.source_type_detail = 'Outright Gift' Then 'G'
+      When gcred.source_type_detail = 'Matching Gift Payment' Then 'M'
+      When gcred.source_type_detail = 'Pledge' Then 'P'
+      When gcred.source_type_detail Like '%Payment%' Then 'Y'
       End
     As gypm_ind
   , gcred.hard_and_soft_credit_salesforce_id
@@ -401,7 +403,7 @@ Select
     As credit_receipt_number
   , opp.matched_gift_record_id
   , Case
-      When gcred.source = 'Pledge'
+      When gcred.source_type = 'Pledge'
         Then opp.opportunity_record_id
       End
     As pledge_record_id
