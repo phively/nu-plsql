@@ -25,6 +25,14 @@ Examples
  * `ksm_pkg_utility` wraps various utility functions, such as to_number_from_dollar()
  * `dw_pkg_base` contains the cursor/logic to format base objects/tables including constituent, organization, etc.
 
+# Materialized view refresh
+
+To facilitate pulling the important definitions contained in the `ksm_pkg` packages, materialized views are scheduled to refresh daily. See [ksm_mv_scheduler.sql](tables\ksm_mv_scheduler.sql) for the set of scheduled views.
+
+If new materialized views are scheduled, the specs should be added to the above file, and last refresh and ETL times added to the view [ksm_mv_refresh_stats.sql](tables\ksm_mv_refresh_stats.sql).
+
+Important: respect dependencies! For example, `mv_ksm_transactions` is scheduled 10 minutes after `mv_entity` -- see their respective package descriptions.
+
 # Important views
 
 TBD
