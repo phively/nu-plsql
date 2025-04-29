@@ -430,3 +430,13 @@ Left Join mv_entity mve
   On mve.donor_id = gcred.credited_donor_id
 Where gcred.fiscal_year Between 2022 And 2024
 ;
+
+-- Bequest discounts
+Select *
+From dm_alumni.dim_opportunity opp
+Where opp.opportunity_record_id = 'PN6766287'
+;
+Select *
+From stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c cred
+Where cred.id = 'a0sO8000003XcSnIAK'
+;

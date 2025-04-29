@@ -135,6 +135,7 @@ Type rec_opportunity Is Record (
     , credit_date dm_alumni.dim_opportunity.opportunity_credit_date%type
     , fiscal_year dm_alumni.dim_opportunity.opportunity_funded_fiscal_year%type
     , amount dm_alumni.dim_opportunity.opportunity_amount%type
+    , discounted_amount dm_alumni.dim_opportunity.pledge_total_countable_amount%type
     , designation_salesforce_id dm_alumni.dim_opportunity.designation_salesforce_id%type
     , is_anonymous_indicator dm_alumni.dim_opportunity.is_anonymous_indicator%type
     , anonymous_type dm_alumni.dim_opportunity.anonymous_type%type
@@ -487,6 +488,8 @@ Cursor c_opportunity Is
       As fiscal_year
     , opportunity_amount
       As amount
+    , pledge_total_countable_amount
+      As discounted_amount
     , designation_salesforce_id
     , nullif(is_anonymous_indicator, '-')
       As is_anonymous_indicator

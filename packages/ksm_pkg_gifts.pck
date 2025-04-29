@@ -60,6 +60,7 @@ Type rec_transaction Is Record (
       , credit_type stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_type__c%type
       , credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
       , hard_credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
+      , recognition_credit stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
 );
 
 /*************************************************************************
@@ -159,8 +160,21 @@ Cursor c_ksm_transactions Is
       , gcred.credit_date
       , gcred.fiscal_year
       , gcred.credit_type
+      , Case
+          When opportunity_type = 'PGBEQ'
+            Then opp.discounted_amount
+          Else gcred.credit_amount
+          End
+        As credit_amount
+      , Case
+          When gcred.credit_type = 'Hard'
+            And opportunity_type = 'PGBEQ'
+            Then opp.discounted_amount
+          Else gcred.hard_credit_amount
+          End
+        As hard_credit_amount
       , gcred.credit_amount
-      , gcred.hard_credit_amount
+        As recognition_credit
     From table(dw_pkg_base.tbl_opportunity) opp
     Inner Join gcred
       On gcred.opportunity_salesforce_id = opp.opportunity_salesforce_id

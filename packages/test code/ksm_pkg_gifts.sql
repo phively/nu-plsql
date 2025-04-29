@@ -16,3 +16,17 @@ Select *
 From mv_ksm_transactions mkt
 Where mkt.fiscal_year Between 2022 And 2024
 ;
+
+Select
+  NULL As "Check for multiple credited donors, single opportunity donor on pledge"
+  , mkt.*
+From mv_ksm_transactions mkt
+Where mkt.opportunity_record_id = 'PN6669646'
+;
+
+Select
+  NULL As "Check discounted bequest amount"
+  , mkt.*
+From mv_ksm_transactions mkt
+Where mkt.opportunity_record_id = 'PN6766287'
+;
