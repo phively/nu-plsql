@@ -72,27 +72,12 @@ Type rec_committee_member Is Record (
     , involvement_comment stg_alumni.ucinn_ascendv2__involvement__c.nu_comments__c%type
     , etl_update_date dm_alumni.dim_involvement.etl_update_date%type
 );
-/*
---------------------------------------
-Type rec_committee_agg Is Record (
-    id_number committee.id_number%type
-    , report_name entity.report_name%type
-    , committee_code stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type
-    , short_desc committee_header.short_desc%type
-    , start_dt varchar2(512)
-    , stop_dt varchar2(512)
-    , status tms_committee_status.short_desc%type
-    , role varchar2(1024)
-    , committee_title varchar2(1024)
-    , committee_short_desc varchar2(40)
-);
 
 /*************************************************************************
 Public table declarations
 *************************************************************************/
 
 Type committee_members Is Table Of rec_committee_member;
---Type committee_agg Is Table Of rec_committee_agg;
 
 /*************************************************************************
 Public function declarations
@@ -115,13 +100,7 @@ Public pipelined functions declarations
 Function tbl_committee_members(
   my_involvement_cd In varchar2
 ) Return committee_members Pipelined;
-/*
--- All roles listagged to one per line
-Function tbl_committee_agg(
-  my_involvement_cd In varchar2
-  , shortname In varchar2 Default NULL
-) Return committee_agg Pipelined;
-*/
+
 End ksm_pkg_committee;
 /
 Create Or Replace Package Body ksm_pkg_committee Is
@@ -154,72 +133,13 @@ Cursor c_committee_member(my_involvement_cd In varchar2) Is
   Where inv.involvement_status = 'Current'
     And inv.involvement_code = my_involvement_cd
   ;
-/*
---------------------------------------
-Cursor c_committee_agg(
-    my_involvement_cd In varchar2
-    , shortname In varchar2
-  ) Is
-  With
-  c As (
-    -- Same as c_committee_member, above
-      Select
-        comm.id_number
-        , comm.committee_code
-        , hdr.short_desc
-        , comm.start_dt
-        , comm.stop_dt
-        , tms_status.short_desc As status
-        , tms_role.short_desc As role
-        , comm.committee_title
-        , comm.xcomment
-        , comm.date_modified
-        , comm.operator_name
-        , trim(entity.spouse_id_number) As spouse_id_number
-        , shortname As committee_short_desc
-      From committee comm
-      Inner Join entity
-        On entity.id_number = comm.id_number
-      Left Join tms_committee_status tms_status On comm.committee_status_code = tms_status.committee_status_code
-      Left Join tms_committee_role tms_role On comm.committee_role_code = tms_role.committee_role_code
-      Left Join committee_header hdr On comm.committee_code = hdr.committee_code
-      Where comm.committee_code = my_involvement_cd
-        And comm.committee_status_code In ('C', 'A') -- 'C'urrent or 'A'ctive: 'A' is deprecated
-  )
-  -- Main query
-  Select
-    c.id_number
-    , entity.report_name
-    , c.committee_code
-    , c.short_desc
-    , listagg(c.start_dt, '; ') Within Group (Order By c.start_dt Asc, c.stop_dt Asc, c.role Asc)
-      As start_dt
-    , listagg(c.stop_dt, '; ') Within Group (Order By c.start_dt Asc, c.stop_dt Asc, c.role Asc)
-      As stop_dt
-    , c.status
-    , listagg(c.role, '; ') Within Group (Order By c.start_dt Asc, c.stop_dt Asc, c.role Asc)
-      As role
-    , listagg(c.committee_title, '; ') Within Group (Order By c.start_dt Asc, c.stop_dt Asc, c.role Asc)
-      As committee_title
-    , shortname
-      As committee_short_desc
-  From c
-  Inner Join entity
-    On entity.id_number = c.id_number
-  Group By
-    c.id_number
-    , entity.report_name
-    , c.committee_code
-    , c.short_desc
-    , c.status
-  ;
 
 /*************************************************************************
 Functions
 *************************************************************************/
 
 --------------------------------------
--- Retrieve one of the named constants from the package
+-- Retrieve one of the named string constants from the package
 -- Requires a quoted constant name
 Function get_string_constant(const_name In varchar2)
   Return varchar2 Deterministic Is
@@ -241,6 +161,7 @@ Function get_string_constant(const_name In varchar2)
   End;
 
 --------------------------------------
+-- Retrieve one of the named numeric constants from the package
 -- Requires a quoted constant name
 Function get_numeric_constant(const_name In varchar2)
   Return number Deterministic Is
@@ -270,10 +191,19 @@ Pipelined functions
 Function tbl_committee_members(my_involvement_cd In varchar2)
   Return committee_members Pipelined As
   -- Declarations
+  inv_code varchar2(255);
   committees committee_members;
-    
+  
+  Begin 
+  -- Check if my_involvement_cd is actually a named pkg constant
   Begin
-    Open c_committee_member(my_involvement_cd => my_involvement_cd);
+    inv_code := ksm_pkg_committee.get_string_constant(my_involvement_cd);
+    Exception
+      When Others Then
+        inv_code := my_involvement_cd;
+    End;
+     
+    Open c_committee_member(my_involvement_cd => inv_code);
       Fetch c_committee_member Bulk Collect Into committees;
     Close c_committee_member;
     For i in 1..(committees.count) Loop
@@ -281,44 +211,6 @@ Function tbl_committee_members(my_involvement_cd In varchar2)
     End Loop;
     Return;
   End;
-/*
---------------------------------------
--- Generic rec_committee_agg function, similar to committee_members
-Function committee_agg_members (
-  my_involvement_cd In varchar2
-  , shortname In varchar2 Default NULL
-)
-Return committee_agg As
--- Declarations
-committees_agg committee_agg;
-  
-Begin
-  Open c_committee_agg(my_involvement_cd => my_involvement_cd
-    , shortname => shortname
-  );
-    Fetch c_committee_agg Bulk Collect Into committees_agg;
-    Close c_committee_agg;
-    Return committees_agg;
-  End;
 
---------------------------------------
--- All roles listagged to one per line
-Function tbl_committee_agg (
-  my_involvement_cd In varchar2
-  , shortname In varchar2
-) Return committee_agg Pipelined As
-committees_agg committee_agg;
-  
-  Begin
-    committees_agg := committee_agg_members (
-      my_involvement_cd => my_involvement_cd
-      , shortname => shortname
-    );
-    For i in 1..committees_agg.count Loop
-      Pipe row(committees_agg(i));
-    End Loop;
-    Return;
-  End;
-*/
 End ksm_pkg_committee;
 /
