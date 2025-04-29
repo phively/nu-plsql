@@ -1,3 +1,8 @@
+/*************************************************************************
+No dependencies
+7:30 AM
+*************************************************************************/
+
 --------------------------------------
 -- ksm_pkg_entity
 -- tbl_entity
@@ -43,14 +48,19 @@ Select
 From table(ksm_pkg_designation.tbl_ksm_designation) des
 ;
 
+/*************************************************************************
+Level 1 dependencies
+7:40 AM
+*************************************************************************/
+
 --------------------------------------
 -- ksm_pkg_gifts
 -- tbl_ksm_transactions
 Create Materialized View mv_ksm_transactions
 Refresh Complete
 Start With sysdate
--- 7:30 AM tomorrow
-Next (trunc(sysdate) + 1 + 7.5/24)
+-- 7:40 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.667/24)
 As
 Select
   des.*

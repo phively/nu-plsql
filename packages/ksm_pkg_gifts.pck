@@ -61,6 +61,7 @@ Type rec_transaction Is Record (
       , credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
       , hard_credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
       , recognition_credit stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
+      , etl_update_date mv_entity.etl_update_date%type
 );
 
 /*************************************************************************
@@ -175,6 +176,8 @@ Cursor c_ksm_transactions Is
         As hard_credit_amount
       , gcred.credit_amount
         As recognition_credit
+      , least(opp.etl_update_date, gcred.etl_update_date, kdes.etl_update_date, mve.etl_update_date)
+        As etl_update_date
     From table(dw_pkg_base.tbl_opportunity) opp
     Inner Join gcred
       On gcred.opportunity_salesforce_id = opp.opportunity_salesforce_id

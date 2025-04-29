@@ -145,6 +145,7 @@ Type rec_opportunity Is Record (
     , next_scheduled_payment_amount dm_alumni.dim_opportunity.next_scheduled_payment_amount%type
     , matched_gift_record_id dm_alumni.dim_opportunity.matched_gift_record_id%type
     , matching_gift_stage dm_alumni.dim_opportunity.matching_gift_stage%type
+    , etl_update_date dm_alumni.dim_opportunity.etl_update_date%type
 );
 
 --------------------------------------
@@ -166,6 +167,7 @@ Type rec_gift_credit Is Record (
     , donor_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_id__c%type
     , hard_credit_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__hard_credit_recipient_account__c%type
     , hard_credit_donor_name stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__hard_credit_formula__c%type
+    , etl_update_date stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.etl_update_date%type
 );
 
 --------------------------------------
@@ -504,6 +506,8 @@ Cursor c_opportunity Is
     , nullif(matched_gift_record_id, '-')
       As matched_gift_record_id
     , matching_gift_stage
+    , trunc(etl_update_date)
+      As etl_update_date
   From dm_alumni.dim_opportunity opp
   Where opportunity_record_id != '-'
 ;
@@ -550,6 +554,8 @@ Cursor c_gift_credit Is
       As hard_credit_salesforce_id
     , hsc.ucinn_ascendv2__hard_credit_formula__c
       As hard_credit_donor_name
+    , trunc(hsc.etl_update_date)
+      As etl_update_date
   From stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c hsc
 ;
 
