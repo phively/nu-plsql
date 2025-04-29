@@ -1,14 +1,14 @@
 -- Drop old materialized view
-Drop Materialized View rpt_pbh634.mv_past_ksm_gos;
+Drop Materialized View mv_ksm_gos;
 
 -- Create new materialized view
-Create Materialized View rpt_pbh634.mv_past_ksm_gos As
+Create Materialized View mv_ksm_gos As
 
 With
 
 -- Data table; update as needed
 adv_dates As (
-  Select 'notarealid' As id_number, 'notateam' As team, NULL As start_dt, NULL As stop_dt From DUAL
+  Select 'notarealid' As donor_id, 'notateam' As team, NULL As start_dt, NULL As stop_dt From DUAL
   Union All Select '0000562844', 'MG', to_date('20080808', 'yyyymmdd'), to_date('20150601', 'yyyymmdd') From DUAL
   Union All Select '0000235591', 'MG', to_date('20160501', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000482962', 'MG', to_date('20030619', 'yyyymmdd'), to_date('20110511', 'yyyymmdd') From DUAL
@@ -63,7 +63,7 @@ adv_dates As (
   Union All Select '0000841644', 'AF', to_date('20210315', 'yyyymmdd'), to_date('20230814', 'yyyymmdd') From DUAL
   Union All Select '0000842004', 'MG', to_date('20210419', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000857030', 'MG', to_date('20211208', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
-  Union All Select '0000777423', 'AR', to_date('20211122', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000777423', 'AR', to_date('20211122', 'yyyymmdd'), to_date('20250314', 'yyyymmdd') From DUAL
   Union All Select '0000860423', 'AF', to_date('20220404', 'yyyymmdd'), to_date('20240920', 'yyyymmdd') From DUAL
   Union All Select '0000819851', 'AF', to_date('20190930', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000887951', 'AF', to_date('20220919', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
@@ -77,27 +77,27 @@ adv_dates As (
   Union All Select '0000910689', 'AF', to_date('20231127', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000911216', 'AF', to_date('20240108', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000911218', 'AF', to_date('20231213', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
-  Union All Select '0000521222', 'ADV', to_date('20220119', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000521222', 'ADV', to_date('20220119', 'yyyymmdd'), to_date('20250321', 'yyyymmdd') From DUAL
   Union All Select '0000793042', 'ADV', to_date('20220221', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
-  Union All Select '0000856353', 'ADV', to_date('20211115', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0000856353', 'ADV', to_date('20211115', 'yyyymmdd'), to_date('20250103', 'yyyymmdd') From DUAL
   Union All Select '0000712447', 'MG', to_date('20240318', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000888785', 'AF', to_date('20241118', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
 )
 
 Select
-  adv_dates.id_number
-  , entity.report_name
-  , entity.record_status_code
+  adv_dates.donor_id
+  , mve.sort_name
   , team
   , adv_dates.start_dt
   , adv_dates.stop_dt
 From adv_dates adv_dates
-Inner Join entity On entity.id_number = adv_dates.id_number
-Order By entity.report_name Asc
+Inner Join mv_entity mve
+  On mve.donor_id = adv_dates.donor_id
+Order By mve.sort_name Asc
 ;
 
 -- Check results
 Select *
-From rpt_pbh634.mv_past_ksm_gos
+From mv_ksm_gos
 ;
 
