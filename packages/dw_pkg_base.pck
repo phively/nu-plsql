@@ -588,7 +588,8 @@ Cursor c_involvement Is
     , inv.involvement_end_date
     , stginv.nu_comments__c
       As involvement_comment
-    , inv.etl_update_date
+    , trunc(inv.etl_update_date)
+      As etl_update_date
   From dm_alumni.dim_involvement inv
   Inner Join stg_alumni.ucinn_ascendv2__involvement__c stginv
     On stginv.id = inv.involvement_salesforce_id
