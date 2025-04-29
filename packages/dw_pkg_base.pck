@@ -172,7 +172,19 @@ Type rec_gift_credit Is Record (
 
 --------------------------------------
 Type rec_involvement Is Record (
-  placeholder varchar2(1)
+    constituent_donor_id dm_alumni.dim_involvement.constituent_donor_id%type
+    , constituent_name dm_alumni.dim_involvement.constituent_name%type
+    , involvement_record_id dm_alumni.dim_involvement.involvement_record_id%type
+    , involvement_code stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type
+    , involvement_name dm_alumni.dim_involvement.involvement_name%type
+    , involvement_status dm_alumni.dim_involvement.involvement_status%type
+    , involvement_type dm_alumni.dim_involvement.involvement_type%type
+    , involvement_role dm_alumni.dim_involvement.involvement_role%type
+    , involvement_business_unit dm_alumni.dim_involvement.involvement_business_unit%type
+    , involvement_start_date dm_alumni.dim_involvement.involvement_start_date%type
+    , involvement_end_date dm_alumni.dim_involvement.involvement_end_date%type
+    , involvement_comment stg_alumni.ucinn_ascendv2__involvement__c.nu_comments__c%type
+    , etl_update_date dm_alumni.dim_involvement.etl_update_date%type
 );
 
 --------------------------------------
@@ -561,8 +573,27 @@ Cursor c_gift_credit Is
 
 --------------------------------------
 Cursor c_involvement Is
-  Select NULL
-  From dm_alumni.dim_involvement
+  Select
+    inv.constituent_donor_id
+    , inv.constituent_name
+    , inv.involvement_record_id
+    , ival.ucinn_ascendv2__code__c
+      As involvement_code
+    , inv.involvement_name
+    , inv.involvement_status
+    , inv.involvement_type
+    , inv.involvement_role
+    , inv.involvement_business_unit
+    , inv.involvement_start_date
+    , inv.involvement_end_date
+    , stginv.nu_comments__c
+      As involvement_comment
+    , inv.etl_update_date
+  From dm_alumni.dim_involvement inv
+  Inner Join stg_alumni.ucinn_ascendv2__involvement__c stginv
+    On stginv.id = inv.involvement_salesforce_id
+  Inner Join stg_alumni.ucinn_ascendv2__involvement_value__c ival
+    On ival.id = stginv.ucinn_ascendv2__involvement_code__c
 ;
 
 --------------------------------------
