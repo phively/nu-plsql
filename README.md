@@ -16,7 +16,8 @@ WIP as of Apr 2025. Blue are available for testing in dev.
 
  * `dw_pkg_`: package/view accessing SF objects or DW tables; should be very fast
  * `ksm_pkg_`: KSM specific package/view dependent on other packages/views
- * `mv_`: materialized views, fast indexed versions of ksm_pkg definitions
+ * `mv_`: refreshing materialized views, fast indexed versions of dw_pkg and ksm_pkg definitions
+ * `tbl_`: tables and non-refreshing materialized views; should be recompiled to update
  * `v_`: general views
  * `tableau_`: Tableau views
 

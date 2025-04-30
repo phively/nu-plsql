@@ -1,8 +1,8 @@
 -- Drop old materialized view
-Drop Materialized View mv_nu_vips;
+Drop Materialized View tbl_nu_vips;
 
 -- Create new materialized view
-Create Materialized View mv_nu_vips As
+Create Materialized View tbl_nu_vips As
 
 With
 
@@ -35,5 +35,5 @@ Order By nu_dates.start_dt Asc
 
 -- Check results
 Select *
-From mv_nu_vips
+From tbl_nu_vips
 ;

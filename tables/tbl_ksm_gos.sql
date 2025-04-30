@@ -1,8 +1,8 @@
 -- Drop old materialized view
-Drop Materialized View mv_ksm_gos;
+Drop Materialized View tbl_ksm_gos;
 
 -- Create new materialized view
-Create Materialized View mv_ksm_gos As
+Create Materialized View tbl_ksm_gos As
 
 With
 
@@ -98,6 +98,6 @@ Order By mve.sort_name Asc
 
 -- Check results
 Select *
-From mv_ksm_gos
+From tbl_ksm_gos
 ;
 
