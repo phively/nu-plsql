@@ -34,7 +34,7 @@ committee_pe_asia Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn
 committee_asia Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type := 'COM-KEBA'; -- Kellogg Executive Board for Asia
 committee_mbai Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type := 'COM-MBAAC'; -- MBAi Advisory Council 
 committee_yab Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type := 'COM-KAYAB'; -- Kellogg Young Alumni Board
---committee_tech Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type := 'KTC'; -- Kellogg Alumni Tech Council
+committee_tech Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type := 'COM-KTC'; -- Kellogg Alumni Tech Council
 
 --------------------------------------
 -- Committee dues

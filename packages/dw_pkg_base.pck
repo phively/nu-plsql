@@ -37,8 +37,15 @@ Type rec_constituent Is Record (
   , spouse_donor_id dm_alumni.dim_constituent.spouse_constituent_donor_id%type
   , spouse_name dm_alumni.dim_constituent.spouse_name%type
   , spouse_instituitional_suffix dm_alumni.dim_constituent.spouse_instituitional_suffix%type
+  , preferred_address_status dm_alumni.dim_constituent.preferred_address_status%type
+  , preferred_address_type dm_alumni.dim_constituent.preferred_address_type%type
+  , preferred_address_line_1 dm_alumni.dim_constituent.preferred_address_line_1%type
+  , preferred_address_line_2 dm_alumni.dim_constituent.preferred_address_line_2%type
+  , preferred_address_line_3 dm_alumni.dim_constituent.preferred_address_line_3%type
+  , preferred_address_line_4 dm_alumni.dim_constituent.preferred_address_line_4%type
   , preferred_address_city dm_alumni.dim_constituent.preferred_address_city%type
   , preferred_address_state dm_alumni.dim_constituent.preferred_address_state%type
+  , preferred_address_postal_code dm_alumni.dim_constituent.preferred_address_postal_code%type
   , preferred_address_country dm_alumni.dim_constituent.preferred_address_country_name%type
   , etl_update_date dm_alumni.dim_constituent.etl_update_date%type
 );
@@ -55,8 +62,15 @@ Type rec_organization Is Record (
   , organization_type dm_alumni.dim_organization.organization_type%type
   , org_ult_parent_donor_id dm_alumni.dim_organization.organization_ultimate_parent_donor_id%type
   , org_ult_parent_name dm_alumni.dim_organization.organization_ultimate_parent_name%type
+  , preferred_address_status dm_alumni.dim_organization.preferred_address_status%type
+  , preferred_address_type dm_alumni.dim_organization.preferred_address_type%type
+  , preferred_address_line_1 dm_alumni.dim_organization.preferred_address_line_1%type
+  , preferred_address_line_2 dm_alumni.dim_organization.preferred_address_line_2%type
+  , preferred_address_line_3 dm_alumni.dim_organization.preferred_address_line_3%type
+  , preferred_address_line_4 dm_alumni.dim_organization.preferred_address_line_4%type
   , preferred_address_city dm_alumni.dim_organization.preferred_address_city%type
   , preferred_address_state dm_alumni.dim_organization.preferred_address_state%type
+  , preferred_address_postal_code dm_alumni.dim_organization.preferred_address_postal_code%type
   , preferred_address_country dm_alumni.dim_organization.preferred_address_country_name%type
   , etl_update_date dm_alumni.dim_organization.etl_update_date%type
 );
@@ -284,10 +298,24 @@ Cursor c_constituent Is
       As spouse_name
     , nullif(spouse_instituitional_suffix, '-')
       As spouse_instituitional_suffix
+    , nullif(preferred_address_status, '-')
+      As preferred_address_status
+    , nullif(preferred_address_type, '-')
+      As preferred_address_type
+    , nullif(preferred_address_line_1, '-')
+      As preferred_address_line_1
+    , nullif(preferred_address_line_2, '-')
+      As preferred_address_line_2
+    , nullif(preferred_address_line_3, '-')
+      As preferred_address_line_3
+    , nullif(preferred_address_line_4, '-')
+      As preferred_address_line_4
     , nullif(preferred_address_city, '-')
       As preferred_address_city
     , nullif(preferred_address_state, '-')
       As preferred_address_state
+    , nullif(preferred_address_postal_code, '-')
+      As preferred_address_postal_code
     , nullif(preferred_address_country_name, '-')
       As preferred_address_country
     , trunc(etl_update_date)
@@ -320,10 +348,24 @@ Cursor c_organization Is
       As org_ult_parent_donor_id
     , organization_ultimate_parent_name
       As org_ult_parent_name
+    , nullif(preferred_address_status, '-')
+      As preferred_address_status
+    , nullif(preferred_address_type, '-')
+      As preferred_address_type
+    , nullif(preferred_address_line_1, '-')
+      As preferred_address_line_1
+    , nullif(preferred_address_line_2, '-')
+      As preferred_address_line_2
+    , nullif(preferred_address_line_3, '-')
+      As preferred_address_line_3
+    , nullif(preferred_address_line_4, '-')
+      As preferred_address_line_4
     , nullif(preferred_address_city, '-')
       As preferred_address_city
     , nullif(preferred_address_state, '-')
       As preferred_address_state
+    , nullif(preferred_address_postal_code, '-')
+      As preferred_address_postal_code
     , nullif(preferred_address_country_name, '-')
       As preferred_address_country
     , trunc(etl_update_date)

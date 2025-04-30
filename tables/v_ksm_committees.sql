@@ -71,3 +71,8 @@ Create Or Replace View v_committee_yab As
 Select *
 From table(ksm_pkg_committee.tbl_committee_members('committee_yab'))
 ;
+
+Create Or Replace View v_committee_tech As
+Select *
+From table(ksm_pkg_committee.tbl_committee_members('committee_tech'))
+;

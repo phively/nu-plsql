@@ -39,8 +39,15 @@ Type rec_entity Is Record (
     , spouse_institutional_suffix dm_alumni.dim_constituent.spouse_instituitional_suffix%type
     , org_ult_parent_donor_id dm_alumni.dim_organization.organization_ultimate_parent_donor_id %type
     , org_ult_parent_name dm_alumni.dim_organization.organization_ultimate_parent_name%type
+    , preferred_address_status dm_alumni.dim_constituent.preferred_address_status%type
+    , preferred_address_type dm_alumni.dim_constituent.preferred_address_type%type
+    , preferred_address_line_1 dm_alumni.dim_constituent.preferred_address_line_1%type
+    , preferred_address_line_2 dm_alumni.dim_constituent.preferred_address_line_2%type
+    , preferred_address_line_3 dm_alumni.dim_constituent.preferred_address_line_3%type
+    , preferred_address_line_4 dm_alumni.dim_constituent.preferred_address_line_4%type
     , preferred_address_city dm_alumni.dim_constituent.preferred_address_city%type
     , preferred_address_state dm_alumni.dim_constituent.preferred_address_state%type
+    , preferred_address_postal_code dm_alumni.dim_constituent.preferred_address_postal_code%type
     , preferred_address_country dm_alumni.dim_constituent.preferred_address_country_name%type
     , etl_update_date dm_alumni.dim_constituent.etl_update_date%type
 );
@@ -85,8 +92,15 @@ Cursor c_entity Is
     , spouse_instituitional_suffix
     , NULL As org_ult_parent_donor_id
     , NULL As org_ult_parent_name
+    , preferred_address_status
+    , preferred_address_type
+    , preferred_address_line_1
+    , preferred_address_line_2
+    , preferred_address_line_3
+    , preferred_address_line_4
     , preferred_address_city
     , preferred_address_state
+    , preferred_address_postal_code
     , preferred_address_country
     , c.etl_update_date
   From table(dw_pkg_base.tbl_constituent) c
@@ -107,9 +121,16 @@ Cursor c_entity Is
     , NULL As spouse_institutional_suffix
     , o.org_ult_parent_donor_id
     , o.org_ult_parent_name
+    , preferred_address_status
+    , preferred_address_type
+    , preferred_address_line_1
+    , preferred_address_line_2
+    , preferred_address_line_3
+    , preferred_address_line_4
     , preferred_address_city
     , preferred_address_state
-    , preferred_address_country
+    , preferred_address_postal_code
+    , preferred_address_country 
     , o.etl_update_date
   From table(dw_pkg_base.tbl_organization) o
   )

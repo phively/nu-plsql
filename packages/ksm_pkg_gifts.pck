@@ -162,14 +162,14 @@ Cursor c_ksm_transactions Is
       , gcred.fiscal_year
       , gcred.credit_type
       , Case
-          When opportunity_type = 'PGBEQ'
+          When opportunity_type Like '%PGBEQ%'
             Then opp.discounted_amount
           Else gcred.credit_amount
           End
         As credit_amount
       , Case
           When gcred.credit_type = 'Hard'
-            And opportunity_type = 'PGBEQ'
+            And opportunity_type Like '%PGBEQ%'
             Then opp.discounted_amount
           Else gcred.hard_credit_amount
           End
