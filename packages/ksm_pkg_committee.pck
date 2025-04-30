@@ -4,7 +4,7 @@ Create Or Replace Package ksm_pkg_committee Is
 Author  : PBH634
 Created : 4/29/2025
 Purpose : Combined definitions for committee participation and expected dues.
-Dependencies: dw_pkg_base, ksm_pkg_calendar
+Dependencies: dw_pkg_base (mv_involvement), ksm_pkg_calendar
 
 Suggested naming conventions:
   Pure functions: [function type]_[description]
@@ -128,7 +128,7 @@ Cursor c_committee_member(my_involvement_cd In varchar2) Is
     , inv.involvement_end_date
     , inv.involvement_comment
     , inv.etl_update_date
-  From table(dw_pkg_base.tbl_involvement) inv
+  From mv_involvement inv
   Where inv.involvement_status = 'Current'
     And inv.involvement_code = my_involvement_cd
   ;

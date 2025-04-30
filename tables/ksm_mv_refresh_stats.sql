@@ -10,6 +10,9 @@ From DUAL
 Where 1 = 0
 -- 7:30 AM
 Union
+Select 'mv_involvement', min(mv_last_refresh), min(etl_update_date), max(etl_update_date)
+From mv_involvement
+Union
 Select 'mv_entity', min(mv_last_refresh), min(etl_update_date), max(etl_update_date)
 From mv_entity
 Union
