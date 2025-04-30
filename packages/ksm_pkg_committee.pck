@@ -24,7 +24,6 @@ committee_gab Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_asc
 committee_kac Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type := 'VOL-KACNA'; -- Kellogg Alumni Council committee code
 committee_phs Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type := 'VOL-KPH'; -- KSM Pete Henderson Society
 committee_kfn Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type := 'COM-KFN'; -- Kellogg Finance Network code
-committee_womenSummit Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type := 'VOL-KGWS'; -- KSM Global Women's Summit code
 committee_realEstCouncil Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type := 'COM-KREAC'; -- Real Estate Advisory Council code
 committee_amp Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type := 'COM-KAMP'; -- AMP Advisory Council code
 committee_trustee Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type := 'COM-TBOT'; -- NU Board of Trustees code
