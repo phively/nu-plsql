@@ -148,6 +148,7 @@ Type rec_opportunity Is Record (
     , opportunity_donor_name dm_alumni.dim_opportunity.opportunity_constituent_name%type
     , credit_date dm_alumni.dim_opportunity.opportunity_credit_date%type
     , fiscal_year dm_alumni.dim_opportunity.opportunity_funded_fiscal_year%type
+    , entry_date dm_alumni.dim_opportunity.opportunity_entry_date%type
     , amount dm_alumni.dim_opportunity.opportunity_amount%type
     , discounted_amount dm_alumni.dim_opportunity.pledge_total_countable_amount%type
     , designation_salesforce_id dm_alumni.dim_opportunity.designation_salesforce_id%type
@@ -542,6 +543,8 @@ Cursor c_opportunity Is
       As credit_date
     , to_number(nullif(opportunity_funded_fiscal_year, '-'))
       As fiscal_year
+    , opportunity_entry_date
+      As entry_date
     , opportunity_amount
       As amount
     , pledge_total_countable_amount
@@ -559,7 +562,8 @@ Cursor c_opportunity Is
     , next_scheduled_payment_amount
     , nullif(matched_gift_record_id, '-')
       As matched_gift_record_id
-    , matching_gift_stage
+    , nullif(matching_gift_stage, '-')
+      As matching_gift_stage
     , trunc(etl_update_date)
       As etl_update_date
   From dm_alumni.dim_opportunity opp

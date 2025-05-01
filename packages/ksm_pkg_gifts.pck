@@ -57,6 +57,7 @@ Type rec_transaction Is Record (
       , full_circle_campaign_priority mv_ksm_designation.full_circle_campaign_priority%type
       , credit_date stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_date_formula__c%type
       , fiscal_year stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.nu_fiscal_year__c%type
+      , entry_date dm_alumni.dim_opportunity.opportunity_entry_date%type
       , credit_type stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_type__c%type
       , credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
       , hard_credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
@@ -160,6 +161,7 @@ Cursor c_ksm_transactions Is
       , kdes.full_circle_campaign_priority
       , gcred.credit_date
       , gcred.fiscal_year
+      , opp.entry_date
       , gcred.credit_type
       , Case
           When opportunity_type Like '%PGBEQ%'
