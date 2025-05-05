@@ -3,25 +3,16 @@
 ---------------------------
 
 Select count(*)
-From table(ksm_pkg_degrees.tbl_entity_degrees_concat_ksm)
+From table(ksm_pkg_degrees.tbl_entity_ksm_degrees)
 ;
 
 Select
-    deg.id_number
-    , entity.institutional_suffix
+    deg.donor_id
+    , con.institutional_suffix
     , deg.degrees_concat
-    , ksm_pkg_degrees.get_entity_degrees_concat_fast(id_number)
-        As deg_conc_from_func
     , deg.first_ksm_year
-    , deg.first_ksm_grad_dt
-From table(ksm_pkg_degrees.tbl_entity_degrees_concat_ksm) deg
-Inner Join entity On entity.id_number = deg.id_number
-;
-
----------------------------
--- ksm_pkg tests
----------------------------
-
-Select count(*)
-From table(ksm_pkg_tst.tbl_entity_degrees_concat_ksm)
+    , deg.first_ksm_grad_date
+From table(ksm_pkg_degrees.tbl_entity_ksm_degrees) deg
+Inner Join dm_alumni.dim_constituent con
+  On con.constituent_donor_id = deg.donor_id
 ;

@@ -1,6 +1,16 @@
 Create Or Replace Package ksm_pkg_utility Is
 
 /*************************************************************************
+Author  : PBH634
+Created : 4/9/2025
+Purpose : Shared functions library for other packages to call.
+Dependencies: none
+
+Suggested naming conventions:
+  Pure functions: [function type]_[description]
+*************************************************************************/
+
+/*************************************************************************
 Public constant declarations
 *************************************************************************/
 
@@ -10,46 +20,51 @@ pkg_name Constant varchar2(64) := 'ksm_pkg_utility';
 Public function declarations
 *************************************************************************/
 
+--------------------------------------
 -- Mathematical modulo operator
-Function math_mod(
+Function mod_math(
   m In number
   , n In number
 ) Return number; -- m % n
 
+--------------------------------------
 -- Rewritten to_number to return NULL for invalid strings
 Function to_number2(
   str In varchar2
 ) Return number;
 
+--------------------------------------
 -- Rewritten to_date to return NULL for invalid dates
 Function to_date2(
   str In varchar2
   , format In varchar2 Default 'yyyymmdd'
 ) Return date;
 
+--------------------------------------
 -- Parse yyyymmdd string into a date
 -- If there are invalid date parts, overwrite with the corresponding element from fallback_dt
-Function date_parse(
+Function to_date_parse(
   date_str In varchar2
   , fallback_dt In date Default current_date()
 ) Return date;
 
+--------------------------------------
 -- Take a string containing a dollar amount and extract the (first) numeric value
-Function get_number_from_dollar(
+Function to_number_from_dollar(
   str In varchar2
 ) Return number;
 
 End ksm_pkg_utility;
 /
-
 Create Or Replace Package Body ksm_pkg_utility Is
 
 /*************************************************************************
 Functions
 *************************************************************************/
 
+--------------------------------------
 -- Calculates the modulo function; needed to correct Oracle mod() weirdness
-Function math_mod(m In number, n In number)
+Function mod_math(m In number, n In number)
   Return number Is
   -- Declarations
   remainder number;
@@ -62,6 +77,7 @@ Function math_mod(m In number, n In number)
         Return NULL;
   End;
 
+--------------------------------------
 -- Check whether a passed string can be parsed sucessfully as a number
 Function to_number2(str In varchar2)
   Return number Is
@@ -73,6 +89,7 @@ Function to_number2(str In varchar2)
         Return NULL;
   End;
 
+--------------------------------------
 -- Check whether a passed yyyymmdd string can be parsed sucessfully as a date
 Function to_date2(str In varchar2, format In varchar2)
   Return date Is
@@ -84,8 +101,9 @@ Function to_date2(str In varchar2, format In varchar2)
         Return NULL;
   End;
 
+--------------------------------------
 -- Takes a yyyymmdd string and an optional fallback date argument and produces a date type
-Function date_parse(date_str In varchar2, fallback_dt In date)
+Function to_date_parse(date_str In varchar2, fallback_dt In date)
   Return date Is
   -- Declarations
   dt_out date;
@@ -138,8 +156,9 @@ Function date_parse(date_str In varchar2, fallback_dt In date)
     
   End;
 
+--------------------------------------
 -- Take a string containing a dollar amount and extract the (first) numeric value
-Function get_number_from_dollar(str In varchar2) 
+Function to_number_from_dollar(str In varchar2) 
   Return number Is
   -- Delcarations
   trimmed varchar2(32);
@@ -147,8 +166,8 @@ Function get_number_from_dollar(str In varchar2)
   amt number;
   
   Begin
-    -- Regular expression: extract string starting with $ up to the last digit, period, or comma,
     Select
+      -- Regular expression: extract string starting with $ up to the last digit, period, or comma,
       -- Target substring starts with a dollar sign and may contain 0-9,.KMB
       regexp_substr(upper(str), '\$[0-9,KMB\.]*')
     Into trimmed
@@ -167,12 +186,11 @@ Function get_number_from_dollar(str In varchar2)
     
     -- Strip the $ and commas and letters and treat as numeric
     Select
-      -- Convert string to numeric
       to_number(
         regexp_replace(
           trimmed
           , '[^0-9\.]' -- Remove non-numeric characters
-          , '') -- Replace non-numeric characters with null
+          , '')
         )
     Into amt
     From DUAL;
