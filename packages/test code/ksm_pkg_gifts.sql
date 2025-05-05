@@ -21,12 +21,12 @@ Select
   NULL As "Check for multiple credited donors, single opportunity donor on pledge"
   , mkt.*
 From mv_ksm_transactions mkt
-Where mkt.opportunity_record_id = 'PN6669646'
+Where mkt.opp_receipt_number = '0001659131'
 ;
 
 Select
   NULL As "Check discounted bequest amount"
   , mkt.*
 From mv_ksm_transactions mkt
-Where mkt.opportunity_record_id = 'PN6766287'
+Where mkt.opp_receipt_number = '0002999795'
 ;

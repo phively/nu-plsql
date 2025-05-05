@@ -386,7 +386,7 @@ Cursor c_degrees Is
     , deginf.ap_status__c
       As degree_status
     , Case
-        When deginf.Ucinn_Ascendv2__Degree_Institution__c = '001O800000B8YHhIAN' -- Northwestern University
+        When dorg.organization_name = 'Northwestern University' -- Northwestern University
           Then 'Y'
           Else 'N'
         End
