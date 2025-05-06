@@ -25,6 +25,18 @@ Public type declarations
 *************************************************************************/
 
 --------------------------------------
+-- Discounted gift transactions
+Type rec_discount Is Record (
+      pledge_or_gift_record_id dm_alumni.dim_designation_detail.pledge_or_gift_record_id%type
+      , pledge_or_gift_date dm_alumni.dim_designation_detail.pledge_or_gift_date%type
+      , designation_detail_record_id dm_alumni.dim_designation_detail.designation_detail_record_id%type
+      , designation_record_id dm_alumni.dim_designation_detail.designation_record_id%type
+      , designation_detail_name dm_alumni.dim_designation_detail.designation_detail_name%type
+      , designation_amount dm_alumni.dim_designation_detail.designation_amount%type
+      , countable_amount_bequest dm_alumni.dim_designation_detail.countable_amount_bequest%type
+);
+
+--------------------------------------
 -- Gift transactions
 Type rec_transaction Is Record (
       credited_donor_id mv_entity.donor_id%type
@@ -69,11 +81,15 @@ Type rec_transaction Is Record (
 Public table declarations
 *************************************************************************/
 
+Type discounted_transactions Is Table Of rec_discount;
 Type transactions Is Table Of rec_transaction;
 
 /*************************************************************************
 Public pipelined functions declarations
 *************************************************************************/
+
+Function tbl_discounted_transactions
+  Return discounted_transactions Pipelined;
 
 Function tbl_ksm_transactions
   Return transactions Pipelined;
@@ -85,6 +101,23 @@ Create Or Replace Package Body ksm_pkg_gifts Is
 /*************************************************************************
 Private cursors -- data definitions
 *************************************************************************/
+
+--------------------------------------
+-- Discounted bequest amounts by designation
+
+Cursor c_discounted_transactions Is
+
+  Select 
+    pledge_or_gift_record_id
+    , pledge_or_gift_date
+    , designation_detail_record_id
+    , designation_record_id
+    , designation_detail_name
+    , designation_amount
+    , countable_amount_bequest
+  From dm_alumni.dim_designation_detail
+  Where pledge_or_gift_type Like 'PGBEQ%'
+;
 
 --------------------------------------
 -- Kellogg normalized transactions
@@ -112,7 +145,21 @@ Cursor c_ksm_transactions Is
       Left Join mv_entity
         On mv_entity.salesforce_id = gc.donor_salesforce_id
     )
-
+    
+    , discounts As (
+      Select dt.*
+      From table(ksm_pkg_gifts.tbl_discounted_transactions) dt
+    )
+    
+    , plgpay As (
+      Select
+        p.id As payment_salesforce_id
+        , p.name As payment_record_id
+        , p.ucinn_ascendv2__opportunity__c As opportunity_record_id
+        , p.ap_processed_date__c As processed_date
+      From stg_alumni.ucinn_ascendv2__payment__c p
+    )
+    
     Select
       gcred.credited_donor_id
       , mve.full_name
@@ -159,15 +206,34 @@ Cursor c_ksm_transactions Is
       , kdes.ksm_cru_flag
       , kdes.cash_category
       , kdes.full_circle_campaign_priority
-      , opp.credit_date
-      , opp.fiscal_year
-      , opp.entry_date
+      -- Credit date is from opportunity object for matching gift payments
+      , Case
+          When gcred.source_type_detail = 'Matching Gift Payment'
+            Then opp.credit_date
+          Else gcred.credit_date
+          End
+        As credit_date
+      , Case
+          When gcred.source_type_detail = 'Matching Gift Payment'
+            Then opp.fiscal_year
+          Else gcred.fiscal_year
+          End
+        As fiscal_year
+      -- For entry date: needs to check processed date for pledge payments
+      ,  Case
+            When gcred.source_type_detail = 'Matching Gift Payment'
+              Then opp.entry_date
+            When gcred.source_type_detail Like '%Payment%'
+              Then plgpay.processed_date
+            Else opp.entry_date
+            End
+          As entry_date
       , gcred.credit_type
       -- Credit calculations
       , Case
           -- Bequests always show discounted amount
           When opportunity_type Like '%PGBEQ%'
-            Then opp.discounted_amount
+            Then discounts.countable_amount_bequest
           Else gcred.credit_amount
           End
         As credit_amount
@@ -175,7 +241,7 @@ Cursor c_ksm_transactions Is
       , Case
           When gcred.credit_type = 'Hard'
             And opportunity_type Like '%PGBEQ%'
-            Then opp.discounted_amount
+            Then discounts.countable_amount_bequest
           Else gcred.hard_credit_amount
           End
         As hard_credit_amount
@@ -190,11 +256,32 @@ Cursor c_ksm_transactions Is
       On kdes.designation_salesforce_id = gcred.designation_salesforce_id
     Left Join mv_entity mve
       On mve.donor_id = gcred.credited_donor_id
+    Left Join plgpay
+      On plgpay.payment_salesforce_id = gcred.payment_salesforce_id
+    Left Join discounts
+      -- Pledge + designation should be a unique identifier
+      On discounts.pledge_or_gift_record_id = opp.opportunity_record_id
+      And discounts.designation_record_id = gcred.designation_record_id
 ;
 
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
+
+Function tbl_discounted_transactions
+  Return discounted_transactions Pipelined As
+  -- Declarations
+  dis discounted_transactions;
+  
+  Begin
+    Open c_discounted_transactions;
+      Fetch c_discounted_transactions Bulk Collect Into dis;
+    Close c_discounted_transactions;
+    For i in 1..(dis.count) Loop
+      Pipe row(dis(i));
+    End Loop;
+    Return;
+  End;
 
 --------------------------------------
 -- Individual entity giving, all units, based on c_ksm_transactions
