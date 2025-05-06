@@ -203,10 +203,11 @@ tbl_gift_credit</y:NodeLabel>
         <node id="n1::n1">
           <data key="d6">
             <y:GenericNode configuration="com.yworks.entityRelationship.small_entity">
-              <y:Geometry height="40.0" width="103.384765625" x="326.4032521081349" y="622.015625"/>
-              <y:Fill color="#E8EEF7" color2="#CCCCCC" transparent="false"/>
+              <y:Geometry height="40.0" width="103.373046875" x="326.4091114831349" y="622.015625"/>
+              <y:Fill color="#E8EEF7" color2="#CCCCFF" transparent="false"/>
               <y:BorderStyle color="#000000" type="line" width="1.0"/>
-              <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="18.701171875" horizontalTextPosition="center" iconTextGap="4" modelName="internal" modelPosition="c" textColor="#000000" verticalTextPosition="bottom" visible="true" width="93.384765625" x="5.0" xml:space="preserve" y="10.6494140625">Campaign giving</y:NodeLabel>
+              <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="33.40234375" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#000000" verticalTextPosition="bottom" visible="true" width="93.373046875" x="5.0" xml:space="preserve" y="3.298828125">NGC giving
+v_ksm_gifts_ngc<y:LabelModel><y:SmartNodeLabelModel distance="4.0"/></y:LabelModel><y:ModelParameter><y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/></y:ModelParameter></y:NodeLabel>
               <y:StyleProperties>
                 <y:Property class="java.lang.Boolean" name="y.view.ShadowNodePainter.SHADOW_PAINTING" value="true"/>
               </y:StyleProperties>
@@ -571,13 +572,13 @@ mv_ksm_transactions</y:NodeLabel>
     <edge id="e8" source="n2::n1::n0" target="n1::n1">
       <data key="d10">
         <y:PolyLineEdge>
-          <y:Path sx="-33.259765625" sy="15.0" tx="27.59619140625" ty="-20.0">
+          <y:Path sx="-33.259765625" sy="15.0" tx="27.59306335478045" ty="-20.0">
             <y:Point x="659.9104724702381" y="527.3125"/>
             <y:Point x="405.6918263268849" y="527.3125"/>
           </y:Path>
           <y:LineStyle color="#999999" type="dashed" width="1.0"/>
           <y:Arrows source="none" target="standard"/>
-          <y:EdgeLabel alignment="center" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" hasText="false" height="4.0" horizontalTextPosition="center" iconTextGap="4" modelName="six_pos" modelPosition="thead" preferredPlacement="target" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="4.0" x="-260.21863509889636" y="143.779296875">
+          <y:EdgeLabel alignment="center" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" hasText="false" height="4.0" horizontalTextPosition="center" iconTextGap="4" modelName="six_pos" modelPosition="thead" preferredPlacement="target" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="4.0" x="-260.2214287208407" y="143.779296875">
             <y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" placement="target" side="anywhere" sideReference="relative_to_edge_flow"/>
           </y:EdgeLabel>
           <y:BendStyle smoothed="false"/>
@@ -629,13 +630,13 @@ mv_ksm_transactions</y:NodeLabel>
     <edge id="e10" source="n2::n0::n1" target="n1::n1">
       <data key="d10">
         <y:PolyLineEdge>
-          <y:Path sx="-36.76513671875" sy="20.0" tx="-27.59619140625" ty="-20.0">
+          <y:Path sx="-36.76513671875" sy="20.0" tx="-27.59306335478045" ty="-20.0">
             <y:Point x="371.6412124875992" y="353.408203125"/>
             <y:Point x="350.4996031746032" y="353.408203125"/>
           </y:Path>
           <y:LineStyle color="#999999" type="line" width="1.0"/>
           <y:Arrows source="none" target="standard"/>
-          <y:EdgeLabel alignment="center" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" hasText="false" height="4.0" horizontalTextPosition="center" iconTextGap="4" modelName="six_pos" modelPosition="thead" preferredPlacement="target" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="4.0" x="-27.141755301300748" y="284.982421875">
+          <y:EdgeLabel alignment="center" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" hasText="false" height="4.0" horizontalTextPosition="center" iconTextGap="4" modelName="six_pos" modelPosition="thead" preferredPlacement="target" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="4.0" x="-27.138789364064053" y="284.982421875">
             <y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" placement="target" side="anywhere" sideReference="relative_to_edge_flow"/>
           </y:EdgeLabel>
           <y:BendStyle smoothed="false"/>
