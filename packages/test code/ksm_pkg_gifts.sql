@@ -59,3 +59,25 @@ Select
 From mv_ksm_transactions mkt
 Where mkt.opp_receipt_number = '0003068751'
 ;
+
+Select
+  NULL As "Written off pledge"
+  , mkt.*
+From mv_ksm_transactions mkt
+Where mkt.opp_receipt_number = '0002992956'
+;
+
+Select
+  NULL As "Matching payment date is FY22"
+  , mkt.*
+From mv_ksm_transactions mkt
+Where mkt.credit_receipt_number = '0002916204'
+  Or mkt.opportunity_record_id = 'MN2984602'
+;
+
+Select
+  NULL As "Payment date after pledge credit date"
+  , mkt.*
+From mv_ksm_transactions mkt
+Where mkt.opp_receipt_number = '0002431969'
+;

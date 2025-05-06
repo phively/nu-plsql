@@ -176,6 +176,7 @@ Type rec_gift_credit Is Record (
     , source_type stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__source__c%type
     , source_type_detail stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__gift_type_formula__c%type
     , opportunity_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__opportunity__c%type
+    , payment_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__payment__c%type
     , designation_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__designation__c%type
     , designation_record_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__designation_code_formula__c%type
     , donor_name_and_id varchar2(255) -- Original is varchar2(1300)
@@ -601,6 +602,8 @@ Cursor c_gift_credit Is
       As source_type_detail
     , hsc.ucinn_ascendv2__opportunity__c
       As opportunity_salesforce_id
+    , hsc.ucinn_ascendv2__payment__c
+      As payment_salesforce_id
     , hsc.ucinn_ascendv2__designation__c
       As designation_salesforce_id
     , hsc.ucinn_ascendv2__designation_code_formula__c
