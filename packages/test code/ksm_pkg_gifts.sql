@@ -30,3 +30,10 @@ Select
 From mv_ksm_transactions mkt
 Where mkt.opp_receipt_number = '0002999795'
 ;
+
+Select
+  NULL As "Partially paid pledge"
+  , mkt.*
+From mv_ksm_transactions mkt
+Where mkt.opp_receipt_number = '0003068751'
+;

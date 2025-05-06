@@ -6,7 +6,7 @@ Contains SQL and PL/SQL code for various Kellogg data definitions and best pract
 
 Concept: lower level tables should be defined based on SF objects, then joined/transformed into higher level definitions. Data packages should have clear hierarchical dependencies, and a single responsibility.
 
-WIP as of Apr 2025. Blue are available for testing in dev.
+WIP as of May 2025. Blue are available for testing in PRD.
 
 ![data_hierarchy.png](images/data_hierarchy.png "Proposed data hierarchy")
 

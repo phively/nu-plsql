@@ -528,7 +528,8 @@ Cursor c_opportunity Is
   Select
     opportunity_salesforce_id
     , opportunity_record_id
-    , legacy_receipt_number
+    , nullif(legacy_receipt_number, '-')
+      As legacy_receipt_number
     , opportunity_stage
     , opportunity_record_type
     , opportunity_type
