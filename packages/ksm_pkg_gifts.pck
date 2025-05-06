@@ -159,16 +159,19 @@ Cursor c_ksm_transactions Is
       , kdes.ksm_cru_flag
       , kdes.cash_category
       , kdes.full_circle_campaign_priority
-      , gcred.credit_date
-      , gcred.fiscal_year
+      , opp.credit_date
+      , opp.fiscal_year
       , opp.entry_date
       , gcred.credit_type
+      -- Credit calculations
       , Case
+          -- Bequests always show discounted amount
           When opportunity_type Like '%PGBEQ%'
             Then opp.discounted_amount
           Else gcred.credit_amount
           End
         As credit_amount
+      -- Hard credit - keep same logic as soft credit, above
       , Case
           When gcred.credit_type = 'Hard'
             And opportunity_type Like '%PGBEQ%'
