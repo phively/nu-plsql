@@ -165,6 +165,26 @@ Type rec_opportunity Is Record (
 );
 
 --------------------------------------
+Type rec_payment Is Record (
+    payment_salesforce_id stg_alumni.ucinn_ascendv2__payment__c.id%type
+    , payment_record_id stg_alumni.ucinn_ascendv2__payment__c.name%type
+    , legacy_receipt_number stg_alumni.ucinn_ascendv2__payment__c.ap_legacy_receipt_number__c%type
+    , opportunity_stage stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__opportunity_stage__c%type
+    , opportunity_record_type stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__opportunity_record_type__c%type
+    , opportunity_type stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__transaction_type__c%type
+    , payment_donor_id stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__donor_id_formula__c%type
+    , payment_donor_name  stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__gift_receipt_name_formula__c%type
+    , credit_date stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__credit_date__c%type
+    , fiscal_year stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__fiscal_year_formula__c%type
+    , entry_date stg_alumni.ucinn_ascendv2__payment__c.ap_processed_date__c%type
+    , amount stg_alumni.ucinn_ascendv2__payment__c.ap_transaction_amount__c%type
+    , designation_salesforce_id stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__designation_detail__c%type
+    , is_anonymous_indicator stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__is_anonymous__c%type
+    , anonymous_type stg_alumni.ucinn_ascendv2__payment__c.anonymous_type__c%type
+    , etl_update_date stg_alumni.ucinn_ascendv2__payment__c.etl_update_date%type
+);
+
+--------------------------------------
 Type rec_gift_credit Is Record (
   hard_and_soft_credit_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.id%type
     , receipt_number stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__receipt_number__c%type
@@ -218,6 +238,7 @@ Type organization Is Table Of rec_organization;
 Type degrees Is Table Of rec_degrees;
 Type designation Is Table Of rec_designation;
 Type opportunity Is Table Of rec_opportunity;
+Type payment Is Table Of rec_payment;
 Type gift_credit Is Table Of rec_gift_credit;
 Type involvement Is Table Of rec_involvement;
 Type service_indicators Is Table Of rec_service_indicators;
@@ -240,6 +261,9 @@ Function tbl_designation
 
 Function tbl_opportunity
   Return opportunity Pipelined;
+
+Function tbl_payment
+  Return payment Pipelined;
 
 Function tbl_gift_credit
   Return gift_credit Pipelined;
@@ -587,6 +611,44 @@ Cursor c_opportunity Is
 ;
 
 --------------------------------------
+Cursor c_payment Is
+  Select
+    pay.id
+      As payment_salesforce_id
+    , pay.name
+      As payment_record_id
+    , pay.ap_legacy_receipt_number__c
+      As legacy_receipt_number
+    , pay.ucinn_ascendv2__opportunity_stage__c
+      As opportunity_stage
+    , pay.ucinn_ascendv2__opportunity_record_type__c
+      As opportunity_record_type
+    , pay.ucinn_ascendv2__transaction_type__c
+      As opportunity_type
+    , pay.ucinn_ascendv2__donor_id_formula__c
+      As payment_donor_id
+    , pay.ucinn_ascendv2__gift_receipt_name_formula__c
+      As payment_donor_name
+    , pay.ucinn_ascendv2__credit_date__c
+      As credit_date
+    , pay.ucinn_ascendv2__fiscal_year_formula__c
+      As fiscal_year
+    , pay.ap_processed_date__c
+      As entry_date
+    , pay.ap_transaction_amount__c
+      As amount
+    , pay.ucinn_ascendv2__designation_detail__c
+      As designation_salesforce_id
+    , pay.ucinn_ascendv2__is_anonymous__c
+      As is_anonymous_indicator
+    , pay.anonymous_type__c
+      As anonymous_type
+    , trunc(etl_update_date)
+      As etl_update_date
+  From stg_alumni.ucinn_ascendv2__payment__c pay
+;
+
+--------------------------------------
 Cursor c_gift_credit Is
   Select
       hsc.id
@@ -747,6 +809,22 @@ Function tbl_opportunity
     Close c_opportunity;
     For i in 1..(opp.count) Loop
       Pipe row(opp(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_payment
+  Return payment Pipelined As
+    -- Declarations
+    pay payment;
+
+  Begin
+    Open c_payment;
+      Fetch c_payment Bulk Collect Into pay;
+    Close c_payment;
+    For i in 1..(pay.count) Loop
+      Pipe row(pay(i));
     End Loop;
     Return;
   End;

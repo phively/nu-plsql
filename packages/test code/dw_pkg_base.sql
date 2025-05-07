@@ -24,6 +24,10 @@ From table(dw_pkg_base.tbl_opportunity)
 ;
 
 Select *
+From table(dw_pkg_base.tbl_payment)
+;
+
+Select *
 From table(dw_pkg_base.tbl_gift_credit)
 ;
 
