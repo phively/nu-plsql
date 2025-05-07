@@ -22,7 +22,7 @@ Select
     As source_donor_name
   , kt.opportunity_record_id
   , kt.anonymous_type
-  , kt.opp_receipt_number
+  , kt.legacy_receipt_number
   , kt.opportunity_stage
   , kt.opportunity_record_type
   , kt.opportunity_type

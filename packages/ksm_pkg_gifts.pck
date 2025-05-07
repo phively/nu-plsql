@@ -45,12 +45,15 @@ Type rec_transaction Is Record (
       , credited_donor_audit varchar2(255) -- See dw_pkg_base.rec_gift_credit.donor_name_and_id
       , opportunity_donor_id mv_entity.donor_id%type
       , opportunity_donor_name mv_entity.full_name%type
+      , tx_id dm_alumni.dim_opportunity.opportunity_record_id%type
       , opportunity_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
+      , payment_record_id stg_alumni.ucinn_ascendv2__payment__c.name%type
       , anonymous_type dm_alumni.dim_opportunity.anonymous_type%type
-      , opp_receipt_number dm_alumni.dim_opportunity.legacy_receipt_number%type
+      , legacy_receipt_number dm_alumni.dim_opportunity.legacy_receipt_number%type
       , opportunity_stage dm_alumni.dim_opportunity.opportunity_stage%type
       , opportunity_record_type dm_alumni.dim_opportunity.opportunity_record_type%type
       , opportunity_type dm_alumni.dim_opportunity.opportunity_type%type
+      , payment_schedule stg_alumni.opportunity.ap_payment_schedule__c%type
       , source_type stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__source__c%type
       , source_type_detail stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__gift_type_formula__c%type
       , gypm_ind varchar2(1)
@@ -147,20 +150,6 @@ Cursor c_ksm_transactions Is
         On mv_entity.salesforce_id = gc.donor_salesforce_id
     )
     
-    , discounts As (
-      Select dt.*
-      From table(ksm_pkg_gifts.tbl_discounted_transactions) dt
-    )
-    
-    , plgpay As (
-      Select
-        p.id As payment_salesforce_id
-        , p.name As payment_record_id
-        , p.ucinn_ascendv2__opportunity__c As opportunity_record_id
-        , p.ap_processed_date__c As processed_date
-      From stg_alumni.ucinn_ascendv2__payment__c p
-    )
-    
     Select
       gcred.credited_donor_id
       , mve.full_name
@@ -171,13 +160,30 @@ Cursor c_ksm_transactions Is
         As credited_donor_audit
       , opp.opportunity_donor_id
       , opp.opportunity_donor_name
+      , Case
+          When pay.payment_record_id Is Not Null
+            Then pay.payment_record_id
+          Else opp.opportunity_record_id
+          End
+        As tx_id
       , opp.opportunity_record_id
-      , opp.anonymous_type
-      , opp.legacy_receipt_number
-        As opp_receipt_number
+      , pay.payment_record_id
+      , Case
+          When pay.payment_record_id Is Not Null
+            Then pay.anonymous_type
+          Else opp.anonymous_type
+          End
+        As anonymous_type
+      , Case
+          When pay.payment_record_id Is Not Null
+            Then pay.legacy_receipt_number
+          Else opp.legacy_receipt_number
+          End
+        As legacy_receipt_number
       , opp.opportunity_stage
       , opp.opportunity_record_type
       , opp.opportunity_type
+      , opp.payment_schedule
       , gcred.source_type
       , gcred.source_type_detail
       -- gypm_ind logic deliberately leaves some sources as NULL
@@ -230,7 +236,7 @@ Cursor c_ksm_transactions Is
             When gcred.source_type_detail = 'Matching Gift Payment'
               Then opp.entry_date
             When gcred.source_type_detail Like '%Payment%'
-              Then plgpay.processed_date
+              Then pay.entry_date
             Else opp.entry_date
             End
           As entry_date
@@ -238,7 +244,7 @@ Cursor c_ksm_transactions Is
       -- Credit calculations
       , Case
           -- Bequests always show discounted amount
-          When opportunity_type Like '%PGBEQ%'
+          When opp.opportunity_type Like '%PGBEQ%'
             Then discounts.countable_amount_bequest
           Else gcred.credit_amount
           End
@@ -246,7 +252,7 @@ Cursor c_ksm_transactions Is
       -- Hard credit - keep same logic as soft credit, above
       , Case
           When gcred.credit_type = 'Hard'
-            And opportunity_type Like '%PGBEQ%'
+            And opp.opportunity_type Like '%PGBEQ%'
             Then discounts.countable_amount_bequest
           Else gcred.hard_credit_amount
           End
@@ -255,16 +261,16 @@ Cursor c_ksm_transactions Is
         As recognition_credit
       , least(opp.etl_update_date, gcred.etl_update_date, kdes.etl_update_date, mve.etl_update_date)
         As etl_update_date
-    From table(dw_pkg_base.tbl_opportunity) opp
-    Inner Join gcred
-      On gcred.opportunity_salesforce_id = opp.opportunity_salesforce_id
+    From gcred
+    Inner Join table(dw_pkg_base.tbl_opportunity) opp
+      On opp.opportunity_salesforce_id = gcred.opportunity_salesforce_id
     Inner Join mv_ksm_designation kdes
       On kdes.designation_salesforce_id = gcred.designation_salesforce_id
     Left Join mv_entity mve
       On mve.donor_id = gcred.credited_donor_id
-    Left Join plgpay
-      On plgpay.payment_salesforce_id = gcred.payment_salesforce_id
-    Left Join discounts
+    Left Join table(dw_pkg_base.tbl_payment) pay
+      On pay.payment_salesforce_id = gcred.payment_salesforce_id
+    Left Join table(ksm_pkg_gifts.tbl_discounted_transactions) discounts
       -- Pledge + designation should be a unique identifier
       On discounts.pledge_or_gift_record_id = opp.opportunity_record_id
       And discounts.designation_record_id = gcred.designation_record_id

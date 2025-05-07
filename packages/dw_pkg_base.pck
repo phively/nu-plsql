@@ -157,6 +157,7 @@ Type rec_opportunity Is Record (
     , anonymous_type dm_alumni.dim_opportunity.anonymous_type%type
     , linked_proposal_record_id dm_alumni.dim_opportunity.linked_proposal_record_id%type
     , linked_proposal_active_proposal_manager dm_alumni.dim_opportunity.linked_proposal_active_proposal_manager%type
+    , payment_schedule stg_alumni.opportunity.ap_payment_schedule__c%type
     , next_scheduled_payment_date dm_alumni.dim_opportunity.next_scheduled_payment_date%type
     , next_scheduled_payment_amount dm_alumni.dim_opportunity.next_scheduled_payment_amount%type
     , matched_gift_record_id dm_alumni.dim_opportunity.matched_gift_record_id%type
@@ -557,8 +558,9 @@ Cursor c_opportunity Is
   opp_raw As (
     Select
       id As opportunity_salesforce_id
+      , ap_payment_schedule__c As payment_schedule
       , name As opportunity_id_full
-    From stg_alumni.opportunity
+    From stg_alumni.opportunity o
   )
 
   Select
@@ -596,6 +598,7 @@ Cursor c_opportunity Is
       As linked_proposal_record_id
     , nullif(linked_proposal_active_proposal_manager, '-')
       As linked_proposal_active_proposal_manager
+    , opp_raw.payment_schedule
     , next_scheduled_payment_date
     , next_scheduled_payment_amount
     , nullif(matched_gift_record_id, '-')

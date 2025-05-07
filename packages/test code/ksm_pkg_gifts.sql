@@ -36,35 +36,35 @@ Select
   NULL As "Check for multiple credited donors, single opportunity donor on pledge"
   , mkt.*
 From mv_ksm_transactions mkt
-Where mkt.opp_receipt_number = '0001659131'
+Where mkt.legacy_receipt_number = '0001659131'
 ;
 
 Select
   NULL As "Check discounted bequest amount"
   , mkt.*
 From mv_ksm_transactions mkt
-Where mkt.opp_receipt_number = '0002999795'
+Where mkt.legacy_receipt_number = '0002999795'
 ;
 
 Select
   NULL As "Split bequest, should be hard credit = recognition"
   , mkt.*
 From mv_ksm_transactions mkt
-Where mkt.opp_receipt_number = '0003068356'
+Where mkt.legacy_receipt_number = '0003068356'
 ;
 
 Select
   NULL As "Partially paid pledge"
   , mkt.*
 From mv_ksm_transactions mkt
-Where mkt.opp_receipt_number = '0003068751'
+Where mkt.legacy_receipt_number = '0003068751'
 ;
 
 Select
   NULL As "Written off pledge"
   , mkt.*
 From mv_ksm_transactions mkt
-Where mkt.opp_receipt_number = '0002992956'
+Where mkt.legacy_receipt_number = '0002992956'
 ;
 
 Select
@@ -79,7 +79,8 @@ Select
   NULL As "Payment date after pledge credit date"
   , mkt.*
 From mv_ksm_transactions mkt
-Where mkt.opp_receipt_number = '0002431969'
+Where mkt.legacy_receipt_number = '0002431969'
+  Or mkt.opportunity_record_id = 'PN2269769'
 ;
 
 Select
