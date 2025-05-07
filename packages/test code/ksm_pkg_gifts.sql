@@ -81,3 +81,11 @@ Select
 From mv_ksm_transactions mkt
 Where mkt.opp_receipt_number = '0002431969'
 ;
+
+Select
+  NULL As "Check matching gifts populate"
+  , mkt.*
+From mv_ksm_transactions mkt
+Where mkt.credited_donor_id = '0000564117'
+  And mkt.gypm_ind = 'M'
+;

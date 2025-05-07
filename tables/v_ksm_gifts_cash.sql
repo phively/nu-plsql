@@ -59,4 +59,5 @@ Cross Join v_current_calendar cal
 Inner Join mv_entity mve
   On mve.donor_id = kt.credited_donor_id
 Where kt.gypm_ind In ('G', 'Y', 'M') -- Exclude pledges
+  And kt.adjusted_opportunity_ind Is Null -- Exclude gift adjustment history
 ;

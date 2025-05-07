@@ -140,6 +140,7 @@ Type rec_designation Is Record (
 Type rec_opportunity Is Record (
     opportunity_salesforce_id dm_alumni.dim_opportunity.opportunity_salesforce_id%type
     , opportunity_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
+    , opportunity_id_full stg_alumni.opportunity.name%type
     , legacy_receipt_number dm_alumni.dim_opportunity.legacy_receipt_number%type
     , opportunity_stage dm_alumni.dim_opportunity.opportunity_stage%type
     , opportunity_record_type dm_alumni.dim_opportunity.opportunity_record_type%type
@@ -526,9 +527,20 @@ Cursor c_designation Is
 
 --------------------------------------
 Cursor c_opportunity Is
+  
+  With
+  
+  opp_raw As (
+    Select
+      id As opportunity_salesforce_id
+      , name As opportunity_id_full
+    From stg_alumni.opportunity
+  )
+
   Select
-    opportunity_salesforce_id
-    , opportunity_record_id
+    opp.opportunity_salesforce_id
+    , opp.opportunity_record_id
+    , opp_raw.opportunity_id_full
     , nullif(legacy_receipt_number, '-')
       As legacy_receipt_number
     , opportunity_stage
@@ -569,6 +581,8 @@ Cursor c_opportunity Is
     , trunc(etl_update_date)
       As etl_update_date
   From dm_alumni.dim_opportunity opp
+  Inner Join opp_raw
+    On opp_raw.opportunity_salesforce_id = opp.opportunity_salesforce_id
   Where opportunity_record_id != '-'
 ;
 

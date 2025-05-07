@@ -54,6 +54,7 @@ Type rec_transaction Is Record (
       , source_type stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__source__c%type
       , source_type_detail stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__gift_type_formula__c%type
       , gypm_ind varchar2(1)
+      , adjusted_opportunity_ind varchar2(1)
       , hard_and_soft_credit_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.id%type
       , credit_receipt_number stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__receipt_number__c%type
       , matched_gift_record_id dm_alumni.dim_opportunity.matched_gift_record_id%type
@@ -188,6 +189,11 @@ Cursor c_ksm_transactions Is
           When gcred.source_type_detail Like '%Payment%' Then 'Y'
           End
         As gypm_ind
+      -- A at end of opportunity/payment number implies adjustment
+      , Case
+          When opp.opportunity_id_full Like '%A' Then 'Y'
+          End
+        As adjusted_opportunity_ind
       , gcred.hard_and_soft_credit_salesforce_id
       , gcred.receipt_number
         As credit_receipt_number
