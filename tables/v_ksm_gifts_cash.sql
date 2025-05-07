@@ -22,7 +22,7 @@ Select
     As source_donor_name
   , kt.opportunity_record_id
   , kt.anonymous_type
-  , kt.opp_receipt_number
+  , kt.legacy_receipt_number
   , kt.opportunity_stage
   , kt.opportunity_record_type
   , kt.opportunity_type
@@ -59,4 +59,5 @@ Cross Join v_current_calendar cal
 Inner Join mv_entity mve
   On mve.donor_id = kt.credited_donor_id
 Where kt.gypm_ind In ('G', 'Y', 'M') -- Exclude pledges
+  And kt.adjusted_opportunity_ind Is Null -- Exclude gift adjustment history
 ;

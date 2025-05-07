@@ -140,6 +140,7 @@ Type rec_designation Is Record (
 Type rec_opportunity Is Record (
     opportunity_salesforce_id dm_alumni.dim_opportunity.opportunity_salesforce_id%type
     , opportunity_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
+    , opportunity_id_full stg_alumni.opportunity.name%type
     , legacy_receipt_number dm_alumni.dim_opportunity.legacy_receipt_number%type
     , opportunity_stage dm_alumni.dim_opportunity.opportunity_stage%type
     , opportunity_record_type dm_alumni.dim_opportunity.opportunity_record_type%type
@@ -156,11 +157,32 @@ Type rec_opportunity Is Record (
     , anonymous_type dm_alumni.dim_opportunity.anonymous_type%type
     , linked_proposal_record_id dm_alumni.dim_opportunity.linked_proposal_record_id%type
     , linked_proposal_active_proposal_manager dm_alumni.dim_opportunity.linked_proposal_active_proposal_manager%type
+    , payment_schedule stg_alumni.opportunity.ap_payment_schedule__c%type
     , next_scheduled_payment_date dm_alumni.dim_opportunity.next_scheduled_payment_date%type
     , next_scheduled_payment_amount dm_alumni.dim_opportunity.next_scheduled_payment_amount%type
     , matched_gift_record_id dm_alumni.dim_opportunity.matched_gift_record_id%type
     , matching_gift_stage dm_alumni.dim_opportunity.matching_gift_stage%type
     , etl_update_date dm_alumni.dim_opportunity.etl_update_date%type
+);
+
+--------------------------------------
+Type rec_payment Is Record (
+    payment_salesforce_id stg_alumni.ucinn_ascendv2__payment__c.id%type
+    , payment_record_id stg_alumni.ucinn_ascendv2__payment__c.name%type
+    , legacy_receipt_number stg_alumni.ucinn_ascendv2__payment__c.ap_legacy_receipt_number__c%type
+    , opportunity_stage stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__opportunity_stage__c%type
+    , opportunity_record_type stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__opportunity_record_type__c%type
+    , opportunity_type stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__transaction_type__c%type
+    , payment_donor_id stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__donor_id_formula__c%type
+    , payment_donor_name  stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__gift_receipt_name_formula__c%type
+    , credit_date stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__credit_date__c%type
+    , fiscal_year stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__fiscal_year_formula__c%type
+    , entry_date stg_alumni.ucinn_ascendv2__payment__c.ap_processed_date__c%type
+    , amount stg_alumni.ucinn_ascendv2__payment__c.ap_transaction_amount__c%type
+    , designation_salesforce_id stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__designation_detail__c%type
+    , is_anonymous_indicator stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__is_anonymous__c%type
+    , anonymous_type stg_alumni.ucinn_ascendv2__payment__c.anonymous_type__c%type
+    , etl_update_date stg_alumni.ucinn_ascendv2__payment__c.etl_update_date%type
 );
 
 --------------------------------------
@@ -217,6 +239,7 @@ Type organization Is Table Of rec_organization;
 Type degrees Is Table Of rec_degrees;
 Type designation Is Table Of rec_designation;
 Type opportunity Is Table Of rec_opportunity;
+Type payment Is Table Of rec_payment;
 Type gift_credit Is Table Of rec_gift_credit;
 Type involvement Is Table Of rec_involvement;
 Type service_indicators Is Table Of rec_service_indicators;
@@ -239,6 +262,9 @@ Function tbl_designation
 
 Function tbl_opportunity
   Return opportunity Pipelined;
+
+Function tbl_payment
+  Return payment Pipelined;
 
 Function tbl_gift_credit
   Return gift_credit Pipelined;
@@ -526,9 +552,21 @@ Cursor c_designation Is
 
 --------------------------------------
 Cursor c_opportunity Is
+  
+  With
+  
+  opp_raw As (
+    Select
+      id As opportunity_salesforce_id
+      , ap_payment_schedule__c As payment_schedule
+      , name As opportunity_id_full
+    From stg_alumni.opportunity o
+  )
+
   Select
-    opportunity_salesforce_id
-    , opportunity_record_id
+    opp.opportunity_salesforce_id
+    , opp.opportunity_record_id
+    , opp_raw.opportunity_id_full
     , nullif(legacy_receipt_number, '-')
       As legacy_receipt_number
     , opportunity_stage
@@ -560,6 +598,7 @@ Cursor c_opportunity Is
       As linked_proposal_record_id
     , nullif(linked_proposal_active_proposal_manager, '-')
       As linked_proposal_active_proposal_manager
+    , opp_raw.payment_schedule
     , next_scheduled_payment_date
     , next_scheduled_payment_amount
     , nullif(matched_gift_record_id, '-')
@@ -569,7 +608,47 @@ Cursor c_opportunity Is
     , trunc(etl_update_date)
       As etl_update_date
   From dm_alumni.dim_opportunity opp
+  Inner Join opp_raw
+    On opp_raw.opportunity_salesforce_id = opp.opportunity_salesforce_id
   Where opportunity_record_id != '-'
+;
+
+--------------------------------------
+Cursor c_payment Is
+  Select
+    pay.id
+      As payment_salesforce_id
+    , pay.name
+      As payment_record_id
+    , pay.ap_legacy_receipt_number__c
+      As legacy_receipt_number
+    , pay.ucinn_ascendv2__opportunity_stage__c
+      As opportunity_stage
+    , pay.ucinn_ascendv2__opportunity_record_type__c
+      As opportunity_record_type
+    , pay.ucinn_ascendv2__transaction_type__c
+      As opportunity_type
+    , pay.ucinn_ascendv2__donor_id_formula__c
+      As payment_donor_id
+    , pay.ucinn_ascendv2__gift_receipt_name_formula__c
+      As payment_donor_name
+    , pay.ucinn_ascendv2__credit_date__c
+      As credit_date
+    , pay.ucinn_ascendv2__fiscal_year_formula__c
+      As fiscal_year
+    , pay.ap_processed_date__c
+      As entry_date
+    , pay.ap_transaction_amount__c
+      As amount
+    , pay.ucinn_ascendv2__designation_detail__c
+      As designation_salesforce_id
+    , pay.ucinn_ascendv2__is_anonymous__c
+      As is_anonymous_indicator
+    , pay.anonymous_type__c
+      As anonymous_type
+    , trunc(etl_update_date)
+      As etl_update_date
+  From stg_alumni.ucinn_ascendv2__payment__c pay
 ;
 
 --------------------------------------
@@ -733,6 +812,22 @@ Function tbl_opportunity
     Close c_opportunity;
     For i in 1..(opp.count) Loop
       Pipe row(opp(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_payment
+  Return payment Pipelined As
+    -- Declarations
+    pay payment;
+
+  Begin
+    Open c_payment;
+      Fetch c_payment Bulk Collect Into pay;
+    Close c_payment;
+    For i in 1..(pay.count) Loop
+      Pipe row(pay(i));
     End Loop;
     Return;
   End;
