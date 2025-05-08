@@ -6,98 +6,89 @@ With
 
 dts As (
   Select
-      to_date('20250204', 'yyyymmdd') As start_dt
-    , to_date('20250210', 'yyyymmdd') As stop_dt
+      to_date('20250501', 'yyyymmdd') As start_dt
+    , to_date('20250508', 'yyyymmdd') As stop_dt
+    , 2025 As fiscal_year
   From DUAL
-)
-
-, gt As (
-  Select *
-  From rpt_pbh634.v_ksm_giving_trans
 )
 
 -- Pulling all associated donors related to a gift
 
 , pre_ad As (
-  Select Distinct gt.tx_number
-  , case when gt.anonymous IN ('1', '2', '3') then 'Anonymous' else entity.pref_mail_name end as pref_mail_name
-  , case when gt.anonymous IN ('1', '2', '3') then 'Anonymous' else entity.institutional_suffix end as institutional_suffix
-  From gt
-  Inner Join entity On gt.id_number = entity.id_Number
+  Select Distinct
+    tx_id
+    , Case When t.anonymous_type Is Not NULL Then 'Anonymous' Else t.full_name End As donor_name
+    , Case When t.anonymous_type Is Not NULL Then 'Anonymous' Else e.institutional_suffix End As institutional_suffix
+  From v_ksm_gifts_ngc t
+  Left Join mv_entity e
+    On e.donor_id = t.donor_id      
 )
 
-, count_anonymous AS (
-select tx_number
-      , count(pref_mail_name) as pref_mail_name_counts
-      , sum(case when pref_mail_name = 'Anonymous' then 1 else 0 end) as anonymous_counts
-from pre_ad
-group by tx_number
+
+, count_anonymous As (
+  Select
+    tx_id
+    , count(donor_name) as credited_donor_name_counts
+    , sum(Case When donor_name = 'Anonymous' Then 1 Else 0 End) As anonymous_counts
+  From pre_ad
+  Group By tx_id
 )
 
-, final_names AS (
-select pre_ad.tx_number
-      ,pre_ad.pref_mail_name
-      ,pre_ad.institutional_suffix
-      ,ca.pref_mail_name_counts
-      ,ca.anonymous_counts
-FROM pre_ad
-INNER JOIN count_anonymous ca ON ca.tx_number = pre_ad.tx_number
-WHERE ca.pref_mail_name_counts = ca.anonymous_counts
-OR pre_ad.pref_mail_name <> 'Anonymous'
+, final_names As (
+  Select
+    pre_ad.tx_id
+    , pre_ad.donor_name
+    , pre_ad.institutional_suffix
+    , ca.credited_donor_name_counts
+    , ca.anonymous_counts
+  From pre_ad
+  Inner Join count_anonymous ca
+    On ca.tx_id = pre_ad.tx_id
+  Where ca.credited_donor_name_counts = ca.anonymous_counts
+    Or pre_ad.donor_name <> 'Anonymous'
 )
 
 , ad As (
-  Select tx_number
-        , listagg(pref_mail_name, chr(13)) Within Group (order by pref_mail_name) as all_associated_donors
-        , listagg(institutional_suffix, chr(13)) Within Group (order by pref_mail_name) as all_institutional_suffix
+  Select tx_id
+    , listagg(donor_name, chr(13)) Within Group (Order By donor_name) As all_credited_donors
+    , listagg(institutional_suffix, chr(13)) Within Group (Order By donor_name) As all_institutional_suffix
   From final_names
-  Group By tx_number
+  Group By tx_id
 )
 
-, payment_years As (
-  Select
-    ps.payment_schedule_pledge_nbr
-    , count(distinct extract(year from rpt_pbh634.ksm_pkg_tmp.to_date2(ps.payment_schedule_date, 'yyyymmdd'))) As payment_schedule_year_count
-  From payment_schedule ps
-  Group By ps.payment_schedule_pledge_nbr
-)
 
 -- Base Table
-Select Distinct
-    gft.tx_number
-  , gft.id_number
-  , gft.transaction_type
-  , gft.tx_gypm_ind
-  , tms_rt.short_desc As record_type
-  , entity.pref_mail_name As primary_donor
+Select
+  gt.tx_id
+  , gt.source_donor_id
+  , gt.opportunity_type
+  , gt.gypm_ind
+  , gt.source_donor_name
   , ad.all_institutional_suffix
-  , ad.all_associated_donors
-  , gft.date_of_record
-  , gft.allocation_code
-  , gft.alloc_short_name
+  , ad.all_credited_donors
+  , gt.credit_date
+  , gt.entry_date
+  , gt.designation_record_id
+  , gt.designation_name
   , NULL As empty_column
-  , gft.legal_amount
-  , case when py.payment_schedule_year_count is null then 'Outright Gift' else to_char(py.payment_schedule_year_count) end as payment_schedule_year_count
-  , prp.proposal_manager
-From gt gft
+  , gt.hard_credit_amount
+  , Case When gt.gypm_ind = 'P' Then payment_schedule End As payment_schedule
+  --, tbl_ksm_gos.sort_name As proposal_manager
+From v_ksm_gifts_ngc gt
 Cross Join dts
-Inner Join ad On gft.tx_number = ad.tx_number
-Inner Join entity On gft.id_number = entity.id_number
-Inner Join tms_record_type tms_rt On tms_rt.record_type_code = entity.record_type_code
-Left Join rpt_pbh634.v_ksm_proposal_history prp On gft.proposal_id = prp.proposal_id
-Left Join nu_gft_trp_gifttrans g On gft.tx_number = g.tx_number
-Left Join payment_years py On gft.tx_number = py.payment_schedule_pledge_nbr
-Where
+Inner Join ad
+  On ad.tx_id = gt.tx_id
+/*Left Join tbl_ksm_gos
+  On gt.credited_donor_id = tbl_ksm_gos.donor_id
+*/Where
   -- Only in the date range
  (
-        (gft.date_of_record Between dts.start_dt And dts.stop_dt)
-     Or (g.first_processed_date Between dts.start_dt And dts.stop_dt)
+        (gt.credit_date Between dts.start_dt And dts.stop_dt)
+     Or (gt.entry_date Between dts.start_dt And dts.stop_dt)
  )
-  And gft.fiscal_year = '2025'
-  -- Only $10K+
-  And gft.legal_amount >= 10000
-  -- Only outright gifts and pledges; ignore payments, match
-  And gft.tx_gypm_ind In ('G', 'P')
+And gt.fiscal_year = dts.fiscal_year
+And gt.hard_credit_amount >= 10000
+And gt.gypm_ind In ('P', 'G')
 Order By
-  gft.legal_amount Desc
-, gft.date_of_record Desc
+  gt.hard_credit_amount Desc
+  , gt.credit_date Desc

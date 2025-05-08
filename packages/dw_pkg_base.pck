@@ -598,7 +598,7 @@ Cursor c_opportunity Is
       As linked_proposal_record_id
     , nullif(linked_proposal_active_proposal_manager, '-')
       As linked_proposal_active_proposal_manager
-    , opp_raw.payment_schedule
+    , opp_sch.payment_schedule
     , next_scheduled_payment_date
     , next_scheduled_payment_amount
     , nullif(matched_gift_record_id, '-')
@@ -610,6 +610,8 @@ Cursor c_opportunity Is
   From dm_alumni.dim_opportunity opp
   Inner Join opp_raw
     On opp_raw.opportunity_salesforce_id = opp.opportunity_salesforce_id
+  Left Join opp_raw opp_sch
+    On opp_sch.opportunity_salesforce_id = opp.linked_proposal_salesforce_id
   Where opportunity_record_id != '-'
 ;
 

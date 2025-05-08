@@ -20,6 +20,7 @@ Select
     As source_donor_id
   , kt.opportunity_donor_name
     As source_donor_name
+  , kt.tx_id
   , kt.opportunity_record_id
   , kt.anonymous_type
   , kt.legacy_receipt_number
@@ -33,6 +34,7 @@ Select
   , kt.credit_receipt_number
   , kt.matched_gift_record_id
   , kt.pledge_record_id
+  , kt.payment_schedule
   , kt.linked_proposal_record_id
   , kt.designation_record_id
   , kt.designation_status

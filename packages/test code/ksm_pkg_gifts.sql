@@ -37,6 +37,7 @@ Select
   , mkt.*
 From mv_ksm_transactions mkt
 Where mkt.legacy_receipt_number = '0001659131'
+  Or mkt.opportunity_record_id = 'PN2438947'
 ;
 
 Select
