@@ -24,7 +24,7 @@ cal As (
     , Case
         When extract(month from cal.prev_day) = 8 And extract(day from cal.prev_day) = 31
           Then 'Y'
-        Else KSM_PKG_CALENDAR.fytd_indicator(to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1,
+        Else ksm_pkg_calendar.fytd_indicator(to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy') + rownum - 1,
             - (trunc(sysdate) - cal.prev_day))
         End
       As ytd_ind
@@ -33,7 +33,7 @@ cal As (
     rownum <= (to_date('09/01/' || cal.curr_fy, 'mm/dd/yyyy') - to_date('09/01/' || (cal.prev_fy - 1), 'mm/dd/yyyy'))
 )
 
-, cash as (
+, cash As (
   Select
     gft.opportunity_record_id
     , gft.donor_id
@@ -67,6 +67,7 @@ Inner Join ytd_dts On trunc(ytd_dts.dt) = trunc(gft.credit_date)
   Where fiscal_year Between cal.prev_fy And cal.curr_fy
     And ytd_dts.ytd_ind = 'Y'
 -- Manual exceptions
+/* Need to redo
 Union
   Select
     gt.opportunity_record_id
@@ -95,7 +96,7 @@ Where gt.fiscal_year Between cal.prev_fy And cal.curr_fy
     ) Or (
       gt.legacy_receipt_number = '0003084920' And gt.designation_name = 'KSM Fifteen Grp Real Estate 2'
     )
-  )
+  )*/
 )
 
 

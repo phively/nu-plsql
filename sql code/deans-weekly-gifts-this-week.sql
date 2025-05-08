@@ -16,7 +16,7 @@ dts As (
 
 , pre_ad As (
   Select Distinct
-    opportunity_record_id
+    tx_id
     , Case When t.anonymous_type Is Not NULL Then 'Anonymous' Else t.full_name End As donor_name
     , Case When t.anonymous_type Is Not NULL Then 'Anonymous' Else e.institutional_suffix End As institutional_suffix
   From v_ksm_gifts_ngc t
@@ -27,43 +27,43 @@ dts As (
 
 , count_anonymous As (
   Select
-    opportunity_record_id
+    tx_id
     , count(donor_name) as credited_donor_name_counts
     , sum(Case When donor_name = 'Anonymous' Then 1 Else 0 End) As anonymous_counts
   From pre_ad
-  Group By opportunity_record_id
+  Group By tx_id
 )
 
 , final_names As (
   Select
-    pre_ad.opportunity_record_id
+    pre_ad.tx_id
     , pre_ad.donor_name
     , pre_ad.institutional_suffix
     , ca.credited_donor_name_counts
     , ca.anonymous_counts
   From pre_ad
   Inner Join count_anonymous ca
-    On ca.opportunity_record_id = pre_ad.opportunity_record_id
+    On ca.tx_id = pre_ad.tx_id
   Where ca.credited_donor_name_counts = ca.anonymous_counts
-  Or pre_ad.donor_name <> 'Anonymous'
+    Or pre_ad.donor_name <> 'Anonymous'
 )
 
 , ad As (
-  Select opportunity_record_id
+  Select tx_id
     , listagg(donor_name, chr(13)) Within Group (Order By donor_name) As all_credited_donors
     , listagg(institutional_suffix, chr(13)) Within Group (Order By donor_name) As all_institutional_suffix
   From final_names
-  Group By opportunity_record_id
+  Group By tx_id
 )
 
 
 -- Base Table
 Select
-  gt.opportunity_record_id
-  , gt.credited_donor_id
+  gt.tx_id
+  , gt.source_donor_id
   , gt.opportunity_type
   , gt.gypm_ind
-  , gt.credited_donor_name
+  , gt.source_donor_name
   , ad.all_institutional_suffix
   , ad.all_credited_donors
   , gt.credit_date
@@ -73,14 +73,14 @@ Select
   , NULL As empty_column
   , gt.hard_credit_amount
   , Case When gt.gypm_ind = 'P' Then payment_schedule End As payment_schedule
-  , tbl_ksm_gos.sort_name As proposal_manager
-From mv_ksm_transactions gt
+  --, tbl_ksm_gos.sort_name As proposal_manager
+From v_ksm_gifts_ngc gt
 Cross Join dts
 Inner Join ad
-  On ad.opportunity_record_id = gt.opportunity_record_id
-Left Join tbl_ksm_gos
+  On ad.tx_id = gt.tx_id
+/*Left Join tbl_ksm_gos
   On gt.credited_donor_id = tbl_ksm_gos.donor_id
-Where
+*/Where
   -- Only in the date range
  (
         (gt.credit_date Between dts.start_dt And dts.stop_dt)
