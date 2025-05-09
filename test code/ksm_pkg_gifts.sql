@@ -91,3 +91,11 @@ From mv_ksm_transactions mkt
 Where mkt.credited_donor_id = '0000564117'
   And mkt.gypm_ind = 'M'
 ;
+
+Select
+  NULL As "Total payments > original amount"
+  , mkt.*
+From mv_ksm_transactions mkt
+Where mkt.opportunity_record_id = 'PN2463109'
+  Order By gypm_ind
+;
