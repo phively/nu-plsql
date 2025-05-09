@@ -93,7 +93,7 @@ Where mkt.credited_donor_id = '0000564117'
 ;
 
 Select
-  NULL As "Total payments > original amount"
+  NULL As "Recognition credit: total payments > original amount"
   , mkt.*
 From mv_ksm_transactions mkt
 Where mkt.opportunity_record_id = 'PN2463109'
