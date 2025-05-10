@@ -69,7 +69,7 @@ Where mkt.legacy_receipt_number = '0002992956'
 ;
 
 Select
-  NULL As "Written off bequest"
+  NULL As "Written off bequest, check credit = recognition"
   , mkt.*
 From mv_ksm_transactions mkt
 Where mkt.opportunity_record_id = 'PN2296500'
