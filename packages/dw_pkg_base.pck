@@ -137,6 +137,21 @@ Type rec_designation Is Record (
 );
 
 --------------------------------------
+Type rec_designation_detail Is Record (
+    pledge_or_gift_record_id dm_alumni.dim_designation_detail.pledge_or_gift_record_id%type
+    , pledge_or_gift_date dm_alumni.dim_designation_detail.pledge_or_gift_date%type
+    , pledge_or_gift_status dm_alumni.dim_designation_detail.pledge_or_gift_status%type
+    , designation_detail_record_id dm_alumni.dim_designation_detail.designation_detail_record_id%type
+    , designation_record_id dm_alumni.dim_designation_detail.designation_record_id%type
+    , designation_detail_name dm_alumni.dim_designation_detail.designation_detail_name%type
+    , designation_amount dm_alumni.dim_designation_detail.designation_amount%type
+    , countable_amount_bequest dm_alumni.dim_designation_detail.countable_amount_bequest%type
+    , bequest_flag varchar2(1)
+    , total_paid_amount dm_alumni.dim_designation_detail.total_payment_credit_to_date_amount%type
+    , overpaid_flag varchar2(1)
+);
+
+--------------------------------------
 Type rec_opportunity Is Record (
     opportunity_salesforce_id dm_alumni.dim_opportunity.opportunity_salesforce_id%type
     , opportunity_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
@@ -158,6 +173,7 @@ Type rec_opportunity Is Record (
     , linked_proposal_record_id dm_alumni.dim_opportunity.linked_proposal_record_id%type
     , linked_proposal_active_proposal_manager dm_alumni.dim_opportunity.linked_proposal_active_proposal_manager%type
     , payment_schedule stg_alumni.opportunity.ap_payment_schedule__c%type
+    , opp_amount_paid dm_alumni.dim_opportunity.pledge_amount_paid_to_date%type
     , next_scheduled_payment_date dm_alumni.dim_opportunity.next_scheduled_payment_date%type
     , next_scheduled_payment_amount dm_alumni.dim_opportunity.next_scheduled_payment_amount%type
     , matched_gift_record_id dm_alumni.dim_opportunity.matched_gift_record_id%type
@@ -238,6 +254,7 @@ Type constituent Is Table Of rec_constituent;
 Type organization Is Table Of rec_organization;
 Type degrees Is Table Of rec_degrees;
 Type designation Is Table Of rec_designation;
+Type designation_detail Is Table Of rec_designation_detail;
 Type opportunity Is Table Of rec_opportunity;
 Type payment Is Table Of rec_payment;
 Type gift_credit Is Table Of rec_gift_credit;
@@ -259,6 +276,9 @@ Function tbl_degrees
 
 Function tbl_designation
   Return designation Pipelined;
+
+Function tbl_designation_detail
+  Return designation_detail Pipelined;
 
 Function tbl_opportunity
   Return opportunity Pipelined;
@@ -551,6 +571,29 @@ Cursor c_designation Is
 ;
 
 --------------------------------------
+Cursor c_designation_detail Is
+  Select 
+    pledge_or_gift_record_id
+    , pledge_or_gift_date
+    , pledge_or_gift_status
+    , designation_detail_record_id
+    , designation_record_id
+    , designation_detail_name
+    , designation_amount
+    , countable_amount_bequest
+    , Case When pledge_or_gift_type Like 'PGBEQ%' Then 'Y' End
+      As bequest_flag
+    , total_payment_credit_to_date_amount
+      As total_paid_amount
+    , Case
+        When nvl(total_payment_credit_to_date_amount, 0) > nvl(designation_amount, 0)
+          Then 'Y'
+        End
+      As overpaid_flag
+  From dm_alumni.dim_designation_detail
+;
+
+--------------------------------------
 Cursor c_opportunity Is
   
   With
@@ -599,6 +642,8 @@ Cursor c_opportunity Is
     , nullif(linked_proposal_active_proposal_manager, '-')
       As linked_proposal_active_proposal_manager
     , opp_sch.payment_schedule
+    , opp.pledge_amount_paid_to_date
+      As opp_amount_paid
     , next_scheduled_payment_date
     , next_scheduled_payment_amount
     , nullif(matched_gift_record_id, '-')
@@ -801,7 +846,23 @@ Function tbl_designation
     End Loop;
     Return;
   End;
-  
+
+--------------------------------------
+Function tbl_designation_detail
+  Return designation_detail Pipelined As
+    -- Declarations
+    des designation_detail;
+
+  Begin
+    Open c_designation_detail;
+      Fetch c_designation_detail Bulk Collect Into des;
+    Close c_designation_detail;
+    For i in 1..(des.count) Loop
+      Pipe row(des(i));
+    End Loop;
+    Return;
+  End;
+
 --------------------------------------
 Function tbl_opportunity
   Return opportunity Pipelined As

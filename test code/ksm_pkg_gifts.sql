@@ -69,6 +69,13 @@ Where mkt.legacy_receipt_number = '0002992956'
 ;
 
 Select
+  NULL As "Written off bequest, check credit = recognition"
+  , mkt.*
+From mv_ksm_transactions mkt
+Where mkt.opportunity_record_id = 'PN2296500'
+;
+
+Select
   NULL As "Matching payment date is FY22"
   , mkt.*
 From mv_ksm_transactions mkt
@@ -90,4 +97,12 @@ Select
 From mv_ksm_transactions mkt
 Where mkt.credited_donor_id = '0000564117'
   And mkt.gypm_ind = 'M'
+;
+
+Select
+  NULL As "Recognition credit: total payments > original amount"
+  , mkt.*
+From mv_ksm_transactions mkt
+Where mkt.opportunity_record_id = 'PN2463109'
+  Order By gypm_ind
 ;

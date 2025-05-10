@@ -6,7 +6,8 @@ Created : 4/25/2025
 Purpose : Base table combining hard and soft credit, opportunity, designation,
   constituent, and organization into a normalized transactions list. One credited donor
   transaction per row.
-Dependencies: dw_pkg_base, ksm_pkg_entity (mv_entity), ksm_pkg_designation (mv_designation)
+Dependencies: dw_pkg_base (mv_designation_detail), ksm_pkg_entity (mv_entity),
+  ksm_pkg_designation (mv_designation)
 
 Suggested naming conventions:
   Pure functions: [function type]_[description]
@@ -34,6 +35,9 @@ Type rec_discount Is Record (
       , designation_detail_name dm_alumni.dim_designation_detail.designation_detail_name%type
       , designation_amount dm_alumni.dim_designation_detail.designation_amount%type
       , countable_amount_bequest dm_alumni.dim_designation_detail.countable_amount_bequest%type
+      , bequest_flag varchar2(1)
+      , total_paid_amount dm_alumni.dim_designation_detail.total_payment_credit_to_date_amount%type
+      , overpaid_flag varchar2(1)
 );
 
 --------------------------------------
@@ -111,16 +115,25 @@ Private cursors -- data definitions
 
 Cursor c_discounted_transactions Is
 
-  Select 
-    pledge_or_gift_record_id
-    , pledge_or_gift_date
-    , designation_detail_record_id
-    , designation_record_id
-    , designation_detail_name
-    , designation_amount
-    , countable_amount_bequest
-  From dm_alumni.dim_designation_detail
-  Where pledge_or_gift_type Like 'PGBEQ%'
+  Select
+    dd.pledge_or_gift_record_id
+    , dd.pledge_or_gift_date
+    , dd.designation_detail_record_id
+    , dd.designation_record_id
+    , dd.designation_detail_name
+    , dd.designation_amount
+    -- Written off bequests should have actual, not countable, amount posted
+    , Case
+        When dd.pledge_or_gift_status = 'Written Off'
+          Then dd.total_paid_amount
+        Else dd.countable_amount_bequest
+        End
+      As countable_amount_bequest
+    , dd.bequest_flag
+    , dd.total_paid_amount
+    , dd.overpaid_flag
+  From mv_designation_detail dd
+  Where dd.bequest_flag = 'Y'
 ;
 
 --------------------------------------
@@ -244,20 +257,30 @@ Cursor c_ksm_transactions Is
       -- Credit calculations
       , Case
           -- Bequests always show discounted amount
-          When opp.opportunity_type Like '%PGBEQ%'
-            Then discounts.countable_amount_bequest
+          When bequests.bequest_flag = 'Y'
+            Then bequests.countable_amount_bequest
           Else gcred.credit_amount
           End
         As credit_amount
-      -- Hard credit - keep same logic as soft credit, above
+      -- Hard credit
       , Case
           When gcred.credit_type = 'Hard'
-            And opp.opportunity_type Like '%PGBEQ%'
-            Then discounts.countable_amount_bequest
-          Else gcred.hard_credit_amount
+            -- Keep same logic as soft credit, above
+            Then Case
+              -- Bequests always show discounted amount
+              When bequests.bequest_flag = 'Y'
+                Then bequests.countable_amount_bequest
+              Else gcred.hard_credit_amount
+              End
+            Else 0
           End
         As hard_credit_amount
-      , gcred.credit_amount
+      , Case
+        -- Overpaid pledges use the paid amount
+          When overpaid.overpaid_flag = 'Y'
+            Then overpaid.total_paid_amount
+          Else gcred.credit_amount
+          End
         As recognition_credit
       , least(opp.etl_update_date, gcred.etl_update_date, kdes.etl_update_date, mve.etl_update_date)
         As etl_update_date
@@ -270,10 +293,18 @@ Cursor c_ksm_transactions Is
       On mve.donor_id = gcred.credited_donor_id
     Left Join table(dw_pkg_base.tbl_payment) pay
       On pay.payment_salesforce_id = gcred.payment_salesforce_id
-    Left Join table(ksm_pkg_gifts.tbl_discounted_transactions) discounts
+    -- Discounted bequests
+    Left Join table(tbl_discounted_transactions) bequests
       -- Pledge + designation should be a unique identifier
-      On discounts.pledge_or_gift_record_id = opp.opportunity_record_id
-      And discounts.designation_record_id = gcred.designation_record_id
+      On bequests.bequest_flag = 'Y'
+      And bequests.pledge_or_gift_record_id = opp.opportunity_record_id
+      And bequests.designation_record_id = gcred.designation_record_id
+    -- Overpaid pledges
+    Left Join mv_designation_detail overpaid
+      On gcred.source_type_detail = 'Pledge'
+      And overpaid.overpaid_flag = 'Y'
+      And overpaid.pledge_or_gift_record_id = opp.opportunity_record_id
+      And overpaid.designation_record_id = gcred.designation_record_id
 ;
 
 /*************************************************************************
@@ -283,14 +314,14 @@ Pipelined functions
 Function tbl_discounted_transactions
   Return discounted_transactions Pipelined As
   -- Declarations
-  dis discounted_transactions;
+  dt discounted_transactions;
   
   Begin
     Open c_discounted_transactions;
-      Fetch c_discounted_transactions Bulk Collect Into dis;
+      Fetch c_discounted_transactions Bulk Collect Into dt;
     Close c_discounted_transactions;
-    For i in 1..(dis.count) Loop
-      Pipe row(dis(i));
+    For i in 1..(dt.count) Loop
+      Pipe row(dt(i));
     End Loop;
     Return;
   End;

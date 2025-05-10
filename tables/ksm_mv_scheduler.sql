@@ -18,6 +18,19 @@ Select
 From table(dw_pkg_base.tbl_involvement) inv
 ;
 
+-- tbl_designation_detail
+Create Materialized View mv_designation_detail
+Refresh Complete
+Start With sysdate
+-- 7:30 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.5/24)
+As
+Select
+  dd.*
+  , sysdate as mv_last_refresh
+From table(dw_pkg_base.tbl_designation_detail) dd
+;
+
 --------------------------------------
 -- ksm_pkg_entity
 -- tbl_entity
