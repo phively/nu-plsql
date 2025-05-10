@@ -69,6 +69,13 @@ Where mkt.legacy_receipt_number = '0002992956'
 ;
 
 Select
+  NULL As "Written off bequest"
+  , mkt.*
+From mv_ksm_transactions mkt
+Where mkt.opportunity_record_id = 'PN2296500'
+;
+
+Select
   NULL As "Matching payment date is FY22"
   , mkt.*
 From mv_ksm_transactions mkt

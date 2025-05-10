@@ -140,6 +140,7 @@ Type rec_designation Is Record (
 Type rec_designation_detail Is Record (
     pledge_or_gift_record_id dm_alumni.dim_designation_detail.pledge_or_gift_record_id%type
     , pledge_or_gift_date dm_alumni.dim_designation_detail.pledge_or_gift_date%type
+    , pledge_or_gift_status dm_alumni.dim_designation_detail.pledge_or_gift_status%type
     , designation_detail_record_id dm_alumni.dim_designation_detail.designation_detail_record_id%type
     , designation_record_id dm_alumni.dim_designation_detail.designation_record_id%type
     , designation_detail_name dm_alumni.dim_designation_detail.designation_detail_name%type
@@ -574,6 +575,7 @@ Cursor c_designation_detail Is
   Select 
     pledge_or_gift_record_id
     , pledge_or_gift_date
+    , pledge_or_gift_status
     , designation_detail_record_id
     , designation_record_id
     , designation_detail_name

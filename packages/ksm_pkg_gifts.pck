@@ -122,11 +122,18 @@ Cursor c_discounted_transactions Is
     , dd.designation_record_id
     , dd.designation_detail_name
     , dd.designation_amount
-    , dd.countable_amount_bequest
+    -- Written off bequests should have actual, not countable, amount posted
+    , Case
+        When dd.pledge_or_gift_status = 'Written Off'
+          Then dd.total_paid_amount
+        Else dd.countable_amount_bequest
+        End
+      As countable_amount_bequest
     , dd.bequest_flag
     , dd.total_paid_amount
     , dd.overpaid_flag
   From mv_designation_detail dd
+  Where dd.bequest_flag = 'Y'
 ;
 
 --------------------------------------
@@ -250,7 +257,7 @@ Cursor c_ksm_transactions Is
       -- Credit calculations
       , Case
           -- Bequests always show discounted amount
-          When opp.opportunity_type Like '%PGBEQ%'
+          When bequests.bequest_flag = 'Y'
             Then bequests.countable_amount_bequest
           Else gcred.credit_amount
           End
@@ -261,7 +268,7 @@ Cursor c_ksm_transactions Is
             -- Keep same logic as soft credit, above
             Then Case
               -- Bequests always show discounted amount
-              When opp.opportunity_type Like '%PGBEQ%'
+              When bequests.bequest_flag = 'Y'
                 Then bequests.countable_amount_bequest
               Else gcred.hard_credit_amount
               End
@@ -287,7 +294,7 @@ Cursor c_ksm_transactions Is
     Left Join table(dw_pkg_base.tbl_payment) pay
       On pay.payment_salesforce_id = gcred.payment_salesforce_id
     -- Discounted bequests
-    Left Join mv_designation_detail bequests
+    Left Join table(tbl_discounted_transactions) bequests
       -- Pledge + designation should be a unique identifier
       On bequests.bequest_flag = 'Y'
       And bequests.pledge_or_gift_record_id = opp.opportunity_record_id
