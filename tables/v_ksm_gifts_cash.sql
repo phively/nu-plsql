@@ -53,7 +53,7 @@ Select
   , kt.credit_amount
   , kt.hard_credit_amount
   , kt.recognition_credit
-  , kt.etl_update_date
+  , kt.max_etl_update_date
   , kt.mv_last_refresh
   , cal.today
 From mv_ksm_transactions kt

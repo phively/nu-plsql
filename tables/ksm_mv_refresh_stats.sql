@@ -23,7 +23,7 @@ Select 'mv_ksm_designation', min(mv_last_refresh), max(etl_update_date), min(etl
 From mv_ksm_designation
 -- 7:40 AM
 Union
-Select 'mv_ksm_transactions', min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+Select 'mv_ksm_transactions', min(mv_last_refresh), max(max_etl_update_date), min(min_etl_update_date)
 From mv_ksm_transactions
 ;
 
