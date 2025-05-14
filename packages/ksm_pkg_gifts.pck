@@ -82,6 +82,7 @@ Type rec_transaction Is Record (
       , credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
       , hard_credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
       , recognition_credit stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
+      , tender_type varchar2(128)
       , min_etl_update_date mv_entity.etl_update_date%type
       , max_etl_update_date mv_entity.etl_update_date%type
 );
@@ -211,7 +212,7 @@ Cursor c_ksm_transactions Is
         As gypm_ind
       -- A at end of opportunity/payment number implies adjustment
       , Case
-          When opp.opportunity_id_full Like '%A' Then 'Y'
+          When opp.opportunity_closed_stage = 'Adjusted' Then 'Y'
           End
         As adjusted_opportunity_ind
       , gcred.hard_and_soft_credit_salesforce_id
@@ -283,6 +284,12 @@ Cursor c_ksm_transactions Is
           Else gcred.credit_amount
           End
         As recognition_credit
+      , Case
+          When pay.payment_record_id Is Not Null
+            Then pay.tender_type
+          Else opp.tender_type
+          End
+        As tender_type
       , least(opp.etl_update_date, gcred.etl_update_date, kdes.etl_update_date, mve.etl_update_date)
         As min_etl_update_date
       , greatest(opp.etl_update_date, gcred.etl_update_date, kdes.etl_update_date, mve.etl_update_date)
