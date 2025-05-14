@@ -49,6 +49,7 @@ Type rec_transaction Is Record (
       , credited_donor_audit varchar2(255) -- See dw_pkg_base.rec_gift_credit.donor_name_and_id
       , opportunity_donor_id mv_entity.donor_id%type
       , opportunity_donor_name mv_entity.full_name%type
+      , tribute_type stg_alumni.ucinn_ascendv2__tribute__c.ucinn_ascendv2__tribute_type__c%type
       , tx_id dm_alumni.dim_opportunity.opportunity_record_id%type
       , opportunity_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
       , payment_record_id stg_alumni.ucinn_ascendv2__payment__c.name%type
@@ -82,7 +83,9 @@ Type rec_transaction Is Record (
       , credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
       , hard_credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
       , recognition_credit stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
-      , etl_update_date mv_entity.etl_update_date%type
+      , tender_type varchar2(128)
+      , min_etl_update_date mv_entity.etl_update_date%type
+      , max_etl_update_date mv_entity.etl_update_date%type
 );
 
 /*************************************************************************
@@ -142,9 +145,19 @@ Cursor c_ksm_transactions Is
 
     With
 
-    gcred As (
+    tribute As (
+      -- In memory/honor of
+      Select Distinct
+        trib.ucinn_ascendv2__opportunity__c As opportunity_salesforce_id
+        , trib.ucinn_ascendv2__contact__c As constituent_salesforce_id
+        , trib.ucinn_ascendv2__tribute_type__c As tribute_type
+      From stg_alumni.ucinn_ascendv2__tribute__c trib
+    )
+
+    , gcred As (
       Select
         gc.*
+        , tribute.tribute_type
         -- Fill in or extract Donor ID
         , Case
             When gc.donor_salesforce_id Is Not Null
@@ -161,6 +174,9 @@ Cursor c_ksm_transactions Is
       From table(dw_pkg_base.tbl_gift_credit) gc
       Left Join mv_entity
         On mv_entity.salesforce_id = gc.donor_salesforce_id
+      Left Join tribute
+        On tribute.opportunity_salesforce_id = gc.opportunity_salesforce_id
+        And tribute.constituent_salesforce_id = gc.donor_salesforce_id
     )
     
     Select
@@ -173,6 +189,7 @@ Cursor c_ksm_transactions Is
         As credited_donor_audit
       , opp.opportunity_donor_id
       , opp.opportunity_donor_name
+      , gcred.tribute_type
       , Case
           When pay.payment_record_id Is Not Null
             Then pay.payment_record_id
@@ -210,7 +227,7 @@ Cursor c_ksm_transactions Is
         As gypm_ind
       -- A at end of opportunity/payment number implies adjustment
       , Case
-          When opp.opportunity_id_full Like '%A' Then 'Y'
+          When opp.opportunity_closed_stage = 'Adjusted' Then 'Y'
           End
         As adjusted_opportunity_ind
       , gcred.hard_and_soft_credit_salesforce_id
@@ -282,8 +299,16 @@ Cursor c_ksm_transactions Is
           Else gcred.credit_amount
           End
         As recognition_credit
+      , Case
+          When pay.payment_record_id Is Not Null
+            Then pay.tender_type
+          Else opp.tender_type
+          End
+        As tender_type
       , least(opp.etl_update_date, gcred.etl_update_date, kdes.etl_update_date, mve.etl_update_date)
-        As etl_update_date
+        As min_etl_update_date
+      , greatest(opp.etl_update_date, gcred.etl_update_date, kdes.etl_update_date, mve.etl_update_date)
+        As max_etl_update_date
     From gcred
     Inner Join table(dw_pkg_base.tbl_opportunity) opp
       On opp.opportunity_salesforce_id = gcred.opportunity_salesforce_id

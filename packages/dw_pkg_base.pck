@@ -158,6 +158,7 @@ Type rec_opportunity Is Record (
     , opportunity_id_full stg_alumni.opportunity.name%type
     , legacy_receipt_number dm_alumni.dim_opportunity.legacy_receipt_number%type
     , opportunity_stage dm_alumni.dim_opportunity.opportunity_stage%type
+    , opportunity_closed_stage stg_alumni.opportunity.stagename%type
     , opportunity_record_type dm_alumni.dim_opportunity.opportunity_record_type%type
     , opportunity_type dm_alumni.dim_opportunity.opportunity_type%type
     , opportunity_donor_id dm_alumni.dim_opportunity.opportunity_donor_id%type
@@ -167,6 +168,7 @@ Type rec_opportunity Is Record (
     , entry_date dm_alumni.dim_opportunity.opportunity_entry_date%type
     , amount dm_alumni.dim_opportunity.opportunity_amount%type
     , discounted_amount dm_alumni.dim_opportunity.pledge_total_countable_amount%type
+    , tender_type dm_alumni.dim_opportunity.tender_type%type
     , designation_salesforce_id dm_alumni.dim_opportunity.designation_salesforce_id%type
     , is_anonymous_indicator dm_alumni.dim_opportunity.is_anonymous_indicator%type
     , anonymous_type dm_alumni.dim_opportunity.anonymous_type%type
@@ -195,6 +197,7 @@ Type rec_payment Is Record (
     , fiscal_year stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__fiscal_year_formula__c%type
     , entry_date stg_alumni.ucinn_ascendv2__payment__c.ap_processed_date__c%type
     , amount stg_alumni.ucinn_ascendv2__payment__c.ap_transaction_amount__c%type
+    , tender_type stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__tender_type_formula__c%type
     , designation_salesforce_id stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__designation_detail__c%type
     , is_anonymous_indicator stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__is_anonymous__c%type
     , anonymous_type stg_alumni.ucinn_ascendv2__payment__c.anonymous_type__c%type
@@ -203,7 +206,7 @@ Type rec_payment Is Record (
 
 --------------------------------------
 Type rec_gift_credit Is Record (
-  hard_and_soft_credit_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.id%type
+    hard_and_soft_credit_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.id%type
     , receipt_number stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__receipt_number__c%type
     , hard_and_soft_credit_record_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.name%type
     , credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
@@ -391,7 +394,8 @@ Cursor c_organization Is
     , organization_name
       As sort_name
     , organization_inactive_indicator
-    , organization_type
+    , nullif(organization_type, '-')
+      As organization_type
     , organization_ultimate_parent_donor_id
       As org_ult_parent_donor_id
     , organization_ultimate_parent_name
@@ -603,6 +607,7 @@ Cursor c_opportunity Is
       id As opportunity_salesforce_id
       , ap_payment_schedule__c As payment_schedule
       , name As opportunity_id_full
+      , stagename As opportunity_closed_stage
     From stg_alumni.opportunity o
   )
 
@@ -613,6 +618,7 @@ Cursor c_opportunity Is
     , nullif(legacy_receipt_number, '-')
       As legacy_receipt_number
     , opportunity_stage
+    , opp_raw.opportunity_closed_stage
     , opportunity_record_type
     , opportunity_type
     , opportunity_donor_id
@@ -632,6 +638,8 @@ Cursor c_opportunity Is
       As amount
     , pledge_total_countable_amount
       As discounted_amount
+    , nullif(opp.tender_type, '-')
+      As tender_type
     , designation_salesforce_id
     , nullif(is_anonymous_indicator, '-')
       As is_anonymous_indicator
@@ -687,6 +695,8 @@ Cursor c_payment Is
       As entry_date
     , pay.ap_transaction_amount__c
       As amount
+    , pay.ucinn_ascendv2__tender_type_formula__c
+      As tender_type
     , pay.ucinn_ascendv2__designation_detail__c
       As designation_salesforce_id
     , pay.ucinn_ascendv2__is_anonymous__c
