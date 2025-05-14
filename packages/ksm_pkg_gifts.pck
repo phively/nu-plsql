@@ -49,6 +49,7 @@ Type rec_transaction Is Record (
       , credited_donor_audit varchar2(255) -- See dw_pkg_base.rec_gift_credit.donor_name_and_id
       , opportunity_donor_id mv_entity.donor_id%type
       , opportunity_donor_name mv_entity.full_name%type
+      , tribute_type stg_alumni.ucinn_ascendv2__tribute__c.ucinn_ascendv2__tribute_type__c%type
       , tx_id dm_alumni.dim_opportunity.opportunity_record_id%type
       , opportunity_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
       , payment_record_id stg_alumni.ucinn_ascendv2__payment__c.name%type
@@ -144,9 +145,19 @@ Cursor c_ksm_transactions Is
 
     With
 
-    gcred As (
+    tribute As (
+      -- In memory/honor of
+      Select Distinct
+        trib.ucinn_ascendv2__opportunity__c As opportunity_salesforce_id
+        , trib.ucinn_ascendv2__contact__c As constituent_salesforce_id
+        , trib.ucinn_ascendv2__tribute_type__c As tribute_type
+      From stg_alumni.ucinn_ascendv2__tribute__c trib
+    )
+
+    , gcred As (
       Select
         gc.*
+        , tribute.tribute_type
         -- Fill in or extract Donor ID
         , Case
             When gc.donor_salesforce_id Is Not Null
@@ -163,6 +174,9 @@ Cursor c_ksm_transactions Is
       From table(dw_pkg_base.tbl_gift_credit) gc
       Left Join mv_entity
         On mv_entity.salesforce_id = gc.donor_salesforce_id
+      Left Join tribute
+        On tribute.opportunity_salesforce_id = gc.opportunity_salesforce_id
+        And tribute.constituent_salesforce_id = gc.donor_salesforce_id
     )
     
     Select
@@ -175,6 +189,7 @@ Cursor c_ksm_transactions Is
         As credited_donor_audit
       , opp.opportunity_donor_id
       , opp.opportunity_donor_name
+      , gcred.tribute_type
       , Case
           When pay.payment_record_id Is Not Null
             Then pay.payment_record_id
