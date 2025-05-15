@@ -34,8 +34,9 @@ Type rec_discount Is Record (
       , designation_record_id dm_alumni.dim_designation_detail.designation_record_id%type
       , designation_detail_name dm_alumni.dim_designation_detail.designation_detail_name%type
       , designation_amount dm_alumni.dim_designation_detail.designation_amount%type
-      , countable_amount_bequest dm_alumni.dim_designation_detail.countable_amount_bequest%type
+      , bequest_amount_calc number
       , bequest_flag varchar2(1)
+      , countable_amount_bequest dm_alumni.dim_designation_detail.countable_amount_bequest%type
       , total_paid_amount dm_alumni.dim_designation_detail.total_payment_credit_to_date_amount%type
       , overpaid_flag varchar2(1)
 );
@@ -128,12 +129,13 @@ Cursor c_discounted_transactions Is
     , dd.designation_amount
     -- Written off bequests should have actual, not countable, amount posted
     , Case
-        When dd.pledge_or_gift_status = 'Written Off'
+        When dd.pledge_or_gift_status In ('Written Off', 'Paid')
           Then dd.total_paid_amount
         Else dd.countable_amount_bequest
         End
-      As countable_amount_bequest
+      As bequest_amount_calc
     , dd.bequest_flag
+    , dd.countable_amount_bequest
     , dd.total_paid_amount
     , dd.overpaid_flag
   From mv_designation_detail dd
@@ -145,8 +147,21 @@ Cursor c_discounted_transactions Is
 Cursor c_ksm_transactions Is
 
     With
+    
+    gift_cash_exceptions As (
+    -- Override cash categorization for specific opportunities
+      -- Headers
+      (
+      Select
+        NULL As opportunity_record_id
+        , NULL As cash_category
+      From DUAL
+      ) Union All (
+      Select 'PN2463400', 'KEC' From DUAL -- NH override
+      )
+    )
 
-    tribute As (
+    , tribute As (
       -- In memory/honor of
       Select Distinct
         trib.ucinn_ascendv2__opportunity__c As opportunity_salesforce_id
@@ -265,7 +280,18 @@ Cursor c_ksm_transactions Is
       , kdes.designation_name
       , kdes.ksm_af_flag
       , kdes.ksm_cru_flag
-      , kdes.cash_category
+      , Case
+          -- Cash category exceptions
+          When gce.cash_category Is Not Null
+            Then gce.cash_category
+          -- Gift-In-Kind
+          When pay.tender_type Like '%Gift_in_Kind%'
+            Then 'Gift In Kind'
+          When opp.tender_type Like '%Gift_in_Kind%'
+            Then 'Gift In Kind'
+          Else kdes.cash_category
+          End
+        As cash_category
       , kdes.full_circle_campaign_priority
       -- Credit date is from opportunity object for matching gift payments
       , Case
@@ -294,7 +320,7 @@ Cursor c_ksm_transactions Is
       , Case
           -- Bequests always show discounted amount
           When bequests.bequest_flag = 'Y'
-            Then bequests.countable_amount_bequest
+            Then bequests.bequest_amount_calc
           Else gcred.credit_amount
           End
         As credit_amount
@@ -305,7 +331,7 @@ Cursor c_ksm_transactions Is
             Then Case
               -- Bequests always show discounted amount
               When bequests.bequest_flag = 'Y'
-                Then bequests.countable_amount_bequest
+                Then bequests.bequest_amount_calc
               Else gcred.hard_credit_amount
               End
             Else 0
@@ -349,6 +375,9 @@ Cursor c_ksm_transactions Is
       And overpaid.overpaid_flag = 'Y'
       And overpaid.pledge_or_gift_record_id = opp.opportunity_record_id
       And overpaid.designation_record_id = gcred.designation_record_id
+    -- Cash category exceptions
+    Left Join gift_cash_exceptions gce
+      On gce.opportunity_record_id = opp.opportunity_record_id
 ;
 
 /*************************************************************************
