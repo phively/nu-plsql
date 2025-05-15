@@ -23,6 +23,13 @@ From table(ksm_pkg_gifts.tbl_discounted_transactions) dt
 Where dt.designation_detail_record_id In ('DD-2555697', 'DD-2372155')
 ;
 
+Select
+  NULL As "Check bequest amount calc receive full paid credit for paid"
+  , dt.*
+From table(ksm_pkg_gifts.tbl_discounted_transactions) dt
+Where dt.pledge_or_gift_record_id In ('PN2241905', 'PN2241904')
+;
+
 ---------------------------
 -- mv tests
 ---------------------------
