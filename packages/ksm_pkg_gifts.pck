@@ -42,6 +42,13 @@ Type rec_discount Is Record (
 );
 
 --------------------------------------
+-- Unsplit amounts
+Type rec_unsplit Is Record (
+      tx_id mv_designation_detail.pledge_or_gift_record_id%type
+      , unsplit_amount mv_designation_detail.designation_amount%type
+);
+
+--------------------------------------
 -- Gift transactions
 Type rec_transaction Is Record (
       credited_donor_id mv_entity.donor_id%type
@@ -95,6 +102,7 @@ Public table declarations
 *************************************************************************/
 
 Type discounted_transactions Is Table Of rec_discount;
+Type unsplit_amounts Is Table Of rec_unsplit;
 Type transactions Is Table Of rec_transaction;
 
 /*************************************************************************
@@ -103,6 +111,9 @@ Public pipelined functions declarations
 
 Function tbl_discounted_transactions
   Return discounted_transactions Pipelined;
+
+Function tbl_unsplit_amounts
+  Return unsplit_amounts Pipelined;
 
 Function tbl_ksm_transactions
   Return transactions Pipelined;
@@ -143,6 +154,21 @@ Cursor c_discounted_transactions Is
 ;
 
 --------------------------------------
+-- Unsplit amounts: all KSM dollars per transaction
+Cursor c_unsplit_amounts Is
+
+  Select
+     dd.pledge_or_gift_record_id
+      As tx_id
+    , sum(dd.designation_amount)
+      As unsplit_amount
+  From mv_designation_detail dd
+  Inner Join mv_ksm_designation des
+    On des.designation_record_id = dd.designation_record_id
+  Group By dd.pledge_or_gift_record_id
+;
+
+--------------------------------------
 -- Kellogg normalized transactions
 Cursor c_ksm_transactions Is
 
@@ -160,7 +186,7 @@ Cursor c_ksm_transactions Is
       Select 'PN2463400', 'KEC' From DUAL -- NH override
       )
     )
-
+    
     , tribute As (
       -- In memory/honor of
       Select Distinct
@@ -384,6 +410,7 @@ Cursor c_ksm_transactions Is
 Pipelined functions
 *************************************************************************/
 
+--------------------------------------
 Function tbl_discounted_transactions
   Return discounted_transactions Pipelined As
   -- Declarations
@@ -395,6 +422,22 @@ Function tbl_discounted_transactions
     Close c_discounted_transactions;
     For i in 1..(dt.count) Loop
       Pipe row(dt(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_unsplit_amounts
+  Return unsplit_amounts Pipelined As
+  -- Declarations
+  ua unsplit_amounts;
+  
+  Begin
+    Open c_unsplit_amounts;
+      Fetch c_unsplit_amounts Bulk Collect Into ua;
+    Close c_unsplit_amounts;
+    For i in 1..(ua.count) Loop
+      Pipe row(ua(i));
     End Loop;
     Return;
   End;
