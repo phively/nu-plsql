@@ -54,7 +54,12 @@ Select
   , kt.credit_amount
   , kt.hard_credit_amount
   , kt.recognition_credit
-  , unsplit.unsplit_amount
+  , Case
+      When unsplit.unsplit_amount Is Not Null
+        Then unsplit.unsplit_amount
+      Else kt.hard_credit_amount
+      End
+    As unsplit_amount
   , kt.tender_type
   , kt.max_etl_update_date
   , kt.mv_last_refresh
@@ -64,7 +69,7 @@ Cross Join v_current_calendar cal
 Inner Join mv_entity mve
   On mve.donor_id = kt.credited_donor_id
 Left Join table(ksm_pkg_gifts.tbl_unsplit_amounts) unsplit
-  On unsplit.tx_id = kt.tx_id
+  On unsplit.pledge_or_gift_record_id = kt.opportunity_record_id
 Where kt.gypm_ind In ('G', 'P', 'M') -- Exclude pledge payments
   And kt.adjusted_opportunity_ind Is Null -- Exclude gift adjustment history
 ;

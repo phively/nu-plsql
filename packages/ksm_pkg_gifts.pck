@@ -44,7 +44,7 @@ Type rec_discount Is Record (
 --------------------------------------
 -- Unsplit amounts
 Type rec_unsplit Is Record (
-      tx_id mv_designation_detail.pledge_or_gift_record_id%type
+      pledge_or_gift_record_id mv_designation_detail.pledge_or_gift_record_id%type
       , unsplit_amount mv_designation_detail.designation_amount%type
 );
 
@@ -159,7 +159,7 @@ Cursor c_unsplit_amounts Is
 
   Select
      dd.pledge_or_gift_record_id
-      As tx_id
+      As pledge_or_gift_record_id
     , sum(dd.designation_amount)
       As unsplit_amount
   From mv_designation_detail dd
