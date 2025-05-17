@@ -538,7 +538,7 @@ Cursor c_designation Is
     , nullif(designation_fin_department_id, '-')
       As fin_department_id
     , Case
-        When designation_school = 'Kellogg'
+        When designation_school Like '%Kellogg%'
           Or (
             -- Include any historical funds missing designation school
             designation_department_program_code Like '%Kellogg%'

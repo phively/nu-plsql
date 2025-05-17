@@ -30,6 +30,13 @@ From table(ksm_pkg_gifts.tbl_discounted_transactions) dt
 Where dt.pledge_or_gift_record_id In ('PN2241905', 'PN2241904')
 ;
 
+Select
+  NULL As "Should be $25M"
+  , ua.*
+From table(ksm_pkg_gifts.tbl_unsplit_amounts) ua
+Where ua.tx_id = 'PN2482912'
+;
+
 ---------------------------
 -- mv tests
 ---------------------------

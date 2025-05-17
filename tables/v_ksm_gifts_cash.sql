@@ -5,6 +5,24 @@ Cash and source donor consolidated fields
 Create Or Replace View v_ksm_gifts_cash As
 -- New gifts and commitments to KSM, with YTD indicators
 
+With
+
+-- Cash counting exceptions
+-- Add additional entries as a new Union All section
+override As (
+  Select
+    NULL As tx_id
+    , NULL As amt
+  From DUAL
+  -- Fifteen Grp
+  Union All
+  Select 'T2529734', 199031.52 * 2
+  From DUAL
+  Union All
+  Select 'T2536547', 200000.00 * 2
+  From DUAL
+)
+
 Select
   kt.credited_donor_audit
   , mve.donor_id
@@ -54,6 +72,21 @@ Select
   , kt.credit_amount
   , kt.hard_credit_amount
   , kt.recognition_credit
+  -- Cash counting logic and exceptions
+  , Case
+      -- Skip soft credit
+      When kt.hard_credit_amount = 0
+        Then 0
+      -- TBD fund
+      When kt.designation_record_id = 'N3027553'
+        Then 0
+      -- Overrides
+      When override.amt Is Not Null
+        Then override.amt
+      -- Default fallback
+      Else kt.hard_credit_amount
+      End
+    As cash_countable_amount
   , kt.tender_type
   , kt.max_etl_update_date
   , kt.mv_last_refresh
@@ -62,6 +95,8 @@ From mv_ksm_transactions kt
 Cross Join v_current_calendar cal
 Inner Join mv_entity mve
   On mve.donor_id = kt.credited_donor_id
+Left Join override
+  On override.tx_id = kt.tx_id
 Where kt.gypm_ind In ('G', 'Y', 'M') -- Exclude pledges
   And kt.adjusted_opportunity_ind Is Null -- Exclude gift adjustment history
 ;
