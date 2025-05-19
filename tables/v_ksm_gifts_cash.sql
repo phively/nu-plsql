@@ -77,9 +77,6 @@ Select
       -- Skip soft credit
       When kt.hard_credit_amount = 0
         Then 0
-      -- TBD fund
-      When kt.designation_record_id = 'N3027553'
-        Then 0
       -- Overrides
       When override.amt Is Not Null
         Then override.amt
