@@ -226,6 +226,8 @@ Cursor c_designation_cash Is
             Then 'Inactive'
           -- Exceptions
           When des.legacy_allocation_code In ('3203006993001GFT')
+            Or des.designation_record_id = 'N3027553' -- CRU TBD
+            Or des.designation_record_id = 'N4009030' -- Endowed TBD
             Then 'Other/TBD'
           -- Kellogg Education Center
           When des.legacy_allocation_code In ('3203006213301GFT', '3203000860801GFT')
