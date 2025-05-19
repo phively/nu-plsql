@@ -149,7 +149,8 @@ Cursor c_entity_degrees_concat Is
     From table(dw_pkg_base.tbl_degrees) deg
     Where deg.nu_indicator = 'Y' -- Northwestern University
       And (
-        deg.degree_school_name In ('Kellogg', 'Undergraduate Business') -- Kellogg and College of Business school codes
+        deg.degree_school_name Like ('%Kellogg%')
+        Or deg.degree_school_name Like ('%Undergraduate Business%')
         Or deg.degree_code = 'MBAI' -- MBAI
         Or deg.degree_program_code In (Select id From acaorg)
       )

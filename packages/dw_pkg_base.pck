@@ -26,7 +26,7 @@ Public type declarations
 --------------------------------------
 Type rec_constituent Is Record (
   salesforce_id dm_alumni.dim_constituent.constituent_salesforce_id%type
-  , household_id dm_alumni.dim_constituent.constituent_household_account_salesforce_id%type
+  , household_id dm_alumni.dim_constituent.constituent_household_account_donor_id%type
   , household_primary dm_alumni.dim_constituent.household_primary_constituent_indicator%type
   , donor_id dm_alumni.dim_constituent.constituent_donor_id%type
   , full_name dm_alumni.dim_constituent.full_name%type
@@ -330,7 +330,7 @@ Cursor c_constituent Is
   Select
       constituent_salesforce_id
       As salesforce_id
-    , constituent_household_account_salesforce_id
+    , constituent_household_account_donor_id
       As household_id
     , household_primary_constituent_indicator
       As household_primary
