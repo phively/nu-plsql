@@ -7,7 +7,7 @@ Purpose : Base table combining hard and soft credit, opportunity, designation,
   constituent, and organization into a normalized transactions list. One credited donor
   transaction per row.
 Dependencies: dw_pkg_base (mv_designation_detail), ksm_pkg_entity (mv_entity),
-  ksm_pkg_designation (mv_designation)
+  ksm_pkg_designation (mv_designation), ksm_pkg_utility
 
 Suggested naming conventions:
   Pure functions: [function type]_[description]
@@ -86,7 +86,7 @@ Type rec_transaction Is Record (
       , cash_category mv_ksm_designation.cash_category%type
       , full_circle_campaign_priority mv_ksm_designation.full_circle_campaign_priority%type
       , credit_date stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_date_formula__c%type
-      , fiscal_year stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.nu_fiscal_year__c%type
+      , fiscal_year integer
       , entry_date dm_alumni.dim_opportunity.opportunity_entry_date%type
       , credit_type stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_type__c%type
       , credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
@@ -328,8 +328,8 @@ Cursor c_ksm_transactions Is
         As credit_date
       , Case
           When gcred.source_type_detail = 'Matching Gift Payment'
-            Then opp.fiscal_year
-          Else gcred.fiscal_year
+            Then ksm_pkg_utility.to_number2(opp.fiscal_year)
+          Else ksm_pkg_utility.to_number2(gcred.fiscal_year)
           End
         As fiscal_year
       -- For entry date: needs to check processed date for pledge payments
