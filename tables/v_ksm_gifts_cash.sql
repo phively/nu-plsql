@@ -72,6 +72,8 @@ Select
   , kt.credit_amount
   , kt.hard_credit_amount
   , kt.recognition_credit
+  , kt.hh_credit
+  , kt.hh_recognition_credit
   -- Cash counting logic and exceptions
   , Case
       -- Skip soft credit
@@ -84,6 +86,12 @@ Select
       Else kt.hard_credit_amount
       End
     As cash_countable_amount
+  , Case
+      When override.amt Is Not Null
+        Then override.amt / kt.hh_credited_donors
+      Else kt.hh_credit
+      End
+    As hh_countable_credit
   , kt.tender_type
   , kt.max_etl_update_date
   , kt.mv_last_refresh
