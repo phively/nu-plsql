@@ -49,6 +49,16 @@ Type rec_unsplit Is Record (
 );
 
 --------------------------------------
+-- Householded donor counts
+Type rec_donor_count Is Record (
+    opportunity_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__opportunity__c%type
+    , payment_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__payment__c%type
+    , designation_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__designation__c%type
+    , household_id mv_entity.household_id%type
+    , credited_hh_donors integer
+);
+
+--------------------------------------
 -- Gift transactions
 Type rec_transaction Is Record (
       credited_donor_id mv_entity.donor_id%type
@@ -103,6 +113,7 @@ Public table declarations
 
 Type discounted_transactions Is Table Of rec_discount;
 Type unsplit_amounts Is Table Of rec_unsplit;
+Type donor_counts Is Table Of rec_donor_count;
 Type transactions Is Table Of rec_transaction;
 
 /*************************************************************************
@@ -114,6 +125,9 @@ Function tbl_discounted_transactions
 
 Function tbl_unsplit_amounts
   Return unsplit_amounts Pipelined;
+
+Function tbl_hh_donor_count
+  Return donor_counts Pipelined;
 
 Function tbl_ksm_transactions
   Return transactions Pipelined;
@@ -166,6 +180,52 @@ Cursor c_unsplit_amounts Is
   Inner Join mv_ksm_designation des
     On des.designation_record_id = dd.designation_record_id
   Group By dd.pledge_or_gift_record_id
+;
+
+--------------------------------------
+-- Householded count of donors per designation/payment/opportunity
+Cursor c_hh_donor_count Is
+
+  With
+  
+  gcred As (
+    Select
+    gc.*
+    -- Fill in or extract Donor ID
+    , Case
+        When gc.donor_salesforce_id Is Not Null
+          Then mv_entity.donor_id
+        Else
+          regexp_substr(
+            -- Take last 10 characters of concatenated name/id field
+            substr(donor_name_and_id, -10)
+            -- Return consecutive digits
+            , '[0-9]+'
+          )
+        End
+      As credited_donor_id
+  From table(dw_pkg_base.tbl_gift_credit) gc
+  Left Join mv_entity
+    On mv_entity.salesforce_id = gc.donor_salesforce_id
+  )
+  
+  Select Distinct
+    gc.opportunity_salesforce_id
+    , gc.payment_salesforce_id
+    , gc.designation_salesforce_id
+    , mve.household_id
+    , count(gc.donor_salesforce_id)
+      As credited_hh_donors
+  From gcred gc
+  Inner Join mv_entity mve
+    On mve.donor_id = gc.credited_donor_id
+  Inner Join mv_ksm_designation des
+    On des.designation_salesforce_id = gc.designation_salesforce_id
+  Group By
+    gc.opportunity_salesforce_id
+    , gc.payment_salesforce_id
+    , gc.designation_salesforce_id
+    , mve.household_id
 ;
 
 --------------------------------------
@@ -438,6 +498,22 @@ Function tbl_unsplit_amounts
     Close c_unsplit_amounts;
     For i in 1..(ua.count) Loop
       Pipe row(ua(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_hh_donor_count
+  Return donor_counts Pipelined As
+  -- Declarations
+  dc donor_counts;
+  
+  Begin
+    Open c_hh_donor_count;
+      Fetch c_hh_donor_count Bulk Collect Into dc;
+    Close c_hh_donor_count;
+    For i in 1..(dc.count) Loop
+      Pipe row(dc(i));
     End Loop;
     Return;
   End;
