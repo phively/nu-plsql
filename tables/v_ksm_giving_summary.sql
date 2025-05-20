@@ -1,10 +1,13 @@
-/*************************************************
+/*************************************************************************
 Householded entity giving summaries
-*************************************************/
+*************************************************************************/
 
-/*Create Or Replace View v_ksm_giving_summary As
+--Create Or Replace View v_ksm_giving_summary As
+
 -- View implementing Kellogg gift credit, householded, with several common types
+
 With
+
 -- Parameters defining KLC years/amounts
 params As (
   Select
@@ -13,20 +16,19 @@ params As (
     , 5 As young_klc_yrs
   From DUAL
 )
--- HH giving trans
-, hh_giving As (
-  Select *
-  From v_ksm_giving_trans_hh
-)
+
 -- Sum transaction amounts
-, trans As (
+--, trans As (
   Select Distinct
-    hh.id_number
-    , hh.household_id
-    , hh.household_rpt_name
-    , hh.household_spouse_id
-    , hh.household_spouse
-    , hh.household_last_masters_year
+    mve.household_id
+    , max(hh.household_account_name)
+      As household_account_name
+    , max(hh.household_spouse_donor_id)
+      As household_spouse_donor_id
+    , max(hh.household_spouse_full_name)
+      As household_spouse_full_name
+    , max(hh.household_last_masters_year)
+      As household_last_masters_year
     , max(Case When household_last_masters_year >= cal.curr_fy - young_klc_yrs Then 'Y' End)
       As af_young_alum
     , max(Case When household_last_masters_year >= cal.curr_fy - young_klc_yrs - 1 Then 'Y' End)
@@ -35,12 +37,12 @@ params As (
       As af_young_alum2
     , max(Case When household_last_masters_year >= cal.curr_fy - young_klc_yrs - 3 Then 'Y' End)
       As af_young_alum3
-    , sum(Case When tx_gypm_ind != 'Y' Then hh_credit Else 0 End) As ngc_lifetime
-    , sum(Case When tx_gypm_ind != 'Y' Then hh_recognition_credit Else 0 End) -- Count bequests at face value and internal transfers at > $0
+    , sum(Case When mve.household_primary = 'Y' Then ngc.credit_amount Else 0 End) As ngc_lifetime
+    , sum(Case When mve.household_primary = 'Y' Then ngc.recognition_credit Else 0 End) -- Count bequests at face value and internal transfers at > $0
       As ngc_lifetime_full_rec
-    , sum(Case When tx_gypm_ind != 'Y' And anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
+    , sum(Case When mve.household_primary = 'Y' And anonymous Not In (Select Distinct anonymous_code From tms_anonymous) Then hh_recognition_credit Else 0 End)
       As ngc_lifetime_nonanon_full_rec
-    , max(nu_giving.lifetime_giving) As nu_max_hh_lifetime_giving
+/*    , max(nu_giving.lifetime_giving) As nu_max_hh_lifetime_giving
     , sum(Case When tx_gypm_ind != 'P' Then hh_credit Else 0 End) As cash_lifetime
     , sum(Case When tx_gypm_ind != 'Y' And cal.curr_fy = fiscal_year     Then hh_credit Else 0 End) As ngc_cfy
     , sum(Case When tx_gypm_ind != 'Y' And cal.curr_fy = fiscal_year + 1 Then hh_credit Else 0 End) As ngc_pfy1
@@ -150,22 +152,21 @@ params As (
       As max_gift_alloc
     , max(gfts.hh_recognition_credit)
       keep(dense_rank First Order By gfts.hh_recognition_credit Desc, gfts.date_of_record Desc, gfts.tx_number Desc, gfts.alloc_short_name Asc)
-      As max_gift_credit
-  From v_entity_ksm_households_fast hh
+      As max_gift_credit*/
+  From mv_entity mve
   Cross Join v_current_calendar cal
   Cross Join params
-  Inner Join hh_giving gfts
-    On gfts.household_id = hh.household_id
-  Left Join nu_rpt_t_lifetime_giving nu_giving
-    On nu_giving.id_number = hh.id_number
+  Left Join mv_households hh
+    On hh.household_id = mve.household_id
+  Left Join mv_hh_donor_count hhc
+    On hhc.household_id = mve.household_id
+  Left Join v_ksm_gifts_cash cash
+    On cash.household_id = mve.household_id
+  Left Join v_ksm_gifts_ngc ngc
+    On ngc.household_id = mve.household_id
   Group By
-    hh.id_number
-    , hh.household_id
-    , hh.household_rpt_name
-    , hh.household_spouse_id
-    , hh.household_spouse
-    , hh.household_last_masters_year
-)
+    mve.household_id
+/*)
 -- Main query
 Select
   trans.*
@@ -381,5 +382,4 @@ From trans
 Cross Join params
 Left Join table(ksm_pkg_special_handling.tbl_special_handling_concat) shc
   On shc.id_number = trans.id_number
-;
-*/
+;*/
