@@ -34,7 +34,7 @@ Select
   NULL As "Should be $25M"
   , ua.*
 From table(ksm_pkg_gifts.tbl_unsplit_amounts) ua
-Where ua.tx_id = 'PN2482912'
+Where ua.pledge_or_gift_record_id = 'PN2482912'
 ;
 
 ---------------------------
