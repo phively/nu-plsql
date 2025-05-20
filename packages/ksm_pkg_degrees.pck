@@ -26,18 +26,18 @@ Type rec_entity_ksm_degrees Is Record (
   donor_id dm_alumni.dim_constituent.constituent_donor_id%type
   , full_name dm_alumni.dim_constituent.full_name%type
   , sort_name dm_alumni.dim_constituent.full_name%type
-  , degrees_verbose varchar2(1024)
-  , degrees_concat varchar2(512)
+  , degrees_verbose varchar2(1500)
+  , degrees_concat varchar2(1500)
   , first_ksm_grad_date stg_alumni.ucinn_ascendv2__degree_information__c.ucinn_ascendv2__degree_date__c%type
   , first_ksm_year stg_alumni.ucinn_ascendv2__degree_information__c.ucinn_ascendv2__conferred_degree_year__c%type
   , first_masters_year stg_alumni.ucinn_ascendv2__degree_information__c.ucinn_ascendv2__conferred_degree_year__c%type
   , last_masters_year stg_alumni.ucinn_ascendv2__degree_information__c.ucinn_ascendv2__conferred_degree_year__c%type
   , last_noncert_year stg_alumni.ucinn_ascendv2__degree_information__c.ucinn_ascendv2__conferred_degree_year__c%type
-  , program varchar2(32)
-  , program_group varchar2(10)
+  , program varchar2(60)
+  , program_group varchar2(60)
   , program_group_rank number
-  , class_section varchar2(80)
-  , majors_concat varchar2(512)
+  , class_section varchar2(500)
+  , majors_concat varchar2(1500)
   , etl_update_date dm_alumni.dim_constituent.etl_update_date%type
 );
 
@@ -109,7 +109,12 @@ Cursor c_entity_degrees_concat Is
       , deg.degree_level
       , deg.degree_code
       , deg.degree_name
-      , deg.degree_school_name
+      , Case 
+          When deg.degree_school_name Like '%J%L%Kellogg%'
+            Then 'Kellogg'
+          Else deg.degree_school_name
+          End
+        As degree_school_name
       , deg.department_code
       , Case
           When deg.department_code = '01MDB' -- Joint Feinberg
