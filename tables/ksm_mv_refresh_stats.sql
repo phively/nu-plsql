@@ -2,7 +2,8 @@ Create Or Replace View ksm_mv_refresh_stats As
 
 -- Name headers
 Select
-  NULL As view_name
+  NULL As refresh_level
+  , NULL As view_name
   , NULL As n_rows
   , NULL As mv_last_refresh
   , NULL As max_etl_update_date
@@ -11,27 +12,27 @@ From DUAL
 Where 1 = 0
 -- 7:30 AM
 Union
-Select 'mv_involvement', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+Select 0, 'mv_involvement', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_involvement
 Union
-Select 'mv_entity', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+Select 0, 'mv_entity', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_entity
 Union
-Select 'mv_households', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
-From mv_households
-Union
-Select 'mv_entity_ksm_degrees', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+Select 0, 'mv_entity_ksm_degrees', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_entity_ksm_degrees
 Union
-Select 'mv_ksm_designation', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+Select 0, 'mv_ksm_designation', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_ksm_designation
+Union
+Select 0, 'mv_transactions', count(*), min(mv_last_refresh), max(max_etl_update_date), min(max_etl_update_date)
+From mv_transactions
 -- 7:40 AM
 Union
-Select 'mv_ksm_transactions', count(*), min(mv_last_refresh), max(max_etl_update_date), min(min_etl_update_date)
-From mv_ksm_transactions
+Select 1, 'mv_households', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+From mv_households
 Union
-Select 'mv_hh_donor_count', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
-From mv_hh_donor_count
+Select 1, 'mv_ksm_transactions', count(*), min(mv_last_refresh), max(max_etl_update_date), min(max_etl_update_date)
+From mv_ksm_transactions
 ;
 
 Select *

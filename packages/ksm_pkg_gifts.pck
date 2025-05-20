@@ -187,51 +187,24 @@ Cursor c_unsplit_amounts Is
 -- Householded count of donors per designation/payment/opportunity
 Cursor c_hh_donor_count Is
 
-  With
-  
-  gcred As (
-    Select
-    gc.*
-    -- Fill in or extract Donor ID
-    , Case
-        When gc.donor_salesforce_id Is Not Null
-          Then mv_entity.donor_id
-        Else
-          regexp_substr(
-            -- Take last 10 characters of concatenated name/id field
-            substr(donor_name_and_id, -10)
-            -- Return consecutive digits
-            , '[0-9]+'
-          )
-        End
-      As credited_donor_id
-  From table(dw_pkg_base.tbl_gift_credit) gc
-  Left Join mv_entity
-    On mv_entity.salesforce_id = gc.donor_salesforce_id
-  )
-  
-  Select Distinct
-    opp.opportunity_record_id
-    , pay.payment_record_id
-    , des.designation_record_id
+Select Distinct
+    trans.opportunity_record_id
+    , trans.payment_record_id
+    , trans.designation_record_id
     , mve.household_id
-    , count(gc.donor_salesforce_id)
+    , count(trans.credited_donor_id)
       As credited_hh_donors
-    , max(gc.etl_update_date)
+    , max(trans.max_etl_update_date)
       As etl_update_date
-  From gcred gc
+  From mv_transactions trans
   Inner Join mv_entity mve
-    On mve.donor_id = gc.credited_donor_id
+    On mve.donor_id = trans.credited_donor_id
   Inner Join mv_ksm_designation des
-    On des.designation_salesforce_id = gc.designation_salesforce_id
-  Inner Join table(dw_pkg_base.tbl_opportunity) opp
-    On opp.opportunity_salesforce_id = gc.opportunity_salesforce_id
-  Left Join table(dw_pkg_base.tbl_payment) pay
-    On pay.payment_salesforce_id = gc.payment_salesforce_id
+    On des.designation_record_id = trans.designation_record_id
   Group By
-    opp.opportunity_record_id
-    , pay.payment_record_id
-    , des.designation_record_id
+    trans.opportunity_record_id
+    , trans.payment_record_id
+    , trans.designation_record_id
     , mve.household_id
 ;
 
@@ -269,7 +242,7 @@ Cursor c_ksm_transactions Is
     
     , tribute_concat As (
       Select
-        tribute.opportunity_salesforce_id
+        opp.opportunity_record_id
         , Listagg(tribute_type, '; ' || chr(13))
           Within Group (Order By tribute_type, tributee_name_text)
           As tribute_type
@@ -277,100 +250,42 @@ Cursor c_ksm_transactions Is
           Within Group (Order By tribute_type, tributee_name_text)
           As tributees
       From tribute
-      Group By opportunity_salesforce_id
-    )
-
-    , gcred As (
-      Select
-        gc.*
-        , tribute_concat.tribute_type
-        , tribute_concat.tributees
-        -- Fill in or extract Donor ID
-        , Case
-            When gc.donor_salesforce_id Is Not Null
-              Then mv_entity.donor_id
-            Else
-              regexp_substr(
-                -- Take last 10 characters of concatenated name/id field
-                substr(donor_name_and_id, -10)
-                -- Return consecutive digits
-                , '[0-9]+'
-              )
-            End
-          As credited_donor_id
-      From table(dw_pkg_base.tbl_gift_credit) gc
-      Left Join mv_entity
-        On mv_entity.salesforce_id = gc.donor_salesforce_id
-      Left Join tribute_concat
-        On tribute_concat.opportunity_salesforce_id = gc.opportunity_salesforce_id
+      Inner Join table(dw_pkg_base.tbl_opportunity) opp
+        On opp.opportunity_salesforce_id = tribute.opportunity_salesforce_id
+      Group By opp.opportunity_record_id
     )
     
     Select
-      gcred.credited_donor_id
-      , mve.full_name
-        As credited_donor_name
-      , mve.sort_name
-        As credited_donor_sort_name
-      , gcred.donor_name_and_id
-        As credited_donor_audit
-      , opp.opportunity_donor_id
-      , opp.opportunity_donor_name
-      , gcred.tribute_type
-      , gcred.tributees
-      , Case
-          When pay.payment_record_id Is Not Null
-            Then pay.payment_record_id
-          Else opp.opportunity_record_id
-          End
-        As tx_id
-      , opp.opportunity_record_id
-      , pay.payment_record_id
-      , Case
-          When pay.payment_record_id Is Not Null
-            Then pay.anonymous_type
-          Else opp.anonymous_type
-          End
-        As anonymous_type
-      , Case
-          When pay.payment_record_id Is Not Null
-            Then pay.legacy_receipt_number
-          Else opp.legacy_receipt_number
-          End
-        As legacy_receipt_number
-      , opp.opportunity_stage
-      , opp.opportunity_record_type
-      , opp.opportunity_type
-      , opp.payment_schedule
-      , gcred.source_type
-      , gcred.source_type_detail
-      -- gypm_ind logic deliberately leaves some sources as NULL
-      -- Business purpose is to distinguish between GYM cash and GPM NGC
-      , Case
-          When gcred.source_type_detail = 'Outright Gift' Then 'G'
-          When gcred.source_type_detail = 'Matching Gift Payment' Then 'M'
-          When gcred.source_type_detail = 'Pledge' Then 'P'
-          When gcred.source_type_detail Like '%Payment%' Then 'Y'
-          End
-        As gypm_ind
-      -- A at end of opportunity/payment number implies adjustment
-      , Case
-          When opp.opportunity_closed_stage = 'Adjusted' Then 'Y'
-          End
-        As adjusted_opportunity_ind
-      , gcred.hard_and_soft_credit_salesforce_id
-      , gcred.receipt_number
-        As credit_receipt_number
-      , opp.matched_gift_record_id
-      , Case
-          When gcred.source_type = 'Pledge'
-            Then opp.opportunity_record_id
-          End
-        As pledge_record_id
-      , opp.linked_proposal_record_id
-      , kdes.designation_record_id
-      , kdes.designation_status
-      , kdes.legacy_allocation_code
-      , kdes.designation_name
+      trans.credited_donor_id
+      , trans.credited_donor_name
+      , trans.credited_donor_sort_name
+      , trans.credited_donor_audit
+      , trans.opportunity_donor_id
+      , trans.opportunity_donor_name
+      , tribute_concat.tribute_type
+      , tribute_concat.tributees
+      , trans.tx_id
+      , trans.opportunity_record_id
+      , trans.payment_record_id
+      , trans.anonymous_type
+      , trans.legacy_receipt_number
+      , trans.opportunity_stage
+      , trans.opportunity_record_type
+      , trans.opportunity_type
+      , trans.payment_schedule
+      , trans.source_type
+      , trans.source_type_detail
+      , trans.gypm_ind
+      , trans.adjusted_opportunity_ind
+      , trans.hard_and_soft_credit_salesforce_id
+      , trans.credit_receipt_number
+      , trans.matched_gift_record_id
+      , trans.pledge_record_id
+      , trans.linked_proposal_record_id
+      , trans.designation_record_id
+      , trans.designation_status
+      , trans.legacy_allocation_code
+      , trans.designation_name
       , kdes.ksm_af_flag
       , kdes.ksm_cru_flag
       , Case
@@ -378,54 +293,35 @@ Cursor c_ksm_transactions Is
           When gce.cash_category Is Not Null
             Then gce.cash_category
           -- Gift-In-Kind
-          When pay.tender_type Like '%Gift_in_Kind%'
+          When trans.tender_type Like '%Gift_in_Kind%'
             Then 'Gift In Kind'
-          When opp.tender_type Like '%Gift_in_Kind%'
+          When trans.tender_type Like '%Gift_in_Kind%'
             Then 'Gift In Kind'
           Else kdes.cash_category
           End
         As cash_category
       , kdes.full_circle_campaign_priority
-      -- Credit date is from opportunity object for matching gift payments
-      , Case
-          When gcred.source_type_detail = 'Matching Gift Payment'
-            Then opp.credit_date
-          Else gcred.credit_date
-          End
-        As credit_date
-      , Case
-          When gcred.source_type_detail = 'Matching Gift Payment'
-            Then ksm_pkg_utility.to_number2(opp.fiscal_year)
-          Else ksm_pkg_utility.to_number2(gcred.fiscal_year)
-          End
-        As fiscal_year
-      -- For entry date: needs to check processed date for pledge payments
-      ,  Case
-            When gcred.source_type_detail = 'Matching Gift Payment'
-              Then opp.entry_date
-            When gcred.source_type_detail Like '%Payment%'
-              Then pay.entry_date
-            Else opp.entry_date
-            End
-          As entry_date
-      , gcred.credit_type
+      , trans.credit_date
+      , trans.fiscal_year
+      , trans.entry_date
+      , trans.credit_type
       -- Credit calculations
       , Case
           -- Bequests always show discounted amount
           When bequests.bequest_flag = 'Y'
             Then bequests.bequest_amount_calc
-          Else gcred.credit_amount
+          Else trans.credit_amount
           End
         As credit_amount
       -- Hard credit
       , Case
-          When gcred.credit_type = 'Hard'
+          When trans.credit_type = 'Hard'
             -- Keep same logic as soft credit, above
             Then Case
               -- Bequests always show discounted amount
               When bequests.bequest_flag = 'Y'
                 Then bequests.bequest_amount_calc
-              Else gcred.hard_credit_amount
+              Else trans.hard_credit_amount
               End
             Else 0
           End
@@ -434,43 +330,35 @@ Cursor c_ksm_transactions Is
         -- Overpaid pledges use the paid amount
           When overpaid.overpaid_flag = 'Y'
             Then overpaid.total_paid_amount
-          Else gcred.credit_amount
+          Else trans.credit_amount
           End
         As recognition_credit
-      , Case
-          When pay.payment_record_id Is Not Null
-            Then pay.tender_type
-          Else opp.tender_type
-          End
-        As tender_type
-      , least(opp.etl_update_date, gcred.etl_update_date, kdes.etl_update_date, mve.etl_update_date)
+      , trans.tender_type
+      , least(trans.max_etl_update_date, kdes.etl_update_date)
         As min_etl_update_date
-      , greatest(opp.etl_update_date, gcred.etl_update_date, kdes.etl_update_date, mve.etl_update_date)
+      , greatest(trans.max_etl_update_date, kdes.etl_update_date)
         As max_etl_update_date
-    From gcred
-    Inner Join table(dw_pkg_base.tbl_opportunity) opp
-      On opp.opportunity_salesforce_id = gcred.opportunity_salesforce_id
+    From mv_transactions trans
     Inner Join mv_ksm_designation kdes
-      On kdes.designation_salesforce_id = gcred.designation_salesforce_id
-    Left Join mv_entity mve
-      On mve.donor_id = gcred.credited_donor_id
-    Left Join table(dw_pkg_base.tbl_payment) pay
-      On pay.payment_salesforce_id = gcred.payment_salesforce_id
+      On kdes.designation_record_id = trans.designation_record_id
     -- Discounted bequests
-    Left Join table(tbl_discounted_transactions) bequests
+    Left Join table(ksm_pkg_gifts.tbl_discounted_transactions) bequests
       -- Pledge + designation should be a unique identifier
       On bequests.bequest_flag = 'Y'
-      And bequests.pledge_or_gift_record_id = opp.opportunity_record_id
-      And bequests.designation_record_id = gcred.designation_record_id
+      And bequests.pledge_or_gift_record_id = trans.opportunity_record_id
+      And bequests.designation_record_id = trans.designation_record_id
     -- Overpaid pledges
     Left Join mv_designation_detail overpaid
-      On gcred.source_type_detail = 'Pledge'
+      On trans.source_type_detail = 'Pledge'
       And overpaid.overpaid_flag = 'Y'
-      And overpaid.pledge_or_gift_record_id = opp.opportunity_record_id
-      And overpaid.designation_record_id = gcred.designation_record_id
+      And overpaid.pledge_or_gift_record_id = trans.opportunity_record_id
+      And overpaid.designation_record_id = trans.designation_record_id
     -- Cash category exceptions
     Left Join gift_cash_exceptions gce
-      On gce.opportunity_record_id = opp.opportunity_record_id
+      On gce.opportunity_record_id = trans.opportunity_record_id
+    -- In memory/honor of
+    Left Join tribute_concat
+        On tribute_concat.opportunity_record_id = trans.opportunity_record_id
 ;
 
 /*************************************************************************
