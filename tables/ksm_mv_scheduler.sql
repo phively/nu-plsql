@@ -76,6 +76,21 @@ Select
 From table(ksm_pkg_designation.tbl_ksm_designation) des
 ;
 
+--------------------------------------
+-- ksm_pkg_transactions
+-- tbl_transactions
+Create Materialized View mv_transactions
+Refresh Complete
+Start With sysdate
+-- 7:30 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.5/24)
+As
+Select
+  tr.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_transactions.tbl_transactions) tr
+;
+
 /*************************************************************************
 Level 1 dependencies
 7:40 AM

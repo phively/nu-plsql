@@ -443,9 +443,9 @@ Cursor c_ksm_transactions Is
           Else opp.tender_type
           End
         As tender_type
-      , least(opp.etl_update_date, gcred.etl_update_date, kdes.etl_update_date, mve.etl_update_date)
+      , least(gcred.etl_update_date, opp.etl_update_date, kdes.etl_update_date, mve.etl_update_date, pay.etl_update_date)
         As min_etl_update_date
-      , greatest(opp.etl_update_date, gcred.etl_update_date, kdes.etl_update_date, mve.etl_update_date)
+      , greatest(gcred.etl_update_date, opp.etl_update_date, kdes.etl_update_date, mve.etl_update_date, pay.etl_update_date)
         As max_etl_update_date
     From gcred
     Inner Join table(dw_pkg_base.tbl_opportunity) opp

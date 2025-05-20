@@ -76,6 +76,26 @@ Type rec_organization Is Record (
 );
 
 --------------------------------------
+Type rec_mini_entity Is Record (
+  person_or_org varchar2(1)
+  , salesforce_id dm_alumni.dim_constituent.constituent_salesforce_id%type
+  , household_id dm_alumni.dim_constituent.constituent_household_account_salesforce_id%type
+  , household_primary dm_alumni.dim_constituent.household_primary_constituent_indicator%type
+  , donor_id dm_alumni.dim_constituent.constituent_donor_id%type
+  , full_name dm_alumni.dim_constituent.full_name%type
+  , sort_name dm_alumni.dim_constituent.full_name%type
+  , is_deceased_indicator dm_alumni.dim_constituent.is_deceased_indicator%type
+  , primary_record_type dm_alumni.dim_constituent.primary_constituent_type%type
+  , institutional_suffix dm_alumni.dim_constituent.institutional_suffix%type
+  , spouse_donor_id dm_alumni.dim_constituent.spouse_constituent_donor_id%type
+  , spouse_name dm_alumni.dim_constituent.spouse_name%type
+  , spouse_institutional_suffix dm_alumni.dim_constituent.spouse_instituitional_suffix%type
+  , org_ult_parent_donor_id dm_alumni.dim_organization.organization_ultimate_parent_donor_id %type
+  , org_ult_parent_name dm_alumni.dim_organization.organization_ultimate_parent_name%type
+  , etl_update_date dm_alumni.dim_constituent.etl_update_date%type
+);
+
+--------------------------------------
 Type rec_degrees Is Record (
     constituent_donor_id dm_alumni.dim_degree_detail.constituent_donor_id%type
     , constituent_name dm_alumni.dim_degree_detail.constituent_name%type
@@ -255,6 +275,7 @@ Public table declarations
 
 Type constituent Is Table Of rec_constituent;
 Type organization Is Table Of rec_organization;
+Type mini_entity Is Table Of rec_mini_entity;
 Type degrees Is Table Of rec_degrees;
 Type designation Is Table Of rec_designation;
 Type designation_detail Is Table Of rec_designation_detail;
@@ -273,6 +294,9 @@ Function tbl_constituent
 
 Function tbl_organization
   Return organization Pipelined;
+
+Function tbl_mini_entity
+  Return mini_entity Pipelined;
 
 Function tbl_degrees
   Return degrees Pipelined;
@@ -424,6 +448,50 @@ Cursor c_organization Is
       As etl_update_date
   From dm_alumni.dim_organization org
   Where org.organization_salesforce_id != '-'
+;
+
+
+--------------------------------------
+Cursor c_mini_entity Is
+  (
+  Select
+    'P' As person_or_org
+    , c.salesforce_id
+    , c.household_id
+    , c.household_primary
+    , c.donor_id
+    , c.full_name
+    , c.sort_name
+    , c.is_deceased_indicator
+    , c.primary_constituent_type As primary_record_type
+    , institutional_suffix
+    , spouse_donor_id
+    , spouse_name
+    , spouse_instituitional_suffix
+    , NULL As org_ult_parent_donor_id
+    , NULL As org_ult_parent_name
+    , c.etl_update_date
+  From table(dw_pkg_base.tbl_constituent) c
+  ) Union All ( 
+  Select 
+    'O' As person_or_org
+    , o.salesforce_id
+    , o.ult_parent_id As household_id
+    , o.org_primary
+    , o.donor_id
+    , o.organization_name
+    , o.sort_name
+    , o.organization_inactive_indicator
+    , o.organization_type As primary_record_type
+    , NULL As institutional_suffix
+    , NULL As spouse_donor_id
+    , NULL As spouse_name
+    , NULL As spouse_institutional_suffix
+    , o.org_ult_parent_donor_id
+    , o.org_ult_parent_name
+    , o.etl_update_date
+  From table(dw_pkg_base.tbl_organization) o
+  )
 ;
 
 --------------------------------------
@@ -821,6 +889,22 @@ Function tbl_organization
     Close c_organization;
     For i in 1..(org.count) Loop
       Pipe row(org(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_mini_entity
+  Return mini_entity Pipelined As
+    -- Declarations
+    e mini_entity;
+
+  Begin
+    Open c_mini_entity;
+      Fetch c_mini_entity Bulk Collect Into e;
+    Close c_mini_entity;
+    For i in 1..(e.count) Loop
+      Pipe row(e(i));
     End Loop;
     Return;
   End;
