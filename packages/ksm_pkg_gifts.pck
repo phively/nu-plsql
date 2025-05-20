@@ -51,11 +51,12 @@ Type rec_unsplit Is Record (
 --------------------------------------
 -- Householded donor counts
 Type rec_donor_count Is Record (
-    opportunity_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__opportunity__c%type
-    , payment_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__payment__c%type
-    , designation_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__designation__c%type
+    opportunity_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
+    , payment_record_id stg_alumni.ucinn_ascendv2__payment__c.name%type
+    , designation_record_id mv_ksm_designation.designation_record_id%type
     , household_id mv_entity.household_id%type
     , credited_hh_donors integer
+    , etl_update_date mv_entity.etl_update_date%type
 );
 
 --------------------------------------
@@ -210,21 +211,27 @@ Cursor c_hh_donor_count Is
   )
   
   Select Distinct
-    gc.opportunity_salesforce_id
-    , gc.payment_salesforce_id
-    , gc.designation_salesforce_id
+    opp.opportunity_record_id
+    , pay.payment_record_id
+    , des.designation_record_id
     , mve.household_id
     , count(gc.donor_salesforce_id)
       As credited_hh_donors
+    , max(gc.etl_update_date)
+      As etl_update_date
   From gcred gc
   Inner Join mv_entity mve
     On mve.donor_id = gc.credited_donor_id
   Inner Join mv_ksm_designation des
     On des.designation_salesforce_id = gc.designation_salesforce_id
+  Inner Join table(dw_pkg_base.tbl_opportunity) opp
+    On opp.opportunity_salesforce_id = gc.opportunity_salesforce_id
+  Left Join table(dw_pkg_base.tbl_payment) pay
+    On pay.payment_salesforce_id = gc.payment_salesforce_id
   Group By
-    gc.opportunity_salesforce_id
-    , gc.payment_salesforce_id
-    , gc.designation_salesforce_id
+    opp.opportunity_record_id
+    , pay.payment_record_id
+    , des.designation_record_id
     , mve.household_id
 ;
 

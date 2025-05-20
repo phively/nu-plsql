@@ -129,7 +129,7 @@ Cursor c_households Is
     , hhdeg.household_last_masters_year
     , hhdeg.household_program
     , hhdeg.household_program_group
-    , greatest(mve.etl_update_date, hhdeg.etl_update_date, hh.etl_update_date)
+    , greatest(mve.etl_update_date, hhdeg.etl_update_date, trunc(hh.etl_update_date))
       As etl_update_date
   From mv_entity mve
   Left Join dm_alumni.dim_household hh

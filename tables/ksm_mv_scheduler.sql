@@ -110,3 +110,16 @@ Select
   , sysdate as mv_last_refresh
 From table(ksm_pkg_gifts.tbl_ksm_transactions) trn
 ;
+
+-- tbl_hh_donor_count
+Create Materialized View mv_hh_donor_count
+Refresh Complete
+Start With sysdate
+-- 7:40 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.667/24)
+As
+Select
+  dc.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_gifts.tbl_hh_donor_count) dc
+;
