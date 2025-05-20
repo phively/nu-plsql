@@ -31,9 +31,6 @@ Union
 Select 1, 'mv_households', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_households
 Union
-Select 1, 'mv_hh_donor_count', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
-From mv_hh_donor_count
-Union
 Select 1, 'mv_ksm_transactions', count(*), min(mv_last_refresh), max(max_etl_update_date), min(max_etl_update_date)
 From mv_ksm_transactions
 ;

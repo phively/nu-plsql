@@ -48,6 +48,10 @@ Type rec_transaction Is Record (
   , matched_gift_record_id dm_alumni.dim_opportunity.matched_gift_record_id%type
   , pledge_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
   , linked_proposal_record_id dm_alumni.dim_opportunity.linked_proposal_record_id%type
+  , designation_record_id dm_alumni.dim_designation.designation_record_id%type 
+  , designation_status dm_alumni.dim_designation.designation_status%type 
+  , legacy_allocation_code dm_alumni.dim_designation.legacy_allocation_code%type 
+  , designation_name dm_alumni.dim_designation.designation_name%type 
   , credit_date stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_date_formula__c%type
   , fiscal_year integer
   , entry_date dm_alumni.dim_opportunity.opportunity_entry_date%type
@@ -189,6 +193,10 @@ Cursor c_transactions Is
         End
       As pledge_record_id
     , opp.linked_proposal_record_id
+    , des.designation_record_id
+    , des.designation_status
+    , des.legacy_allocation_code
+    , des.designation_name
     -- Credit date is from opportunity object for matching gift payments
     , Case
         When gcred.source_type_detail = 'Matching Gift Payment'
@@ -227,6 +235,8 @@ Cursor c_transactions Is
   From gcred
   Inner Join table(dw_pkg_base.tbl_opportunity) opp
     On opp.opportunity_salesforce_id = gcred.opportunity_salesforce_id
+  Left Join table(dw_pkg_base.tbl_designation) des
+    On des.designation_salesforce_id = gcred.designation_salesforce_id
   Left Join mini_entity me
     On me.donor_id = gcred.credited_donor_id
   Left Join table(dw_pkg_base.tbl_payment) pay
