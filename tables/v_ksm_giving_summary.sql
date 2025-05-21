@@ -18,7 +18,7 @@ params As (
 )
 
 -- Sum transaction amounts
---, trans As (
+, trans As (
   Select Distinct
     hh.household_id
     , max(hh.household_account_name)
@@ -70,6 +70,8 @@ params As (
     , min(cash.fiscal_year) As cash_fy_giving_first_yr
     , max(cash.fiscal_year) As cash_fy_giving_last_yr
     --, count(Distinct cash.fiscal_year) As fy_giving_yr_count_cash
+    , min(Case When cash.cash_category = 'Expendable' Then cash.fiscal_year End) As expendable_fy_giving_first_yr
+    , max(Case When cash.cash_category = 'Expendable' Then cash.fiscal_year End) As expendable_fy_giving_last_yr
     -- Last KSM NGC
     , min(ngc.tx_id) keep(dense_rank First Order By ngc.credit_date Desc, ngc.tx_id Asc)
       As last_ngc_tx_id
@@ -118,6 +120,13 @@ params As (
     , max(ngc.unsplit_amount)
       keep(dense_rank First Order By ngc.unsplit_amount Desc, ngc.hh_recognition_credit Desc, ngc.credit_date Desc, ngc.tx_id Desc, ngc.designation_name Asc)
       As max_ngc_unsplit_amount
+    -- Anonymous flag
+    , Case
+        When max(cash.anonymous_type) Is Not Null
+          Or max(ngc.anonymous_type) Is Not Null
+          Then 'Y'
+        End
+      As anonymous_flag
   From mv_households hh
   Cross Join v_current_calendar cal
   Cross Join params
@@ -131,220 +140,36 @@ params As (
     Or ngc.donor_id Is Not Null
   Group By
     hh.household_id
-/*)
+)
 -- Main query
 Select
   trans.*
   -- AF status categorizer
   , Case
-      When af_cfy > 0 Then 'Donor'
-      When af_pfy1 > 0 Then 'LYBUNT'
-      When af_pfy2 + af_pfy3 + af_pfy4 > 0 Then 'PYBUNT'
-      When af_cfy + af_pfy1 + af_pfy2 + af_pfy3 + af_pfy4 = 0 Then 'Lapsed'
-      When fy_giving_first_yr_af Is Null Then 'Non'
-    End As af_status
-  -- AF status last year
+      When expendable_cfy > 0 Then 'Donor'
+      When expendable_pfy1 > 0 Then 'LYBUNT'
+      When expendable_pfy2 + expendable_pfy3 + expendable_pfy4 > 0 Then 'PYBUNT'
+      When expendable_cfy + expendable_pfy1 + expendable_pfy2 + expendable_pfy3 + expendable_pfy4 = 0 Then 'Lapsed'
+      When expendable_fy_giving_first_yr Is Null Then 'Non'
+    End As expendable_status
+  -- Expendable giving status last year
   , Case
-      When af_pfy1 > 0 Then 'LYBUNT'
-      When af_pfy2 + af_pfy3 + af_pfy4 > 0 Then 'PYBUNT'
-      When af_pfy1 + af_pfy2 + af_pfy3 + af_pfy4 = 0 Then 'Lapsed'
-      When fy_giving_first_yr_af Is Null
-        Or fy_giving_first_yr_af = curr_fy
+      When expendable_pfy1 > 0 Then 'LYBUNT'
+      When expendable_pfy2 + expendable_pfy3 + expendable_pfy4 > 0 Then 'PYBUNT'
+      When expendable_pfy1 + expendable_pfy2 + expendable_pfy3 + expendable_pfy4 = 0 Then 'Lapsed'
+      When expendable_fy_giving_first_yr Is Null
+        Or expendable_fy_giving_first_yr = curr_fy
         Then 'Non'
-    End As af_status_fy_start
-  -- AF status last year
+    End As expendable_status_fy_start
+  -- Expendable giving status last year
   , Case
-      When af_pfy2 > 0 Then 'LYBUNT'
-      When af_pfy3 + af_pfy4 + af_pfy5 > 0 Then 'PYBUNT'
-      When af_pfy2 + af_pfy3 + af_pfy4 + af_pfy5 = 0 Then 'Lapsed'
-      When fy_giving_first_yr_af Is Null
-        Or fy_giving_first_yr_af = curr_fy - 1
+      When expendable_pfy2 > 0 Then 'LYBUNT'
+      When expendable_pfy3 + expendable_pfy4 + expendable_pfy5 > 0 Then 'PYBUNT'
+      When expendable_pfy2 + expendable_pfy3 + expendable_pfy4 + expendable_pfy5 = 0 Then 'Lapsed'
+      When expendable_fy_giving_first_yr Is Null
+        Or expendable_fy_giving_first_yr = curr_fy - 1
         Then 'Non'
-    End As af_status_pfy1_start
-  -- AF KLC flag
-  , Case
-      When klc_cfy >= klc_amt
-        Then 'Y'
-      When af_young_alum = 'Y'
-        And klc_cfy >= young_klc_amt
-        Then 'Y'
-      End
-    As klc_current
-  -- AF KLC LYBUNT flag
-  , Case
-      When klc_pfy1 >= klc_amt
-        Then 'Y'
-      When af_young_alum = 'Y'
-        And klc_pfy1 >= young_klc_amt
-        Then 'Y'
-      When af_young_alum1 = 'Y'
-        And klc_pfy1 >= young_klc_amt
-        Then 'Y'
-      End
-    As klc_lybunt
-  -- AF giving segment
-  , Case
-      -- $2500+ for 3 years is KLC
-      When cru_pfy1 >= klc_amt
-        And cru_pfy2 >= klc_amt
-        And cru_pfy3 >= klc_amt
-          Then 'KLC Loyal 3+'
-      -- Check for KLC young alum loyal
-      When af_young_alum = 'Y'
-        And cru_pfy1 >= young_klc_amt
-        And cru_pfy2 >= young_klc_amt
-        And cru_pfy3 >= young_klc_amt
-          Then 'KLC YA Loyal 3+'
-      -- Check for KLC young alum -1 loyal
-      When af_young_alum1 = 'Y'
-        And cru_pfy1 >= young_klc_amt
-        And cru_pfy2 >= young_klc_amt
-        And cru_pfy3 >= young_klc_amt
-          Then 'KLC YA1 Loyal 3+'
-      -- Check for KLC young alum -2 loyal
-      When af_young_alum2 = 'Y'
-        And cru_pfy1 >= klc_amt
-        And cru_pfy2 >= young_klc_amt
-        And cru_pfy3 >= young_klc_amt
-          Then 'KLC YA2 Loyal 3+'
-      -- Check for KLC young alum -3 loyal
-      When af_young_alum3 = 'Y'
-        And cru_pfy1 >= klc_amt
-        And cru_pfy2 >= klc_amt
-        And cru_pfy3 >= young_klc_amt
-          Then 'KLC YA3 Loyal 3+'
-      -- $2500+ 2 of 3 is KLC loyal
-      When (cru_pfy1 >= klc_amt And cru_pfy2 >= klc_amt)
-        Or (cru_pfy1 >= klc_amt And cru_pfy3 >= klc_amt)
-        Or (cru_pfy2 >= klc_amt And cru_pfy3 >= klc_amt)
-          Then 'KLC Loyal 2 of 3'
-      -- Check for KLC young alum loyal
-      When af_young_alum = 'Y'
-        And (
-          (cru_pfy1 >= young_klc_amt And cru_pfy2 >= young_klc_amt)
-          Or (cru_pfy1 >= young_klc_amt And cru_pfy3 >= young_klc_amt)
-          Or (cru_pfy2 >= young_klc_amt And cru_pfy3 >= young_klc_amt)
-        )
-          Then 'KLC YA Loyal 2 of 3'
-      -- Check for KLC young alum -1 loyal
-      When af_young_alum1 = 'Y'
-        And (
-          (cru_pfy1 >= young_klc_amt And cru_pfy2 >= young_klc_amt)
-          Or (cru_pfy1 >= young_klc_amt And cru_pfy3 >= young_klc_amt)
-          Or (cru_pfy2 >= young_klc_amt And cru_pfy3 >= young_klc_amt)
-        )
-          Then 'KLC YA1 Loyal 2 of 3'
-      -- Check for KLC young alum -2 loyal
-      When af_young_alum2 = 'Y'
-        And (
-          (cru_pfy1 >= klc_amt And cru_pfy2 >= young_klc_amt)
-          Or (cru_pfy1 >= klc_amt And cru_pfy3 >= young_klc_amt)
-          Or (cru_pfy2 >= young_klc_amt And cru_pfy3 >= young_klc_amt)
-        )
-          Then 'KLC YA2 Loyal 2 of 3'
-      -- Check for KLC young alum -3 loyal
-      When af_young_alum3 = 'Y'
-        And (
-          (cru_pfy1 >= klc_amt And cru_pfy2 >= klc_amt)
-          Or (cru_pfy1 >= klc_amt And cru_pfy3 >= young_klc_amt)
-          Or (cru_pfy2 >= klc_amt And cru_pfy3 >= young_klc_amt)
-        )
-          Then 'KLC YA3 Loyal 2 of 3'
-      -- KLC LYBUNT designation
-      When cru_pfy1 >= klc_amt
-        Then 'KLC LYBUNT'
-      When af_young_alum = 'Y'
-        And cru_pfy1 >= young_klc_amt
-          Then 'KLC YA LYBUNT'
-      When af_young_alum1 = 'Y'
-        And cru_pfy1 >= young_klc_amt
-          Then 'KLC YA1 LYBUNT'
-      When af_young_alum2 = 'Y'
-        And cru_pfy1 >= klc_amt
-          Then 'KLC YA2 LYBUNT'
-      When af_young_alum3 = 'Y'
-        And cru_pfy1 >= klc_amt
-          Then 'KLC YA3 LYBUNT'
-      -- KLC PYBUNT designation
-      When cru_pfy2 >= klc_amt
-        Or cru_pfy3 >= klc_amt
-        Or cru_pfy4 >= klc_amt
-        Or cru_pfy5 >= klc_amt
-          Then 'KLC PYBUNT'
-      -- KLC YA PYBUNT designation
-      When af_young_alum = 'Y'
-        And (
-          cru_pfy2 >= young_klc_amt
-          Or cru_pfy3 >= young_klc_amt
-          Or cru_pfy4 >= young_klc_amt
-          Or cru_pfy5 >= young_klc_amt
-        )
-          Then 'KLC YA PYBUNT'
-      -- KLC YA PYBUNT -1
-      When af_young_alum1 = 'Y'
-        And (
-          cru_pfy2 >= young_klc_amt
-          Or cru_pfy3 >= young_klc_amt
-          Or cru_pfy4 >= young_klc_amt
-          Or cru_pfy5 >= young_klc_amt
-        )
-          Then 'KLC YA1 PYBUNT'
-      -- KLC YA PYBUNT -2
-      When af_young_alum2 = 'Y'
-        And (
-          cru_pfy2 >= young_klc_amt
-          Or cru_pfy3 >= young_klc_amt
-          Or cru_pfy4 >= young_klc_amt
-          Or cru_pfy5 >= young_klc_amt
-        )
-          Then 'KLC YA2 PYBUNT'
-      -- KLC YA PYBUNT -3
-      When af_young_alum3 = 'Y'
-        And (
-          cru_pfy2 >= klc_amt
-          Or cru_pfy3 >= young_klc_amt
-          Or cru_pfy4 >= young_klc_amt
-          Or cru_pfy5 >= young_klc_amt
-        )
-          Then 'KLC YA3 PYBUNT'
-      -- 3 years in a row is loyal
-      When cru_pfy1 > 0
-        And cru_pfy2 > 0
-        And cru_pfy3 > 0
-          Then 'Loyal 3+'
-      -- 2 of 3 is loyal
-      When (cru_pfy1 > 0 And cru_pfy2 > 0)
-        Or (cru_pfy1 > 0 And cru_pfy3 > 0)
-        Or (cru_pfy2 > 0 And cru_pfy3 > 0)
-          Then 'Loyal 2 of 3'
-      -- Standard designation
-      When cru_pfy1 > 0
-        Then 'LYBUNT'
-      When cru_pfy2 > 0
-        Then 'PYBUNT-2'
-      When cru_pfy3 > 0
-        Then 'PYBUNT-3'
-      When cru_pfy4 > 0
-        Then 'PYBUNT-4'
-      When cru_pfy1 + cru_pfy2 + cru_pfy3 + cru_pfy4 = 0
-        And fy_giving_first_yr_cru Is Not Null
-        And fy_giving_first_yr_cru < curr_fy
-        Then 'Lapsed'
-      Else 'Non'
-      End
-    As af_giving_segment
-  -- Stewardship flags
-  , shc.ksm_stewardship_issue
-  -- Anonymous flags
-  , shc.anonymous_donor
-  , Case When anonymous_cfy > 0 Then 'Y' End As anonymous_cfy_flag
-  , Case When anonymous_pfy1 > 0 Then 'Y' End As anonymous_pfy1_flag
-  , Case When anonymous_pfy2 > 0 Then 'Y' End As anonymous_pfy2_flag
-  , Case When anonymous_pfy3 > 0 Then 'Y' End As anonymous_pfy3_flag
-  , Case When anonymous_pfy4 > 0 Then 'Y' End As anonymous_pfy4_flag
-  , Case When anonymous_pfy5 > 0 Then 'Y' End As anonymous_pfy5_flag
+    End As expendable_status_pfy1_start
 From trans
 Cross Join params
-Left Join table(ksm_pkg_special_handling.tbl_special_handling_concat) shc
-  On shc.id_number = trans.id_number
-;*/
+;
