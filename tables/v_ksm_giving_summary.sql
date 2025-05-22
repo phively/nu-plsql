@@ -37,12 +37,17 @@ params As (
       As af_young_alum2
     , max(Case When hh.household_last_masters_year >= cal.curr_fy - young_klc_yrs - 3 Then 'Y' End)
       As af_young_alum3
+    -- Lifetime giving
     , sum(ngc.hh_credit) As ngc_lifetime
     , sum(ngc.hh_recognition_credit) -- Count bequests at face value and internal transfers at > $0
       As ngc_lifetime_full_rec
     , sum(Case When ngc.anonymous_type Is Null Then ngc.hh_recognition_credit Else 0 End)
       As ngc_lifetime_nonanon_full_rec
     , sum(cash.hh_credit) As cash_lifetime
+    -- Campaign totals
+    , sum(Case When ngc.full_circle_campaign_priority Is Not Null Then ngc.hh_credit End) As full_circle_credit
+    , sum(Case When ngc.full_circle_campaign_priority Is Not Null Then ngc.hh_recognition_credit End) As full_circle_recognition
+    -- Yearly NGC totals
     , sum(Case When cal.curr_fy = ngc.fiscal_year     Then ngc.hh_credit Else 0 End) As ngc_cfy
     , sum(Case When cal.curr_fy = ngc.fiscal_year + 1 Then ngc.hh_credit Else 0 End) As ngc_pfy1
     , sum(Case When cal.curr_fy = ngc.fiscal_year + 2 Then ngc.hh_credit Else 0 End) As ngc_pfy2
