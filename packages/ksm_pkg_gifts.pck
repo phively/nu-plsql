@@ -21,6 +21,10 @@ Public constant declarations
 
 pkg_name Constant varchar2(64) := 'ksm_pkg_gifts';
 
+-- Campaign constants
+campaign_kfc_start_fy integer := 2022;
+campaign_kfc_end_fy integer := 2029;
+
 /*************************************************************************
 Public type declarations
 *************************************************************************/
@@ -121,6 +125,14 @@ Type donor_counts Is Table Of rec_donor_count;
 Type transactions Is Table Of rec_transaction;
 
 /*************************************************************************
+Public function declarations
+*************************************************************************/
+
+Function get_numeric_constant(
+  const_name In varchar2 -- Name of constant to retrieve
+) Return number Deterministic;
+
+/*************************************************************************
 Public pipelined functions declarations
 *************************************************************************/
 
@@ -215,17 +227,37 @@ Cursor c_ksm_transactions Is
 
     With
     
-    gift_cash_exceptions As (
-    -- Override cash categorization for specific opportunities
+    gift_category_exceptions As (
+    -- Override cash or campaign categorization for specific opportunities
+    -- Use NULL to ignore category or space ' ' to insert NULL for category
       -- Headers
       (
       Select
         NULL As opportunity_record_id
         , NULL As cash_category
+        , NULL As full_circle_campaign_priority
       From DUAL
-      ) Union All (
-      Select 'PN2463400', 'KEC' From DUAL -- NH override
       )
+      Union All
+      -- Back-end transfers
+      Select 'PN2463400', 'KEC', ' ' From DUAL -- NH override
+      Union All
+      Select 'PN2297936', NULL, ' ' From DUAL -- Complexity Institute
+      -- TBD funds (clean up as moved)
+      Union All
+      Select 'PN2480673', NULL, 'Faculty' From DUAL
+      Union All
+      Select 'PN2482912', NULL, 'Faculty' From DUAL
+      Union All
+      Select 'PN2481184', NULL, 'Students' From DUAL
+      Union All
+      Select 'GN2218698', NULL, 'Students' From DUAL
+      Union All
+      Select 'PN2484020', NULL, 'Students' From DUAL
+      Union All
+      Select 'GN2233453', NULL, 'Students' From DUAL
+      Union All
+      Select 'GN2217992', NULL, 'Students' From DUAL
     )
     
     , tribute As (
@@ -293,8 +325,8 @@ Cursor c_ksm_transactions Is
         , kdes.ksm_cru_flag
         , Case
             -- Cash category exceptions
-            When gce.cash_category Is Not Null
-              Then gce.cash_category
+            When gexcept.cash_category Is Not Null
+              Then gexcept.cash_category
             -- Gift-In-Kind
             When trans.tender_type Like '%Gift_in_Kind%'
               Then 'Gift In Kind'
@@ -303,7 +335,27 @@ Cursor c_ksm_transactions Is
             Else kdes.cash_category
             End
           As cash_category
-        , kdes.full_circle_campaign_priority
+        , Case
+            -- KFC campaign exceptions
+            When gexcept.opportunity_record_id Is Not Null
+              Then Case
+                -- Null means skip override
+                When gexcept.full_circle_campaign_priority Is Null
+                  Then kdes.full_circle_campaign_priority
+                -- Space means insert null
+                When trim(gexcept.full_circle_campaign_priority) Is Null
+                  Then NULL
+                Else gexcept.full_circle_campaign_priority
+                End
+            -- Outside of campaign counting period is Null
+            When trans.fiscal_year Not Between
+              ksm_pkg_gifts.get_numeric_constant('ksm_pkg_gifts.campaign_kfc_start_fy')
+              And ksm_pkg_gifts.get_numeric_constant('ksm_pkg_gifts.campaign_kfc_end_fy')
+              Then NULL
+            -- Fallback
+            Else kdes.full_circle_campaign_priority
+            End
+          As full_circle_campaign_priority
         , trans.credit_date
         , trans.fiscal_year
         , trans.entry_date
@@ -358,9 +410,9 @@ Cursor c_ksm_transactions Is
         And overpaid.overpaid_flag = 'Y'
         And overpaid.pledge_or_gift_record_id = trans.opportunity_record_id
         And overpaid.designation_record_id = trans.designation_record_id
-      -- Cash category exceptions
-      Left Join gift_cash_exceptions gce
-        On gce.opportunity_record_id = trans.opportunity_record_id
+      -- Cash or campaign category exceptions
+      Left Join gift_category_exceptions gexcept
+        On gexcept.opportunity_record_id = trans.opportunity_record_id
       -- In memory/honor of
       Left Join tribute_concat
         On tribute_concat.opportunity_record_id = trans.opportunity_record_id
@@ -381,6 +433,32 @@ Cursor c_ksm_transactions Is
       And hhdc.tx_id = t.tx_id
       And hhdc.designation_record_id = t.designation_record_id
 ;
+
+/*************************************************************************
+Functions
+*************************************************************************/
+
+--------------------------------------
+-- Retrieve one of the named numeric constants from the package
+-- Requires a quoted constant name
+Function get_numeric_constant(const_name In varchar2)
+  Return number Deterministic Is
+  -- Declarations
+  val number;
+  var varchar2(255);
+  
+  Begin
+    -- If const_name doesn't include ksm_pkg, prepend it
+    If substr(lower(const_name), 1, length(pkg_name)) <> pkg_name
+      Then var := pkg_name || '.' || const_name;
+    Else
+      var := const_name;
+    End If;
+    Execute Immediate
+      'Begin :val := ' || var || '; End;'
+      Using Out val;
+      Return val;
+  End;
 
 /*************************************************************************
 Pipelined functions
