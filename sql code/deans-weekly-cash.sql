@@ -44,7 +44,7 @@ cal As (
     , gft.opportunity_type
     , gft.fiscal_year
     , gft.credit_date
-    , gft.hard_credit_amount
+    , gft.cash_countable_amount
     , gft.cash_category
     , cal.curr_fy
     , cal.prev_fy
@@ -66,46 +66,15 @@ Cross Join cal
 Inner Join ytd_dts On trunc(ytd_dts.dt) = trunc(gft.credit_date)
   Where fiscal_year Between cal.prev_fy And cal.curr_fy
     And ytd_dts.ytd_ind = 'Y'
--- Manual exceptions
-/* Need to redo
-Union
-  Select
-    gt.opportunity_record_id
-    , gt.credited_donor_id
-    , gt.credited_donor_name
-    , gt.designation_record_id
-    , gt.designation_name
-    , gt.gypm_ind
-    , gt.opportunity_type
-    , gt.fiscal_year
-    , gt.credit_date
-    , gt.hard_credit_amount
-    , 'A-Expendable' As cash_category
-    , cal.curr_fy
-    , cal.prev_fy
-    , cal.prev_day
-    , 'A-Expendable' As cash_type
-From mv_ksm_transactions gt
-Cross Join cal
-Inner Join ytd_dts On trunc(ytd_dts.dt) = trunc(gt.credit_date)
-Where gt.fiscal_year Between cal.prev_fy And cal.curr_fy
-  And ytd_dts.ytd_ind = 'Y'
-  And (
-    (
-      gt.legacy_receipt_number = '0003012462' And gt.designation_name = 'KSM Fifteen Grp Real Estate 2'
-    ) Or (
-      gt.legacy_receipt_number = '0003084920' And gt.designation_name = 'KSM Fifteen Grp Real Estate 2'
-    )
-  )*/
 )
 
 
 
 Select
   cash_type
-  , sum(Case When fiscal_year = curr_fy - 0 Then hard_credit_amount Else 0 End) As cfy_ytd_cash
-  , sum(Case When fiscal_year = curr_fy - 1 Then hard_credit_amount Else 0 End) As pfy1_ytd_cash
-  , sum(Case When fiscal_year = curr_fy - 2 Then hard_credit_amount Else 0 End) As pfy2_ytd_cash
+  , sum(Case When fiscal_year = curr_fy - 0 Then cash_countable_amount Else 0 End) As cfy_ytd_cash
+  , sum(Case When fiscal_year = curr_fy - 1 Then cash_countable_amount Else 0 End) As pfy1_ytd_cash
+  , sum(Case When fiscal_year = curr_fy - 2 Then cash_countable_amount Else 0 End) As pfy2_ytd_cash
   , prev_day As as_of
 From cash
 Group By cash_type, prev_day
