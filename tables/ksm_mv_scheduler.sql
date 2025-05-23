@@ -125,3 +125,22 @@ Select
   , sysdate as mv_last_refresh
 From table(ksm_pkg_gifts.tbl_ksm_transactions) trn
 ;
+
+/*************************************************************************
+Level 2 dependencies
+7:50 AM
+*************************************************************************/
+
+--------------------------------------
+-- v_ksm_giving_summary
+Create Materialized View mv_ksm_giving_summary
+Refresh Complete
+Start With sysdate
+-- 7:50 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.833/24)
+As
+Select
+  gs.*
+  , sysdate as mv_last_refresh
+From v_ksm_giving_summary gs
+;
