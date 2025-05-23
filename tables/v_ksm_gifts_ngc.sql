@@ -61,6 +61,9 @@ Select
       End
     As unsplit_amount
   , kt.tender_type
+  , kt.hh_credited_donors
+  , kt.hh_credit
+  , kt.hh_recognition_credit
   , kt.max_etl_update_date
   , kt.mv_last_refresh
   , cal.today

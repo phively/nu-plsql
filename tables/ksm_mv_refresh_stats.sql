@@ -33,6 +33,10 @@ From mv_households
 Union
 Select 1, 'mv_ksm_transactions', count(*), min(mv_last_refresh), max(max_etl_update_date), min(max_etl_update_date)
 From mv_ksm_transactions
+-- 7:50 AM
+Union
+Select 2, 'mv_ksm_giving_summary', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+From mv_ksm_giving_summary
 ;
 
 Select *

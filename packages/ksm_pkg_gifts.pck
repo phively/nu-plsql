@@ -7,7 +7,7 @@ Purpose : Base table combining hard and soft credit, opportunity, designation,
   constituent, and organization into a normalized transactions list. One credited donor
   transaction per row.
 Dependencies: dw_pkg_base (mv_designation_detail), ksm_pkg_entity (mv_entity),
-  ksm_pkg_designation (mv_designation), ksm_pkg_utility
+  ksm_pkg_designation (mv_designation), ksm_pkg_transactions (mv_transactions), ksm_pkg_utility
 
 Suggested naming conventions:
   Pure functions: [function type]_[description]
@@ -20,6 +20,10 @@ Public constant declarations
 *************************************************************************/
 
 pkg_name Constant varchar2(64) := 'ksm_pkg_gifts';
+
+-- Campaign constants
+campaign_kfc_start_fy integer := 2022;
+campaign_kfc_end_fy integer := 2029;
 
 /*************************************************************************
 Public type declarations
@@ -51,11 +55,10 @@ Type rec_unsplit Is Record (
 --------------------------------------
 -- Householded donor counts
 Type rec_donor_count Is Record (
-    opportunity_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
-    , payment_record_id stg_alumni.ucinn_ascendv2__payment__c.name%type
-    , designation_record_id mv_ksm_designation.designation_record_id%type
+    tx_id mv_transactions.tx_id%type
+    , designation_record_id mv_transactions.designation_record_id%type
     , household_id mv_entity.household_id%type
-    , credited_hh_donors integer
+    , hh_credited_donors integer
     , etl_update_date mv_entity.etl_update_date%type
 );
 
@@ -63,6 +66,7 @@ Type rec_donor_count Is Record (
 -- Gift transactions
 Type rec_transaction Is Record (
       credited_donor_id mv_entity.donor_id%type
+      , household_id mv_entity.household_id%type
       , credited_donor_name mv_entity.full_name%type
       , credited_donor_sort_name mv_entity.sort_name%type
       , credited_donor_audit varchar2(255) -- See dw_pkg_base.rec_gift_credit.donor_name_and_id
@@ -106,6 +110,9 @@ Type rec_transaction Is Record (
       , tender_type varchar2(128)
       , min_etl_update_date mv_entity.etl_update_date%type
       , max_etl_update_date mv_entity.etl_update_date%type
+      , hh_credited_donors integer
+      , hh_credit number -- not currency, do not round
+      , hh_recognition_credit number -- not currency, do not round
 );
 
 /*************************************************************************
@@ -116,6 +123,14 @@ Type discounted_transactions Is Table Of rec_discount;
 Type unsplit_amounts Is Table Of rec_unsplit;
 Type donor_counts Is Table Of rec_donor_count;
 Type transactions Is Table Of rec_transaction;
+
+/*************************************************************************
+Public function declarations
+*************************************************************************/
+
+Function get_numeric_constant(
+  const_name In varchar2 -- Name of constant to retrieve
+) Return number Deterministic;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -188,12 +203,11 @@ Cursor c_unsplit_amounts Is
 Cursor c_hh_donor_count Is
 
 Select Distinct
-    trans.opportunity_record_id
-    , trans.payment_record_id
+    trans.tx_id
     , trans.designation_record_id
     , mve.household_id
     , count(trans.credited_donor_id)
-      As credited_hh_donors
+      As hh_credited_donors
     , max(trans.max_etl_update_date)
       As etl_update_date
   From mv_transactions trans
@@ -202,8 +216,7 @@ Select Distinct
   Inner Join mv_ksm_designation des
     On des.designation_record_id = trans.designation_record_id
   Group By
-    trans.opportunity_record_id
-    , trans.payment_record_id
+    trans.tx_id
     , trans.designation_record_id
     , mve.household_id
 ;
@@ -214,17 +227,37 @@ Cursor c_ksm_transactions Is
 
     With
     
-    gift_cash_exceptions As (
-    -- Override cash categorization for specific opportunities
+    gift_category_exceptions As (
+    -- Override cash or campaign categorization for specific opportunities
+    -- Use NULL to ignore category or space ' ' to insert NULL for category
       -- Headers
       (
       Select
         NULL As opportunity_record_id
         , NULL As cash_category
+        , NULL As full_circle_campaign_priority
       From DUAL
-      ) Union All (
-      Select 'PN2463400', 'KEC' From DUAL -- NH override
       )
+      Union All
+      -- Back-end transfers
+      Select 'PN2463400', 'KEC', ' ' From DUAL -- NH override
+      Union All
+      Select 'PN2297936', NULL, ' ' From DUAL -- Complexity Institute
+      -- TBD funds (clean up as moved)
+      Union All
+      Select 'PN2480673', NULL, 'Faculty' From DUAL
+      Union All
+      Select 'PN2482912', NULL, 'Faculty' From DUAL
+      Union All
+      Select 'PN2481184', NULL, 'Students' From DUAL
+      Union All
+      Select 'GN2218698', NULL, 'Students' From DUAL
+      Union All
+      Select 'PN2484020', NULL, 'Students' From DUAL
+      Union All
+      Select 'GN2233453', NULL, 'Students' From DUAL
+      Union All
+      Select 'GN2217992', NULL, 'Students' From DUAL
     )
     
     , tribute As (
@@ -255,111 +288,177 @@ Cursor c_ksm_transactions Is
       Group By opp.opportunity_record_id
     )
     
-    Select
-      trans.credited_donor_id
-      , trans.credited_donor_name
-      , trans.credited_donor_sort_name
-      , trans.credited_donor_audit
-      , trans.opportunity_donor_id
-      , trans.opportunity_donor_name
-      , tribute_concat.tribute_type
-      , tribute_concat.tributees
-      , trans.tx_id
-      , trans.opportunity_record_id
-      , trans.payment_record_id
-      , trans.anonymous_type
-      , trans.legacy_receipt_number
-      , trans.opportunity_stage
-      , trans.opportunity_record_type
-      , trans.opportunity_type
-      , trans.payment_schedule
-      , trans.source_type
-      , trans.source_type_detail
-      , trans.gypm_ind
-      , trans.adjusted_opportunity_ind
-      , trans.hard_and_soft_credit_salesforce_id
-      , trans.credit_receipt_number
-      , trans.matched_gift_record_id
-      , trans.pledge_record_id
-      , trans.linked_proposal_record_id
-      , trans.designation_record_id
-      , trans.designation_status
-      , trans.legacy_allocation_code
-      , trans.designation_name
-      , kdes.ksm_af_flag
-      , kdes.ksm_cru_flag
-      , Case
-          -- Cash category exceptions
-          When gce.cash_category Is Not Null
-            Then gce.cash_category
-          -- Gift-In-Kind
-          When trans.tender_type Like '%Gift_in_Kind%'
-            Then 'Gift In Kind'
-          When trans.tender_type Like '%Gift_in_Kind%'
-            Then 'Gift In Kind'
-          Else kdes.cash_category
-          End
-        As cash_category
-      , kdes.full_circle_campaign_priority
-      , trans.credit_date
-      , trans.fiscal_year
-      , trans.entry_date
-      , trans.credit_type
-      -- Credit calculations
-      , Case
-          -- Bequests always show discounted amount
-          When bequests.bequest_flag = 'Y'
-            Then bequests.bequest_amount_calc
-          Else trans.credit_amount
-          End
-        As credit_amount
-      -- Hard credit
-      , Case
-          When trans.credit_type = 'Hard'
-            -- Keep same logic as soft credit, above
-            Then Case
-              -- Bequests always show discounted amount
-              When bequests.bequest_flag = 'Y'
-                Then bequests.bequest_amount_calc
-              Else trans.hard_credit_amount
-              End
-            Else 0
-          End
-        As hard_credit_amount
-      , Case
-        -- Overpaid pledges use the paid amount
-          When overpaid.overpaid_flag = 'Y'
-            Then overpaid.total_paid_amount
-          Else trans.credit_amount
-          End
-        As recognition_credit
-      , trans.tender_type
-      , least(trans.max_etl_update_date, kdes.etl_update_date)
-        As min_etl_update_date
-      , greatest(trans.max_etl_update_date, kdes.etl_update_date)
-        As max_etl_update_date
-    From mv_transactions trans
-    Inner Join mv_ksm_designation kdes
-      On kdes.designation_record_id = trans.designation_record_id
-    -- Discounted bequests
-    Left Join table(ksm_pkg_gifts.tbl_discounted_transactions) bequests
-      -- Pledge + designation should be a unique identifier
-      On bequests.bequest_flag = 'Y'
-      And bequests.pledge_or_gift_record_id = trans.opportunity_record_id
-      And bequests.designation_record_id = trans.designation_record_id
-    -- Overpaid pledges
-    Left Join mv_designation_detail overpaid
-      On trans.source_type_detail = 'Pledge'
-      And overpaid.overpaid_flag = 'Y'
-      And overpaid.pledge_or_gift_record_id = trans.opportunity_record_id
-      And overpaid.designation_record_id = trans.designation_record_id
-    -- Cash category exceptions
-    Left Join gift_cash_exceptions gce
-      On gce.opportunity_record_id = trans.opportunity_record_id
-    -- In memory/honor of
-    Left Join tribute_concat
+    , trans_data As (
+      Select
+        trans.credited_donor_id
+        , mve.household_id
+        , trans.credited_donor_name
+        , trans.credited_donor_sort_name
+        , trans.credited_donor_audit
+        , trans.opportunity_donor_id
+        , trans.opportunity_donor_name
+        , tribute_concat.tribute_type
+        , tribute_concat.tributees
+        , trans.tx_id
+        , trans.opportunity_record_id
+        , trans.payment_record_id
+        , trans.anonymous_type
+        , trans.legacy_receipt_number
+        , trans.opportunity_stage
+        , trans.opportunity_record_type
+        , trans.opportunity_type
+        , trans.payment_schedule
+        , trans.source_type
+        , trans.source_type_detail
+        , trans.gypm_ind
+        , trans.adjusted_opportunity_ind
+        , trans.hard_and_soft_credit_salesforce_id
+        , trans.credit_receipt_number
+        , trans.matched_gift_record_id
+        , trans.pledge_record_id
+        , trans.linked_proposal_record_id
+        , trans.designation_record_id
+        , trans.designation_status
+        , trans.legacy_allocation_code
+        , trans.designation_name
+        , kdes.ksm_af_flag
+        , kdes.ksm_cru_flag
+        , Case
+            -- Cash category exceptions
+            When gexcept.cash_category Is Not Null
+              Then gexcept.cash_category
+            -- Gift-In-Kind
+            When trans.tender_type Like '%Gift_in_Kind%'
+              Then 'Gift In Kind'
+            When trans.tender_type Like '%Gift_in_Kind%'
+              Then 'Gift In Kind'
+            Else kdes.cash_category
+            End
+          As cash_category
+        , Case
+            -- KFC campaign exceptions
+            When gexcept.opportunity_record_id Is Not Null
+              Then Case
+                -- Null means skip override
+                When gexcept.full_circle_campaign_priority Is Null
+                  Then kdes.full_circle_campaign_priority
+                -- Space means insert null
+                When trim(gexcept.full_circle_campaign_priority) Is Null
+                  Then NULL
+                Else gexcept.full_circle_campaign_priority
+                End
+            -- Outside of campaign counting period is Null
+            When trans.fiscal_year Not Between
+              ksm_pkg_gifts.get_numeric_constant('ksm_pkg_gifts.campaign_kfc_start_fy')
+              And ksm_pkg_gifts.get_numeric_constant('ksm_pkg_gifts.campaign_kfc_end_fy')
+              Then NULL
+            -- Fallback
+            Else kdes.full_circle_campaign_priority
+            End
+          As full_circle_campaign_priority
+        , trans.credit_date
+        , trans.fiscal_year
+        , trans.entry_date
+        , trans.credit_type
+        -- Credit calculations
+        , Case
+            -- Bequests always show discounted amount
+            When bequests.bequest_flag = 'Y'
+              Then bequests.bequest_amount_calc
+            Else trans.credit_amount
+            End
+          As credit_amount
+        -- Hard credit
+        , Case
+            When trans.credit_type = 'Hard'
+              -- Keep same logic as soft credit, above
+              Then Case
+                -- Bequests always show discounted amount
+                When bequests.bequest_flag = 'Y'
+                  Then bequests.bequest_amount_calc
+                Else trans.hard_credit_amount
+                End
+              Else 0
+            End
+          As hard_credit_amount
+        , Case
+          -- Overpaid pledges use the paid amount
+            When overpaid.overpaid_flag = 'Y'
+              Then overpaid.total_paid_amount
+            Else trans.credit_amount
+            End
+          As recognition_credit
+        , trans.tender_type
+        , least(trans.max_etl_update_date, kdes.etl_update_date)
+          As min_etl_update_date
+        , greatest(trans.max_etl_update_date, kdes.etl_update_date)
+          As max_etl_update_date
+      From mv_transactions trans
+      Inner Join mv_entity mve
+        On mve.donor_id = trans.credited_donor_id
+      Inner Join mv_ksm_designation kdes
+        On kdes.designation_record_id = trans.designation_record_id
+      -- Discounted bequests
+      Left Join table(ksm_pkg_gifts.tbl_discounted_transactions) bequests
+        -- Pledge + designation should be a unique identifier
+        On bequests.bequest_flag = 'Y'
+        And bequests.pledge_or_gift_record_id = trans.opportunity_record_id
+        And bequests.designation_record_id = trans.designation_record_id
+      -- Overpaid pledges
+      Left Join mv_designation_detail overpaid
+        On trans.source_type_detail = 'Pledge'
+        And overpaid.overpaid_flag = 'Y'
+        And overpaid.pledge_or_gift_record_id = trans.opportunity_record_id
+        And overpaid.designation_record_id = trans.designation_record_id
+      -- Cash or campaign category exceptions
+      Left Join gift_category_exceptions gexcept
+        On gexcept.opportunity_record_id = trans.opportunity_record_id
+      -- In memory/honor of
+      Left Join tribute_concat
         On tribute_concat.opportunity_record_id = trans.opportunity_record_id
+    )
+    
+    Select
+      t.*
+      -- Household credit is evenly split between household members per transaction and designation
+      , hhdc.hh_credited_donors
+      , t.credit_amount / hhdc.hh_credited_donors
+        As hh_credit 
+      , t.recognition_credit / hhdc.hh_credited_donors
+        As hh_recognition_credit
+    From trans_data t
+    -- Householded counts, for hh_credit
+    Inner Join table(ksm_pkg_gifts.tbl_hh_donor_count) hhdc
+      On hhdc.household_id = t.household_id
+      And hhdc.tx_id = t.tx_id
+      And hhdc.designation_record_id = t.designation_record_id
 ;
+
+/*************************************************************************
+Functions
+*************************************************************************/
+
+--------------------------------------
+-- Retrieve one of the named numeric constants from the package
+-- Requires a quoted constant name
+Function get_numeric_constant(const_name In varchar2)
+  Return number Deterministic Is
+  -- Declarations
+  val number;
+  var varchar2(255);
+  
+  Begin
+    -- If const_name doesn't include ksm_pkg, prepend it
+    If substr(lower(const_name), 1, length(pkg_name)) <> pkg_name
+      Then var := pkg_name || '.' || const_name;
+    Else
+      var := const_name;
+    End If;
+    Execute Immediate
+      'Begin :val := ' || var || '; End;'
+      Using Out val;
+      Return val;
+  End;
 
 /*************************************************************************
 Pipelined functions

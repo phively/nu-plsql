@@ -120,3 +120,10 @@ From mv_ksm_transactions mkt
 Where mkt.opportunity_record_id = 'PN2463109'
   Order By gypm_ind
 ;
+
+Select
+  NULL As "Gift exceptions check"
+  , mkt.*
+From mv_ksm_transactions mkt
+Where mkt.opportunity_record_id In ('PN2463400', 'PN2297936')
+;
