@@ -266,7 +266,16 @@ Type rec_involvement Is Record (
 
 --------------------------------------
 Type rec_service_indicators Is Record (
-  placeholder varchar2(1)
+  constituent_salesforce_id stg_alumni.ucinn_ascendv2__service_indicator__c.ucinn_ascendv2__contact__c%type
+  , service_indicator_record_id stg_alumni.ucinn_ascendv2__service_indicator__c.ucinn_ascendv2__service_indicator_name_auto_number__c%type
+  , business_unit stg_alumni.ucinn_ascendv2__service_indicator__c.ap_business_unit__c%type
+  , service_indicator_code stg_alumni.ucinn_ascendv2__service_indicator__c.ucinn_ascendv2__code_formula__c%type
+  , service_indicator stg_alumni.ucinn_ascendv2__service_indicator__c.ap_service_indicator_value_name__c%type
+  , active_ind varchar2(1)
+  , comments stg_alumni.ucinn_ascendv2__service_indicator__c.ucinn_ascendv2__comments__c%type
+  , start_date stg_alumni.ucinn_ascendv2__service_indicator__c.ucinn_ascendv2__start_date__c%type
+  , end_date stg_alumni.ucinn_ascendv2__service_indicator__c.ucinn_ascendv2__end_date__c%type
+  , etl_update_date stg_alumni.ucinn_ascendv2__service_indicator__c.etl_update_date%type
 );
 
 /*************************************************************************
@@ -853,7 +862,30 @@ Cursor c_involvement Is
 
 --------------------------------------
 Cursor c_service_indicators Is
-  Select NULL
+  Select
+    ucinn_ascendv2__contact__c
+      As constituent_salesforce_id
+    , ucinn_ascendv2__service_indicator_name_auto_number__c
+      As service_indicator_record_id
+    , ap_business_unit__c
+      As business_unit
+    , ucinn_ascendv2__code_formula__c
+      As service_indicator_code
+    , ap_service_indicator_value_name__c
+      As service_indicator
+    , Case
+        When lower(ucinn_ascendv2__is_active__c) = 'true'
+          Then 'Y'
+        Else 'N'
+        End
+      As active_ind
+    , ucinn_ascendv2__comments__c
+      As comments
+    , ucinn_ascendv2__start_date__c
+      As start_date
+    , ucinn_ascendv2__end_date__c
+      As end_date
+    , etl_update_date
   From stg_alumni.ucinn_ascendv2__service_indicator__c
 ;
 
