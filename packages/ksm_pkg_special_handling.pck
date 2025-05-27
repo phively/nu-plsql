@@ -1,6 +1,19 @@
 Create Or Replace Package ksm_pkg_special_handling Is
 
 /*************************************************************************
+Author  : PBH634
+Created : 5-27-2025
+Purpose : Combined service indicators, committees, and other special handling
+  indicators for mailing and other contact lists
+Dependencies: dw_pkg_base, ksm_pkg_committee
+
+Suggested naming conventions:
+  Pure functions: [function type]_[description]
+  Row-by-row retrieval (slow): get_[object type]_[action or description] e.g.
+  Table or cursor retrieval (fast): tbl_[object type]_[action or description]
+*************************************************************************/
+
+/*************************************************************************
 Public constant declarations
 *************************************************************************/
 
@@ -10,7 +23,7 @@ pkg_name Constant varchar2(64) := 'ksm_pkg_special_handling';
 Public type declarations
 *************************************************************************/
 
-Type special_handling Is Record (
+Type rec_special_handling Is Record (
      id_number entity.id_number%type
      , spouse_id_number entity.spouse_id_number%type
      , special_handling_concat varchar2(1024)
@@ -50,22 +63,40 @@ Type special_handling Is Record (
 Public table declarations
 *************************************************************************/
 
-Type t_special_handling Is Table Of special_handling;
+Type special_handling Is Table Of rec_special_handling;
 
 /*************************************************************************
 Public pipelined functions declarations
 *************************************************************************/
 
 -- Return pipelined special handling preferences
-Function tbl_special_handling_concat
-    Return t_special_handling Pipelined;
+Function tbl_special_handling
+    Return special_handling Pipelined;
 
-/*************************************************************************
-Public cursors -- data definitions
+/*********************** About pipelined functions ***********************
+Q: What is a pipelined function?
+
+A: Pipelined functions are used to return the results of a cursor row by row.
+This is an efficient way to re-use a cursor between multiple programs. Pipelined
+tables can be queried in SQL exactly like a table when embedded in the table()
+function. My experience has been that thanks to the magic of the Oracle compiler,
+joining on a table() function scales hugely better than running a function once
+on each element of a returned column. Note that the exact columns returned need
+to be specified as a public type, which I did in the type and table declarations
+above, or the pipelined function can't be run in pure SQL. Alternately, the
+pipelined function could return a generic table, but the columns would still need
+to be individually named.
 *************************************************************************/
 
-/* Special handling concatenated definition */
-Cursor c_special_handling_concat Is
+End ksm_pkg_special_handling;
+/
+Create Or Replace Package Body ksm_pkg_special_handling Is
+
+/*************************************************************************
+Private cursors -- data definitions
+*************************************************************************/
+
+Cursor c_special_handling Is
   With
   -- Special handling entities
   spec_hnd As (
@@ -503,27 +534,22 @@ Cursor c_special_handling_concat Is
   Left Join trustee trustee_s On trustee_s.id_number = ids.spouse_id_number
   Left Join ebfa On ebfa.id_number = ids.id_number
   Left Join ebfa ebfa_s On ebfa_s.id_number = ids.spouse_id_number
-  ;
-
-End ksm_pkg_special_handling;
-/
-
-Create Or Replace Package Body ksm_pkg_special_handling Is
+;
 
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
 
 -- Concatenated special handling preferences
-Function tbl_special_handling_concat
-    Return t_special_handling Pipelined As
+Function tbl_special_handling
+    Return special_handling Pipelined As
     -- Declarations
-    hnd t_special_handling;
+    hnd special_handling;
     
     Begin
-      Open c_special_handling_concat;
-        Fetch c_special_handling_concat Bulk Collect Into hnd;
-      Close c_special_handling_concat;
+      Open c_special_handling;
+        Fetch c_special_handling Bulk Collect Into hnd;
+      Close c_special_handling;
       For i in 1..(hnd.count) Loop
         Pipe row(hnd(i));
       End Loop;
