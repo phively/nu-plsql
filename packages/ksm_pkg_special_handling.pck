@@ -50,6 +50,7 @@ Type rec_special_handling Is Record (
     , no_texts_ind varchar2(1)
     , no_texts_sol_ind varchar2(1)
     --, ksm_stewardship_issue varchar2(1)
+    , etl_update_date mv_entity.etl_update_date%type
 );
 
 /*************************************************************************
@@ -167,6 +168,8 @@ Cursor c_special_handling Is
       -- Anonymous donor
       , max(Case When si.service_indicator_code = 'ANON' Then 'Y' End)
         As anonymous_donor
+      , max(si.etl_update_date)
+        As etl_update_date
     From table(dw_pkg_base.tbl_service_indicators) si
     Inner Join mv_entity mve
       On mve.salesforce_id = si.constituent_salesforce_id
@@ -394,6 +397,12 @@ Cursor c_special_handling Is
       End As no_texts_sol_ind
     -- Alerts
     --, alerts.ksm_stewardship_issue
+    , Case
+        When svc_ind.etl_update_date Is Not Null
+          Then svc_ind.etl_update_date
+        Else mve.etl_update_date
+        End
+      As etl_update_date
   From unc_ids ids
   Inner Join mv_entity mve
     On mve.donor_id = ids.donor_id

@@ -37,6 +37,9 @@ From mv_ksm_transactions
 Union
 Select 2, 'mv_ksm_giving_summary', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_ksm_giving_summary
+Union
+Select 2, 'mv_special_handling', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+From mv_special_handling
 ;
 
 Select *
