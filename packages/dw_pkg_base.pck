@@ -278,6 +278,25 @@ Type rec_service_indicators Is Record (
   , etl_update_date stg_alumni.ucinn_ascendv2__service_indicator__c.etl_update_date%type
 );
 
+--------------------------------------
+Type rec_assignment Is Record (
+    assignment_record_id stg_alumni.ucinn_ascendv2__assignment__c.name%type
+    , staff_user_salesforce_id stg_alumni.user_tbl.id%type
+    , staff_constituent_salesforce_id stg_alumni.user_tbl.contactid%type
+    , staff_name stg_alumni.user_tbl.name%type
+    , assignment_business_unit stg_alumni.ucinn_ascendv2__assignment__c.ap_business_unit__c%type
+    , ksm_flag varchar2(1)
+    , assignment_type stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_type__c%type
+    , assigneee_salesforce_id stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__contact__c%type
+    , assignee_donor_id stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__donor_id_formula__c%type
+    , assignee_last_name stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__contact_last_name_formula__c%type
+    , assignee_stage stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__stage_of_readiness_formula__c%type
+    , is_active_indicator stg_alumni.ucinn_ascendv2__assignment__c.ap_is_active__c%type
+    , start_date stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_start_date__c%type
+    , end_date stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_end_date__c%type
+    , etl_update_date stg_alumni.ucinn_ascendv2__assignment__c.etl_update_date%type
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
@@ -293,6 +312,7 @@ Type payment Is Table Of rec_payment;
 Type gift_credit Is Table Of rec_gift_credit;
 Type involvement Is Table Of rec_involvement;
 Type service_indicators Is Table Of rec_service_indicators;
+Type assignments Is Table Of rec_assignment;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -330,6 +350,9 @@ Function tbl_involvement
 
 Function tbl_service_indicators
   Return service_indicators Pipelined;
+
+Function tbl_assignments
+  Return assignments Pipelined;
 
 /*********************** About pipelined functions ***********************
 Q: What is a pipelined function?
@@ -889,6 +912,43 @@ Cursor c_service_indicators Is
   From stg_alumni.ucinn_ascendv2__service_indicator__c
 ;
 
+--------------------------------------
+Cursor c_assignments Is
+  Select
+    assign.name
+      As assignment_record_id
+    , staff.id
+      As staff_user_salesforce_id
+    , staff.contactid
+      As staff_constituent_salesforce_id
+    , staff.name
+      As staff_name
+    , assign.ap_business_unit__c
+      As assignment_business_unit
+    , Case When assign.ap_business_unit__c Like '%Kellogg%' Then 'Y' End
+      As ksm_flag
+    , assign.ucinn_ascendv2__assignment_type__c
+      As assignment_type
+    , assign.ucinn_ascendv2__contact__c
+      As assigneee_salesforce_id
+    , assign.ucinn_ascendv2__donor_id_formula__c
+      As assignee_donor_id
+    , assign.ucinn_ascendv2__contact_last_name_formula__c
+      As assignee_last_name
+    , assign.ucinn_ascendv2__stage_of_readiness_formula__c
+      As assignee_stage
+    , assign.ap_is_active__c
+      As is_active_indicator
+    , assign.ucinn_ascendv2__assignment_start_date__c
+      As start_date
+    , assign.ucinn_ascendv2__assignment_end_date__c
+      As end_date
+    , assign.etl_update_date
+  From stg_alumni.ucinn_ascendv2__assignment__c assign
+  Inner Join stg_alumni.user_tbl staff
+    On staff.id = assign.ucinn_ascendv2__assigned_relationship_manager_user__c
+;
+
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
@@ -1069,5 +1129,21 @@ Function tbl_service_indicators
     Return;
   End;
 
+--------------------------------------
+Function tbl_assignments
+  Return assignments Pipelined As
+    -- Declarations
+    asn assignments;
+
+  Begin
+    Open c_assignments;
+      Fetch c_assignments Bulk Collect Into asn;
+    Close c_assignments;
+    For i in 1..(asn.count) Loop
+      Pipe row(asn(i));
+    End Loop;
+    Return;
+  End;
+  
 End dw_pkg_base;
 /
