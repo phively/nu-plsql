@@ -39,7 +39,7 @@ Type modeled_score Is Record (
 */
 
 --------------------------------------
-Type assignment_history Is Record (
+Type rec_assignment_history Is Record (
   household_id dm_alumni.dim_constituent.constituent_household_account_salesforce_id%type
   , household_primary dm_alumni.dim_constituent.household_primary_constituent_indicator%type
   , donor_id dm_alumni.dim_constituent.constituent_donor_id%type
@@ -50,9 +50,23 @@ Type assignment_history Is Record (
   , end_date stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_end_date__c%type
   , is_active_indicator stg_alumni.ucinn_ascendv2__assignment__c.ap_is_active__c%type
   , assignment_active_calc varchar2(1)
+  , staff_user_salesforce_id stg_alumni.user_tbl.id%type
+  , staff_username stg_alumni.user_tbl.username%type
   , staff_name stg_alumni.user_tbl.name%type
   , assignment_business_unit stg_alumni.ucinn_ascendv2__assignment__c.ap_business_unit__c%type
   , ksm_flag varchar2(1)
+);
+
+Type rec_assignment_summary Is Record (
+  household_id dm_alumni.dim_constituent.constituent_household_account_salesforce_id%type
+  , donor_id dm_alumni.dim_constituent.constituent_donor_id%type
+  , sort_name dm_alumni.dim_constituent.full_name%type
+  , household_primary dm_alumni.dim_constituent.household_primary_constituent_indicator%type
+  , prospect_manager_user_id varchar2(1600)
+  , prospect_manager_name varchar2(1600)
+  , lagm_user_id varchar2(1600)
+  , lagm_name varchar2(1600)
+  , ksm_manager_flag varchar2(1)
 );
 
 /*************************************************************************
@@ -60,7 +74,8 @@ Public table declarations
 *************************************************************************/
 
 --Type t_modeled_score Is Table Of modeled_score;
-Type t_assignment_history Is Table Of assignment_history;
+Type assignment_history Is Table Of rec_assignment_history;
+Type assignment_summary Is Table Of rec_assignment_summary;
 
 /*************************************************************************
 Public function declarations
@@ -87,7 +102,10 @@ Public pipelined functions declarations
 
 -- Pipelined functions
 Function tbl_assignment_history
-  Return t_assignment_history Pipelined;
+  Return assignment_history Pipelined;
+
+Function tbl_assignment_summary
+  Return assignment_summary Pipelined;
 
 End ksm_pkg_prospect;
 /
@@ -127,13 +145,95 @@ Select
         Then 'Y'
       End
     As assignment_active_calc
+  , assign.staff_user_salesforce_id
+  , assign.staff_username
   , assign.staff_name
   , assign.assignment_business_unit
   , assign.ksm_flag
 From table(dw_pkg_base.tbl_assignments) assign
 Cross Join table(ksm_pkg_calendar.tbl_current_calendar) cal
-Left Join entity
+Inner Join entity
   On entity.donor_id = assign.assignee_donor_id
+;
+
+--------------------------------------
+Cursor c_assignment_summary Is
+
+  With
+
+  assign As (
+    Select *
+    From table(ksm_pkg_prospect.tbl_assignment_history)
+  )
+
+  , pm As (
+    Select * 
+    From assign
+    Where assign.is_active_indicator = 'true'
+      And assign.assignment_type = 'Primary Relationship Manager'
+  )
+
+  , pms As (
+    Select
+      household_id
+      , Listagg(Distinct staff_user_salesforce_id, '; ') Within Group (Order By staff_name)
+        As prospect_manager_user_id
+      , Listagg(Distinct staff_name, '; ') Within Group (Order By staff_name)
+        As prospect_manager_name
+      , max(ksm_flag)
+        As ksm_flag
+    From pm
+    Group By household_id
+  )
+
+  , lgo As (
+    Select *
+    From assign
+    Where assign.is_active_indicator = 'true'
+      And assign.assignment_type Like '%Leadership%Gift%Manager%'
+  )
+
+  , lgos As (
+    Select
+      household_id
+      , Listagg(Distinct staff_user_salesforce_id, '; ') Within Group (Order By staff_name)
+        As lagm_user_id
+      , Listagg(Distinct staff_name, '; ') Within Group (Order By staff_name)
+        As lagm_name
+      , max(ksm_flag)
+        As ksm_flag
+    From lgo
+    Group By household_id
+  )
+
+  , donor_ids As (
+    Select household_id, donor_id, sort_name, household_primary
+    From pm
+    Union
+    Select household_id, donor_id, sort_name, household_primary
+    From lgo
+  )
+
+  Select
+    d.household_id
+    , d.donor_id
+    , d.sort_name
+    , d.household_primary
+    , pms.prospect_manager_user_id
+    , pms.prospect_manager_name
+    , lgos.lagm_user_id
+    , lgos.lagm_name
+    , Case
+        When pms.ksm_flag = 'Y'
+          Or lgos.ksm_flag = 'Y'
+          Then 'Y'
+        End
+      As ksm_manager_flag
+  From donor_ids d
+  Left Join pms
+    On pms.household_id = d.household_id
+  Left Join lgos
+    On lgos.household_id = d.household_id
 ;
 
 /*************************************************************************
@@ -188,11 +288,10 @@ Pipelined functions
 *************************************************************************/
 
 --------------------------------------
--- Pipelined function returning assignment history
 Function tbl_assignment_history
-  Return t_assignment_history Pipelined As
+  Return assignment_history Pipelined As
   -- Declarations
-  assn t_assignment_history;
+  assn assignment_history;
   
   Begin
     Open c_assignment_history;
@@ -200,6 +299,22 @@ Function tbl_assignment_history
     Close c_assignment_history;
     For i in 1..(assn.count) Loop
       Pipe row(assn(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_assignment_summary
+  Return assignment_summary Pipelined As
+  -- Declarations
+  asm assignment_summary;
+  
+  Begin
+    Open c_assignment_summary;
+      Fetch c_assignment_summary Bulk Collect Into asm;
+    Close c_assignment_summary;
+    For i in 1..(asm.count) Loop
+      Pipe row(asm(i));
     End Loop;
     Return;
   End;

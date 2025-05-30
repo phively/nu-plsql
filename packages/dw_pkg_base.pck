@@ -284,6 +284,7 @@ Type rec_service_indicators Is Record (
 Type rec_assignment Is Record (
     assignment_record_id stg_alumni.ucinn_ascendv2__assignment__c.name%type
     , staff_user_salesforce_id stg_alumni.user_tbl.id%type
+    , staff_username stg_alumni.user_tbl.username%type
     , staff_constituent_salesforce_id stg_alumni.user_tbl.contactid%type
     , staff_name stg_alumni.user_tbl.name%type
     , assignment_type stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_type__c%type
@@ -923,6 +924,8 @@ Cursor c_assignments Is
       As assignment_record_id
     , staff.id
       As staff_user_salesforce_id
+    , staff.username
+      As staff_username
     , staff.contactid
       As staff_constituent_salesforce_id
     , staff.name
