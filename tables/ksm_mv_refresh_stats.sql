@@ -26,6 +26,9 @@ From mv_ksm_designation
 Union
 Select 0, 'mv_transactions', count(*), min(mv_last_refresh), max(max_etl_update_date), min(max_etl_update_date)
 From mv_transactions
+Union
+Select 0, 'mv_assignments', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+From mv_assignments
 -- 7:40 AM
 Union
 Select 1, 'mv_households', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)

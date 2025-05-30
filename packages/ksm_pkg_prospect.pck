@@ -55,6 +55,7 @@ Type rec_assignment_history Is Record (
   , staff_name stg_alumni.user_tbl.name%type
   , assignment_business_unit stg_alumni.ucinn_ascendv2__assignment__c.ap_business_unit__c%type
   , ksm_flag varchar2(1)
+  , etl_update_date stg_alumni.ap_unit_strategy_assignment__c.etl_update_date%type
 );
 
 Type rec_assignment_summary Is Record (
@@ -67,6 +68,7 @@ Type rec_assignment_summary Is Record (
   , lagm_user_id varchar2(1600)
   , lagm_name varchar2(1600)
   , ksm_manager_flag varchar2(1)
+  , etl_update_date stg_alumni.ap_unit_strategy_assignment__c.etl_update_date%type
 );
 
 /*************************************************************************
@@ -150,6 +152,7 @@ Select
   , assign.staff_name
   , assign.assignment_business_unit
   , assign.ksm_flag
+  , assign.etl_update_date
 From table(dw_pkg_base.tbl_assignments) assign
 Cross Join table(ksm_pkg_calendar.tbl_current_calendar) cal
 Inner Join entity
@@ -182,6 +185,8 @@ Cursor c_assignment_summary Is
         As prospect_manager_name
       , max(ksm_flag)
         As ksm_flag
+      , max(etl_update_date)
+        As etl_update_date
     From pm
     Group By household_id
   )
@@ -202,6 +207,8 @@ Cursor c_assignment_summary Is
         As lagm_name
       , max(ksm_flag)
         As ksm_flag
+      , max(etl_update_date)
+        As etl_update_date
     From lgo
     Group By household_id
   )
@@ -229,6 +236,11 @@ Cursor c_assignment_summary Is
           Then 'Y'
         End
       As ksm_manager_flag
+    , greatest(
+        nvl(pms.etl_update_date, to_date('18000101', 'yyyymmdd'))
+        , nvl(lgos.etl_update_date, to_date('18000101', 'yyyymmdd'))
+      )
+      As etl_update_date
   From donor_ids d
   Left Join pms
     On pms.household_id = d.household_id
