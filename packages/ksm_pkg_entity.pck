@@ -31,6 +31,8 @@ Type rec_entity Is Record (
     , donor_id dm_alumni.dim_constituent.constituent_donor_id%type
     , full_name dm_alumni.dim_constituent.full_name%type
     , sort_name dm_alumni.dim_constituent.full_name%type
+    , first_name dm_alumni.dim_constituent.first_name%type
+    , last_name dm_alumni.dim_constituent.last_name%type
     , is_deceased_indicator dm_alumni.dim_constituent.is_deceased_indicator%type
     , primary_record_type dm_alumni.dim_constituent.primary_constituent_type%type
     , institutional_suffix dm_alumni.dim_constituent.institutional_suffix%type
@@ -84,6 +86,8 @@ Cursor c_entity Is
     , c.donor_id
     , c.full_name
     , c.sort_name
+    , c.first_name
+    , c.last_name
     , c.is_deceased_indicator
     , c.primary_constituent_type As primary_record_type
     , institutional_suffix
@@ -113,6 +117,8 @@ Cursor c_entity Is
     , o.donor_id
     , o.organization_name
     , o.sort_name
+    , o.organization_name As first_name
+    , NULL As last_name
     , o.organization_inactive_indicator
     , o.organization_type As primary_record_type
     , NULL As institutional_suffix

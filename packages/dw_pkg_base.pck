@@ -31,6 +31,8 @@ Type rec_constituent Is Record (
   , donor_id dm_alumni.dim_constituent.constituent_donor_id%type
   , full_name dm_alumni.dim_constituent.full_name%type
   , sort_name dm_alumni.dim_constituent.full_name%type
+  , first_name dm_alumni.dim_constituent.first_name%type
+  , last_name dm_alumni.dim_constituent.last_name%type
   , is_deceased_indicator dm_alumni.dim_constituent.is_deceased_indicator%type
   , primary_constituent_type dm_alumni.dim_constituent.primary_constituent_type%type
   , institutional_suffix dm_alumni.dim_constituent.institutional_suffix%type
@@ -284,9 +286,9 @@ Type rec_assignment Is Record (
     , staff_user_salesforce_id stg_alumni.user_tbl.id%type
     , staff_constituent_salesforce_id stg_alumni.user_tbl.contactid%type
     , staff_name stg_alumni.user_tbl.name%type
+    , assignment_type stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_type__c%type
     , assignment_business_unit stg_alumni.ucinn_ascendv2__assignment__c.ap_business_unit__c%type
     , ksm_flag varchar2(1)
-    , assignment_type stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_type__c%type
     , assigneee_salesforce_id stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__contact__c%type
     , assignee_donor_id stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__donor_id_formula__c%type
     , assignee_last_name stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__contact_last_name_formula__c%type
@@ -395,6 +397,8 @@ Cursor c_constituent Is
     , full_name
     , trim(trim(last_name || ', ' || first_name) || ' ' || Case When middle_name != '-' Then middle_name End)
       As sort_name
+    , first_name
+    , last_name
     , is_deceased_indicator
     , primary_constituent_type
     , nullif(institutional_suffix, '-')
@@ -923,12 +927,12 @@ Cursor c_assignments Is
       As staff_constituent_salesforce_id
     , staff.name
       As staff_name
-    , assign.ap_business_unit__c
-      As assignment_business_unit
-    , Case When assign.ap_business_unit__c Like '%Kellogg%' Then 'Y' End
-      As ksm_flag
     , assign.ucinn_ascendv2__assignment_type__c
       As assignment_type
+    , assign.ap_business_unit__c
+      As assignment_business_unit      
+    , Case When assign.ap_business_unit__c Like '%Kellogg%' Then 'Y' End
+      As ksm_flag
     , assign.ucinn_ascendv2__contact__c
       As assigneee_salesforce_id
     , assign.ucinn_ascendv2__donor_id_formula__c
