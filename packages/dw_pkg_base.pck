@@ -288,6 +288,7 @@ Type rec_assignment Is Record (
     , staff_constituent_salesforce_id stg_alumni.user_tbl.contactid%type
     , staff_name stg_alumni.user_tbl.name%type
     , assignment_type stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_type__c%type
+    , assignment_code varchar2(8)
     , assignment_business_unit stg_alumni.ucinn_ascendv2__assignment__c.ap_business_unit__c%type
     , ksm_flag varchar2(1)
     , assigneee_salesforce_id stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__contact__c%type
@@ -966,6 +967,13 @@ Cursor c_assignments Is
       As staff_name
     , assign.ucinn_ascendv2__assignment_type__c
       As assignment_type
+    , Case
+        When assign.ucinn_ascendv2__assignment_type__c = 'Primary Relationship Manager'
+          Then 'PRM'
+        When assign.ucinn_ascendv2__assignment_type__c = 'Leadership Annual Gift Manager'
+          Then 'LAGM'
+        End
+      As assignment_code
     , assign.ap_business_unit__c
       As assignment_business_unit      
     , Case When assign.ap_business_unit__c Like '%Kellogg%' Then 'Y' End

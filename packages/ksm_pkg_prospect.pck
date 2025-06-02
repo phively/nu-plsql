@@ -46,6 +46,7 @@ Type rec_assignment_history Is Record (
   , sort_name dm_alumni.dim_constituent.full_name%type
   , assignment_record_id stg_alumni.ucinn_ascendv2__assignment__c.name%type
   , assignment_type stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_type__c%type
+  , assignment_code varchar2(8)
   , start_date stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_start_date__c%type
   , end_date stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_end_date__c%type
   , is_active_indicator stg_alumni.ucinn_ascendv2__assignment__c.ap_is_active__c%type
@@ -135,6 +136,7 @@ Select
   , entity.sort_name
   , assign.assignment_record_id
   , assign.assignment_type
+  , assign.assignment_code
   , assign.start_date
   , assign.end_date 
   , assign.is_active_indicator
@@ -173,7 +175,7 @@ Cursor c_assignment_summary Is
     Select * 
     From assign
     Where assign.is_active_indicator = 'true'
-      And assign.assignment_type = 'Primary Relationship Manager'
+      And assign.assignment_code = 'PRM'
   )
 
   , pms As (
@@ -195,7 +197,7 @@ Cursor c_assignment_summary Is
     Select *
     From assign
     Where assign.is_active_indicator = 'true'
-      And assign.assignment_type Like '%Leadership%Gift%Manager%'
+      And assign.assignment_code = 'LAGM'
   )
 
   , lgos As (
