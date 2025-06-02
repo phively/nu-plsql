@@ -92,10 +92,10 @@ Type rec_transaction Is Record (
       , matched_gift_record_id dm_alumni.dim_opportunity.matched_gift_record_id%type
       , pledge_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
       , linked_proposal_record_id dm_alumni.dim_opportunity.linked_proposal_record_id%type
-        , historical_pm_salesforce_id mv_proposals.historical_pm_salesforce_id%type
-        , historical_pm_name mv_proposals.historical_pm_name%type
-        , historical_pm_role mv_proposals.historical_pm_role%type
-        , historical_business_unit mv_proposals.historical_business_unit%type
+      , historical_pm_salesforce_id mv_proposals.historical_pm_salesforce_id%type
+      , historical_pm_name mv_proposals.historical_pm_name%type
+      , historical_pm_role mv_proposals.historical_pm_role%type
+      , historical_business_unit mv_proposals.historical_business_unit%type
       , designation_record_id mv_ksm_designation.designation_record_id%type
       , designation_status mv_ksm_designation.designation_status%type
       , legacy_allocation_code mv_ksm_designation.legacy_allocation_code%type

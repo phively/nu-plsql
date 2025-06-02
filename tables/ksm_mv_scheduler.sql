@@ -119,6 +119,19 @@ Select
 From table(ksm_pkg_prospect.tbl_assignment_summary) assign
 ;
 
+-- tbl_assignment_history
+Create Materialized View mv_assignment_history
+Refresh Complete
+Start With sysdate
+-- 7:30 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.5/24)
+As
+Select
+  ah.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_prospect.tbl_assignment_history) ah
+;
+
 /*************************************************************************
 Level 1 dependencies
 7:40 AM
