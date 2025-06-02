@@ -323,6 +323,10 @@ Type rec_proposal Is Record (
     , active_proposal_manager_salesforce_id dm_alumni.dim_proposal_opportunity.active_proposal_manager_salesforce_id%type
     , active_proposal_manager_name dm_alumni.dim_proposal_opportunity.active_proposal_manager_name%type
     , active_proposal_manager_unit dm_alumni.dim_proposal_opportunity.active_proposal_manager_business_unit%type
+    , historical_pm_salesforce_id stg_alumni.opportunityteammember.id%type
+    , historical_pm_name stg_alumni.opportunityteammember.name%type
+    , historical_pm_role stg_alumni.opportunityteammember.teammemberrole%type
+    , historical_business_unit stg_alumni.opportunityteammember.ap_business_unit__c%type
     , etl_update_date dm_alumni.dim_proposal_opportunity.etl_update_date%type
 );
 
@@ -988,41 +992,84 @@ Cursor c_assignments Is
 
 --------------------------------------
 Cursor c_proposals Is
+
+  With
+  
+  opportunity_team_member As (
+    Select
+      opportunityid
+        As opportunity_salesforce_id
+      , id
+        As team_member_salesforce_id
+      , name
+        As team_member_name
+      , teammemberrole
+        As team_member_role
+      , ap_start_date__c
+        As start_date
+      , ap_end_date__c
+        As end_date
+      , ap_business_unit__c
+        As business_unit
+    From stg_alumni.opportunityteammember
+  )
+  
+  , last_pm As (
+    Select
+      opportunity_salesforce_id
+      , max(team_member_salesforce_id) keep(dense_rank First Order By end_date Desc, start_date Desc, team_member_role Asc, business_unit Asc, team_member_name Asc)
+        As historical_pm_salesforce_id
+      , max(team_member_name) keep(dense_rank First Order By end_date Desc, start_date Desc, team_member_role Asc, business_unit Asc, team_member_name Asc)
+        As historical_pm_name
+      , max(team_member_role) keep(dense_rank First Order By end_date Desc, start_date Desc, team_member_role Asc, business_unit Asc, team_member_name Asc)
+        As historical_pm_role
+      , max(business_unit) keep(dense_rank First Order By end_date Desc, start_date Desc, team_member_role Asc, business_unit Asc, team_member_name Asc)
+        As historical_business_unit
+    From opportunity_team_member
+    Where team_member_role = 'Proposal Manager'
+    Group By opportunity_salesforce_id
+  )
+
   Select
-    nullif(opportunity_salesforce_id, '-')
+    nullif(dpo.opportunity_salesforce_id, '-')
       As opportunity_salesforce_id
-    , nullif(proposal_record_id, '-')
+    , nullif(dpo.proposal_record_id, '-')
       As proposal_record_id
-    , nullif(proposal_legacy_id, '-')
+    , nullif(dpo.proposal_legacy_id, '-')
       As proposal_legacy_id
-    , nullif(proposal_strategy_record_id, '-')
+    , nullif(dpo.proposal_strategy_record_id, '-')
       As proposal_strategy_record_id
-    , proposal_active_indicator
-    , proposal_stage
-    , proposal_type
-    , proposal_name
-    , proposal_probability
-    , proposal_amount
-    , proposal_submitted_amount
-    , proposal_anticipated_amount
-    , proposal_funded_amount
-    , proposal_created_date
-    , proposal_submitted_date
-    , proposal_close_date
-    , nullif(proposal_payment_schedule, '-')
+    , dpo.proposal_active_indicator
+    , dpo.proposal_stage
+    , dpo.proposal_type
+    , dpo.proposal_name
+    , dpo.proposal_probability
+    , dpo.proposal_amount
+    , dpo.proposal_submitted_amount
+    , dpo.proposal_anticipated_amount
+    , dpo.proposal_funded_amount
+    , dpo.proposal_created_date
+    , dpo.proposal_submitted_date
+    , dpo.proposal_close_date
+    , nullif(dpo.proposal_payment_schedule, '-')
       As proposal_payment_schedule
-    , nullif(proposal_designation_work_plan_units, '-')
+    , nullif(dpo.proposal_designation_work_plan_units, '-')
       As proposal_designation_units
-    , nullif(active_proposal_manager_salesforce_id, '-')
+    , nullif(dpo.active_proposal_manager_salesforce_id, '-')
       As active_proposal_manager_salesforce_id
-    , nullif(active_proposal_manager_name, '-')
+    , nullif(dpo.active_proposal_manager_name, '-')
       As active_proposal_manager_name
-    , nullif(active_proposal_manager_business_unit, '-')
+    , nullif(dpo.active_proposal_manager_business_unit, '-')
       As active_proposal_manager_unit
-    , trunc(etl_update_date)
+    , last_pm.historical_pm_salesforce_id
+    , last_pm.historical_pm_name
+    , last_pm.historical_pm_role
+    , last_pm.historical_business_unit
+    , trunc(dpo.etl_update_date)
       As etl_update_date
-  From dm_alumni.dim_proposal_opportunity
-  Where opportunity_salesforce_id != '-'
+  From dm_alumni.dim_proposal_opportunity dpo
+  Inner Join last_pm
+    On last_pm.opportunity_salesforce_id = dpo.opportunity_salesforce_id
 ;
 
 /*************************************************************************

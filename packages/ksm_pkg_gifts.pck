@@ -92,6 +92,10 @@ Type rec_transaction Is Record (
       , matched_gift_record_id dm_alumni.dim_opportunity.matched_gift_record_id%type
       , pledge_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
       , linked_proposal_record_id dm_alumni.dim_opportunity.linked_proposal_record_id%type
+        , historical_pm_salesforce_id mv_proposals.historical_pm_salesforce_id%type
+        , historical_pm_name mv_proposals.historical_pm_name%type
+        , historical_pm_role mv_proposals.historical_pm_role%type
+        , historical_business_unit mv_proposals.historical_business_unit%type
       , designation_record_id mv_ksm_designation.designation_record_id%type
       , designation_status mv_ksm_designation.designation_status%type
       , legacy_allocation_code mv_ksm_designation.legacy_allocation_code%type
@@ -317,6 +321,10 @@ Cursor c_ksm_transactions Is
         , trans.matched_gift_record_id
         , trans.pledge_record_id
         , trans.linked_proposal_record_id
+        , prop.historical_pm_salesforce_id
+        , prop.historical_pm_name
+        , prop.historical_pm_role
+        , prop.historical_business_unit
         , trans.designation_record_id
         , trans.designation_status
         , trans.legacy_allocation_code
@@ -416,6 +424,9 @@ Cursor c_ksm_transactions Is
       -- In memory/honor of
       Left Join tribute_concat
         On tribute_concat.opportunity_record_id = trans.opportunity_record_id
+      -- Proposal manager
+      Left Join mv_proposals prop
+        On prop.proposal_record_id = trans.linked_proposal_record_id
     )
     
     Select
