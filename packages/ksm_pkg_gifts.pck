@@ -7,7 +7,8 @@ Purpose : Base table combining hard and soft credit, opportunity, designation,
   constituent, and organization into a normalized transactions list. One credited donor
   transaction per row.
 Dependencies: dw_pkg_base (mv_designation_detail), ksm_pkg_entity (mv_entity),
-  ksm_pkg_designation (mv_designation), ksm_pkg_transactions (mv_transactions), ksm_pkg_utility
+  ksm_pkg_designation (mv_designation), ksm_pkg_transactions (mv_transactions), ksm_pkg_utility,
+  ksm_pkg_prospect (mv_assignment_history)
 
 Suggested naming conventions:
   Pure functions: [function type]_[description]
@@ -96,6 +97,14 @@ Type rec_transaction Is Record (
       , historical_pm_name mv_proposals.historical_pm_name%type
       , historical_pm_role mv_proposals.historical_pm_role%type
       , historical_business_unit mv_proposals.historical_business_unit%type
+      , historical_prm_name mv_assignment_history.staff_name%type
+      , historical_prm_start_date mv_assignment_history.start_date%type
+      , historical_prm_unit mv_assignment_history.assignment_business_unit%type
+      , historical_prm_ksm_flag mv_assignment_history.ksm_flag%type
+      , historical_lagm_name mv_assignment_history.staff_name%type
+      , historical_lagm_start_date mv_assignment_history.start_date%type
+      , historical_lagm_unit mv_assignment_history.assignment_business_unit%type
+      , historical_lagm_ksm_flag mv_assignment_history.ksm_flag%type
       , designation_record_id mv_ksm_designation.designation_record_id%type
       , designation_status mv_ksm_designation.designation_status%type
       , legacy_allocation_code mv_ksm_designation.legacy_allocation_code%type
@@ -292,6 +301,61 @@ Cursor c_ksm_transactions Is
       Group By opp.opportunity_record_id
     )
     
+    -- Historical managers
+    , historical_mgrs As (
+      Select Distinct
+        ah.household_id
+        , ah.donor_id
+        , ah.sort_name
+        , ah.start_date
+        , ah.end_date
+        , ah.staff_name
+        , ah.assignment_code
+        , ah.assignment_business_unit
+        , ah.ksm_flag
+        , mvt.credit_date
+        , mvt.tx_id
+      From mv_assignment_history ah
+      Inner Join mv_entity mve
+        On mve.household_id = ah.household_id
+      Inner Join mv_transactions mvt
+        On mvt.credited_donor_id = mve.donor_id
+        And mvt.credit_date Between ah.start_date And nvl(ah.end_date, to_date('99990101', 'yyyymmdd'))
+      Where ah.assignment_code In ('PRM', 'LAGM')
+    )
+    
+    , ranked_managers As (
+      -- For each entity, tiebreak whoever started as manager earlier, then whoever ended as manager later
+      -- PRMs
+      Select
+        household_id
+        , start_date
+        , staff_name
+        , assignment_code
+        , assignment_business_unit
+        , ksm_flag
+        , tx_id
+        , row_number() Over(Partition By household_id, tx_id Order By start_date Asc, end_date Desc)
+          As assign_rank
+      From historical_mgrs
+      Where assignment_code = 'PRM'
+      Union All
+      -- LAGMs
+      Select
+        household_id
+        , start_date
+        , staff_name
+        , assignment_code
+        , assignment_business_unit
+        , ksm_flag
+        , tx_id
+        , row_number() Over(Partition By household_id, tx_id Order By start_date Asc, end_date Desc)
+          As assign_rank
+      From historical_mgrs
+      Where assignment_code = 'LAGM'
+    )
+    
+    -- Unified transactions
     , trans_data As (
       Select
         trans.credited_donor_id
@@ -325,6 +389,22 @@ Cursor c_ksm_transactions Is
         , prop.historical_pm_name
         , prop.historical_pm_role
         , prop.historical_business_unit
+        , prms.staff_name
+          As historical_prm_name
+        , prms.start_date
+          As historical_prm_start_date
+        , prms.assignment_business_unit
+          As historical_prm_unit
+        , prms.ksm_flag
+          As historical_prm_ksm_flag
+        , lagms.staff_name
+          As historical_lagm_name
+        , lagms.start_date
+          As historical_lagm_start_date
+        , lagms.assignment_business_unit
+          As historical_lagm_unit
+        , lagms.ksm_flag
+          As historical_lagm_ksm_flag
         , trans.designation_record_id
         , trans.designation_status
         , trans.legacy_allocation_code
@@ -427,8 +507,21 @@ Cursor c_ksm_transactions Is
       -- Proposal manager
       Left Join mv_proposals prop
         On prop.proposal_record_id = trans.linked_proposal_record_id
+      -- Historical PRM
+      Left Join ranked_managers prms
+        On prms.household_id = mve.household_id
+        And prms.tx_id = trans.tx_id
+        And prms.assign_rank = 1
+        And prms.assignment_code = 'PRM'
+      -- Historical LAGM
+      Left Join ranked_managers lagms
+        On lagms.household_id = mve.household_id
+        And lagms.tx_id = trans.tx_id
+        And lagms.assign_rank = 1
+        And lagms.assignment_code = 'LAGM'
     )
     
+    -- Final householded credit
     Select
       t.*
       -- Household credit is evenly split between household members per transaction and designation

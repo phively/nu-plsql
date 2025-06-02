@@ -41,6 +41,10 @@ Where ua.pledge_or_gift_record_id = 'PN2482912'
 -- mv tests
 ---------------------------
 
+Select count(*)
+From mv_ksm_transactions
+;
+
 Select *
 From mv_ksm_transactions mkt
 Where mkt.fiscal_year Between 2022 And 2024
