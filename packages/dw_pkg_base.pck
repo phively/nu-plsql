@@ -300,6 +300,32 @@ Type rec_assignment Is Record (
     , etl_update_date stg_alumni.ucinn_ascendv2__assignment__c.etl_update_date%type
 );
 
+--------------------------------------
+Type rec_proposal Is Record (
+    opportunity_salesforce_id dm_alumni.dim_proposal_opportunity.opportunity_salesforce_id%type
+    , proposal_record_id dm_alumni.dim_proposal_opportunity.proposal_record_id%type
+    , proposal_legacy_id dm_alumni.dim_proposal_opportunity.proposal_legacy_id%type
+    , proposal_strategy_record_id dm_alumni.dim_proposal_opportunity.proposal_strategy_record_id%type
+    , proposal_active_indicator dm_alumni.dim_proposal_opportunity.proposal_active_indicator%type
+    , proposal_stage dm_alumni.dim_proposal_opportunity.proposal_stage%type
+    , proposal_type dm_alumni.dim_proposal_opportunity.proposal_type%type
+    , proposal_name dm_alumni.dim_proposal_opportunity.proposal_name%type
+    , proposal_probability dm_alumni.dim_proposal_opportunity.proposal_probability%type
+    , proposal_amount dm_alumni.dim_proposal_opportunity.proposal_amount%type
+    , proposal_submitted_amount dm_alumni.dim_proposal_opportunity.proposal_submitted_amount%type
+    , proposal_anticipated_amount dm_alumni.dim_proposal_opportunity.proposal_anticipated_amount%type
+    , proposal_funded_amount dm_alumni.dim_proposal_opportunity.proposal_funded_amount%type
+    , proposal_created_date dm_alumni.dim_proposal_opportunity.proposal_created_date%type
+    , proposal_submitted_date dm_alumni.dim_proposal_opportunity.proposal_submitted_date%type
+    , proposal_close_date dm_alumni.dim_proposal_opportunity.proposal_close_date%type
+    , proposal_payment_schedule dm_alumni.dim_proposal_opportunity.proposal_payment_schedule%type
+    , proposal_designation_units dm_alumni.dim_proposal_opportunity.proposal_designation_work_plan_units%type
+    , active_proposal_manager_salesforce_id dm_alumni.dim_proposal_opportunity.active_proposal_manager_salesforce_id%type
+    , active_proposal_manager_name dm_alumni.dim_proposal_opportunity.active_proposal_manager_name%type
+    , active_proposal_manager_unit dm_alumni.dim_proposal_opportunity.active_proposal_manager_business_unit%type
+    , etl_update_date dm_alumni.dim_proposal_opportunity.etl_update_date%type
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
@@ -316,6 +342,7 @@ Type gift_credit Is Table Of rec_gift_credit;
 Type involvement Is Table Of rec_involvement;
 Type service_indicators Is Table Of rec_service_indicators;
 Type assignments Is Table Of rec_assignment;
+Type proposals Is Table Of rec_proposal;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -356,6 +383,9 @@ Function tbl_service_indicators
 
 Function tbl_assignments
   Return assignments Pipelined;
+
+Function tbl_proposals
+  Return proposals Pipelined;
 
 /*********************** About pipelined functions ***********************
 Q: What is a pipelined function?
@@ -956,6 +986,45 @@ Cursor c_assignments Is
     On staff.id = assign.ucinn_ascendv2__assigned_relationship_manager_user__c
 ;
 
+--------------------------------------
+Cursor c_proposals Is
+  Select
+    nullif(opportunity_salesforce_id, '-')
+      As opportunity_salesforce_id
+    , nullif(proposal_record_id, '-')
+      As proposal_record_id
+    , nullif(proposal_legacy_id, '-')
+      As proposal_legacy_id
+    , nullif(proposal_strategy_record_id, '-')
+      As proposal_strategy_record_id
+    , proposal_active_indicator
+    , proposal_stage
+    , proposal_type
+    , proposal_name
+    , proposal_probability
+    , proposal_amount
+    , proposal_submitted_amount
+    , proposal_anticipated_amount
+    , proposal_funded_amount
+    , proposal_created_date
+    , proposal_submitted_date
+    , proposal_close_date
+    , nullif(proposal_payment_schedule, '-')
+      As proposal_payment_schedule
+    , nullif(proposal_designation_work_plan_units, '-')
+      As proposal_designation_units
+    , nullif(active_proposal_manager_salesforce_id, '-')
+      As active_proposal_manager_salesforce_id
+    , nullif(active_proposal_manager_name, '-')
+      As active_proposal_manager_name
+    , nullif(active_proposal_manager_business_unit, '-')
+      As active_proposal_manager_unit
+    , trunc(etl_update_date)
+      As etl_update_date
+  From dm_alumni.dim_proposal_opportunity
+  Where opportunity_salesforce_id != '-'
+;
+
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
@@ -1148,6 +1217,22 @@ Function tbl_assignments
     Close c_assignments;
     For i in 1..(asn.count) Loop
       Pipe row(asn(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_proposals
+  Return proposals Pipelined As
+    -- Declarations
+    prp proposals;
+
+  Begin
+    Open c_proposals;
+      Fetch c_proposals Bulk Collect Into prp;
+    Close c_proposals;
+    For i in 1..(prp.count) Loop
+      Pipe row(prp(i));
     End Loop;
     Return;
   End;
