@@ -31,8 +31,8 @@ Type rec_entity Is Record (
     , donor_id dm_alumni.dim_constituent.constituent_donor_id%type
     , full_name dm_alumni.dim_constituent.full_name%type
     , sort_name dm_alumni.dim_constituent.full_name%type
-    , first_name dm_alumni.dim_constituent.first_name%type
-    , last_name dm_alumni.dim_constituent.last_name%type
+    , first_name dm_alumni.dim_constituent.full_name%type
+    , last_name dm_alumni.dim_constituent.full_name%type
     , is_deceased_indicator dm_alumni.dim_constituent.is_deceased_indicator%type
     , primary_record_type dm_alumni.dim_constituent.primary_constituent_type%type
     , institutional_suffix dm_alumni.dim_constituent.institutional_suffix%type
