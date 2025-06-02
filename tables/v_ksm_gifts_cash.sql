@@ -55,6 +55,15 @@ Select
   , kt.pledge_record_id
   , kt.payment_schedule
   , kt.linked_proposal_record_id
+  , kt.historical_pm_name
+  , kt.historical_pm_unit
+  , kt.historical_prm_name
+  , kt.historical_prm_unit
+  , kt.historical_lagm_name
+  , kt.historical_lagm_unit
+  , kt.historical_credit_name
+  , kt.historical_credit_assignment_type
+  , kt.historical_credit_unit
   , kt.designation_record_id
   , kt.designation_status
   , kt.legacy_allocation_code

@@ -96,7 +96,7 @@ Type rec_transaction Is Record (
       , historical_pm_salesforce_id mv_proposals.historical_pm_salesforce_id%type
       , historical_pm_name mv_proposals.historical_pm_name%type
       , historical_pm_role mv_proposals.historical_pm_role%type
-      , historical_business_unit mv_proposals.historical_business_unit%type
+      , historical_pm_unit mv_proposals.historical_business_unit%type
       , historical_prm_name mv_assignment_history.staff_name%type
       , historical_prm_start_date mv_assignment_history.start_date%type
       , historical_prm_unit mv_assignment_history.assignment_business_unit%type
@@ -123,6 +123,9 @@ Type rec_transaction Is Record (
       , tender_type varchar2(128)
       , min_etl_update_date mv_entity.etl_update_date%type
       , max_etl_update_date mv_entity.etl_update_date%type
+      , historical_credit_name mv_assignment_history.staff_name%type
+      , historical_credit_assignment_type mv_assignment_history.assignment_type%type
+      , historical_credit_unit mv_assignment_history.assignment_business_unit%type
       , hh_credited_donors integer
       , hh_credit number -- not currency, do not round
       , hh_recognition_credit number -- not currency, do not round
@@ -389,6 +392,7 @@ Cursor c_ksm_transactions Is
         , prop.historical_pm_name
         , prop.historical_pm_role
         , prop.historical_business_unit
+          As historical_pm_unit
         , prms.staff_name
           As historical_prm_name
         , prms.start_date
@@ -524,6 +528,34 @@ Cursor c_ksm_transactions Is
     -- Final householded credit
     Select
       t.*
+        -- Historical credit info
+      , Case
+        When t.historical_pm_name Is Not Null
+          Then t.historical_pm_name
+        When t.historical_prm_name Is Not Null
+          Then t.historical_prm_name
+        When t.historical_lagm_name Is Not Null
+          Then t.historical_lagm_name
+        End
+        As historical_credit_name
+      , Case
+        When t.historical_pm_name Is Not Null
+          Then 'PM'
+        When t.historical_prm_name Is Not Null
+          Then 'PRM'
+        When t.historical_lagm_name Is Not Null
+          Then 'LAGM'
+        End
+        As historical_credit_assignment_type
+      , Case
+        When t.historical_pm_unit Is Not Null
+          Then t.historical_pm_unit
+        When t.historical_prm_unit Is Not Null
+          Then t.historical_prm_unit
+        When t.historical_lagm_unit Is Not Null
+          Then t.historical_lagm_unit
+        End
+        As historical_credit_unit
       -- Household credit is evenly split between household members per transaction and designation
       , hhdc.hh_credited_donors
       , t.credit_amount / hhdc.hh_credited_donors
