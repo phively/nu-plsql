@@ -121,44 +121,48 @@ Private cursors -- data definitions
 --------------------------------------
 Cursor c_assignment_history Is
 
-With
+  With
+  
+  entity As (
+    Select *
+    From table(dw_pkg_base.tbl_mini_entity)
+  )
 
-entity As (
-  Select *
-  From table(dw_pkg_base.tbl_mini_entity)
-)
-
-Select
-  entity.household_id
-  , entity.household_primary
-  , assign.assignee_donor_id
-    As donor_id
-  , entity.sort_name
-  , assign.assignment_record_id
-  , assign.assignment_type
-  , assign.assignment_code
-  , assign.start_date
-  , assign.end_date 
-  , assign.is_active_indicator
-  , Case
-      When assign.is_active_indicator = 'true'
-        And (
-          assign.end_date Is Null
-          Or assign.end_date > cal.yesterday
-        )
-        Then 'Y'
-      End
-    As assignment_active_calc
-  , assign.staff_user_salesforce_id
-  , assign.staff_username
-  , assign.staff_name
-  , assign.assignment_business_unit
-  , assign.ksm_flag
-  , assign.etl_update_date
-From table(dw_pkg_base.tbl_assignments) assign
-Cross Join table(ksm_pkg_calendar.tbl_current_calendar) cal
-Inner Join entity
-  On entity.donor_id = assign.assignee_donor_id
+  Select
+    entity.household_id
+    , entity.household_primary
+    , assign.assignee_donor_id
+      As donor_id
+    , entity.sort_name
+    , assign.assignment_record_id
+    , assign.assignment_type
+    , assign.assignment_code
+    , assign.start_date
+    , assign.end_date 
+    , assign.is_active_indicator
+    , Case
+        When assign.is_active_indicator = 'true'
+          And (
+            assign.end_date Is Null
+            Or assign.end_date > cal.yesterday
+          )
+          Then 'Y'
+        End
+      As assignment_active_calc
+    , assign.staff_user_salesforce_id
+    , assign.staff_username
+    , assign.staff_name
+    , assign.assignment_business_unit
+    , assign.ksm_flag
+    , assign.etl_update_date
+  From table(dw_pkg_base.tbl_assignments) assign
+  Cross Join table(ksm_pkg_calendar.tbl_current_calendar) cal
+  Inner Join entity
+    On entity.donor_id = assign.assignee_donor_id
+  Where assign.staff_username Not In (
+    -- Users to suppress
+    'dmu@attainpartners.com.nu'
+  )
 ;
 
 --------------------------------------
