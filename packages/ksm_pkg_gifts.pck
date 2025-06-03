@@ -329,8 +329,7 @@ Cursor c_ksm_transactions Is
     )
     
     , ranked_managers As (
-      -- For each transaction, tiebreak person before org, then whoever started as manager earlier, then whoever ended as manager later
-      -- PRMs
+      -- For each transaction, tiebreak person before org, then PRM before LAGM, then whoever started/ended as manager earlier/later
       Select
         tx_id
         , start_date
@@ -338,23 +337,14 @@ Cursor c_ksm_transactions Is
         , assignment_code
         , assignment_business_unit
         , ksm_flag
-        , row_number() Over(Partition By tx_id Order By person_or_org Desc, start_date Asc, end_date Desc)
-          As assign_rank
+        , row_number() Over(Partition By tx_id Order By person_or_org Desc, assignment_code Desc, start_date Asc, end_date Desc, staff_name Asc)
+          As rank_credit
+        , row_number() Over(Partition By tx_id, assignment_code Order By person_or_org Desc, start_date Asc, end_date Desc, staff_name Asc)
+          As rank_prm
+        , row_number() Over(Partition By tx_id, assignment_code Order By person_or_org Desc, start_date Asc, end_date Desc, staff_name Asc)
+          As rank_lagm
       From historical_mgrs
-      Where assignment_code = 'PRM'
-      Union All
-      -- LAGMs
-      Select
-        tx_id
-        , start_date
-        , staff_name
-        , assignment_code
-        , assignment_business_unit
-        , ksm_flag
-        , row_number() Over(Partition By tx_id Order By person_or_org Desc, start_date Asc, end_date Desc)
-          As assign_rank
-      From historical_mgrs
-      Where assignment_code = 'LAGM'
+      Where assignment_code In ('PRM', 'LAGM')
     )
     
     -- Unified transactions
@@ -513,12 +503,12 @@ Cursor c_ksm_transactions Is
       -- Historical PRM
       Left Join ranked_managers prms
         On prms.tx_id = trans.tx_id
-        And prms.assign_rank = 1
+        And prms.rank_prm = 1
         And prms.assignment_code = 'PRM'
       -- Historical LAGM
       Left Join ranked_managers lagms
         On lagms.tx_id = trans.tx_id
-        And lagms.assign_rank = 1
+        And lagms.rank_lagm = 1
         And lagms.assignment_code = 'LAGM'
     )
     
@@ -527,31 +517,22 @@ Cursor c_ksm_transactions Is
       t.*
         -- Historical credit info
       , Case
-        When t.historical_pm_name Is Not Null
-          Then t.historical_pm_name
-        When t.historical_prm_name Is Not Null
-          Then t.historical_prm_name
-        When t.historical_lagm_name Is Not Null
-          Then t.historical_lagm_name
-        End
+          When t.historical_pm_name Is Not Null
+            Then t.historical_pm_name 
+          Else mgr_credit.staff_name
+          End
         As historical_credit_name
       , Case
-        When t.historical_pm_name Is Not Null
-          Then 'PM'
-        When t.historical_prm_name Is Not Null
-          Then 'PRM'
-        When t.historical_lagm_name Is Not Null
-          Then 'LAGM'
-        End
+          When t.historical_pm_role Is Not Null
+            Then t.historical_pm_role
+          Else mgr_credit.assignment_code
+          End
         As historical_credit_assignment_type
       , Case
-        When t.historical_pm_unit Is Not Null
-          Then t.historical_pm_unit
-        When t.historical_prm_unit Is Not Null
-          Then t.historical_prm_unit
-        When t.historical_lagm_unit Is Not Null
-          Then t.historical_lagm_unit
-        End
+          When t.historical_pm_unit Is Not Null
+            Then t.historical_pm_unit 
+          Else mgr_credit.assignment_business_unit
+          End
         As historical_credit_unit
       -- Household credit is evenly split between household members per transaction and designation
       , hhdc.hh_credited_donors
@@ -565,6 +546,10 @@ Cursor c_ksm_transactions Is
       On hhdc.household_id = t.household_id
       And hhdc.tx_id = t.tx_id
       And hhdc.designation_record_id = t.designation_record_id
+    -- Historical credit
+    Left Join ranked_managers mgr_credit
+      On mgr_credit.tx_id = t.tx_id
+      And mgr_credit.rank_credit = 1
 ;
 
 /*************************************************************************
