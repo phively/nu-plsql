@@ -64,6 +64,12 @@ Select
   , kt.historical_credit_name
   , kt.historical_credit_assignment_type
   , kt.historical_credit_unit
+  , Case
+      When historical_credit_unit Like '%Corporate%'
+        Or historical_credit_unit Like '%Foundation%'
+        Then 'CFR'
+      End
+    As managed_hierarchy
   , kt.designation_record_id
   , kt.designation_status
   , kt.legacy_allocation_code

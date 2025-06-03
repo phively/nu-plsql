@@ -308,6 +308,7 @@ Cursor c_ksm_transactions Is
     , historical_mgrs As (
       Select Distinct
         ah.household_id
+        , mve.person_or_org
         , ah.donor_id
         , ah.sort_name
         , ah.start_date
@@ -328,31 +329,29 @@ Cursor c_ksm_transactions Is
     )
     
     , ranked_managers As (
-      -- For each entity, tiebreak whoever started as manager earlier, then whoever ended as manager later
+      -- For each transaction, tiebreak person before org, then whoever started as manager earlier, then whoever ended as manager later
       -- PRMs
       Select
-        household_id
+        tx_id
         , start_date
         , staff_name
         , assignment_code
         , assignment_business_unit
         , ksm_flag
-        , tx_id
-        , row_number() Over(Partition By household_id, tx_id Order By start_date Asc, end_date Desc)
+        , row_number() Over(Partition By tx_id Order By person_or_org Desc, start_date Asc, end_date Desc)
           As assign_rank
       From historical_mgrs
       Where assignment_code = 'PRM'
       Union All
       -- LAGMs
       Select
-        household_id
+        tx_id
         , start_date
         , staff_name
         , assignment_code
         , assignment_business_unit
         , ksm_flag
-        , tx_id
-        , row_number() Over(Partition By household_id, tx_id Order By start_date Asc, end_date Desc)
+        , row_number() Over(Partition By tx_id Order By person_or_org Desc, start_date Asc, end_date Desc)
           As assign_rank
       From historical_mgrs
       Where assignment_code = 'LAGM'
@@ -513,14 +512,12 @@ Cursor c_ksm_transactions Is
         On prop.proposal_record_id = trans.linked_proposal_record_id
       -- Historical PRM
       Left Join ranked_managers prms
-        On prms.household_id = mve.household_id
-        And prms.tx_id = trans.tx_id
+        On prms.tx_id = trans.tx_id
         And prms.assign_rank = 1
         And prms.assignment_code = 'PRM'
       -- Historical LAGM
       Left Join ranked_managers lagms
-        On lagms.household_id = mve.household_id
-        And lagms.tx_id = trans.tx_id
+        On lagms.tx_id = trans.tx_id
         And lagms.assign_rank = 1
         And lagms.assignment_code = 'LAGM'
     )
