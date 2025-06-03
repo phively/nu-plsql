@@ -123,6 +123,7 @@ Type rec_transaction Is Record (
       , tender_type varchar2(128)
       , min_etl_update_date mv_entity.etl_update_date%type
       , max_etl_update_date mv_entity.etl_update_date%type
+      , historical_credit_user_salesforce_id mv_assignment_history.staff_user_salesforce_id%type
       , historical_credit_name mv_assignment_history.staff_name%type
       , historical_credit_assignment_type mv_assignment_history.assignment_type%type
       , historical_credit_unit mv_assignment_history.assignment_business_unit%type
@@ -313,6 +314,7 @@ Cursor c_ksm_transactions Is
         , ah.sort_name
         , ah.start_date
         , ah.end_date
+        , ah.staff_user_salesforce_id
         , ah.staff_name
         , ah.assignment_code
         , ah.assignment_business_unit
@@ -330,18 +332,19 @@ Cursor c_ksm_transactions Is
     
     , ranked_managers As (
       -- For each transaction, tiebreak person before org, then PRM before LAGM, then whoever started/ended as manager earlier/later
-      Select
+      Select Distinct
         tx_id
         , start_date
+        , staff_user_salesforce_id
         , staff_name
         , assignment_code
         , assignment_business_unit
         , ksm_flag
-        , row_number() Over(Partition By tx_id Order By person_or_org Desc, assignment_code Desc, start_date Asc, end_date Desc, staff_name Asc)
+        , row_number() Over(Partition By tx_id Order By person_or_org Desc, assignment_code Desc, start_date Asc, end_date Desc, staff_name Asc, staff_user_salesforce_id Asc)
           As rank_credit
-        , row_number() Over(Partition By tx_id, assignment_code Order By person_or_org Desc, start_date Asc, end_date Desc, staff_name Asc)
+        , row_number() Over(Partition By tx_id, assignment_code Order By person_or_org Desc, start_date Asc, end_date Desc, staff_name Asc, staff_user_salesforce_id Asc)
           As rank_prm
-        , row_number() Over(Partition By tx_id, assignment_code Order By person_or_org Desc, start_date Asc, end_date Desc, staff_name Asc)
+        , row_number() Over(Partition By tx_id, assignment_code Order By person_or_org Desc, start_date Asc, end_date Desc, staff_name Asc, staff_user_salesforce_id Asc)
           As rank_lagm
       From historical_mgrs
       Where assignment_code In ('PRM', 'LAGM')
@@ -516,6 +519,12 @@ Cursor c_ksm_transactions Is
     Select
       t.*
         -- Historical credit info
+      , Case
+          When t.historical_pm_salesforce_id Is Not Null
+            Then t.historical_pm_salesforce_id 
+          Else mgr_credit.staff_user_salesforce_id
+          End
+        As historical_credit_user_salesforce_id
       , Case
           When t.historical_pm_name Is Not Null
             Then t.historical_pm_name 

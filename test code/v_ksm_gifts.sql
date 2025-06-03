@@ -16,7 +16,7 @@ Order By c.tx_id
 ;
 
 Select
-  NULL As "Check JL not credited"
+  NULL As "Check SK is credited"
   , c.tx_id
   , c.credited_donor_audit
   , c.historical_credit_name

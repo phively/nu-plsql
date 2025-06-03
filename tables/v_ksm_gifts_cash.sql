@@ -23,6 +23,19 @@ override As (
   From DUAL
 )
 
+, ksm_mgrs As (
+  Select
+    user_id
+    , user_name
+    , donor_id
+    , sort_name
+    , team
+    , start_dt
+    , nvl(stop_dt, to_date('99990101', 'yyyymmdd'))
+      As stop_dt
+  From tbl_ksm_gos
+)
+
 Select
   kt.credited_donor_audit
   , mve.donor_id
@@ -61,10 +74,36 @@ Select
   , kt.historical_prm_unit
   , kt.historical_lagm_name
   , kt.historical_lagm_unit
+  , kt.historical_credit_user_salesforce_id
   , kt.historical_credit_name
   , kt.historical_credit_assignment_type
   , kt.historical_credit_unit
   , Case
+      -- Unmanaged
+      When historical_credit_name Is Null
+        Then 'Unmanaged'
+      -- Active KSM MGOs
+      When historical_credit_name In (
+        Select user_name
+        From ksm_mgrs
+        Where team = 'MG'
+          And kt.credit_date Between start_dt And stop_dt
+      ) Then 'MGO'
+      -- Any KSM LGO
+      When historical_credit_name In (
+        Select user_name
+        From ksm_mgrs
+        Where team = 'AF'
+          And kt.credit_date Between start_dt And stop_dt
+      ) Then 'LGO'
+      -- Any other KSM staff
+      When historical_credit_name In (
+        Select user_name
+        From ksm_mgrs
+        Where team Not In ('AF', 'MG')
+          And kt.credit_date Between start_dt And stop_dt
+      ) Then 'KSM'
+      -- NU assignments
       When historical_credit_unit Like '%Corporate%'
         Or historical_credit_unit Like '%Foundation%'
         Then 'CFR'
