@@ -235,9 +235,9 @@ Cursor c_transactions Is
   From gcred
   Inner Join table(dw_pkg_base.tbl_opportunity) opp
     On opp.opportunity_salesforce_id = gcred.opportunity_salesforce_id
-  Left Join table(dw_pkg_base.tbl_designation) des
+  Inner Join table(dw_pkg_base.tbl_designation) des
     On des.designation_salesforce_id = gcred.designation_salesforce_id
-  Left Join mini_entity me
+  Inner Join mini_entity me
     On me.donor_id = gcred.credited_donor_id
   Left Join table(dw_pkg_base.tbl_payment) pay
     On pay.payment_salesforce_id = gcred.payment_salesforce_id
