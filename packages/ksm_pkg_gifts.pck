@@ -96,7 +96,8 @@ Type rec_transaction Is Record (
       , historical_pm_user_id mv_proposals.historical_pm_user_id%type
       , historical_pm_name mv_proposals.historical_pm_name%type
       , historical_pm_role mv_proposals.historical_pm_role%type
-      , historical_pm_unit mv_proposals.historical_business_unit%type
+      , historical_pm_unit mv_proposals.historical_pm_business_unit%type
+      , historical_pm_is_active mv_proposals.historical_pm_is_active%type
       , historical_prm_name mv_assignment_history.staff_name%type
       , historical_prm_start_date mv_assignment_history.start_date%type
       , historical_prm_unit mv_assignment_history.assignment_business_unit%type
@@ -127,6 +128,7 @@ Type rec_transaction Is Record (
       , historical_credit_name mv_assignment_history.staff_name%type
       , historical_credit_assignment_type mv_assignment_history.assignment_type%type
       , historical_credit_unit mv_assignment_history.assignment_business_unit%type
+      , historical_credit_active_flag varchar2(1)
       , hh_credited_donors integer
       , hh_credit number -- not currency, do not round
       , hh_recognition_credit number -- not currency, do not round
@@ -314,6 +316,7 @@ Cursor c_ksm_transactions Is
         , ah.sort_name
         , ah.start_date
         , ah.end_date
+        , ah.assignment_active_calc
         , ah.staff_user_salesforce_id
         , ah.staff_name
         , ah.assignment_code
@@ -335,6 +338,8 @@ Cursor c_ksm_transactions Is
       Select Distinct
         tx_id
         , start_date
+        , end_date
+        , assignment_active_calc
         , staff_user_salesforce_id
         , staff_name
         , assignment_code
@@ -383,8 +388,9 @@ Cursor c_ksm_transactions Is
         , prop.historical_pm_user_id
         , prop.historical_pm_name
         , prop.historical_pm_role
-        , prop.historical_business_unit
+        , prop.historical_pm_business_unit
           As historical_pm_unit
+        , prop.historical_pm_is_active
         , prms.staff_name
           As historical_prm_name
         , prms.start_date
@@ -488,6 +494,8 @@ Cursor c_ksm_transactions Is
         On bequests.bequest_flag = 'Y'
         And bequests.pledge_or_gift_record_id = trans.opportunity_record_id
         And bequests.designation_record_id = trans.designation_record_id
+        -- Override only pledge amount, not payments
+        And trans.gypm_ind = 'P'
       -- Overpaid pledges
       Left Join mv_designation_detail overpaid
         On trans.source_type_detail = 'Pledge'
@@ -543,6 +551,12 @@ Cursor c_ksm_transactions Is
           Else mgr_credit.assignment_business_unit
           End
         As historical_credit_unit
+      , Case
+          When t.historical_pm_is_active = 'true'
+            Then 'Y'
+          Else mgr_credit.assignment_active_calc
+          End
+        As historical_credit_active_flag
       -- Household credit is evenly split between household members per transaction and designation
       , hhdc.hh_credited_donors
       , t.credit_amount / hhdc.hh_credited_donors

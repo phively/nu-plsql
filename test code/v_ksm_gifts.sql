@@ -3,7 +3,7 @@
 ---------------------------
 
 Select
-  NULL As "Check JL is credited"
+  'Check JL is credited' As test
   , c.tx_id
   , c.credited_donor_audit
   , c.historical_credit_name
@@ -16,7 +16,7 @@ Order By c.tx_id
 ;
 
 Select
-  NULL As "Check SK is credited"
+  'Check SK is credited' As test
   , c.tx_id
   , c.credited_donor_audit
   , c.historical_credit_name
@@ -27,3 +27,11 @@ From v_ksm_gifts_cash c
 Where c.opportunity_record_id In ('GN1704880', 'MN2991397')
 Order By c.opportunity_record_id
 ;
+
+Select
+  'Check hard credit = recognition = cash countable amt' As test
+  , c.*
+From v_ksm_gifts_cash c
+Where c.opportunity_record_id In ('PN2442329', 'PN2347181')
+  And hard_credit_amount > 0
+Order By c.opportunity_record_id

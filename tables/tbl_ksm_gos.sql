@@ -177,6 +177,11 @@ Select
   , dates.team
   , dates.start_dt
   , dates.stop_dt
+  , Case
+      When stop_dt Is Null Then 'Y'
+      Else 'N'
+      End
+    As active_flag
   , udm.user_id
   , utbl.name As user_name
 From dates

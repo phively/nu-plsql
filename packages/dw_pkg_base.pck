@@ -287,6 +287,7 @@ Type rec_assignment Is Record (
     , staff_username stg_alumni.user_tbl.username%type
     , staff_constituent_salesforce_id stg_alumni.user_tbl.contactid%type
     , staff_name stg_alumni.user_tbl.name%type
+    , staff_is_active stg_alumni.user_tbl.isactive%type
     , assignment_type stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_type__c%type
     , assignment_code varchar2(8)
     , assignment_business_unit stg_alumni.ucinn_ascendv2__assignment__c.ap_business_unit__c%type
@@ -327,7 +328,8 @@ Type rec_proposal Is Record (
     , historical_pm_user_id stg_alumni.opportunityteammember.id%type
     , historical_pm_name stg_alumni.opportunityteammember.name%type
     , historical_pm_role stg_alumni.opportunityteammember.teammemberrole%type
-    , historical_business_unit stg_alumni.opportunityteammember.ap_business_unit__c%type
+    , historical_pm_business_unit stg_alumni.opportunityteammember.ap_business_unit__c%type
+    , historical_pm_is_active stg_alumni.user_tbl.isactive%type
     , etl_update_date dm_alumni.dim_proposal_opportunity.etl_update_date%type
 );
 
@@ -965,6 +967,8 @@ Cursor c_assignments Is
       As staff_constituent_salesforce_id
     , staff.name
       As staff_name
+    , staff.isactive
+      As staff_is_active
     , assign.ucinn_ascendv2__assignment_type__c
       As assignment_type
     , Case
@@ -1005,23 +1009,27 @@ Cursor c_proposals Is
   
   opportunity_team_member As (
     Select
-      opportunityid
+      otm.opportunityid
         As opportunity_salesforce_id
-      , id
+      , otm.id
         As opportunity_team_member_salesforce_id
-      , userid
+      , otm.userid
         As team_member_user_id
-      , name
+      , otm.name
         As team_member_name
-      , teammemberrole
+      , otm.teammemberrole
         As team_member_role
-      , ap_start_date__c
+      , otm.ap_start_date__c
         As start_date
-      , ap_end_date__c
+      , otm.ap_end_date__c
         As end_date
-      , ap_business_unit__c
+      , staff.isactive
+        As staff_is_active
+      , otm.ap_business_unit__c
         As business_unit
-    From stg_alumni.opportunityteammember
+    From stg_alumni.opportunityteammember otm
+    Left Join stg_alumni.user_tbl staff
+      On staff.id = otm.userid
   )
   
   , last_pm As (
@@ -1035,6 +1043,8 @@ Cursor c_proposals Is
         As historical_pm_role
       , max(business_unit) keep(dense_rank First Order By end_date Desc, start_date Desc, team_member_role Asc, business_unit Asc, team_member_name Asc)
         As historical_business_unit
+      , max(staff_is_active) keep(dense_rank First Order By end_date Desc, start_date Desc, team_member_role Asc, business_unit Asc, team_member_name Asc)
+        As historical_is_active
     From opportunity_team_member
     Where team_member_role = 'Proposal Manager'
     Group By opportunity_salesforce_id
@@ -1075,6 +1085,9 @@ Cursor c_proposals Is
     , last_pm.historical_pm_name
     , last_pm.historical_pm_role
     , last_pm.historical_business_unit
+      As historical_pm_business_unit
+    , last_pm.historical_is_active
+      As historical_pm_is_active
     , trunc(dpo.etl_update_date)
       As etl_update_date
   From dm_alumni.dim_proposal_opportunity dpo

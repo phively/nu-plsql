@@ -33,6 +33,7 @@ override As (
     , start_dt
     , nvl(stop_dt, to_date('99990101', 'yyyymmdd'))
       As stop_dt
+    , active_flag
   From tbl_ksm_gos
 )
 
@@ -104,10 +105,41 @@ Select
           And kt.credit_date Between start_dt And stop_dt
       ) Then 'KSM'
       -- Corporate Foundation Relations
+      When kt.historical_credit_active_flag = 'Y'
+        And (
+          historical_credit_unit Like '%Corporate%'
+          Or historical_credit_unit Like '%Foundation%'
+        ) Then 'CFR'
+      -- NU active assignments
+      When kt.historical_credit_active_flag = 'Y'
+        And historical_credit_unit Not Like '%Kellogg%'
+        And historical_credit_unit Is Not Null
+        Then 'NU'
+      -- Other past KSM staff = (team)
+      When historical_credit_user_id In (
+        Select user_id
+        From ksm_mgrs
+        Where team = 'MG'
+      ) Then 'Unmanaged-MGO'
+      When historical_credit_user_id In (
+        Select user_id
+        From ksm_mgrs
+        Where team = 'AF'
+      ) Then 'Unmanaged-LGO'
+      When historical_credit_user_id In (
+        Select user_id
+        From ksm_mgrs
+        Where team Not In ('AF', 'MG')
+      ) Then 'Unmanaged-KSM'
+      -- Past CFR or NU
       When historical_credit_unit Like '%Corporate%'
         Or historical_credit_unit Like '%Foundation%'
-        Then 'CFR'
-      -- NU assignments
+        Then 'Unmanaged-CFR'
+      When historical_credit_unit Not Like '%Kellogg%'
+        And historical_credit_unit Is Not Null
+        Then 'Unamnaged-NU'
+      -- Fallback unmanaged
+      Else 'Unmanaged-Fallback'
       End
     As managed_hierarchy
   , kt.designation_record_id

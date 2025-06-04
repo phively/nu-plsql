@@ -177,6 +177,7 @@ Level 2 dependencies
 
 --------------------------------------
 -- v_ksm_giving_summary
+-- Drop Materialized View mv_ksm_giving_summary;
 Create Materialized View mv_ksm_giving_summary
 Refresh Complete
 Start With sysdate
