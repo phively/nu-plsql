@@ -32,6 +32,7 @@ From table(dw_pkg_base.tbl_designation_detail) dd
 ;
 
 -- tbl_proposals
+-- Drop Materialized View mv_proposals;
 Create Materialized View mv_proposals
 Refresh Complete
 Start With sysdate
@@ -92,6 +93,7 @@ From table(ksm_pkg_designation.tbl_ksm_designation) des
 --------------------------------------
 -- ksm_pkg_transactions
 -- tbl_transactions
+-- Drop Materialized View mv_transactions;
 Create Materialized View mv_transactions
 Refresh Complete
 Start With sysdate
@@ -155,6 +157,7 @@ From table(ksm_pkg_households.tbl_households) hh
 --------------------------------------
 -- ksm_pkg_gifts
 -- tbl_ksm_transactions
+-- Drop Materialized View mv_ksm_transactions;
 Create Materialized View mv_ksm_transactions
 Refresh Complete
 Start With sysdate

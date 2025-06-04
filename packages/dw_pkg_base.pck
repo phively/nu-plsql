@@ -324,7 +324,7 @@ Type rec_proposal Is Record (
     , active_proposal_manager_salesforce_id dm_alumni.dim_proposal_opportunity.active_proposal_manager_salesforce_id%type
     , active_proposal_manager_name dm_alumni.dim_proposal_opportunity.active_proposal_manager_name%type
     , active_proposal_manager_unit dm_alumni.dim_proposal_opportunity.active_proposal_manager_business_unit%type
-    , historical_pm_salesforce_id stg_alumni.opportunityteammember.id%type
+    , historical_pm_user_id stg_alumni.opportunityteammember.id%type
     , historical_pm_name stg_alumni.opportunityteammember.name%type
     , historical_pm_role stg_alumni.opportunityteammember.teammemberrole%type
     , historical_business_unit stg_alumni.opportunityteammember.ap_business_unit__c%type
@@ -1008,7 +1008,9 @@ Cursor c_proposals Is
       opportunityid
         As opportunity_salesforce_id
       , id
-        As team_member_salesforce_id
+        As opportunity_team_member_salesforce_id
+      , userid
+        As team_member_user_id
       , name
         As team_member_name
       , teammemberrole
@@ -1025,8 +1027,8 @@ Cursor c_proposals Is
   , last_pm As (
     Select
       opportunity_salesforce_id
-      , max(team_member_salesforce_id) keep(dense_rank First Order By end_date Desc, start_date Desc, team_member_role Asc, business_unit Asc, team_member_name Asc)
-        As historical_pm_salesforce_id
+      , max(team_member_user_id) keep(dense_rank First Order By end_date Desc, start_date Desc, team_member_role Asc, business_unit Asc, team_member_name Asc)
+        As historical_pm_user_id
       , max(team_member_name) keep(dense_rank First Order By end_date Desc, start_date Desc, team_member_role Asc, business_unit Asc, team_member_name Asc)
         As historical_pm_name
       , max(team_member_role) keep(dense_rank First Order By end_date Desc, start_date Desc, team_member_role Asc, business_unit Asc, team_member_name Asc)
@@ -1069,7 +1071,7 @@ Cursor c_proposals Is
       As active_proposal_manager_name
     , nullif(dpo.active_proposal_manager_business_unit, '-')
       As active_proposal_manager_unit
-    , last_pm.historical_pm_salesforce_id
+    , last_pm.historical_pm_user_id
     , last_pm.historical_pm_name
     , last_pm.historical_pm_role
     , last_pm.historical_business_unit

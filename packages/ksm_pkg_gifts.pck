@@ -93,7 +93,7 @@ Type rec_transaction Is Record (
       , matched_gift_record_id dm_alumni.dim_opportunity.matched_gift_record_id%type
       , pledge_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
       , linked_proposal_record_id dm_alumni.dim_opportunity.linked_proposal_record_id%type
-      , historical_pm_salesforce_id mv_proposals.historical_pm_salesforce_id%type
+      , historical_pm_user_id mv_proposals.historical_pm_user_id%type
       , historical_pm_name mv_proposals.historical_pm_name%type
       , historical_pm_role mv_proposals.historical_pm_role%type
       , historical_pm_unit mv_proposals.historical_business_unit%type
@@ -123,7 +123,7 @@ Type rec_transaction Is Record (
       , tender_type varchar2(128)
       , min_etl_update_date mv_entity.etl_update_date%type
       , max_etl_update_date mv_entity.etl_update_date%type
-      , historical_credit_user_salesforce_id mv_assignment_history.staff_user_salesforce_id%type
+      , historical_credit_user_id mv_assignment_history.staff_user_salesforce_id%type
       , historical_credit_name mv_assignment_history.staff_name%type
       , historical_credit_assignment_type mv_assignment_history.assignment_type%type
       , historical_credit_unit mv_assignment_history.assignment_business_unit%type
@@ -380,7 +380,7 @@ Cursor c_ksm_transactions Is
         , trans.matched_gift_record_id
         , trans.pledge_record_id
         , trans.linked_proposal_record_id
-        , prop.historical_pm_salesforce_id
+        , prop.historical_pm_user_id
         , prop.historical_pm_name
         , prop.historical_pm_role
         , prop.historical_business_unit
@@ -520,11 +520,11 @@ Cursor c_ksm_transactions Is
       t.*
         -- Historical credit info
       , Case
-          When t.historical_pm_salesforce_id Is Not Null
-            Then t.historical_pm_salesforce_id 
+          When t.historical_pm_user_id Is Not Null
+            Then t.historical_pm_user_id 
           Else mgr_credit.staff_user_salesforce_id
           End
-        As historical_credit_user_salesforce_id
+        As historical_credit_user_id
       , Case
           When t.historical_pm_name Is Not Null
             Then t.historical_pm_name 

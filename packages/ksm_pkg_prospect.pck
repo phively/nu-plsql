@@ -159,9 +159,9 @@ Cursor c_assignment_history Is
   Cross Join table(ksm_pkg_calendar.tbl_current_calendar) cal
   Inner Join entity
     On entity.donor_id = assign.assignee_donor_id
-  Where assign.staff_username Not In (
+  Where assign.staff_user_salesforce_id Not In (
     -- Users to suppress
-    'dmu@attainpartners.com.nu'
+    '005Uz0000015JKoIAM' -- Data Migration User
   )
 ;
 
