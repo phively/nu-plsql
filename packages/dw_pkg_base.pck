@@ -287,7 +287,9 @@ Type rec_assignment Is Record (
     , staff_username stg_alumni.user_tbl.username%type
     , staff_constituent_salesforce_id stg_alumni.user_tbl.contactid%type
     , staff_name stg_alumni.user_tbl.name%type
+    , staff_is_active stg_alumni.user_tbl.isactive%type
     , assignment_type stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_type__c%type
+    , assignment_code varchar2(8)
     , assignment_business_unit stg_alumni.ucinn_ascendv2__assignment__c.ap_business_unit__c%type
     , ksm_flag varchar2(1)
     , assigneee_salesforce_id stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__contact__c%type
@@ -298,6 +300,37 @@ Type rec_assignment Is Record (
     , start_date stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_start_date__c%type
     , end_date stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_end_date__c%type
     , etl_update_date stg_alumni.ucinn_ascendv2__assignment__c.etl_update_date%type
+);
+
+--------------------------------------
+Type rec_proposal Is Record (
+    opportunity_salesforce_id dm_alumni.dim_proposal_opportunity.opportunity_salesforce_id%type
+    , proposal_record_id dm_alumni.dim_proposal_opportunity.proposal_record_id%type
+    , proposal_legacy_id dm_alumni.dim_proposal_opportunity.proposal_legacy_id%type
+    , proposal_strategy_record_id dm_alumni.dim_proposal_opportunity.proposal_strategy_record_id%type
+    , proposal_active_indicator dm_alumni.dim_proposal_opportunity.proposal_active_indicator%type
+    , proposal_stage dm_alumni.dim_proposal_opportunity.proposal_stage%type
+    , proposal_type dm_alumni.dim_proposal_opportunity.proposal_type%type
+    , proposal_name dm_alumni.dim_proposal_opportunity.proposal_name%type
+    , proposal_probability dm_alumni.dim_proposal_opportunity.proposal_probability%type
+    , proposal_amount dm_alumni.dim_proposal_opportunity.proposal_amount%type
+    , proposal_submitted_amount dm_alumni.dim_proposal_opportunity.proposal_submitted_amount%type
+    , proposal_anticipated_amount dm_alumni.dim_proposal_opportunity.proposal_anticipated_amount%type
+    , proposal_funded_amount dm_alumni.dim_proposal_opportunity.proposal_funded_amount%type
+    , proposal_created_date dm_alumni.dim_proposal_opportunity.proposal_created_date%type
+    , proposal_submitted_date dm_alumni.dim_proposal_opportunity.proposal_submitted_date%type
+    , proposal_close_date dm_alumni.dim_proposal_opportunity.proposal_close_date%type
+    , proposal_payment_schedule dm_alumni.dim_proposal_opportunity.proposal_payment_schedule%type
+    , proposal_designation_units dm_alumni.dim_proposal_opportunity.proposal_designation_work_plan_units%type
+    , active_proposal_manager_salesforce_id dm_alumni.dim_proposal_opportunity.active_proposal_manager_salesforce_id%type
+    , active_proposal_manager_name dm_alumni.dim_proposal_opportunity.active_proposal_manager_name%type
+    , active_proposal_manager_unit dm_alumni.dim_proposal_opportunity.active_proposal_manager_business_unit%type
+    , historical_pm_user_id stg_alumni.opportunityteammember.id%type
+    , historical_pm_name stg_alumni.opportunityteammember.name%type
+    , historical_pm_role stg_alumni.opportunityteammember.teammemberrole%type
+    , historical_pm_business_unit stg_alumni.opportunityteammember.ap_business_unit__c%type
+    , historical_pm_is_active stg_alumni.user_tbl.isactive%type
+    , etl_update_date dm_alumni.dim_proposal_opportunity.etl_update_date%type
 );
 
 /*************************************************************************
@@ -316,6 +349,7 @@ Type gift_credit Is Table Of rec_gift_credit;
 Type involvement Is Table Of rec_involvement;
 Type service_indicators Is Table Of rec_service_indicators;
 Type assignments Is Table Of rec_assignment;
+Type proposals Is Table Of rec_proposal;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -356,6 +390,9 @@ Function tbl_service_indicators
 
 Function tbl_assignments
   Return assignments Pipelined;
+
+Function tbl_proposals
+  Return proposals Pipelined;
 
 /*********************** About pipelined functions ***********************
 Q: What is a pipelined function?
@@ -930,8 +967,17 @@ Cursor c_assignments Is
       As staff_constituent_salesforce_id
     , staff.name
       As staff_name
+    , staff.isactive
+      As staff_is_active
     , assign.ucinn_ascendv2__assignment_type__c
       As assignment_type
+    , Case
+        When assign.ucinn_ascendv2__assignment_type__c = 'Primary Relationship Manager'
+          Then 'PRM'
+        When assign.ucinn_ascendv2__assignment_type__c = 'Leadership Annual Gift Manager'
+          Then 'LAGM'
+        End
+      As assignment_code
     , assign.ap_business_unit__c
       As assignment_business_unit      
     , Case When assign.ap_business_unit__c Like '%Kellogg%' Then 'Y' End
@@ -954,6 +1000,99 @@ Cursor c_assignments Is
   From stg_alumni.ucinn_ascendv2__assignment__c assign
   Inner Join stg_alumni.user_tbl staff
     On staff.id = assign.ucinn_ascendv2__assigned_relationship_manager_user__c
+;
+
+--------------------------------------
+Cursor c_proposals Is
+
+  With
+  
+  opportunity_team_member As (
+    Select
+      otm.opportunityid
+        As opportunity_salesforce_id
+      , otm.id
+        As opportunity_team_member_salesforce_id
+      , otm.userid
+        As team_member_user_id
+      , otm.name
+        As team_member_name
+      , otm.teammemberrole
+        As team_member_role
+      , otm.ap_start_date__c
+        As start_date
+      , otm.ap_end_date__c
+        As end_date
+      , staff.isactive
+        As staff_is_active
+      , otm.ap_business_unit__c
+        As business_unit
+    From stg_alumni.opportunityteammember otm
+    Left Join stg_alumni.user_tbl staff
+      On staff.id = otm.userid
+  )
+  
+  , last_pm As (
+    Select
+      opportunity_salesforce_id
+      , max(team_member_user_id) keep(dense_rank First Order By end_date Desc, start_date Desc, team_member_role Asc, business_unit Asc, team_member_name Asc)
+        As historical_pm_user_id
+      , max(team_member_name) keep(dense_rank First Order By end_date Desc, start_date Desc, team_member_role Asc, business_unit Asc, team_member_name Asc)
+        As historical_pm_name
+      , max(team_member_role) keep(dense_rank First Order By end_date Desc, start_date Desc, team_member_role Asc, business_unit Asc, team_member_name Asc)
+        As historical_pm_role
+      , max(business_unit) keep(dense_rank First Order By end_date Desc, start_date Desc, team_member_role Asc, business_unit Asc, team_member_name Asc)
+        As historical_business_unit
+      , max(staff_is_active) keep(dense_rank First Order By end_date Desc, start_date Desc, team_member_role Asc, business_unit Asc, team_member_name Asc)
+        As historical_is_active
+    From opportunity_team_member
+    Where team_member_role = 'Proposal Manager'
+    Group By opportunity_salesforce_id
+  )
+
+  Select
+    nullif(dpo.opportunity_salesforce_id, '-')
+      As opportunity_salesforce_id
+    , nullif(dpo.proposal_record_id, '-')
+      As proposal_record_id
+    , nullif(dpo.proposal_legacy_id, '-')
+      As proposal_legacy_id
+    , nullif(dpo.proposal_strategy_record_id, '-')
+      As proposal_strategy_record_id
+    , dpo.proposal_active_indicator
+    , dpo.proposal_stage
+    , dpo.proposal_type
+    , dpo.proposal_name
+    , dpo.proposal_probability
+    , dpo.proposal_amount
+    , dpo.proposal_submitted_amount
+    , dpo.proposal_anticipated_amount
+    , dpo.proposal_funded_amount
+    , dpo.proposal_created_date
+    , dpo.proposal_submitted_date
+    , dpo.proposal_close_date
+    , nullif(dpo.proposal_payment_schedule, '-')
+      As proposal_payment_schedule
+    , nullif(dpo.proposal_designation_work_plan_units, '-')
+      As proposal_designation_units
+    , nullif(dpo.active_proposal_manager_salesforce_id, '-')
+      As active_proposal_manager_salesforce_id
+    , nullif(dpo.active_proposal_manager_name, '-')
+      As active_proposal_manager_name
+    , nullif(dpo.active_proposal_manager_business_unit, '-')
+      As active_proposal_manager_unit
+    , last_pm.historical_pm_user_id
+    , last_pm.historical_pm_name
+    , last_pm.historical_pm_role
+    , last_pm.historical_business_unit
+      As historical_pm_business_unit
+    , last_pm.historical_is_active
+      As historical_pm_is_active
+    , trunc(dpo.etl_update_date)
+      As etl_update_date
+  From dm_alumni.dim_proposal_opportunity dpo
+  Inner Join last_pm
+    On last_pm.opportunity_salesforce_id = dpo.opportunity_salesforce_id
 ;
 
 /*************************************************************************
@@ -1148,6 +1287,22 @@ Function tbl_assignments
     Close c_assignments;
     For i in 1..(asn.count) Loop
       Pipe row(asn(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_proposals
+  Return proposals Pipelined As
+    -- Declarations
+    prp proposals;
+
+  Begin
+    Open c_proposals;
+      Fetch c_proposals Bulk Collect Into prp;
+    Close c_proposals;
+    For i in 1..(prp.count) Loop
+      Pipe row(prp(i));
     End Loop;
     Return;
   End;

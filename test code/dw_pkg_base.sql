@@ -46,3 +46,7 @@ From table(dw_pkg_base.tbl_service_indicators)
 Select *
 From table(dw_pkg_base.tbl_assignments)
 ;
+
+Select *
+From table(dw_pkg_base.tbl_proposals)
+;

@@ -46,6 +46,7 @@ Type rec_assignment_history Is Record (
   , sort_name dm_alumni.dim_constituent.full_name%type
   , assignment_record_id stg_alumni.ucinn_ascendv2__assignment__c.name%type
   , assignment_type stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_type__c%type
+  , assignment_code varchar2(8)
   , start_date stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_start_date__c%type
   , end_date stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_end_date__c%type
   , is_active_indicator stg_alumni.ucinn_ascendv2__assignment__c.ap_is_active__c%type
@@ -120,43 +121,48 @@ Private cursors -- data definitions
 --------------------------------------
 Cursor c_assignment_history Is
 
-With
+  With
+  
+  entity As (
+    Select *
+    From table(dw_pkg_base.tbl_mini_entity)
+  )
 
-entity As (
-  Select *
-  From table(dw_pkg_base.tbl_mini_entity)
-)
-
-Select
-  entity.household_id
-  , entity.household_primary
-  , assign.assignee_donor_id
-    As donor_id
-  , entity.sort_name
-  , assign.assignment_record_id
-  , assign.assignment_type
-  , assign.start_date
-  , assign.end_date 
-  , assign.is_active_indicator
-  , Case
-      When assign.is_active_indicator = 'true'
-        And (
-          assign.end_date Is Null
-          Or assign.end_date > cal.yesterday
-        )
-        Then 'Y'
-      End
-    As assignment_active_calc
-  , assign.staff_user_salesforce_id
-  , assign.staff_username
-  , assign.staff_name
-  , assign.assignment_business_unit
-  , assign.ksm_flag
-  , assign.etl_update_date
-From table(dw_pkg_base.tbl_assignments) assign
-Cross Join table(ksm_pkg_calendar.tbl_current_calendar) cal
-Inner Join entity
-  On entity.donor_id = assign.assignee_donor_id
+  Select
+    entity.household_id
+    , entity.household_primary
+    , assign.assignee_donor_id
+      As donor_id
+    , entity.sort_name
+    , assign.assignment_record_id
+    , assign.assignment_type
+    , assign.assignment_code
+    , assign.start_date
+    , assign.end_date 
+    , assign.is_active_indicator
+    , Case
+        When assign.is_active_indicator = 'true'
+          And (
+            assign.end_date Is Null
+            Or assign.end_date > cal.yesterday
+          )
+          Then 'Y'
+        End
+      As assignment_active_calc
+    , assign.staff_user_salesforce_id
+    , assign.staff_username
+    , assign.staff_name
+    , assign.assignment_business_unit
+    , assign.ksm_flag
+    , assign.etl_update_date
+  From table(dw_pkg_base.tbl_assignments) assign
+  Cross Join table(ksm_pkg_calendar.tbl_current_calendar) cal
+  Inner Join entity
+    On entity.donor_id = assign.assignee_donor_id
+  Where assign.staff_user_salesforce_id Not In (
+    -- Users to suppress
+    '005Uz0000015JKoIAM' -- Data Migration User
+  )
 ;
 
 --------------------------------------
@@ -173,7 +179,7 @@ Cursor c_assignment_summary Is
     Select * 
     From assign
     Where assign.is_active_indicator = 'true'
-      And assign.assignment_type = 'Primary Relationship Manager'
+      And assign.assignment_code = 'PRM'
   )
 
   , pms As (
@@ -195,7 +201,7 @@ Cursor c_assignment_summary Is
     Select *
     From assign
     Where assign.is_active_indicator = 'true'
-      And assign.assignment_type Like '%Leadership%Gift%Manager%'
+      And assign.assignment_code = 'LAGM'
   )
 
   , lgos As (

@@ -23,6 +23,20 @@ override As (
   From DUAL
 )
 
+, ksm_mgrs As (
+  Select
+    user_id
+    , user_name
+    , donor_id
+    , sort_name
+    , team
+    , start_dt
+    , nvl(stop_dt, to_date('99990101', 'yyyymmdd'))
+      As stop_dt
+    , active_flag
+  From tbl_ksm_gos
+)
+
 Select
   kt.credited_donor_audit
   , mve.donor_id
@@ -55,6 +69,79 @@ Select
   , kt.pledge_record_id
   , kt.payment_schedule
   , kt.linked_proposal_record_id
+  , kt.historical_pm_name
+  , kt.historical_pm_unit
+  , kt.historical_prm_name
+  , kt.historical_prm_unit
+  , kt.historical_lagm_name
+  , kt.historical_lagm_unit
+  , kt.historical_credit_user_id
+  , kt.historical_credit_name
+  , kt.historical_credit_assignment_type
+  , kt.historical_credit_unit
+  , Case
+      -- Unmanaged
+      When historical_credit_user_id Is Null
+        Then 'Unmanaged'
+      -- Active KSM MGOs
+      When historical_credit_user_id In (
+        Select user_id
+        From ksm_mgrs
+        Where team = 'MG'
+          And kt.credit_date Between start_dt And stop_dt
+      ) Then 'MGO'
+      -- Any KSM LGO
+      When historical_credit_user_id In (
+        Select user_id
+        From ksm_mgrs
+        Where team = 'AF'
+          And kt.credit_date Between start_dt And stop_dt
+      ) Then 'LGO'
+      -- Any other KSM staff
+      When historical_credit_user_id In (
+        Select user_id
+        From ksm_mgrs
+        Where team Not In ('AF', 'MG')
+          And kt.credit_date Between start_dt And stop_dt
+      ) Then 'KSM'
+      -- Corporate Foundation Relations
+      When kt.historical_credit_active_flag = 'Y'
+        And (
+          historical_credit_unit Like '%Corporate%'
+          Or historical_credit_unit Like '%Foundation%'
+        ) Then 'CFR'
+      -- NU active assignments
+      When kt.historical_credit_active_flag = 'Y'
+        And historical_credit_unit Not Like '%Kellogg%'
+        And historical_credit_unit Is Not Null
+        Then 'NU'
+      -- Other past KSM staff = (team)
+      When historical_credit_user_id In (
+        Select user_id
+        From ksm_mgrs
+        Where team = 'MG'
+      ) Then 'Unmanaged-MGO'
+      When historical_credit_user_id In (
+        Select user_id
+        From ksm_mgrs
+        Where team = 'AF'
+      ) Then 'Unmanaged-LGO'
+      When historical_credit_user_id In (
+        Select user_id
+        From ksm_mgrs
+        Where team Not In ('AF', 'MG')
+      ) Then 'Unmanaged-KSM'
+      -- Past CFR or NU
+      When historical_credit_unit Like '%Corporate%'
+        Or historical_credit_unit Like '%Foundation%'
+        Then 'Unmanaged-CFR'
+      When historical_credit_unit Not Like '%Kellogg%'
+        And historical_credit_unit Is Not Null
+        Then 'Unamnaged-NU'
+      -- Fallback unmanaged
+      Else 'Unmanaged-Fallback'
+      End
+    As managed_hierarchy
   , kt.designation_record_id
   , kt.designation_status
   , kt.legacy_allocation_code

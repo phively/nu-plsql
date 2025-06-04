@@ -29,6 +29,12 @@ From mv_transactions
 Union
 Select 0, 'mv_assignments', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_assignments
+Union
+Select 0, 'mv_assignment_history', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+From mv_assignment_history
+Union
+Select 0, 'mv_proposals', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+From mv_proposals
 -- 7:40 AM
 Union
 Select 1, 'mv_households', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)

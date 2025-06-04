@@ -7,7 +7,7 @@ Create Materialized View tbl_ksm_gos As
 With
 
 -- Data table; update as needed
-adv_dates As (
+dates As (
   Select 'notarealid' As donor_id, 'notateam' As team, NULL As start_dt, NULL As stop_dt From DUAL
   Union All Select '0000562844', 'MG', to_date('20080808', 'yyyymmdd'), to_date('20150601', 'yyyymmdd') From DUAL
   Union All Select '0000235591', 'MG', to_date('20160501', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
@@ -84,15 +84,113 @@ adv_dates As (
   Union All Select '0000888785', 'AF', to_date('20241118', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
 )
 
+, user_donor_map As (
+  Select NULL As donor_id, NULL As user_id From DUAL
+  Union All Select '0000562844', '005Uz000008gxNUIAY' From DUAL
+  Union All Select '0000235591', '005Uz000008gwc8IAA' From DUAL
+  Union All Select '0000235591', '005Uz000008kAG7IAM' From DUAL
+  Union All Select '0000482962', '005Uz000008gs3EIAQ' From DUAL
+  Union All Select '0000510455', '005Uz000008gwImIAI' From DUAL
+  Union All Select '0000818901', '005Uz000008gvqEIAQ' From DUAL
+  Union All Select '0000752673', '005Uz000008gxCeIAI' From DUAL
+  Union All Select '0000838571', '005Uz000008gxjpIAA' From DUAL
+  Union All Select '0000838656', '005Uz000008gwGOIAY' From DUAL
+  Union All Select '0000364856', '005Uz000007VVCAIA4' From DUAL
+  Union All Select '0000436760', '005Uz000008gxaQIAQ' From DUAL
+  Union All Select '0000292130', '005Uz000001NTiHIAW' From DUAL
+  Union All Select '0000609581', '005Uz000008gwGyIAI' From DUAL
+  Union All Select '0000565395', '005Uz000008gxayIAA' From DUAL
+  Union All Select '0000565395', '005Uz000008kAGVIA2' From DUAL
+  Union All Select '0000565395', '005Uz000009OckDIAS' From DUAL
+  Union All Select '0000634311', '005Uz000008gy0jIAA' From DUAL
+  Union All Select '0000514693', '005Uz000008gxBcIAI' From DUAL
+  Union All Select '0000772350', '005Uz000008gwRlIAI' From DUAL
+  Union All Select '0000220843', '005Uz000008gwRhIAI' From DUAL
+  Union All Select '0000482601', '005Uz000008k9lrIAA' From DUAL
+  Union All Select '0000482601', '005Uz000008gxCVIAY' From DUAL
+  Union All Select '0000768730', '005Uz000008gvr4IAA' From DUAL
+  Union All Select '0000712447', '005Uz000007VVBsIAO' From DUAL
+  Union All Select '0000712447', '005Uz000009OkRcIAK' From DUAL
+  Union All Select '0000837709', '005Uz000008gxjSIAQ' From DUAL
+  Union All Select '0000760399', '005Uz000008gwYHIAY' From DUAL
+  Union All Select '0000760399', '005Uz000009O5KnIAK' From DUAL
+  Union All Select '0000760399', '005Uz000008kAGGIA2' From DUAL
+  Union All Select '0000532713', '005Uz000008gy0IIAQ' From DUAL
+  Union All Select '0000819851', '005Uz000008gwGBIAY' From DUAL
+  Union All Select '0000842004', '005Uz000007VVCEIA4' From DUAL
+  Union All Select '0000740856', '005Uz000008gwHuIAI' From DUAL
+  Union All Select '0000777423', '005Uz000008k9m6IAA' From DUAL
+  Union All Select '0000777423', '005Uz000008gvoYIAQ' From DUAL
+  Union All Select '0000737745', '005Uz000008gvofIAA' From DUAL
+  Union All Select '0000780506', '005Uz000008gwy1IAA' From DUAL
+  Union All Select '0000311972', '005Uz000008gxiTIAQ' From DUAL
+  Union All Select '0000642888', '005Uz000008gy00IAA' From DUAL
+  Union All Select '0000888785', '005Dn000007paupIAA' From DUAL
+  Union All Select '0000767254', '005Uz0000084GCrIAM' From DUAL
+  Union All Select '0000693538', '005Uz000008gwGiIAI' From DUAL
+  Union All Select '0000521222', '005Uz000007VVC8IAO' From DUAL
+  Union All Select '0000897607', '005Uz000008gxNTIAY' From DUAL
+  Union All Select '0000784241', '005Uz000008gwRpIAI' From DUAL
+  Union All Select '0000779347', '005Uz000008gkx2IAA' From DUAL
+  Union All Select '0000664033', '005Uz000008gwasIAA' From DUAL
+  Union All Select '0000841644', '005Uz000008gvsDIAQ' From DUAL
+  Union All Select '0000405472', '005Uz000008gwfJIAQ' From DUAL
+  Union All Select '0000765494', '005Uz000008gwb1IAA' From DUAL
+  Union All Select '0000541522', '005Uz000008gvrWIAQ' From DUAL
+  Union All Select '0000776709', '005Uz000008gwHIIAY' From DUAL
+  Union All Select '0000783777', '005Uz000008gvqTIAQ' From DUAL
+  Union All Select '0000911216', '005Uz000007VVBpIAO' From DUAL
+  Union All Select '0000561243', '005Uz000009OoxpIAC' From DUAL
+  Union All Select '0000561243', '005Uz000008gkwWIAQ' From DUAL
+  Union All Select '0000561243', '005Uz000008k9lUIAQ' From DUAL
+  Union All Select '0000732336', '005Uz000007VVBlIAO' From DUAL
+  Union All Select '0000860423', '005Uz000008gwyGIAQ' From DUAL
+  Union All Select '0000549376', '005Uz000008gxDCIAY' From DUAL
+  Union All Select '0000887951', '005Uz000009OozxIAC' From DUAL
+  Union All Select '0000887951', '005Uz000007VVBkIAO' From DUAL
+  Union All Select '0000529430', '005Uz000008gxiwIAA' From DUAL
+  Union All Select '0000752085', '005Uz000008gpQAIAY' From DUAL
+  Union All Select '0000910689', '005Uz000008gxiUIAQ' From DUAL
+  Union All Select '0000910689', '005Uz000008kAH1IAM' From DUAL
+  Union All Select '0000772028', '005Uz000008gwIVIAY' From DUAL
+  Union All Select '0000296692', '005Uz000008gvsOIAQ' From DUAL
+  Union All Select '0000716237', '005Uz000008gvpyIAA' From DUAL
+  Union All Select '0000565742', '005Uz000008gwyYIAQ' From DUAL
+  Union All Select '0000889424', '005Uz0000082J3ZIAU' From DUAL
+  Union All Select '0000757346', '005Uz000008gkxBIAQ' From DUAL
+  Union All Select '0000562459', '005Uz000008gxAoIAI' From DUAL
+  Union All Select '0000838308', '005Uz000008gwbIIAQ' From DUAL
+  Union All Select '0000444799', '005Uz000008k9lmIAA' From DUAL
+  Union All Select '0000322256', '005Uz000008gxaOIAQ' From DUAL
+  Union All Select '0000809084', '005Uz000007VVCmIAO' From DUAL
+  Union All Select '0000889141', '005Uz000007VVBwIAO' From DUAL
+  Union All Select '0000425673', '005Uz000008gxBXIAY' From DUAL
+  Union All Select '0000686713', '005Uz000008gwHPIAY' From DUAL
+  Union All Select '0000911218', '005Uz000008gxiuIAA' From DUAL
+  Union All Select '0000857030', '005Uz000007VVBrIAO' From DUAL
+  Union All Select '0000633474', '005Uz000008gwG2IAI' From DUAL
+)
+
 Select
-  adv_dates.donor_id
+  dates.donor_id
   , mve.sort_name
-  , team
-  , adv_dates.start_dt
-  , adv_dates.stop_dt
-From adv_dates adv_dates
+  , dates.team
+  , dates.start_dt
+  , dates.stop_dt
+  , Case
+      When stop_dt Is Null Then 'Y'
+      Else 'N'
+      End
+    As active_flag
+  , udm.user_id
+  , utbl.name As user_name
+From dates
 Inner Join mv_entity mve
-  On mve.donor_id = adv_dates.donor_id
+  On mve.donor_id = dates.donor_id
+Left Join user_donor_map udm
+  On udm.donor_id = dates.donor_id
+Left Join stg_alumni.user_tbl utbl
+  On utbl.id = udm.user_id
 Order By mve.sort_name Asc
 ;
 

@@ -31,6 +31,13 @@ Where dt.pledge_or_gift_record_id In ('PN2241905', 'PN2241904')
 ;
 
 Select
+  NULL As "Check total paid amount <= countable amount"
+  , dt.*
+From table(ksm_pkg_gifts.tbl_discounted_transactions) dt
+Where dt.pledge_or_gift_record_id In ('PN2442329', 'PN2347181')
+;
+
+Select
   NULL As "Should be $25M"
   , ua.*
 From table(ksm_pkg_gifts.tbl_unsplit_amounts) ua
@@ -40,6 +47,10 @@ Where ua.pledge_or_gift_record_id = 'PN2482912'
 ---------------------------
 -- mv tests
 ---------------------------
+
+Select count(*)
+From mv_ksm_transactions
+;
 
 Select *
 From mv_ksm_transactions mkt
@@ -126,4 +137,13 @@ Select
   , mkt.*
 From mv_ksm_transactions mkt
 Where mkt.opportunity_record_id In ('PN2463400', 'PN2297936')
+;
+
+Select
+  NULL As "Check bequest hard credit sum < hh_recognition_credit"
+  , mkt.*
+From mv_ksm_transactions mkt
+Where mkt.opportunity_record_id In ('PN2442329', 'PN2347181')
+  And mkt.hard_credit_amount > 0
+Order By mkt.opportunity_record_id, source_type
 ;
