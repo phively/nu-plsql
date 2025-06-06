@@ -110,6 +110,10 @@ Type rec_transaction Is Record (
       , designation_status mv_ksm_designation.designation_status%type
       , legacy_allocation_code mv_ksm_designation.legacy_allocation_code%type
       , designation_name mv_ksm_designation.designation_name%type
+      , fin_fund_id mv_ksm_designation.fin_fund_id%type
+      , fin_department_id mv_ksm_designation.fin_department_id%type
+      , fin_project_id mv_ksm_designation.fin_project_id%type
+      , fin_activity mv_ksm_designation.fin_activity%type
       , ksm_af_flag mv_ksm_designation.ksm_af_flag%type
       , ksm_cru_flag mv_ksm_designation.ksm_cru_flag%type
       , cash_category mv_ksm_designation.cash_category%type
@@ -411,6 +415,10 @@ Cursor c_ksm_transactions Is
         , trans.designation_status
         , trans.legacy_allocation_code
         , trans.designation_name
+        , trans.fin_fund_id
+        , trans.fin_department_id
+        , trans.fin_project_id
+        , trans.fin_activity
         , kdes.ksm_af_flag
         , kdes.ksm_cru_flag
         , Case

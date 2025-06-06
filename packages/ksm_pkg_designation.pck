@@ -69,6 +69,7 @@ Type rec_ksm_designation Is Record (
   , ksm_cru_flag varchar2(1)
   , nu_af_flag dm_alumni.dim_designation.annual_fund_designation_indicator%type
   , fin_fund dm_alumni.dim_designation.fin_fund%type
+  , fin_department_id dm_alumni.dim_designation.designation_fin_department_id%type
   , fin_fund_id dm_alumni.dim_designation.fin_fund%type
   , fin_project_id dm_alumni.dim_designation.fin_project%type
   , fin_activity dm_alumni.dim_designation.designation_activity%type
@@ -316,6 +317,7 @@ Cursor c_ksm_designation Is
     , des.nu_af_flag
     , des.fin_fund
     , des.fin_fund_id
+    , des.fin_department_id
     , des.fin_project_id
     , des.fin_activity
     , des.designation_school

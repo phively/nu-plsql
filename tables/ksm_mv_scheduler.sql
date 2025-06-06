@@ -78,6 +78,7 @@ From table(ksm_pkg_degrees.tbl_entity_ksm_degrees) deg
 --------------------------------------
 -- ksm_pkg_designation
 -- tbl_ksm_designation
+-- Drop Materialized View mv_ksm_designation;
 Create Materialized View mv_ksm_designation
 Refresh Complete
 Start With sysdate
