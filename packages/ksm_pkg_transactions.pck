@@ -51,7 +51,11 @@ Type rec_transaction Is Record (
   , designation_record_id dm_alumni.dim_designation.designation_record_id%type 
   , designation_status dm_alumni.dim_designation.designation_status%type 
   , legacy_allocation_code dm_alumni.dim_designation.legacy_allocation_code%type 
-  , designation_name dm_alumni.dim_designation.designation_name%type 
+  , designation_name dm_alumni.dim_designation.designation_name%type
+  , fin_fund_id dm_alumni.dim_designation.fin_fund%type
+  , fin_department_id dm_alumni.dim_designation.designation_fin_department_id%type
+  , fin_project_id dm_alumni.dim_designation.fin_project%type
+  , fin_activity dm_alumni.dim_designation.designation_activity%type
   , credit_date stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_date_formula__c%type
   , fiscal_year integer
   , entry_date dm_alumni.dim_opportunity.opportunity_entry_date%type
@@ -197,6 +201,10 @@ Cursor c_transactions Is
     , des.designation_status
     , des.legacy_allocation_code
     , des.designation_name
+    , des.fin_fund_id
+    , des.fin_department_id
+    , des.fin_project_id
+    , des.fin_activity
     -- Credit date is from opportunity object for matching gift payments
     , Case
         When gcred.source_type_detail = 'Matching Gift Payment'

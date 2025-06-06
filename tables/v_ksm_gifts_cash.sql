@@ -146,6 +146,10 @@ Select
   , kt.designation_status
   , kt.legacy_allocation_code
   , kt.designation_name
+  , kt.fin_fund_id
+  , kt.fin_department_id
+  , kt.fin_project_id
+  , kt.fin_activity
   , kt.ksm_af_flag
   , kt.ksm_cru_flag
   , kt.cash_category

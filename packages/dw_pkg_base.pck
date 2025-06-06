@@ -138,9 +138,9 @@ Type rec_designation Is Record (
     , legacy_allocation_code dm_alumni.dim_designation.legacy_allocation_code%type
     , fin_fund dm_alumni.dim_designation.fin_fund%type
     , fin_fund_id dm_alumni.dim_designation.fin_fund%type
-    , fin_project_id dm_alumni.dim_designation.fin_project%type
-    , fin_activity dm_alumni.dim_designation.designation_activity%type
     , fin_department_id dm_alumni.dim_designation.designation_fin_department_id%type
+    , fin_project_id dm_alumni.dim_designation.fin_project%type
+    , fin_activity_id dm_alumni.dim_designation.designation_activity%type
     , ksm_flag varchar2(1)
     , nu_af_flag dm_alumni.dim_designation.annual_fund_designation_indicator%type
     , designation_school dm_alumni.dim_designation.designation_school%type
@@ -673,12 +673,12 @@ Cursor c_designation Is
           Then substr(fin_fund, 0, 3)
         End
       As fin_fund_id
-    , fin_project
+    , nullif(designation_fin_department_id, '-')
+      As fin_department_id
+    , nullif(fin_project, '-')
       As fin_project_id
     , nullif(designation_activity, '-')
       As fin_activity
-    , nullif(designation_fin_department_id, '-')
-      As fin_department_id
     , Case
         When designation_school Like '%Kellogg%'
           Or (

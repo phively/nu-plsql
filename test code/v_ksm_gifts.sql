@@ -35,3 +35,4 @@ From v_ksm_gifts_cash c
 Where c.opportunity_record_id In ('PN2442329', 'PN2347181')
   And hard_credit_amount > 0
 Order By c.opportunity_record_id
+;
