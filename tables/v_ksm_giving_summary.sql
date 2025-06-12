@@ -133,6 +133,19 @@ params As (
       As last_ngc_designation
     , sum(ngc.hh_recognition_credit) keep(dense_rank First Order By ngc.credit_date Desc, ngc.tx_id Asc)
       As last_ngc_recognition_credit
+    -- Last KSM pledge
+    , min(Case When ngc.gypm_ind = 'P' Then ngc.tx_id End) keep(dense_rank First Order By ngc.gypm_ind Desc, ngc.credit_date Desc, ngc.tx_id Asc)
+      As last_pledge_tx_id
+    , min(Case When ngc.gypm_ind = 'P' Then ngc.credit_date End) keep(dense_rank First Order By ngc.gypm_ind Desc, ngc.credit_date Desc, ngc.tx_id Asc)
+      As last_pledge_date
+    , min(Case When ngc.gypm_ind = 'P' Then ngc.opportunity_type End) keep(dense_rank First Order By ngc.gypm_ind Desc, ngc.credit_date Desc, ngc.tx_id Asc)
+      As last_pledge_opportunity_type
+    , min(Case When ngc.gypm_ind = 'P' Then ngc.designation_record_id End) keep(dense_rank First Order By ngc.gypm_ind Desc, ngc.credit_date Desc, ngc.tx_id Asc)
+      As last_pledge_designation_id
+    , min(Case When ngc.gypm_ind = 'P' Then ngc.designation_name End) keep(dense_rank First Order By ngc.gypm_ind Desc, ngc.credit_date Desc, ngc.tx_id Asc)
+      As last_pledge_designation
+    , sum(Case When ngc.gypm_ind = 'P' Then ngc.hh_recognition_credit End) keep(dense_rank First Order By ngc.gypm_ind Desc, ngc.credit_date Desc, ngc.tx_id Asc)
+      As last_pledge_recognition_credit
     -- Largest KSM NGC
     , max(ngc.tx_id)
       keep(dense_rank First Order By ngc.unsplit_amount Desc, ngc.hh_recognition_credit Desc, ngc.credit_date Desc, ngc.tx_id Desc, ngc.designation_name Asc)
@@ -197,6 +210,12 @@ Select
   , ngc.ngc_pfy3
   , ngc.ngc_pfy4
   , ngc.ngc_pfy5
+  , cash.cash_cfy
+  , cash.cash_pfy1
+  , cash.cash_pfy2
+  , cash.cash_pfy3
+  , cash.cash_pfy4
+  , cash.cash_pfy5
   , cash.expendable_cfy
   , cash.expendable_pfy1
   , cash.expendable_pfy2
@@ -220,6 +239,12 @@ Select
   , cash.last_cash_designation_id
   , cash.last_cash_designation
   , cash.last_cash_recognition_credit
+  , ngc.last_pledge_tx_id
+  , ngc.last_pledge_date
+  , ngc.last_pledge_opportunity_type
+  , ngc.last_pledge_designation_id
+  , ngc.last_pledge_designation
+  , ngc.last_pledge_recognition_credit
   -- AF status categorizer
   , Case
       When expendable_cfy > 0 Then 'Donor'

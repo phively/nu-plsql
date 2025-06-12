@@ -137,7 +137,7 @@ Select
         Then 'Unmanaged-CFR'
       When historical_credit_unit Not Like '%Kellogg%'
         And historical_credit_unit Is Not Null
-        Then 'Unamnaged-NU'
+        Then 'Unmanaged-NU'
       -- Fallback unmanaged
       Else 'Unmanaged-Fallback'
       End
