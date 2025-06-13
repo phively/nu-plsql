@@ -21,6 +21,7 @@ Select
   , kt.tender_type
   , kt.designation_record_id
   , kt.designation_name
+  , kt.credit_receipt_number
   , kt.fin_fund_id
   , kt.fin_department_id
   , kt.fin_project_id
