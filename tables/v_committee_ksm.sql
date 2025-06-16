@@ -1,4 +1,13 @@
 /*************************************************************************
+Aggregated committee helper views
+*************************************************************************/
+
+Create Or Replace View v_committees_concat As
+Select *
+From table(ksm_pkg_committee.tbl_committees_concat)
+;
+
+/*************************************************************************
 Non-aggregated committee helper views
 *************************************************************************/
 

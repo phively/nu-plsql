@@ -20,3 +20,8 @@ From ksm_pkg_committee.tbl_committee_members('COM-U')
 Select *
 From ksm_pkg_committee.tbl_committee_members('committee_gab')
 ;
+
+-- Concatenated committees
+Select *
+From table(ksm_pkg_committee.tbl_committees_concat)
+;
