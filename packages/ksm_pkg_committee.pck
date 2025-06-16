@@ -72,11 +72,19 @@ Type rec_committee_member Is Record (
     , etl_update_date dm_alumni.dim_involvement.etl_update_date%type
 );
 
+--------------------------------------
+Type rec_committees_concat Is Record (
+  donor_id dm_alumni.dim_involvement.constituent_donor_id%type
+  , committees_and_roles varchar2(1600)
+  , committee_start_dates varchar2(500)
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
 
 Type committee_members Is Table Of rec_committee_member;
+Type committees_concat Is Table Of rec_committees_concat;
 
 /*************************************************************************
 Public function declarations
@@ -95,10 +103,15 @@ Function get_numeric_constant(
 Public pipelined functions declarations
 *************************************************************************/
 
+--------------------------------------
 -- Return committee members by committee code
 Function tbl_committee_members(
   my_involvement_cd In varchar2
 ) Return committee_members Pipelined;
+
+--------------------------------------
+Function tbl_committees_concat
+  Return committees_concat Pipelined;
 
 End ksm_pkg_committee;
 /
@@ -131,8 +144,65 @@ Cursor c_committee_member(my_involvement_cd In varchar2) Is
   From mv_involvement inv
   Where inv.involvement_status = 'Current'
     And inv.involvement_code = my_involvement_cd
-  ;
+;
 
+--------------------------------------
+Cursor c_committees_concat Is
+
+  With
+
+  cmte As (
+    Select
+      inv.constituent_donor_id
+      , inv.constituent_name
+      , inv.involvement_record_id
+      , inv.involvement_code
+      , inv.involvement_name
+      , inv.involvement_status
+      , inv.involvement_type
+      , inv.involvement_role
+      , inv.involvement_business_unit
+      , ksm_pkg_calendar.get_fiscal_year(inv.involvement_start_date)
+        As involvement_start_fy
+      , ksm_pkg_calendar.get_fiscal_year(inv.involvement_end_date)
+        As involvement_end_fy
+      , inv.involvement_start_date
+      , inv.involvement_end_date
+      , inv.involvement_comment
+      , inv.etl_update_date
+    From mv_involvement inv
+    Where inv.involvement_status = 'Current'
+      And inv.involvement_code In (
+        Select ksm_pkg_committee.get_string_constant('committee_gab') From DUAL
+        Union Select ksm_pkg_committee.get_string_constant('committee_kac') From DUAL
+        Union Select ksm_pkg_committee.get_string_constant('committee_phs') From DUAL
+        Union Select ksm_pkg_committee.get_string_constant('committee_kfn') From DUAL
+        Union Select ksm_pkg_committee.get_string_constant('committee_realEstCouncil') From DUAL
+        Union Select ksm_pkg_committee.get_string_constant('committee_amp') From DUAL
+        Union Select ksm_pkg_committee.get_string_constant('committee_trustee') From DUAL
+        Union Select ksm_pkg_committee.get_string_constant('committee_healthcare') From DUAL
+        Union Select ksm_pkg_committee.get_string_constant('committee_privateEquity') From DUAL
+        Union Select ksm_pkg_committee.get_string_constant('committee_pe_asia') From DUAL
+        Union Select ksm_pkg_committee.get_string_constant('committee_asia') From DUAL
+        Union Select ksm_pkg_committee.get_string_constant('committee_mbai') From DUAL
+        Union Select ksm_pkg_committee.get_string_constant('committee_yab') From DUAL
+        Union Select ksm_pkg_committee.get_string_constant('committee_tech') From DUAL
+      )
+    )
+    
+    Select
+      constituent_donor_id As donor_id
+      , Listagg(
+          trim(involvement_name || ' ' || involvement_role)
+          , '; ' || chr(13)
+        ) Within Group (Order By involvement_start_date, involvement_name, involvement_record_id)
+        As committees_and_roles
+      , Listagg(to_char(involvement_start_date, 'yyyy-mm-dd'), '; ' || chr(13)) Within Group (Order By involvement_start_date, involvement_name, involvement_record_id)
+        As committee_start_dates
+    From cmte
+    Group By constituent_donor_id
+;
+    
 /*************************************************************************
 Functions
 *************************************************************************/
@@ -207,6 +277,22 @@ Function tbl_committee_members(my_involvement_cd In varchar2)
     Close c_committee_member;
     For i in 1..(committees.count) Loop
       Pipe row(committees(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_committees_concat
+  Return committees_concat Pipelined As
+    -- Declarations
+    cc committees_concat;
+
+  Begin
+    Open c_committees_concat;
+      Fetch c_committees_concat Bulk Collect Into cc;
+    Close c_committees_concat;
+    For i in 1..(cc.count) Loop
+      Pipe row(cc(i));
     End Loop;
     Return;
   End;
