@@ -137,16 +137,27 @@ Function tbl_proposal_dates
   Return t_proposal_dates Pipelined;
   
 -- Table functions for each of the MGO metrics
-Function tbl_funded_count
+Function tbl_funded_count(
+    ask_amt number default metrics_pkg.mg_ask_amt
+    , funded_count number default metrics_pkg.mg_funded_count
+  )
   Return t_funded_credit Pipelined;
 
-Function tbl_funded_dollars
+Function tbl_funded_dollars(
+    ask_amt number default metrics_pkg.mg_ask_amt
+    , granted_amt number default metrics_pkg.mg_granted_amt
+  )
   Return t_funded_dollars Pipelined;
 
-Function tbl_asked_count
+Function tbl_asked_count(
+    ask_amt number default metrics_pkg.mg_ask_amt
+  )
   Return t_ask_assist_credit Pipelined;
 
-Function tbl_asked_count_ksm
+Function tbl_asked_count_ksm(
+    ask_amt_ksm_plg number default metrics_pkg.mg_ask_amt_ksm_plg
+    , ask_amt_ksm_outright number default metrics_pkg.mg_ask_amt_ksm_outright
+  )
   Return t_ask_assist_credit Pipelined;
 
 Function tbl_contact_reports
@@ -242,15 +253,18 @@ Cursor c_proposal_dates Is
 -- 3 clones, at 138-204, 265-331, 392-458
 -- Credit for asked & funded proposals
 -- Count for funded proposal goal 1
-Cursor c_funded_count Is
+Cursor c_funded_count(
+      ask_amt_in In number
+      , funded_count_in In number
+    ) Is
   With
   proposals_funded_count As (
     -- Must be proposal manager, funded status, and above the ask & funded credit thresholds
     Select *
     From table(tbl_universal_proposals_data)
     Where assignment_type = 'PA' -- Proposal Manager
-      And ask_amt >= metrics_pkg.mg_ask_amt
-      And granted_amt >= metrics_pkg.mg_funded_count
+      And ask_amt >= ask_amt_in
+      And granted_amt >= funded_count_in
       And proposal_status_code = '7' -- Only funded
   )
   , funded_count As (
@@ -286,15 +300,18 @@ Cursor c_funded_count Is
 -- Refactor goal 3 subqueries in lines 848-982
 -- 3 clones, at 984-1170, 1120-1254, 1256-1390
 -- Gift credit for funded proposal goal 3
-Cursor c_funded_dollars Is
+Cursor c_funded_dollars(
+    ask_amt_in In number
+    , granted_amt_in In number
+  ) Is
   With
   proposals_funded_cr As (
     Select
       upd.*
       -- Must be proposal manager, funded status, and above the ask & granted amount thresholds
       , Case
-          When ask_amt >= metrics_pkg.mg_ask_amt
-            And granted_amt >= metrics_pkg.mg_granted_amt
+          When ask_amt >= ask_amt_in
+            And granted_amt >= granted_amt_in
             Then 'Y'
           Else 'N'
         End
@@ -349,14 +366,16 @@ Cursor c_funded_dollars Is
 -- Refactor goal 2 subqueries in lines 518-590
 -- 3 clones, at 602-674, 686-758, 769-841
 -- Count for asked proposal goal 2
-Cursor c_asked_count Is
+Cursor c_asked_count(
+    ask_amt_in In number
+  ) Is
   -- Must be proposal manager and above the ask credit threshold
   With
   proposals_asked_count As (
     Select *
     From table(tbl_universal_proposals_data)
     Where assignment_type = 'PA' -- Proposal Manager
-      And ask_amt >= metrics_pkg.mg_ask_amt
+      And ask_amt >= ask_amt_in
   )
   , asked_count As (
       -- 1st priority - Look across all proposal managers on a proposal (inactive OR active).
@@ -403,7 +422,10 @@ Cursor c_asked_count Is
 
 -- KSM asked count: asks must be for an outright gift >= mg_ask_amt_ksm_outright
 -- or for a pledge >= mg_ask_amt_ksm_plg
-Cursor c_asked_count_ksm Is
+Cursor c_asked_count_ksm(
+    ask_amt_ksm_plg_in In number
+    , ask_amt_ksm_outright_in In number
+  ) Is
   -- Must be proposal manager and above the ask credit threshold
   With
   proposals_asked_count As (
@@ -412,10 +434,10 @@ Cursor c_asked_count_ksm Is
     Where assignment_type = 'PA' -- Proposal Manager
       And (
         -- Any gift type above overall threshold
-        ask_amt >= metrics_pkg.mg_ask_amt_ksm_plg
+        ask_amt >= ask_amt_ksm_plg_in
         -- Outright asks above outright threshold
         Or (
-          ask_amt >= metrics_pkg.mg_ask_amt_ksm_outright
+          ask_amt >= ask_amt_ksm_outright_in
           And outright_gift_proposal = 'Y'
         )
       )
@@ -472,15 +494,15 @@ Cursor c_contact_reports Is
     , contact_purpose_code
     , extract(year From contact_date)
       As cal_year
-    , rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(contact_date)
+    , rpt_pbh634.ksm_pkg_calendar.get_fiscal_year(contact_date)
       As fiscal_year
     , extract(month From contact_date)
       As cal_month
-    , rpt_pbh634.ksm_pkg_tmp.get_quarter(contact_date, 'fisc')
+    , rpt_pbh634.ksm_pkg_calendar.get_quarter(contact_date, 'fisc')
       As fiscal_qtr
-    , rpt_pbh634.ksm_pkg_tmp.get_quarter(contact_date, 'perf')
+    , rpt_pbh634.ksm_pkg_calendar.get_quarter(contact_date, 'perf')
       As perf_quarter
-    , rpt_pbh634.ksm_pkg_tmp.get_performance_year(contact_date)
+    , rpt_pbh634.ksm_pkg_calendar.get_performance_year(contact_date)
       As perf_year -- performance year
   From contact_report
   Where contact_type = 'V' -- Only count visits
@@ -606,13 +628,19 @@ Function tbl_proposal_dates
   End;
 
 -- Pipelined function returning proposal funded data
-Function tbl_funded_count
+Function tbl_funded_count(
+    ask_amt number default metrics_pkg.mg_ask_amt
+    , funded_count number default metrics_pkg.mg_funded_count
+  )
   Return t_funded_credit Pipelined As
     -- Declarations
     pd t_funded_credit;
 
   Begin
-    Open c_funded_count; -- Annual Fund allocations cursor
+    Open c_funded_count(
+      ask_amt_in => ask_amt
+      , funded_count_in => funded_count
+    ); -- Annual Fund allocations cursor
       Fetch c_funded_count Bulk Collect Into pd;
     Close c_funded_count;
     -- Pipe out the data
@@ -623,13 +651,19 @@ Function tbl_funded_count
   End;
 
 -- Pipelined function returning proposal funded amounts data
-Function tbl_funded_dollars
+Function tbl_funded_dollars(
+    ask_amt number default metrics_pkg.mg_ask_amt
+    , granted_amt number default metrics_pkg.mg_granted_amt
+  )
   Return t_funded_dollars Pipelined As
     -- Declarations
     pd t_funded_dollars;
 
   Begin
-    Open c_funded_dollars; -- Annual Fund allocations cursor
+    Open c_funded_dollars(
+    ask_amt_in => ask_amt
+    , granted_amt_in => granted_amt
+  ); -- Annual Fund allocations cursor
       Fetch c_funded_dollars Bulk Collect Into pd;
     Close c_funded_dollars;
     -- Pipe out the data
@@ -640,13 +674,17 @@ Function tbl_funded_dollars
   End;
 
 -- Pipelined function returning proposal asked data
-Function tbl_asked_count
+Function tbl_asked_count(
+    ask_amt number default metrics_pkg.mg_ask_amt
+  )
   Return t_ask_assist_credit Pipelined As
     -- Declarations
     pd t_ask_assist_credit;
 
   Begin
-    Open c_asked_count; -- Annual Fund allocations cursor
+    Open c_asked_count(
+      ask_amt_in => ask_amt
+    ); -- Annual Fund allocations cursor
       Fetch c_asked_count Bulk Collect Into pd;
     Close c_asked_count;
     -- Pipe out the data
@@ -656,13 +694,19 @@ Function tbl_asked_count
     Return;
   End;
   
-Function tbl_asked_count_ksm
+Function tbl_asked_count_ksm(
+    ask_amt_ksm_plg number default metrics_pkg.mg_ask_amt_ksm_plg
+    , ask_amt_ksm_outright number default metrics_pkg.mg_ask_amt_ksm_outright
+  )
   Return t_ask_assist_credit Pipelined As
     -- Declarations
     pd t_ask_assist_credit;
 
   Begin
-    Open c_asked_count_ksm; -- Annual Fund allocations cursor
+    Open c_asked_count_ksm(
+      ask_amt_ksm_plg_in => ask_amt_ksm_plg
+      , ask_amt_ksm_outright_in => ask_amt_ksm_outright
+    ); -- Annual Fund allocations cursor
       Fetch c_asked_count_ksm Bulk Collect Into pd;
     Close c_asked_count_ksm;
     -- Pipe out the data
