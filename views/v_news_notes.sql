@@ -1,3 +1,5 @@
+--- News and Notes for CATconnect 6.18.25
+
 create or replace view v_news_notes as 
 
 with news as (select n.ap_constituent__c,
