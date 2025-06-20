@@ -9,6 +9,8 @@ attr_cash As (
     , Case
         When substr(managed_hierarchy, 1, 9) = 'Unmanaged'
           Then 'Unmanaged'
+        When managed_hierarchy = 'CFR'
+          Then 'NU'
         Else managed_hierarchy
         End
       As managed_grp
@@ -21,10 +23,10 @@ attr_cash As (
     , attr_cash.household_id
     , attr_cash.fiscal_year
     , attr_cash.managed_grp
-    , sum(attr_cash.hard_credit_amount)
-      As sum_hard_credit_amount
-    , sum(Case When attr_cash.fytd_indicator = 'Y' Then attr_cash.hard_credit_amount Else 0 End)
-      As sum_hard_credit_amount_ytd
+    , sum(attr_cash.cash_countable_amount)
+      As sum_cash_countable_amount
+    , sum(Case When attr_cash.fytd_indicator = 'Y' Then attr_cash.cash_countable_amount Else 0 End)
+      As sum_cash_countable_amount_ytd
     , count(attr_cash.household_id) Over(Partition By cash_category, attr_cash.household_id, fiscal_year)
       As n_managed_in_group
   From attr_cash
@@ -44,11 +46,11 @@ attr_cash As (
       , household_id
       , fiscal_year
       , managed_grp
-      , sum_hard_credit_amount
+      , sum_cash_countable_amount
       , n_managed_in_group
   From grouped_cash
   ) Pivot (
-    sum(sum_hard_credit_amount)
+    sum(sum_cash_countable_amount)
     For managed_grp In ('Unmanaged', 'MGO', 'LGO', 'KSM', 'NU')
   )
 )
@@ -62,41 +64,41 @@ attr_cash As (
       , household_id
       , fiscal_year
       , managed_grp
-      , sum_hard_credit_amount_ytd
+      , sum_cash_countable_amount_ytd
       , n_managed_in_group
   From grouped_cash
   ) Pivot (
-    sum(sum_hard_credit_amount_ytd)
+    sum(sum_cash_countable_amount_ytd)
     For managed_grp In ('Unmanaged', 'MGO', 'LGO', 'KSM', 'NU')
   )
 )
 
 , pivot_retention As (
-  -- Pivot sum(hard_credit_amount) by fiscal year, to compute retained status
+  -- Pivot sum(cash_countable_amount) by fiscal year, to compute retained status
   Select *
   From (
     Select
       household_id
       , fiscal_year
-      , sum_hard_credit_amount
+      , sum_cash_countable_amount
     From grouped_cash
   ) Pivot (
-    sum(sum_hard_credit_amount)
+    sum(sum_cash_countable_amount)
     For fiscal_year In (2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030)
   )
 )
 
 , pivot_retention_ytd As (
-  -- Pivot sum(hard_credit_amount) by fiscal year, to compute retained status
+  -- Pivot sum(cash_countable_amount) by fiscal year, to compute retained status
   Select *
   From (
     Select
       household_id
       , fiscal_year
-      , sum_hard_credit_amount_ytd
+      , sum_cash_countable_amount_ytd
     From grouped_cash
   ) Pivot (
-    sum(sum_hard_credit_amount_ytd)
+    sum(sum_cash_countable_amount_ytd)
     For fiscal_year In (2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030)
   )
 )
@@ -319,7 +321,7 @@ attr_cash As (
 
 , boards_hh As (
   Select
-    hh.household_id
+    boards.household_id
     , boards.fiscal_year
     , sum(boards.total_dues)
       As total_dues_hh
@@ -332,13 +334,11 @@ attr_cash As (
     , count(boards.kac) As kac
     , count(boards.kwlc) As kwlc
   From boards
-  Inner Join mv_households hh
-    On hh.household_id = boards.household_id
   Group By
-    hh.household_id
+    boards.household_id
     , boards.fiscal_year
   Order By
-    hh.household_id Asc
+    boards.household_id Asc
     , boards.fiscal_year Asc
 )
 
@@ -363,7 +363,7 @@ attr_cash As (
         End
       As total_dues_hh
     -- Board dues: first take from unmanaged, then KSM, then NU, then MGO, then LGO
-    -- For expendable, board_amt is at least sum_hard_credit_amount up to total_dues_hh
+    -- For expendable, board_amt is at least sum_cash_countable_amount up to total_dues_hh
     , Case
         When cash_category = 'Expendable'
           And total_dues_hh Is Not Null
@@ -497,7 +497,7 @@ attr_cash As (
     Select *
     From prefinal_data
     Unpivot (
-      hard_credit_amount
+      cash_countable_amount
       For managed_grp In ("Boards", "Unmanaged", "KSM", "NU", "MGO", "LGO")
     )
   ) unpiv
@@ -531,7 +531,7 @@ attr_cash As (
         End
       As total_dues_hh
     -- Board dues: first take from unmanaged, then KSM, then NU, then MGO, then LGO
-    -- For expendable, board_amt is at least sum_hard_credit_amount up to total_dues_hh
+    -- For expendable, board_amt is at least sum_cash_countable_amount up to total_dues_hh
     , Case
         When cash_category = 'Expendable'
           And total_dues_hh Is Not Null
@@ -656,7 +656,7 @@ attr_cash As (
     Select *
     From prefinal_data_ytd
     Unpivot (
-      hard_credit_amount
+      cash_countable_amount
       For managed_grp In ("Boards", "Unmanaged", "KSM", "NU", "MGO", "LGO")
     )
   ) unpiv
@@ -692,7 +692,7 @@ Select
   , f.m
   , f.l
   , f.managed_grp
-  , f.hard_credit_amount
+  , f.cash_countable_amount
   , f.retained_cfy
   , f.retained_cfy_year
   , f.retained_nfy
@@ -710,8 +710,8 @@ Select
     As ytd_m
   , fy.l
     As ytd_l
-  , fy.hard_credit_amount
-    As ytd_hard_credit_amount
+  , fy.cash_countable_amount
+    As ytd_cash_countable_amount
   , fy.retained_cfy
     As ytd_retained_cfy
   , fy.retained_cfy_year
