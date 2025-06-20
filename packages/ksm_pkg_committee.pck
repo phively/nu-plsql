@@ -174,23 +174,23 @@ Cursor c_committees_all Is
     , inv.involvement_comment
     , inv.etl_update_date
   From mv_involvement inv
-  Where inv.involvement_status = 'Current'
-    And inv.involvement_code In (
-      Select ksm_pkg_committee.get_string_constant('committee_gab') From DUAL
-      Union Select ksm_pkg_committee.get_string_constant('committee_kac') From DUAL
-      Union Select ksm_pkg_committee.get_string_constant('committee_phs') From DUAL
-      Union Select ksm_pkg_committee.get_string_constant('committee_kfn') From DUAL
-      Union Select ksm_pkg_committee.get_string_constant('committee_realEstCouncil') From DUAL
-      Union Select ksm_pkg_committee.get_string_constant('committee_amp') From DUAL
-      Union Select ksm_pkg_committee.get_string_constant('committee_trustee') From DUAL
-      Union Select ksm_pkg_committee.get_string_constant('committee_healthcare') From DUAL
-      Union Select ksm_pkg_committee.get_string_constant('committee_privateEquity') From DUAL
-      Union Select ksm_pkg_committee.get_string_constant('committee_pe_asia') From DUAL
-      Union Select ksm_pkg_committee.get_string_constant('committee_asia') From DUAL
-      Union Select ksm_pkg_committee.get_string_constant('committee_mbai') From DUAL
-      Union Select ksm_pkg_committee.get_string_constant('committee_yab') From DUAL
-      Union Select ksm_pkg_committee.get_string_constant('committee_tech') From DUAL
-    )
+  Where inv.involvement_code In (
+    Select ksm_pkg_committee.get_string_constant('committee_gab') From DUAL
+    Union Select ksm_pkg_committee.get_string_constant('committee_kac') From DUAL
+    Union Select ksm_pkg_committee.get_string_constant('committee_phs') From DUAL
+    Union Select ksm_pkg_committee.get_string_constant('committee_kfn') From DUAL
+    Union Select ksm_pkg_committee.get_string_constant('committee_realEstCouncil') From DUAL
+    Union Select ksm_pkg_committee.get_string_constant('committee_amp') From DUAL
+    Union Select ksm_pkg_committee.get_string_constant('committee_trustee') From DUAL
+    Union Select ksm_pkg_committee.get_string_constant('committee_healthcare') From DUAL
+    Union Select ksm_pkg_committee.get_string_constant('committee_privateEquity') From DUAL
+    Union Select ksm_pkg_committee.get_string_constant('committee_pe_asia') From DUAL
+    Union Select ksm_pkg_committee.get_string_constant('committee_asia') From DUAL
+    Union Select ksm_pkg_committee.get_string_constant('committee_mbai') From DUAL
+    Union Select ksm_pkg_committee.get_string_constant('committee_yab') From DUAL
+    Union Select ksm_pkg_committee.get_string_constant('committee_tech') From DUAL
+    Union Select ksm_pkg_committee.get_string_constant('committee_womensLeadership') From DUAL
+  )
 ;
 
 --------------------------------------
@@ -206,6 +206,7 @@ Cursor c_committees_concat Is
       , Listagg(to_char(involvement_start_date, 'yyyy-mm-dd'), '; ' || chr(13)) Within Group (Order By involvement_start_date, involvement_name, involvement_record_id)
         As committee_start_dates
     From table(ksm_pkg_committee.tbl_committees_all) cmte
+    Where cmte.involvement_status = 'Current'
     Group By constituent_donor_id
 ;
     
