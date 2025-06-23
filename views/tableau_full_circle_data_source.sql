@@ -1,6 +1,6 @@
 -- Combines proposal and giving data for campaign totals
 
-Create Or Replace View vt_campaign_data_src As
+Create Or Replace View tableau_full_circle_data_source As
 
 With
 
@@ -10,12 +10,13 @@ With
 
 params As (
   Select
-    to_date('20210901', 'yyyymmdd') As campaign_start_dt
+    to_date(
+      -- KFC campaign start FY
+      to_char(ksm_pkg_gifts.get_numeric_constant('campaign_kfc_start_fy') - 1)
+      || '0901'
+      , 'yyyymmdd'
+    ) As campaign_start_dt
   From DUAL
-)
-
-, gift_excl As (
-  Select '0002872022' As excl From DUAL -- Complexity Institute
 )
 
 , dummydata As (
@@ -34,44 +35,30 @@ params As (
 -- Do not edit below this
 -------------------------
 
-, prs As (
-  Select
-    id_number
-    , Case When prospect_id <> 0
-        Then prospect_id
-      End
-      As prospect_id
-  From nu_prs_trp_prospect
-)
-
-
-
 (
 Select
   'Giving' As data_source
-  , gpc.src_donor_id As src_donor_or_hhid
-  , gpc.id_number
-  , gpc.report_name
-  , prs.prospect_id
-  , gpc.rcpt_or_plg_number As rcpt_or_proposal_id
-  , gpc.transaction_type
+  , ngc.source_donor_id
+  , ngc.source_donor_name
+  , ngc.donor_id
+  , ngc.sort_name
+  , ngc.opportunity_record_id As opportunity_or_proposal_id
+  , ngc.source_type
+  , ngc.source_type_detail
   , NULL As proposal_status
   , NULL As ask_date
-  , gpc.date_of_record As date_of_record_or_close_dt
+  , ngc.credit_date As credit_date_or_close_dt
+  , ngc.fiscal_year As fiscal_year
   , NULL As ask_amount
-  , gpc.amount As legal_or_anticipated_amt
-  , gpc.allocation_name As alloc_or_proposal
-  , gpc.person_or_org
-From rpt_pbh634.v_ksm_giving_post_campaign_ytd gpc
+  , ngc.hard_credit_amount As hard_credit_or_anticipated_amt
+  , ngc.designation_name As designation_or_proposal
+  , ngc.person_or_org
+  , ngc.full_circle_campaign_priority
+From v_ksm_gifts_ngc ngc
 Cross Join params
-Left Join prs
-  On prs.id_number = gpc.id_number
 -- Include/exclude
-Where gpc.date_of_record >= params.campaign_start_dt
-  And gpc.rcpt_or_plg_number Not In (
-    Select excl From gift_excl
-  )
-) Union (
+Where ngc.full_circle_campaign_priority Is Not Null
+/*) Union (
 Select
   'Proposal' As data_source
   , hhf.household_id As src_donor_or_hhid
@@ -83,10 +70,12 @@ Select
   , prp.proposal_status
   , prp.ask_date
   , prp.close_date As date_of_record_or_close_dt
+  , As fiscal_year
   , prp.total_ask_amt
   , prp.total_anticipated_amt As legal_or_anticipated_amt
   , prp.proposal_description As alloc_or_proposal
   , hhf.person_or_org
+  , NULL As full_circle_campaign_priority
 From rpt_pbh634.vt_ksm_proposal_pipeline prp
 Cross Join params
 Inner Join v_entity_ksm_households_fast hhf
@@ -94,10 +83,11 @@ Inner Join v_entity_ksm_households_fast hhf
 -- Include/exclude
 Where prp.close_date >= params.campaign_start_dt
   And prp.proposal_active_calc = 'Active'
-) Union (
+*/) Union (
 -- Dummy proposals
 Select
   'Dummy' As data_source
+  , NULL
   , NULL
   , NULL
   , NULL
@@ -108,7 +98,9 @@ Select
   , NULL
   , NULL
   , NULL
+  , NULL
   , amount As legal_or_anticipated_amt
+  , NULL
   , NULL
   , NULL
 From dummydata
