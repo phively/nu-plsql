@@ -4,7 +4,7 @@ Create Or Replace Package ksm_pkg_proposals Is
 Author  : PBH634
 Created : 6/23/2025
 Purpose : Consolidated proposals: proposal + opportunity + prospect info
-Dependencies: dw_pkg_base
+Dependencies: dw_pkg_base, ksm_pkg_calendar
 
 Suggested naming conventions:
   Pure functions: [function type]_[description]
@@ -30,6 +30,7 @@ Type rec_proposal Is Record (
     , household_id dm_alumni.dim_constituent.constituent_household_account_salesforce_id%type
     , household_primary dm_alumni.dim_constituent.household_primary_constituent_indicator%type
     , donor_id dm_alumni.fact_proposal_opportunity.constituent_donor_id%type
+    , full_name dm_alumni.dim_constituent.full_name%type
     , sort_name dm_alumni.dim_constituent.full_name%type
     , institutional_suffix dm_alumni.dim_constituent.institutional_suffix%type
     , is_deceased_indicator dm_alumni.dim_constituent.is_deceased_indicator%type
@@ -47,6 +48,7 @@ Type rec_proposal Is Record (
     , proposal_created_date dm_alumni.dim_proposal_opportunity.proposal_created_date%type
     , proposal_submitted_date dm_alumni.dim_proposal_opportunity.proposal_submitted_date%type
     , proposal_close_date dm_alumni.dim_proposal_opportunity.proposal_close_date%type
+    , proposal_close_fy integer
     , proposal_payment_schedule dm_alumni.dim_proposal_opportunity.proposal_payment_schedule%type
     , proposal_designation_units dm_alumni.dim_proposal_opportunity.proposal_designation_work_plan_units%type
     , active_proposal_manager_salesforce_id dm_alumni.dim_proposal_opportunity.active_proposal_manager_salesforce_id%type
@@ -110,6 +112,7 @@ Cursor c_proposals Is
     , me.household_id
     , me.household_primary
     , prop.donor_id
+    , me.full_name
     , me.sort_name
     , me.institutional_suffix
     , me.is_deceased_indicator
@@ -127,6 +130,8 @@ Cursor c_proposals Is
     , prop.proposal_created_date
     , prop.proposal_submitted_date
     , prop.proposal_close_date
+    , ksm_pkg_calendar.get_fiscal_year(prop.proposal_close_date)
+      As proposal_close_fy
     , prop.proposal_payment_schedule
     , prop.proposal_designation_units
     , prop.active_proposal_manager_salesforce_id

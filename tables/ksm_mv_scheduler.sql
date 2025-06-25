@@ -109,7 +109,6 @@ Select
 From table(ksm_pkg_proposals.tbl_proposals) prp
 ;
 
-
 --------------------------------------
 -- ksm_pkg_prospect
 -- tbl_assignment_summary
