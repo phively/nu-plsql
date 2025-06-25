@@ -31,20 +31,6 @@ Select
 From table(dw_pkg_base.tbl_designation_detail) dd
 ;
 
--- tbl_proposals
--- Drop Materialized View mv_proposals;
-Create Materialized View mv_proposals
-Refresh Complete
-Start With sysdate
--- 7:30 AM tomorrow
-Next (trunc(sysdate) + 1 + 7.5/24)
-As
-Select
-  prp.*
-  , sysdate as mv_last_refresh
-From table(dw_pkg_base.tbl_proposals) prp
-;
-
 --------------------------------------
 -- ksm_pkg_entity
 -- tbl_entity
@@ -106,6 +92,23 @@ Select
   , sysdate as mv_last_refresh
 From table(ksm_pkg_transactions.tbl_transactions) tr
 ;
+
+--------------------------------------
+-- ksm_pkg_proposals
+-- tbl_proposals
+-- Drop Materialized View mv_proposals;
+Create Materialized View mv_proposals
+Refresh Complete
+Start With sysdate
+-- 7:30 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.5/24)
+As
+Select
+  prp.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_proposals.tbl_proposals) prp
+;
+
 
 --------------------------------------
 -- ksm_pkg_prospect

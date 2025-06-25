@@ -308,6 +308,7 @@ Type rec_proposal Is Record (
     , proposal_record_id dm_alumni.dim_proposal_opportunity.proposal_record_id%type
     , proposal_legacy_id dm_alumni.dim_proposal_opportunity.proposal_legacy_id%type
     , proposal_strategy_record_id dm_alumni.dim_proposal_opportunity.proposal_strategy_record_id%type
+    , donor_id dm_alumni.fact_proposal_opportunity.constituent_donor_id%type
     , proposal_active_indicator dm_alumni.dim_proposal_opportunity.proposal_active_indicator%type
     , proposal_stage dm_alumni.dim_proposal_opportunity.proposal_stage%type
     , proposal_type dm_alumni.dim_proposal_opportunity.proposal_type%type
@@ -1059,6 +1060,12 @@ Cursor c_proposals Is
       As proposal_legacy_id
     , nullif(dpo.proposal_strategy_record_id, '-')
       As proposal_strategy_record_id
+    , Case
+        When nullif(fpo.constituent_donor_id, '-') Is Not Null
+          Then fpo.constituent_donor_id
+        Else nullif(fpo.organization_donor_id, '-')
+        End
+      As donor_id
     , dpo.proposal_active_indicator
     , dpo.proposal_stage
     , dpo.proposal_type
@@ -1093,6 +1100,8 @@ Cursor c_proposals Is
   From dm_alumni.dim_proposal_opportunity dpo
   Inner Join last_pm
     On last_pm.opportunity_salesforce_id = dpo.opportunity_salesforce_id
+  Inner Join dm_alumni.fact_proposal_opportunity fpo
+    On fpo.opportunity_salesforce_id = dpo.opportunity_salesforce_id
 ;
 
 /*************************************************************************
