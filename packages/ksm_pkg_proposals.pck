@@ -27,7 +27,14 @@ Type rec_proposal Is Record (
     , proposal_record_id dm_alumni.dim_proposal_opportunity.proposal_record_id%type
     , proposal_legacy_id dm_alumni.dim_proposal_opportunity.proposal_legacy_id%type
     , proposal_strategy_record_id dm_alumni.dim_proposal_opportunity.proposal_strategy_record_id%type
+    , household_id dm_alumni.dim_constituent.constituent_household_account_salesforce_id%type
+    , household_primary dm_alumni.dim_constituent.household_primary_constituent_indicator%type
     , donor_id dm_alumni.fact_proposal_opportunity.constituent_donor_id%type
+    , sort_name dm_alumni.dim_constituent.full_name%type
+    , institutional_suffix dm_alumni.dim_constituent.institutional_suffix%type
+    , is_deceased_indicator dm_alumni.dim_constituent.is_deceased_indicator%type
+    , person_or_org varchar2(1)
+    , primary_record_type dm_alumni.dim_constituent.primary_constituent_type%type
     , proposal_active_indicator dm_alumni.dim_proposal_opportunity.proposal_active_indicator%type
     , proposal_stage dm_alumni.dim_proposal_opportunity.proposal_stage%type
     , proposal_type dm_alumni.dim_proposal_opportunity.proposal_type%type
@@ -95,8 +102,45 @@ Private cursors -- data definitions
 
 Cursor c_proposals Is
 
-  Select *
-  From table(dw_pkg_base.tbl_proposals)
+  Select
+    prop.opportunity_salesforce_id
+    , prop.proposal_record_id
+    , prop.proposal_legacy_id
+    , prop.proposal_strategy_record_id
+    , me.household_id
+    , me.household_primary
+    , prop.donor_id
+    , me.sort_name
+    , me.institutional_suffix
+    , me.is_deceased_indicator
+    , me.person_or_org
+    , me.primary_record_type
+    , prop.proposal_active_indicator
+    , prop.proposal_stage
+    , prop.proposal_type
+    , prop.proposal_name
+    , prop.proposal_probability
+    , prop.proposal_amount
+    , prop.proposal_submitted_amount
+    , prop.proposal_anticipated_amount
+    , prop.proposal_funded_amount
+    , prop.proposal_created_date
+    , prop.proposal_submitted_date
+    , prop.proposal_close_date
+    , prop.proposal_payment_schedule
+    , prop.proposal_designation_units
+    , prop.active_proposal_manager_salesforce_id
+    , prop.active_proposal_manager_name
+    , prop.active_proposal_manager_unit
+    , prop.historical_pm_user_id
+    , prop.historical_pm_name
+    , prop.historical_pm_role
+    , prop.historical_pm_business_unit
+    , prop.historical_pm_is_active
+    , prop.etl_update_date
+  From table(dw_pkg_base.tbl_proposals) prop
+  Left Join table(dw_pkg_base.tbl_mini_entity) me
+    On me.donor_id = prop.donor_id
 ;
 
 /*************************************************************************
