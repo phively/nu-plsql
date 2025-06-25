@@ -58,32 +58,31 @@ From v_ksm_gifts_ngc ngc
 Cross Join params
 -- Include/exclude
 Where ngc.full_circle_campaign_priority Is Not Null
-/*) Union (
+) Union (
 Select
   'Proposal' As data_source
-  , hhf.household_id As src_donor_or_hhid
-  , prp.id_number
-  , prp.report_name
-  , prp.prospect_id
-  , to_char(prp.proposal_id) As rcpt_or_proposal_id
+  , prp.donor_id As source_donor_id
+  , prp.full_name
+  , prp.donor_id
+  , prp.sort_name
+  , prp.proposal_record_id As opportunity_or_proposal_id
   , prp.proposal_type
-  , prp.proposal_status
-  , prp.ask_date
-  , prp.close_date As date_of_record_or_close_dt
-  , As fiscal_year
-  , prp.total_ask_amt
-  , prp.total_anticipated_amt As legal_or_anticipated_amt
-  , prp.proposal_description As alloc_or_proposal
-  , hhf.person_or_org
+  , prp.proposal_type
+  , prp.proposal_stage
+  , prp.proposal_submitted_date
+  , prp.proposal_close_date As credit_date_or_close_dt
+  , prp.proposal_close_fy As fiscal_year
+  , prp.proposal_submitted_amount
+  , prp.proposal_anticipated_amount As legal_or_anticipated_amt
+  , prp.proposal_name As designation_or_proposal
+  , prp.person_or_org
   , NULL As full_circle_campaign_priority
-From rpt_pbh634.vt_ksm_proposal_pipeline prp
+From mv_proposals prp
 Cross Join params
-Inner Join v_entity_ksm_households_fast hhf
-  On hhf.id_number = prp.id_number
 -- Include/exclude
-Where prp.close_date >= params.campaign_start_dt
-  And prp.proposal_active_calc = 'Active'
-*/) Union (
+Where prp.proposal_close_date >= params.campaign_start_dt
+  And prp.proposal_active_indicator = 'Y'
+) Union (
 -- Dummy proposals
 Select
   'Dummy' As data_source
