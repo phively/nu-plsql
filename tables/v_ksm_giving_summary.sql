@@ -64,6 +64,7 @@ params As (
     , sum(Case When cash.cash_category = 'Expendable' And cal.curr_fy = cash.fiscal_year + 5 Then cash.hh_countable_credit Else 0 End) As expendable_pfy5
     -- Giving history
     , min(cash.fiscal_year) As cash_fy_giving_first_yr
+    , min(cash.credit_date) As cash_giving_first_credit_dt
     , max(cash.fiscal_year) As cash_fy_giving_last_yr
     --, count(Distinct cash.fiscal_year) As fy_giving_yr_count_cash
     , min(Case When cash.cash_category = 'Expendable' Then cash.fiscal_year End) As expendable_fy_giving_first_yr
@@ -118,6 +119,7 @@ params As (
     , sum(Case When cal.curr_fy = ngc.fiscal_year + 5 Then ngc.hh_credit Else 0 End) As ngc_pfy5
     -- Giving history
     , min(ngc.fiscal_year) As ngc_fy_giving_first_yr
+    , min(ngc.credit_date) As ngc_giving_first_credit_dt
     , max(ngc.fiscal_year) As ngc_fy_giving_last_yr
     --, count(Distinct ngc.fiscal_year) As fy_giving_yr_count_ngc
     -- Last KSM NGC
@@ -222,8 +224,10 @@ Select
   , cash.expendable_pfy3
   , cash.expendable_pfy4
   , cash.expendable_pfy5
+  , ngc.ngc_giving_first_credit_dt
   , ngc.ngc_fy_giving_first_yr
   , ngc.ngc_fy_giving_last_yr
+  , cash.cash_giving_first_credit_dt
   , cash.cash_fy_giving_first_yr
   , cash.cash_fy_giving_last_yr
   -- Gift transaction info
