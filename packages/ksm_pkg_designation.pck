@@ -72,7 +72,7 @@ Type rec_ksm_designation Is Record (
   , fin_department_id dm_alumni.dim_designation.designation_fin_department_id%type
   , fin_fund_id dm_alumni.dim_designation.fin_fund%type
   , fin_project_id dm_alumni.dim_designation.fin_project%type
-  , fin_activity dm_alumni.dim_designation.designation_activity%type
+  , fin_activity_id dm_alumni.dim_designation.designation_activity%type
   , designation_school dm_alumni.dim_designation.designation_school%type
   , department_program dm_alumni.dim_designation.designation_department_program_code%type
   , fasb_type dm_alumni.dim_designation.fasb_type%type
@@ -319,7 +319,7 @@ Cursor c_ksm_designation Is
     , des.fin_fund_id
     , des.fin_department_id
     , des.fin_project_id
-    , des.fin_activity
+    , des.fin_activity_id
     , des.designation_school
     , des.department_program
     , des.fasb_type
