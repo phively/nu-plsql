@@ -1,3 +1,5 @@
+Create or Replace View tableau_nametags as 
+
 With K AS (Select CONSTITUENT_DONOR_ID  ,
 CONSTITUENT_NAME  ,
 DEGREE_SCHOOL_NAME  ,
