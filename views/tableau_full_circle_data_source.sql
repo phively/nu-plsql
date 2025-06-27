@@ -73,7 +73,12 @@ Select
   , prp.proposal_close_date As credit_date_or_close_dt
   , prp.proposal_close_fy As fiscal_year
   , prp.proposal_submitted_amount
-  , prp.proposal_anticipated_amount As legal_or_anticipated_amt
+  , Case
+      When prp.proposal_anticipated_amount Is Not Null
+        Then prp.proposal_anticipated_amount
+      Else prp.proposal_amount
+      End
+    As legal_or_anticipated_amt
   , prp.proposal_name As designation_or_proposal
   , prp.person_or_org
   , NULL As full_circle_campaign_priority
@@ -82,6 +87,7 @@ Cross Join params
 -- Include/exclude
 Where prp.proposal_close_date >= params.campaign_start_dt
   And prp.proposal_active_indicator = 'Y'
+  And prp.ksm_flag = 'Y'
 ) Union (
 -- Dummy proposals
 Select

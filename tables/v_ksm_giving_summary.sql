@@ -117,6 +117,13 @@ params As (
     , sum(Case When cal.curr_fy = ngc.fiscal_year + 3 Then ngc.hh_credit Else 0 End) As ngc_pfy3
     , sum(Case When cal.curr_fy = ngc.fiscal_year + 4 Then ngc.hh_credit Else 0 End) As ngc_pfy4
     , sum(Case When cal.curr_fy = ngc.fiscal_year + 5 Then ngc.hh_credit Else 0 End) As ngc_pfy5
+    -- Pledge totals
+    , sum(Case When ngc.gypm_ind = 'P' And cal.curr_fy = ngc.fiscal_year     Then ngc.hh_credit Else 0 End) As pledge_cfy
+    , sum(Case When ngc.gypm_ind = 'P' And cal.curr_fy = ngc.fiscal_year + 1 Then ngc.hh_credit Else 0 End) As pledge_pfy1
+    , sum(Case When ngc.gypm_ind = 'P' And cal.curr_fy = ngc.fiscal_year + 2 Then ngc.hh_credit Else 0 End) As pledge_pfy2
+    , sum(Case When ngc.gypm_ind = 'P' And cal.curr_fy = ngc.fiscal_year + 3 Then ngc.hh_credit Else 0 End) As pledge_pfy3
+    , sum(Case When ngc.gypm_ind = 'P' And cal.curr_fy = ngc.fiscal_year + 4 Then ngc.hh_credit Else 0 End) As pledge_pfy4
+    , sum(Case When ngc.gypm_ind = 'P' And cal.curr_fy = ngc.fiscal_year + 5 Then ngc.hh_credit Else 0 End) As pledge_pfy5
     -- Giving history
     , min(ngc.fiscal_year) As ngc_fy_giving_first_yr
     , min(ngc.credit_date) As ngc_giving_first_credit_dt
@@ -212,6 +219,12 @@ Select
   , ngc.ngc_pfy3
   , ngc.ngc_pfy4
   , ngc.ngc_pfy5
+  , ngc.pledge_cfy
+  , ngc.pledge_pfy1
+  , ngc.pledge_pfy2
+  , ngc.pledge_pfy3
+  , ngc.pledge_pfy4
+  , ngc.pledge_pfy5
   , cash.cash_cfy
   , cash.cash_pfy1
   , cash.cash_pfy2
