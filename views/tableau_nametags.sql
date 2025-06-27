@@ -40,6 +40,8 @@ when e.KSM_Degree = 'Y' and e.degree_code like '%CERT%' then 'cKSM'
 --- MBA and MMGT
 when e.degree_code IN ('MBA','MMGT')
 then 'MBA'
+--- Account for Students
+when e.degree_code like '%STU%' then ''
 else e.degree_code
   --- degree strings - will be the degree abbrivation.... Honorary, Undergrad, Cert, MBA
 end as degree_string
@@ -78,8 +80,26 @@ degrees_group_by_year.ksm_degree
 
 Select distinct k.CONSTITUENT_DONOR_ID,
 k.CONSTITUENT_NAME,
+c.primary_constituent_type,
+c.salutation,
+c.first_name,
+c.middle_name,
+c.last_name,
+c.institutional_suffix,
+d.degrees_verbose,
+d.degrees_concat,
+d.first_ksm_year,
+d.first_masters_year,
+d.last_masters_year,
+d.program,
+d.program_group,
+d.class_section,
 dc.ksm_degree,
 dc.degree_levels,
 dc.nu_degrees_string
 from k
 inner join degrees_concat dc on dc.CONSTITUENT_DONOR_ID = k.CONSTITUENT_DONOR_ID
+--- get first name, record type, suffix
+inner join  DM_ALUMNI.DIM_CONSTITUENT c on c.constituent_donor_id = k.CONSTITUENT_DONOR_ID
+--- Data Points from Paul's View
+left join mv_entity_ksm_degrees d on d.donor_id = k.CONSTITUENT_DONOR_ID
