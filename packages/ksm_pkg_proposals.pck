@@ -51,6 +51,7 @@ Type rec_proposal Is Record (
     , proposal_close_fy integer
     , proposal_payment_schedule dm_alumni.dim_proposal_opportunity.proposal_payment_schedule%type
     , proposal_designation_units dm_alumni.dim_proposal_opportunity.proposal_designation_work_plan_units%type
+    , ksm_flag varchar2(1)
     , active_proposal_manager_salesforce_id dm_alumni.dim_proposal_opportunity.active_proposal_manager_salesforce_id%type
     , active_proposal_manager_name dm_alumni.dim_proposal_opportunity.active_proposal_manager_name%type
     , active_proposal_manager_unit dm_alumni.dim_proposal_opportunity.active_proposal_manager_business_unit%type
@@ -134,6 +135,7 @@ Cursor c_proposals Is
       As proposal_close_fy
     , prop.proposal_payment_schedule
     , prop.proposal_designation_units
+    , prop.ksm_flag
     , prop.active_proposal_manager_salesforce_id
     , prop.active_proposal_manager_name
     , prop.active_proposal_manager_unit

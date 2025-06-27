@@ -74,9 +74,9 @@ Select
   , prp.proposal_close_fy As fiscal_year
   , prp.proposal_submitted_amount
   , Case
-      When prp.proposal_amount Is Not Null
+      When prp.proposal_anticipated_amount Is Not Null
         Then prp.proposal_anticipated_amount
-      Else prp.proposal_submitted_amount
+      Else prp.proposal_amount
       End
     As legal_or_anticipated_amt
   , prp.proposal_name As designation_or_proposal
@@ -87,6 +87,7 @@ Cross Join params
 -- Include/exclude
 Where prp.proposal_close_date >= params.campaign_start_dt
   And prp.proposal_active_indicator = 'Y'
+  And prp.ksm_flag = 'Y'
 ) Union (
 -- Dummy proposals
 Select
