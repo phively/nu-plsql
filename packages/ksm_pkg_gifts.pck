@@ -244,6 +244,12 @@ Select Distinct
     , mve.household_id
 ;
 
+Cursor c_source_donor Is
+  
+  Select *
+  From mv_transactions
+;
+
 --------------------------------------
 -- Kellogg normalized transactions
 Cursor c_ksm_transactions Is
@@ -286,14 +292,14 @@ Cursor c_ksm_transactions Is
     , tribute As (
       -- In memory/honor of
       Select Distinct
-        trib.ucinn_ascendv2__opportunity__c As opportunity_salesforce_id
-        , trib.ucinn_ascendv2__contact__c As tributee_salesforce_id
+        trib.opportunity_salesforce_id
+        , trib.tributee_salesforce_id
         , mv_entity.full_name As tributee_name
-        , trib.ucinn_ascendv2__tributee__c As tributee_name_text
-        , trib.ucinn_ascendv2__tribute_type__c As tribute_type
-      From stg_alumni.ucinn_ascendv2__tribute__c trib
+        , trib.tributee_name_text
+        , trib.tribute_type
+      From table(ksm_pkg_transactions.tbl_tributes) trib
       Left Join mv_entity
-        On mv_entity.salesforce_id = trib.ucinn_ascendv2__contact__c
+        On mv_entity.salesforce_id = trib.tributee_salesforce_id
     )
     
     , tribute_concat As (
