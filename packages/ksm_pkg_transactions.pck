@@ -32,6 +32,7 @@ Type rec_transaction Is Record (
   , opportunity_donor_id mv_entity.donor_id%type
   , opportunity_donor_name mv_entity.full_name%type
   , tx_id dm_alumni.dim_opportunity.opportunity_record_id%type
+  , opportunity_salesforce_id dm_alumni.dim_opportunity.opportunity_salesforce_id%type
   , opportunity_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
   , payment_record_id stg_alumni.ucinn_ascendv2__payment__c.name%type
   , anonymous_type dm_alumni.dim_opportunity.anonymous_type%type
@@ -167,6 +168,7 @@ Cursor c_transactions Is
         Else opp.opportunity_record_id
         End
       As tx_id
+    , opp.opportunity_salesforce_id
     , opp.opportunity_record_id
     , pay.payment_record_id
     , Case
