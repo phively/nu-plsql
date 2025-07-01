@@ -67,7 +67,9 @@ Type rec_donor_count Is Record (
 -- Source donor ID
 Type rec_source_donor Is Record (
   tx_id mv_transactions.tx_id%type
+  , legacy_receipt_number mv_transactions.legacy_receipt_number%type
   , source_donor_id mv_transactions.credited_donor_id%type
+  , etl_update_date mv_transactions.max_etl_update_date%type
 );
 
 --------------------------------------
@@ -265,11 +267,13 @@ Cursor c_source_donors Is
       , mvt.credited_donor_name
       , mvt.credited_donor_sort_name
       , mvt.tx_id
+      , mvt.legacy_receipt_number
       , mvt.gypm_ind
       , mvt.opportunity_record_id
       , mvt.matched_gift_record_id
       , mvt.pledge_record_id
       , mvt.credit_type
+      , mvt.max_etl_update_date
     From mv_transactions mvt
     -- Exclude in honor/memory of donors
     Left Join table(ksm_pkg_transactions.tbl_tributes) trib
@@ -279,6 +283,8 @@ Cursor c_source_donors Is
   
   Select
     tx_id
+    , min(legacy_receipt_number)
+      As legacy_receipt_number
     , Case
         -- Matching gift logic pending
         When max(gypm_ind) = 'MatchTBD'
@@ -294,6 +300,8 @@ Cursor c_source_donors Is
           )
         End
       As source_donor_id
+    , max(trans.max_etl_update_date)
+      As etl_update_date
   From trans
   Inner Join mv_entity mve
     On mve.donor_id = trans.credited_donor_id
