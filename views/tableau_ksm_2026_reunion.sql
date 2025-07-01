@@ -18,10 +18,17 @@ d.program_group,
 d.first_ksm_year,
 d.class_section
 From mv_entity_ksm_degrees d
- WHERE D.PROGRAM IN ('EMP', 'EMP-FL', 'EMP-IL', 'EMP-CAN', 'EMP-GER', 'EMP-HK', 
- 'EMP-ISR', 'EMP-JAN', 'EMP-CHI', 'FT', 'FT-1Y', 'FT-2Y', 
- 'FT-CB', 'FT-EB', 'FT-JDMBA', 'FT-MMGT', 'FT-MMM', 'FT-MBAi', 'TMP', 'TMP-SAT',
-'TMP-SATXCEL', 'TMP-XCEL')),
+ WHERE D.PROGRAM IN (
+ --- All EMBA
+ 'EMP', 'EMP-FL', 'EMP-IL', 'EMP-CAN', 'EMP-GER', 'EMP-HK', 'EMP-ISR', 'EMP-JAN', 'EMP-CHI', 
+--- Full Time 
+ 'FT', 'FT-1Y', 'FT-2Y', 'FT-JDMBA', 'FT-MMGT', 'FT-MMM',
+--- Include MSMS (AKA MiM) and MBAi 
+ 'FT-MS', 'FT-MBAi', 
+---- The old Undergrad programs - should be 50+ milestone Now
+ 'FT-CB', 'FT-EB',
+ --- Evening and Weekend 
+ 'TMP', 'TMP-SAT','TMP-SATXCEL', 'TMP-XCEL')),
 
 --- Pull Kellogg Reunion Year 
 
