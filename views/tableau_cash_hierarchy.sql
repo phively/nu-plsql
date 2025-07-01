@@ -1,4 +1,4 @@
---Create Or Replace View tableau_cash_hierarchy As
+Create Or Replace View tableau_cash_hierarchy As
 
 With
 
@@ -14,25 +14,30 @@ attr_cash As (
         Else managed_hierarchy
         End
       As managed_grp
+    , mve.household_id
+      As src_donor_hhid
   From v_ksm_gifts_cash kgc
+  Inner Join mv_entity mve
+    On mve.donor_id = kgc.source_donor_id
 )
 
 , grouped_cash As (
   Select
     attr_cash.cash_category
-    , attr_cash.household_id
+    , attr_cash.src_donor_hhid
+      As household_id
     , attr_cash.fiscal_year
     , attr_cash.managed_grp
     , sum(attr_cash.cash_countable_amount)
       As sum_cash_countable_amount
     , sum(Case When attr_cash.fytd_indicator = 'Y' Then attr_cash.cash_countable_amount Else 0 End)
       As sum_cash_countable_amount_ytd
-    , count(attr_cash.household_id) Over(Partition By cash_category, attr_cash.household_id, fiscal_year)
+    , count(attr_cash.src_donor_hhid) Over(Partition By cash_category, attr_cash.src_donor_hhid, fiscal_year)
       As n_managed_in_group
   From attr_cash
   Group By
     attr_cash.cash_category
-    , attr_cash.household_id
+    , attr_cash.src_donor_hhid
     , attr_cash.fiscal_year
     , attr_cash.managed_grp
 )
@@ -166,9 +171,9 @@ attr_cash As (
     , ca.involvement_status
     , ca.involvement_start_date
     , ca.involvement_end_date
-    , ca.involvement_start_fy
+    , nvl(ca.involvement_start_fy, 2021)
       As fy_start
-    , ca.involvement_end_fy
+    , nvl(ca.involvement_end_fy, 9999)
       As fy_stop
     -- Start date is used, if present; else fill in Sep 1 for partial dates
     , Case

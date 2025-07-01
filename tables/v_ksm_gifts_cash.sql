@@ -37,6 +37,17 @@ override As (
   From tbl_ksm_gos
 )
 
+, srcdonor As (
+  Select
+    mvs.tx_id
+    , mvs.source_donor_id
+    , mve.full_name
+      As source_donor_name
+  From mv_source_donor mvs
+  Inner Join mv_entity mve
+    On mve.donor_id = mvs.source_donor_id
+)
+
 Select
   kt.credited_donor_audit
   , mve.donor_id
@@ -48,9 +59,9 @@ Select
   , mve.person_or_org
   , mve.primary_record_type
   , mve.is_deceased_indicator
-  , kt.opportunity_donor_id
+  , nvl(srcdonor.source_donor_id, kt.opportunity_donor_id)
     As source_donor_id
-  , kt.opportunity_donor_name
+  , nvl(srcdonor.source_donor_name, kt.opportunity_donor_name)
     As source_donor_name
   , kt.tribute_type
   , kt.tx_id
@@ -191,8 +202,10 @@ From mv_ksm_transactions kt
 Cross Join v_current_calendar cal
 Inner Join mv_entity mve
   On mve.donor_id = kt.credited_donor_id
+Left Join srcdonor
+  On srcdonor.tx_id = kt.tx_id
 Left Join override
-  On override.tx_id = kt.tx_id
+  On override.tx_id = kt.tx_id 
 Where kt.gypm_ind In ('G', 'Y', 'M') -- Exclude pledges
   And kt.adjusted_opportunity_ind Is Null -- Exclude gift adjustment history
 ;
