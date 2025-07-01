@@ -173,6 +173,20 @@ Select
 From table(ksm_pkg_gifts.tbl_ksm_transactions) trn
 ;
 
+-- tbl_source_donor
+-- Drop Materialized View mv_source_donor;
+Create Materialized View mv_source_donor
+Refresh Complete
+Start With sysdate
+-- 7:40 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.667/24)
+As
+Select
+  srcd.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_gifts.tbl_source_donors) srcd
+;
+
 /*************************************************************************
 Level 2 dependencies
 7:50 AM

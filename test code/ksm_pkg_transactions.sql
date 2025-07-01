@@ -6,6 +6,10 @@ Select *
 From table(ksm_pkg_transactions.tbl_transactions)
 ;
 
+Select *
+From table(ksm_pkg_transactions.tbl_tributes)
+;
+
 ---------------------------
 -- mv_transactions tests
 ---------------------------

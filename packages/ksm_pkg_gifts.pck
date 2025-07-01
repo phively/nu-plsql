@@ -64,6 +64,15 @@ Type rec_donor_count Is Record (
 );
 
 --------------------------------------
+-- Source donor ID
+Type rec_source_donor Is Record (
+  tx_id mv_transactions.tx_id%type
+  , legacy_receipt_number mv_transactions.legacy_receipt_number%type
+  , source_donor_id mv_transactions.credited_donor_id%type
+  , etl_update_date mv_transactions.max_etl_update_date%type
+);
+
+--------------------------------------
 -- Gift transactions
 Type rec_transaction Is Record (
       credited_donor_id mv_entity.donor_id%type
@@ -145,6 +154,7 @@ Public table declarations
 Type discounted_transactions Is Table Of rec_discount;
 Type unsplit_amounts Is Table Of rec_unsplit;
 Type donor_counts Is Table Of rec_donor_count;
+Type source_donors Is Table Of rec_source_donor;
 Type transactions Is Table Of rec_transaction;
 
 /*************************************************************************
@@ -167,6 +177,9 @@ Function tbl_unsplit_amounts
 
 Function tbl_hh_donor_count
   Return donor_counts Pipelined;
+
+Function tbl_source_donors
+  Return source_donors Pipelined;
 
 Function tbl_ksm_transactions
   Return transactions Pipelined;
@@ -244,6 +257,59 @@ Select Distinct
     , mve.household_id
 ;
 
+Cursor c_source_donors Is
+  
+  With
+  
+  trans As (
+    Select
+      mvt.credited_donor_id
+      , mvt.credited_donor_name
+      , mvt.credited_donor_sort_name
+      , mvt.tx_id
+      , mvt.legacy_receipt_number
+      , mvt.gypm_ind
+      , mvt.opportunity_record_id
+      , mvt.matched_gift_record_id
+      , mvt.pledge_record_id
+      , mvt.credit_type
+      , mvt.max_etl_update_date
+    From mv_transactions mvt
+    -- Exclude in honor/memory of donors
+    Left Join table(ksm_pkg_transactions.tbl_tributes) trib
+      On trib.opportunity_salesforce_id = mvt.opportunity_salesforce_id
+    Where trib.opportunity_salesforce_id Is Null
+  )
+  
+  Select
+    tx_id
+    , min(legacy_receipt_number)
+      As legacy_receipt_number
+    , Case
+        -- Matching gift logic pending
+        When max(gypm_ind) = 'MatchTBD'
+          Then 'MatchTBD'
+        Else max(credited_donor_id)
+          keep(dense_rank First Order By
+            -- 'P'erson before 'O'rg
+            mve.person_or_org Desc
+            -- Earlier grad year before later grad year
+            , deg.first_ksm_year Asc Nulls Last
+            -- Donor ID as tiebreak
+            , mve.donor_id Asc
+          )
+        End
+      As source_donor_id
+    , max(trans.max_etl_update_date)
+      As etl_update_date
+  From trans
+  Inner Join mv_entity mve
+    On mve.donor_id = trans.credited_donor_id
+  Left Join mv_entity_ksm_degrees deg
+    On deg.donor_id = trans.credited_donor_id
+  Group By trans.tx_id
+;
+
 --------------------------------------
 -- Kellogg normalized transactions
 Cursor c_ksm_transactions Is
@@ -286,19 +352,19 @@ Cursor c_ksm_transactions Is
     , tribute As (
       -- In memory/honor of
       Select Distinct
-        trib.ucinn_ascendv2__opportunity__c As opportunity_salesforce_id
-        , trib.ucinn_ascendv2__contact__c As tributee_salesforce_id
+        trib.opportunity_salesforce_id
+        , trib.tributee_salesforce_id
         , mv_entity.full_name As tributee_name
-        , trib.ucinn_ascendv2__tributee__c As tributee_name_text
-        , trib.ucinn_ascendv2__tribute_type__c As tribute_type
-      From stg_alumni.ucinn_ascendv2__tribute__c trib
+        , trib.tributee_name_text
+        , trib.tribute_type
+      From table(ksm_pkg_transactions.tbl_tributes) trib
       Left Join mv_entity
-        On mv_entity.salesforce_id = trib.ucinn_ascendv2__contact__c
+        On mv_entity.salesforce_id = trib.tributee_salesforce_id
     )
     
     , tribute_concat As (
       Select
-        opp.opportunity_record_id
+        opportunity_salesforce_id
         , Listagg(tribute_type, '; ' || chr(13))
           Within Group (Order By tribute_type, tributee_name_text)
           As tribute_type
@@ -306,9 +372,7 @@ Cursor c_ksm_transactions Is
           Within Group (Order By tribute_type, tributee_name_text)
           As tributees
       From tribute
-      Inner Join table(dw_pkg_base.tbl_opportunity) opp
-        On opp.opportunity_salesforce_id = tribute.opportunity_salesforce_id
-      Group By opp.opportunity_record_id
+      Group By opportunity_salesforce_id
     )
     
     -- Historical managers
@@ -515,7 +579,7 @@ Cursor c_ksm_transactions Is
         On gexcept.opportunity_record_id = trans.opportunity_record_id
       -- In memory/honor of
       Left Join tribute_concat
-        On tribute_concat.opportunity_record_id = trans.opportunity_record_id
+        On tribute_concat.opportunity_salesforce_id = trans.opportunity_salesforce_id
       -- Proposal manager
       Left Join mv_proposals prop
         On prop.proposal_record_id = trans.linked_proposal_record_id
@@ -657,6 +721,23 @@ Function tbl_hh_donor_count
     Close c_hh_donor_count;
     For i in 1..(dc.count) Loop
       Pipe row(dc(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+-- Source donor logic
+Function tbl_source_donors
+  Return source_donors Pipelined As
+  -- Declarations
+  srcd source_donors;
+
+  Begin
+    Open c_source_donors;
+      Fetch c_source_donors Bulk Collect Into srcd;
+    Close c_source_donors;
+    For i in 1..(srcd.count) Loop
+      Pipe row(srcd(i));
     End Loop;
     Return;
   End;
