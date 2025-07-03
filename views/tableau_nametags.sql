@@ -1,6 +1,7 @@
-Create or Replace View tableau_nametags as 
+----Create or Replace View tableau_nametags as 
 
-With K AS (Select CONSTITUENT_DONOR_ID  ,
+With K AS (
+Select CONSTITUENT_DONOR_ID  ,
 CONSTITUENT_NAME  ,
 DEGREE_SCHOOL_NAME  ,
 DEGREE_LEVEL  ,
@@ -10,7 +11,8 @@ DEGREE_NAME ,
 DEGREE_PROGRAM  
 From table(dw_pkg_base.tbl_degrees)
 --- Northwestern Related Degrees Only
-where DEGREE_ORGANIZATION_NAME = 'Northwestern University'
+--where DEGREE_ORGANIZATION_NAME = 'Northwestern University'
+where nu_indicator = 'Y'
 ),
 
 e as (select
@@ -53,31 +55,26 @@ from e),
 degrees_group_by_year as (
 select dc.CONSTITUENT_DONOR_ID,
 dc.degree_year,
-dc.ksm_degree,
 '''' || substr(degree_year, -2) -- Last two digits of Year on Nametag
 As year_abbr,
 --- Listagg multiple years - Order by degree asc
-Listagg(trim(dc.degree_string), ', ') Within Group (Order By degree_year Asc)
+Listagg(Distinct trim(dc.degree_string), ', ') Within Group (Order By degree_year Asc)
 as degree_strings,
-Listagg(trim(dc.degree_level), ', ') Within Group (Order By degree_year Asc)
+Listagg(Distinct trim(dc.degree_level), ', ') Within Group (Order By degree_year Asc)
 as degree_levels
 from degrees_clean dc
 group by dc.CONSTITUENT_DONOR_ID,
-dc.degree_year,
-dc.degree_code,
-dc.ksm_degree),
+dc.degree_year),
 
 --- Final concat
 
 degrees_concat As (Select degrees_group_by_year.CONSTITUENT_DONOR_ID,
-degrees_group_by_year.ksm_degree,
-Listagg(trim(year_abbr || ' ' || degree_strings), ', '
+Listagg(Distinct trim(year_abbr || ' ' || degree_strings), ', '
 ) Within Group (Order By degree_year Asc, degree_strings Asc) As nu_degrees_string,
-Listagg(trim(year_abbr || ' ' || degrees_group_by_year.degree_levels), ', '
+Listagg(Distinct trim(year_abbr || ' ' || degrees_group_by_year.degree_levels), ', '
 ) Within Group (Order By degree_year Asc, degree_strings Asc) As degree_levels
 From degrees_group_by_year
-Group By CONSTITUENT_DONOR_ID,
-degrees_group_by_year.ksm_degree
+Group By CONSTITUENT_DONOR_ID
 )
 
 Select distinct k.CONSTITUENT_DONOR_ID,
@@ -96,7 +93,6 @@ d.last_masters_year,
 d.program,
 d.program_group,
 d.class_section,
-dc.ksm_degree,
 dc.degree_levels,
 dc.nu_degrees_string
 from k
@@ -105,3 +101,5 @@ inner join degrees_concat dc on dc.CONSTITUENT_DONOR_ID = k.CONSTITUENT_DONOR_ID
 inner join  DM_ALUMNI.DIM_CONSTITUENT c on c.constituent_donor_id = k.CONSTITUENT_DONOR_ID
 --- Data Points from Paul's View
 left join mv_entity_ksm_degrees d on d.donor_id = k.CONSTITUENT_DONOR_ID
+
+---- Check Joint Degree Programs - Test Case 
