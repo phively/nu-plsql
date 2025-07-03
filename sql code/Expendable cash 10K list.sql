@@ -115,6 +115,7 @@ Inner Join mv_entity mve
   On mve.household_id = gs.household_id
 Inner Join mv_households hh
   On hh.household_id = mve.household_id
+  And hh.household_primary = 'Y'
 Left Join mv_assignments mva
   On mva.donor_id = mve.donor_id
 Left Join v_committees_concat cc
