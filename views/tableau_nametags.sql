@@ -46,6 +46,8 @@ when e.degree_code IN ('MBA','MMGT')
 then 'MBA'
 --- Account for Students
 when e.degree_code like '%STU%' then ''
+--- Account for Unknown 
+when e.degree_code like '%UNKN%' then ''
 else e.degree_code
   --- degree strings - will be the degree abbrivation.... Honorary, Undergrad, Cert, MBA
 end as degree_string
@@ -101,5 +103,4 @@ inner join degrees_concat dc on dc.CONSTITUENT_DONOR_ID = k.CONSTITUENT_DONOR_ID
 inner join  DM_ALUMNI.DIM_CONSTITUENT c on c.constituent_donor_id = k.CONSTITUENT_DONOR_ID
 --- Data Points from Paul's View
 left join mv_entity_ksm_degrees d on d.donor_id = k.CONSTITUENT_DONOR_ID
-
 ---- Check Joint Degree Programs - Test Case 
