@@ -5,19 +5,16 @@ With
 hhf As (
   Select
     hh.household_id
-    , hh.household_primary_donor_id
-      As donor_id
-    , hh.household_primary_full_name
-      As full_name
-    , hh.household_primary_sort_name
-      As sort_name
+    , hh.donor_id
+    , hh.full_name
+    , hh.sort_name
     , deg.degrees_concat
     , hh.household_suffix
     , hh.household_first_ksm_year
     , hh.household_program_group
   From mv_households hh
   Left Join mv_entity_ksm_degrees deg
-    On deg.donor_id = hh.household_primary_donor_id
+    On deg.donor_id = hh.donor_id
 )
 
 , fy_totals As (
@@ -39,7 +36,7 @@ hhf As (
   Group By
     hhf.household_id
     , cash.fiscal_year
-  Having sum(cash.cash_countable_amount) > 0
+  Having sum(nvl(cash.cash_countable_amount, 0)) > 0
 )
 
 , multiyear As (
