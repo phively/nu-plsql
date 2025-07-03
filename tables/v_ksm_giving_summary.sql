@@ -40,6 +40,7 @@ params As (
     On kt.household_id = hh.household_id
   Cross Join params
   Cross Join v_current_calendar cal
+  Where hh.household_primary = 'Y'
 )
 
 -- Sum cash amounts

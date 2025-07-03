@@ -9,6 +9,7 @@ hhf As (
     , hh.full_name
     , hh.sort_name
     , deg.degrees_concat
+    , hh.household_primary
     , hh.household_suffix
     , hh.household_first_ksm_year
     , hh.household_program_group
@@ -19,7 +20,8 @@ hhf As (
 
 , fy_totals As (
   Select
-    hhf.household_id
+    nvl(hhf.household_id, 'NA')
+      As household_id
     , cash.fiscal_year
     , max(cash.credit_date)
       As max_gift_dt
@@ -30,18 +32,18 @@ hhf As (
     , sum(Case When cash.fytd_indicator = 'Y' Then cash.cash_countable_amount Else 0 End)
       As ytd_countable_amount
   From v_ksm_gifts_cash cash
-  Inner Join hhf
+  Left Join hhf
     On hhf.donor_id = cash.source_donor_id
   Where cash.cash_category = 'Expendable'
   Group By
     hhf.household_id
     , cash.fiscal_year
-  Having sum(nvl(cash.cash_countable_amount, 0)) > 0
 )
 
 , multiyear As (
   Select
-    hhf.household_id
+    nvl(hhf.household_id, 'NA')
+      As household_id
     , hhf.donor_id
     , hhf.full_name
     , hhf.sort_name
@@ -73,8 +75,9 @@ hhf As (
     , cal.curr_fy
   From fy_totals fyt
   Cross Join v_current_calendar cal
-  Inner Join hhf
+  Left Join hhf
     On hhf.household_id = fyt.household_id
+    And hhf.household_primary = 'Y'
   -- Check if gift made previous year
   Left Join fy_totals pg
     On pg.household_id = fyt.household_id

@@ -728,6 +728,7 @@ Select
 From finalnonytd f
 Inner Join mv_households hh
   On hh.household_id = f.household_id
+  And hh.household_primary = 'Y'
 Left Join finalytd fy
   On fy.household_id = f.household_id
   And fy.fiscal_year = f.fiscal_year

@@ -145,6 +145,7 @@ Level 1 dependencies
 --------------------------------------
 -- ksm_pkg_households
 -- tbl_entity_households
+-- Drop Materialized View mv_households;
 Create Materialized View mv_households
 Refresh Complete
 Start With sysdate

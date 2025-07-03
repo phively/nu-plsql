@@ -23,15 +23,20 @@ Public type declarations
 *************************************************************************/
 
 Type rec_household Is Record (
-  household_id mv_entity.household_id%type
-  , household_account_name mv_entity.full_name%type
+  donor_id mv_entity.donor_id%type
+  , full_name mv_entity.full_name%type
+  , sort_name mv_entity.sort_name%type
   , person_or_org mv_entity.person_or_org%type
+  , household_primary mv_entity.household_primary%type
+  , household_id mv_entity.household_id%type
+  , household_account_name mv_entity.full_name%type
   , household_primary_donor_id mv_entity.donor_id%type
   , household_primary_full_name mv_entity.full_name%type
   , household_primary_sort_name mv_entity.sort_name%type
   , household_suffix mv_entity.institutional_suffix%type
   , household_spouse_donor_id mv_entity.spouse_donor_id%type
   , household_spouse_full_name mv_entity.spouse_name%type
+  , household_spouse_sort_name mv_entity.sort_name%type
   , household_spouse_suffix mv_entity.spouse_institutional_suffix%type
   , household_first_ksm_year mv_entity_ksm_degrees.first_ksm_year%type
   , household_first_masters_year mv_entity_ksm_degrees.first_masters_year%type
@@ -108,35 +113,50 @@ Cursor c_households Is
   )
 
   -- Primary HH member info
+  , hh_primary As (
+    Select
+      mve.household_id
+      , Case
+          When hh.household_account_name Is Not Null
+            Then hh.household_account_name
+          Else mve.full_name
+        End
+        As household_account_name
+      , mve.donor_id As household_primary_donor_id
+      , mve.full_name As household_primary_full_name
+      , mve.sort_name As household_primary_sort_name
+      , mve.institutional_suffix As household_suffix
+      , mve.spouse_donor_id As household_spouse_donor_id
+      , mve.spouse_name As household_spouse_full_name
+      , spouse.sort_name As household_spouse_sort_name
+      , mve.spouse_institutional_suffix As household_spouse_suffix
+      , hhdeg.household_first_ksm_year
+      , hhdeg.household_first_masters_year
+      , hhdeg.household_last_masters_year
+      , hhdeg.household_program
+      , hhdeg.household_program_group
+      , greatest(mve.etl_update_date, hhdeg.etl_update_date, trunc(hh.etl_update_date))
+        As etl_update_date
+    From mv_entity mve
+    Left Join mv_entity spouse
+      On spouse.donor_id = mve.spouse_donor_id
+    Left Join dm_alumni.dim_household hh
+      On hh.household_donor_id = mve.household_id
+    Left Join hhdeg
+      On hhdeg.household_id = mve.household_id
+    Where mve.household_primary = 'Y'
+  )
+  
   Select
-    mve.household_id
-    , Case
-        When hh.household_account_name Is Not Null
-          Then hh.household_account_name
-        Else mve.full_name
-      End
-      As household_account_name
+    mve.donor_id
+    , mve.full_name
+    , mve.sort_name
     , mve.person_or_org
-    , mve.donor_id As household_primary_donor_id
-    , mve.full_name As household_primary_full_name
-    , mve.sort_name As household_primary_sort_name
-    , mve.institutional_suffix As household_suffix
-    , mve.spouse_donor_id As household_spouse_donor_id
-    , mve.spouse_name As household_spouse_full_name
-    , mve.spouse_institutional_suffix As household_spouse_suffix
-    , hhdeg.household_first_ksm_year
-    , hhdeg.household_first_masters_year
-    , hhdeg.household_last_masters_year
-    , hhdeg.household_program
-    , hhdeg.household_program_group
-    , greatest(mve.etl_update_date, hhdeg.etl_update_date, trunc(hh.etl_update_date))
-      As etl_update_date
+    , mve.household_primary
+    , hhp.*
   From mv_entity mve
-  Left Join dm_alumni.dim_household hh
-    On hh.household_donor_id = mve.household_id
-  Left Join hhdeg
-    On hhdeg.household_id = mve.household_id
-  Where mve.household_primary = 'Y'
+  Inner Join hh_primary hhp
+    On hhp.household_id = mve.household_id
 ;
 
 /*************************************************************************

@@ -41,4 +41,5 @@ Left Join mv_entity_ksm_degrees sdeg
   On sdeg.donor_id = hh.household_spouse_donor_id
 Where dat.explanation Is Not Null
   Or sdat.explanation Is Not Null
+Order By hh.household_id Asc
 ;
