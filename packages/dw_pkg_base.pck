@@ -49,6 +49,9 @@ Type rec_constituent Is Record (
   , preferred_address_state dm_alumni.dim_constituent.preferred_address_state%type
   , preferred_address_postal_code dm_alumni.dim_constituent.preferred_address_postal_code%type
   , preferred_address_country dm_alumni.dim_constituent.preferred_address_country_name%type
+  , constituent_university_overall_rating dm_alumni.dim_constituent.constituent_university_overall_rating%type
+  , constituent_research_evaluation dm_alumni.dim_constituent.constituent_research_evaluation%type
+  , constituent_research_evaluation_date dm_alumni.dim_constituent.constituent_research_evaluation_date%type
   , etl_update_date dm_alumni.dim_constituent.etl_update_date%type
 );
 
@@ -74,6 +77,9 @@ Type rec_organization Is Record (
   , preferred_address_state dm_alumni.dim_organization.preferred_address_state%type
   , preferred_address_postal_code dm_alumni.dim_organization.preferred_address_postal_code%type
   , preferred_address_country dm_alumni.dim_organization.preferred_address_country_name%type
+  , organization_university_overall_rating dm_alumni.dim_organization.organization_university_overall_rating%type
+  , organization_research_evaluation dm_alumni.dim_organization.organization_research_evaluation%type
+  , organization_research_evaluation_date dm_alumni.dim_organization.organization_research_evaluation_date%type
   , etl_update_date dm_alumni.dim_organization.etl_update_date%type
 );
 
@@ -469,6 +475,11 @@ Cursor c_constituent Is
       As preferred_address_postal_code
     , nullif(preferred_address_country_name, '-')
       As preferred_address_country
+    , nullif(constituent_university_overall_rating, '-')
+      As constituent_university_overall_rating
+    , nullif(constituent_research_evaluation, '-')
+      As constituent_research_evaluation
+    , constituent_research_evaluation_date
     , trunc(etl_update_date)
       As etl_update_date
   From dm_alumni.dim_constituent con
@@ -520,6 +531,11 @@ Cursor c_organization Is
       As preferred_address_postal_code
     , nullif(preferred_address_country_name, '-')
       As preferred_address_country
+    , nullif(organization_university_overall_rating, '-')
+      As organization_university_overall_rating
+    , nullif(organization_research_evaluation, '-')
+      As organization_research_evaluation
+    , organization_research_evaluation_date
     , trunc(etl_update_date)
       As etl_update_date
   From dm_alumni.dim_organization org
