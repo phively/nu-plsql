@@ -16,11 +16,15 @@ KSM_Degrees as (Select d.donor_id,
 d.program,
 d.program_group,
 d.first_ksm_year,
+d.first_masters_year,
+d.degrees_verbose,
 d.class_section
 From mv_entity_ksm_degrees d
  WHERE D.PROGRAM IN (
  --- All EMBA
  'EMP', 'EMP-FL', 'EMP-IL', 'EMP-CAN', 'EMP-GER', 'EMP-HK', 'EMP-ISR', 'EMP-JAN', 'EMP-CHI', 
+--- PHDs
+'PHD', 
 --- Full Time 
  'FT', 'FT-1Y', 'FT-2Y', 'FT-JDMBA', 'FT-MMGT', 'FT-MMM',
 --- Include MSMS (AKA MiM) and MBAi 
@@ -51,6 +55,8 @@ d.ucinn_ascendv2__reunion_year__c,
 KD.program,
 KD.program_group,
 KD.first_ksm_year,
+KD.first_masters_year,
+KD.degrees_verbose,
 KD.class_section
 from stg_alumni.contact a
 CROSS JOIN manual_dates MD
@@ -79,7 +85,9 @@ l.reunion_year_concat,
 reunion_year.first_ksm_year,
 reunion_year.program,
 reunion_year.program_group,
-reunion_year.class_section
+reunion_year.class_section,
+reunion_year.first_masters_year,
+reunion_year.degrees_verbose
 from l 
 inner join KSM_Degrees on KSM_Degrees.donor_id = l.ucinn_ascendv2__donor_id__c
 inner join reunion_year on reunion_year.ucinn_ascendv2__donor_id__c = l.ucinn_ascendv2__donor_id__c),
@@ -250,6 +258,8 @@ select distinct e.household_id,
        e.spouse_institutional_suffix,
        FR.reunion_year_concat,
        FR.first_ksm_year,
+       FR.first_masters_year,
+       FR.degrees_verbose,
        FR.program,
        FR.program_group,
        FR.class_section,
