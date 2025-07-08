@@ -19,20 +19,7 @@ d.first_ksm_year,
 d.first_masters_year,
 d.degrees_verbose,
 d.class_section
-From mv_entity_ksm_degrees d
- WHERE D.PROGRAM IN (
- --- All EMBA
- 'EMP', 'EMP-FL', 'EMP-IL', 'EMP-CAN', 'EMP-GER', 'EMP-HK', 'EMP-ISR', 'EMP-JAN', 'EMP-CHI', 
---- PHDs
-'PHD', 
---- Full Time 
- 'FT', 'FT-1Y', 'FT-2Y', 'FT-JDMBA', 'FT-MMGT', 'FT-MMM',
---- Include MSMS (AKA MiM) and MBAi 
- 'FT-MS', 'FT-MBAi', 
----- The old Undergrad programs - should be 50+ milestone Now
- 'FT-CB', 'FT-EB',
- --- Evening and Weekend 
- 'TMP', 'TMP-SAT','TMP-SATXCEL', 'TMP-XCEL')),
+From mv_entity_ksm_degrees d),
 
 --- Pull Kellogg Reunion Year 
 
@@ -66,7 +53,21 @@ where (TO_NUMBER(NVL(TRIM(d.ucinn_ascendv2__reunion_year__c),'1')) IN (MD.CFY-1,
 MD.CFY-25, MD.CFY-30, MD.CFY-35, MD.CFY-40,
 MD.CFY-45, MD.CFY-50, MD.CFY-51, MD.CFY-52, 
 MD.CFY-53, MD.CFY-54, MD.CFY-55, MD.CFY-56, 
-MD.CFY-57, MD.CFY-58, MD.CFY-59, MD.CFY-60))),
+MD.CFY-57, MD.CFY-58, MD.CFY-59, MD.CFY-60))
+
+AND KD.PROGRAM IN (
+ --- All EMBA
+ 'EMP', 'EMP-FL', 'EMP-IL', 'EMP-CAN', 'EMP-GER', 'EMP-HK', 'EMP-ISR', 'EMP-JAN', 'EMP-CHI', 
+--- PHDs
+'PHD', 
+--- Full Time 
+ 'FT', 'FT-1Y', 'FT-2Y', 'FT-JDMBA', 'FT-MMGT', 'FT-MMM',
+--- Include MSMS (AKA MiM) and MBAi 
+ 'FT-MS', 'FT-MBAi', 
+---- The old Undergrad programs - should be 50+ milestone Now
+ 'FT-CB', 'FT-EB',
+ --- Evening and Weekend 
+ 'TMP', 'TMP-SAT','TMP-SATXCEL', 'TMP-XCEL')),
 
 --- listag reunion
 -- Some have more than 2 preferred KSM Reunions 
@@ -169,12 +170,11 @@ email as (select  c.ucinn_ascendv2__donor_id__c,
 c.email
 from stg_alumni.contact c),
 
---- contact
+--- Phone
 
 phone as (select c.ucinn_ascendv2__donor_id__c,
 c.phone
 from stg_alumni.contact c),
-
 
 -- GAB
 
@@ -202,7 +202,6 @@ from DM_ALUMNI.DIM_CONSTITUENT C ),
 asia as (Select *
 From v_committee_asia),
 
-
 --- Assignment
 
 assign as (Select a.household_id,
@@ -218,7 +217,7 @@ From mv_assignments a),
 s as (select d.constituent_donor_id,
        d.salutation,
        d.gender_identity,
-             d.constituent_contact_report_count,
+       d.constituent_contact_report_count,
        d.constituent_contact_report_last_year_count,
        d.constituent_last_contact_report_record_id,
        d.constituent_last_contact_report_date,
@@ -240,7 +239,6 @@ FROM ksm_2016_reunion r16),
 
 r22 as (SELECT r22.id_number
 FROM ksm_2022_weekend1_reunion r22)
-
 
  
 select distinct e.household_id,
