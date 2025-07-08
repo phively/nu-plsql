@@ -58,8 +58,7 @@ MD.CFY-57, MD.CFY-58, MD.CFY-59, MD.CFY-60))
 AND KD.PROGRAM IN (
  --- All EMBA
  'EMP', 'EMP-FL', 'EMP-IL', 'EMP-CAN', 'EMP-GER', 'EMP-HK', 'EMP-ISR', 'EMP-JAN', 'EMP-CHI', 
---- PHDs
-'PHD', 
+--- No PHDs for now. We don't directly invite them, but won't turn them down. Could be a one time ad-hoc if requested. 
 --- Full Time 
  'FT', 'FT-1Y', 'FT-2Y', 'FT-JDMBA', 'FT-MMGT', 'FT-MMM',
 --- Include MSMS (AKA MiM) and MBAi 
