@@ -34,6 +34,7 @@ From table(dw_pkg_base.tbl_designation_detail) dd
 --------------------------------------
 -- ksm_pkg_entity
 -- tbl_entity
+-- Drop Materialized View mv_entity;
 Create Materialized View mv_entity
 Refresh Complete
 Start With sysdate

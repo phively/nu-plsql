@@ -43,6 +43,10 @@ Type rec_household Is Record (
   , household_last_masters_year mv_entity_ksm_degrees.last_masters_year%type
   , household_program mv_entity_ksm_degrees.program%type
   , household_program_group mv_entity_ksm_degrees.program_group%type
+  , household_university_overall_rating mv_entity.university_overall_rating%type
+  , household_research_evaluation mv_entity.research_evaluation%type
+  , household_research_evaluation_date mv_entity.research_evaluation_date%type
+  , household_qualification_rating mv_entity.university_overall_rating%type
   , etl_update_date mv_entity.etl_update_date%type
 );
 
@@ -147,16 +151,60 @@ Cursor c_households Is
     Where mve.household_primary = 'Y'
   )
   
+  -- Householded rating
+  , hh_rating As (
+    Select
+      household_id
+      , min(university_overall_rating)
+        As household_university_overall_rating
+      , max(research_evaluation)
+        keep(dense_rank First Order By research_evaluation_date Desc, research_evaluation Asc)
+        As household_research_evaluation
+      , max(research_evaluation_date)
+        keep(dense_rank First Order By research_evaluation_date Desc, research_evaluation Asc)
+        As household_research_evaluation_date
+    From mv_entity
+    Where university_overall_rating Is Not Null
+      Or research_evaluation Is Not Null
+    Group By household_id
+  )
+  
   Select
     mve.donor_id
     , mve.full_name
     , mve.sort_name
     , mve.person_or_org
     , mve.household_primary
-    , hhp.*
+    , hhp.household_id
+    , hhp.household_account_name
+    , hhp.household_primary_donor_id
+    , hhp.household_primary_full_name
+    , hhp.household_primary_sort_name
+    , hhp.household_suffix
+    , hhp.household_spouse_donor_id
+    , hhp.household_spouse_full_name
+    , hhp.household_spouse_sort_name
+    , hhp.household_spouse_suffix
+    , hhp.household_first_ksm_year
+    , hhp.household_first_masters_year
+    , hhp.household_last_masters_year
+    , hhp.household_program
+    , hhp.household_program_group
+    , hhr.household_university_overall_rating
+    , hhr.household_research_evaluation
+    , hhr.household_research_evaluation_date
+    , Case
+        When hhr.household_university_overall_rating Is Not Null
+          Then hhr.household_university_overall_rating
+        Else hhr.household_research_evaluation
+        End
+      As household_qualification_rating
+    , hhp.etl_update_date
   From mv_entity mve
   Inner Join hh_primary hhp
     On hhp.household_id = mve.household_id
+  Left Join hh_rating hhr
+    On hhr.household_id = mve.household_id
 ;
 
 /*************************************************************************
