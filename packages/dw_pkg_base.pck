@@ -683,7 +683,8 @@ Cursor c_designation Is
     , designation_record_id
     , designation_name
     , designation_status
-    , legacy_allocation_code
+    , nullif(legacy_allocation_code, '-')
+      As legacy_allocation_code
     , nullif(fin_fund, '-')
       As fin_fund
     , Case
