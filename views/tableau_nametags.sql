@@ -13,6 +13,8 @@ From table(dw_pkg_base.tbl_degrees)
 --- Northwestern Related Degrees Only
 --where DEGREE_ORGANIZATION_NAME = 'Northwestern University'
 where nu_indicator = 'Y'
+--- Let's remove students
+and DEGREE_CODE not like '%STU%'
 ),
 
 e as (select
