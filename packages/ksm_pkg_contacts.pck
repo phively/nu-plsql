@@ -23,9 +23,23 @@ pkg_name Constant varchar2(64) := 'ksm_pkg_contacts';
 Public type declarations
 *************************************************************************/
 
+Type rec_linkedin Is Record (
+  contact_salesforce_id stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__contact__c%type 
+  , donor_id stg_alumni.contact.ucinn_ascendv2__donor_id__c%type
+  , social_media_record_id stg_alumni.ucinn_ascendv2__social_media__c.name%type 
+  , status stg_alumni.ucinn_ascendv2__social_media__c.ap_status__c%type 
+  , platform stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__platform__c%type 
+  , linkedin_url stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__url__c%type
+  , notes stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__notes__c%type 
+  , last_modified_date stg_alumni.ucinn_ascendv2__social_media__c.lastmodifieddate%type 
+  , etl_update_date stg_alumni.ucinn_ascendv2__social_media__c.etl_update_date%type 
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
+
+Type linkedin Is Table Of rec_linkedin;
 
 /*************************************************************************
 Public function declarations
@@ -34,6 +48,9 @@ Public function declarations
 /*************************************************************************
 Public pipelined functions declarations
 *************************************************************************/
+
+Function tbl_linkedin
+  Return linkedin Pipelined;
 
 /*********************** About pipelined functions ***********************
 Q: What is a pipelined function?
@@ -88,8 +105,19 @@ Cursor c_address Is
 
 --------------------------------------
 Cursor c_linkedin Is
-  Select NULL
-  From DUAL
+  Select
+    sm.contact_salesforce_id
+    , sm.donor_id
+    , sm.social_media_record_id
+    , sm.status
+    , sm.platform
+    , sm.social_media_url
+      As linkedin_url
+    , sm.notes
+    , sm.last_modified_date
+    , sm.etl_update_date
+  From table(dw_pkg_base.tbl_social_media) sm
+  Where lower(platform) Like '%linked%in%'
 ;
 
 /*************************************************************************
@@ -100,6 +128,21 @@ Private functions
 Pipelined functions
 *************************************************************************/
 
+--------------------------------------
+Function tbl_linkedin
+  Return linkedin Pipelined As
+    -- Declarations
+    li linkedin;
+
+  Begin
+    Open c_linkedin;
+      Fetch c_linkedin Bulk Collect Into li;
+    Close c_linkedin;
+    For i in 1..(li.count) Loop
+      Pipe row(li(i));
+    End Loop;
+    Return;
+  End;
 
 End ksm_pkg_contacts;
 /

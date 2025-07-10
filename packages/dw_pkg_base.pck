@@ -341,6 +341,20 @@ Type rec_proposal Is Record (
     , etl_update_date dm_alumni.dim_proposal_opportunity.etl_update_date%type
 );
 
+--------------------------------------
+Type rec_econtact Is Record (
+    contact_salesforce_id stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__contact__c%type
+    , donor_id stg_alumni.contact.ucinn_ascendv2__donor_id__c%type
+    , social_media_record_id stg_alumni.ucinn_ascendv2__social_media__c.name%type
+    , status stg_alumni.ucinn_ascendv2__social_media__c.ap_status__c%type
+    , platform stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__platform__c%type
+    , social_media_handle stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__social_handle__c%type
+    , social_media_url stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__url__c%type
+    , notes stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__notes__c%type
+    , last_modified_date stg_alumni.ucinn_ascendv2__social_media__c.lastmodifieddate%type
+    , etl_update_date stg_alumni.ucinn_ascendv2__social_media__c.etl_update_date%type
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
@@ -358,6 +372,7 @@ Type involvement Is Table Of rec_involvement;
 Type service_indicators Is Table Of rec_service_indicators;
 Type assignments Is Table Of rec_assignment;
 Type proposals Is Table Of rec_proposal;
+Type econtacts Is Table Of rec_econtact;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -401,6 +416,9 @@ Function tbl_assignments
 
 Function tbl_proposals
   Return proposals Pipelined;
+
+Function tbl_social_media
+  Return econtacts Pipelined;
 
 /*********************** About pipelined functions ***********************
 Q: What is a pipelined function?
@@ -1124,6 +1142,34 @@ Cursor c_proposals Is
     On fpo.opportunity_salesforce_id = dpo.opportunity_salesforce_id
 ;
 
+--------------------------------------
+Cursor c_econtacts Is
+  Select
+    sm.ucinn_ascendv2__contact__c
+      As contact_salesforce_id
+    , c.ucinn_ascendv2__donor_id__c
+      As donor_id
+    , sm.name
+      As social_media_record_id
+    , sm.ap_status__c
+      As status
+    , sm.ucinn_ascendv2__platform__c
+      As platform
+    , sm.ucinn_ascendv2__social_handle__c
+      As social_media_handle
+    , sm.ucinn_ascendv2__url__c
+      As social_media_url
+    , sm.ucinn_ascendv2__notes__c
+      As notes
+    , trunc(sm.lastmodifieddate)
+      As last_modified_date
+    , sm.etl_update_date
+      As etl_update_date
+  From stg_alumni.ucinn_ascendv2__social_media__c sm
+  Inner Join stg_alumni.contact c
+    On c.id = sm.ucinn_ascendv2__contact__c
+;
+
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
@@ -1332,6 +1378,22 @@ Function tbl_proposals
     Close c_proposals;
     For i in 1..(prp.count) Loop
       Pipe row(prp(i));
+    End Loop;
+    Return;
+  End;
+  
+--------------------------------------
+Function tbl_social_media
+  Return econtacts Pipelined As
+    -- Declarations
+    ec econtacts;
+
+  Begin
+    Open c_econtacts;
+      Fetch c_econtacts Bulk Collect Into ec;
+    Close c_econtacts;
+    For i in 1..(ec.count) Loop
+      Pipe row(ec(i));
     End Loop;
     Return;
   End;
