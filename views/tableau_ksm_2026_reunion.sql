@@ -98,6 +98,7 @@ stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__contact__c,
 max (stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__url__c) keep (dense_rank first order by stg_alumni.ucinn_ascendv2__social_media__c.lastmodifieddate) as Linkedin_address
 from stg_alumni.ucinn_ascendv2__social_media__c
 where stg_alumni.ucinn_ascendv2__social_media__c.ap_status__c like '%Current%'
+and stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__platform__c = 'LinkedIn'
 group BY stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__contact__c
 ),
 
