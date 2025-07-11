@@ -29,7 +29,7 @@ d as (select c.id,
        c.ap_school_reunion_year__c
 from stg_alumni.ucinn_ascendv2__degree_information__c c
 where c.ap_school_reunion_year__c like '%Kellogg%'
-and c.ap_degree_type_from_degreecode__c != 'Certificate'
+and c.ap_degree_type_from_degreecode__c Not In ('Certificate', 'Doctorate Degree')
 ),
 
 --- Reunion Year 
