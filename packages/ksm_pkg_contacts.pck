@@ -5,7 +5,8 @@ Author  : PBH634
 Created : 7/10/2025
 Purpose : Combined address, phone, email, social media contact information
   per entity record.
-Dependencies: dw_pkg_base, mv_entity (ksm_pkg_entity)
+Dependencies: dw_pkg_base, mv_entity (ksm_pkg_entity), ksm_pkg_calendar,
+  ksm_pkg_special_handling (mv_special_handling)
 
 Suggested naming conventions:
   Pure functions: [function type]_[description]
@@ -23,6 +24,38 @@ pkg_name Constant varchar2(64) := 'ksm_pkg_contacts';
 Public type declarations
 *************************************************************************/
 
+--------------------------------------
+Type rec_address Is Record (
+  address_donor_id dm_alumni.dim_address.address_donor_id%type
+  , address_record_id dm_alumni.dim_address.address_record_id%type
+  , address_relation_record_id dm_alumni.dim_address.address_relation_record_id%type
+  , address_type dm_alumni.dim_address.address_type%type
+  , address_status dm_alumni.dim_address.address_status%type
+  , address_preferred_indicator dm_alumni.dim_address.address_prefered_indicator%type
+  , address_primary_home_indicator dm_alumni.dim_address.address_primary_home_indicator%type
+  , address_primary_business_indicator dm_alumni.dim_address.address_primary_business_indicator%type
+  , address_seasonal_indicator dm_alumni.dim_address.address_seasonal_indicator%type
+  , is_campus_indicator dm_alumni.dim_address.is_campus_indicator%type
+  , address_line_1 dm_alumni.dim_address.address_line_1%type
+  , address_line_2 dm_alumni.dim_address.address_line_2%type
+  , address_line_3 dm_alumni.dim_address.address_line_3%type
+  , address_line_4 dm_alumni.dim_address.address_line_4%type
+  , address_city dm_alumni.dim_address.address_city%type
+  , address_state dm_alumni.dim_address.address_state%type
+  , address_postal_code dm_alumni.dim_address.address_postal_code%type
+  , address_country dm_alumni.dim_address.address_country%type
+  , address_latitude dm_alumni.dim_address.address_location_latitude%type
+  , address_longitude dm_alumni.dim_address.address_location_longitude%type
+  , address_start_date dm_alumni.dim_address.address_start_date%type
+  , address_end_date dm_alumni.dim_address.address_end_date%type
+  , address_seasonal_start varchar2(8)
+  , address_seasonal_end varchar2(8)
+  , address_seasonal_start_date dm_alumni.dim_address.address_start_date%type
+  , address_seasonal_end_date dm_alumni.dim_address.address_end_date%type
+  , etl_update_date dm_alumni.dim_address.etl_update_date%type
+);
+
+--------------------------------------
 Type rec_linkedin Is Record (
   contact_salesforce_id stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__contact__c%type 
   , donor_id stg_alumni.contact.ucinn_ascendv2__donor_id__c%type
@@ -39,6 +72,7 @@ Type rec_linkedin Is Record (
 Public table declarations
 *************************************************************************/
 
+Type address Is Table Of rec_address;
 Type linkedin Is Table Of rec_linkedin;
 
 /*************************************************************************
@@ -48,6 +82,9 @@ Public function declarations
 /*************************************************************************
 Public pipelined functions declarations
 *************************************************************************/
+
+Function tbl_address
+  Return address Pipelined;
 
 Function tbl_linkedin
   Return linkedin Pipelined;
@@ -98,9 +135,41 @@ Cursor c_email Is
 ;
 
 --------------------------------------
-Cursor c_address Is
-  Select NULL
-  From DUAL
+Cursor c_address_current Is
+  Select
+    address_donor_id
+    , a.address_record_id
+    , a.address_relation_record_id
+    , a.address_type
+    , a.address_status
+    , a.address_preferred_indicator
+    , a.address_primary_home_indicator
+    , a.address_primary_business_indicator
+    , a.address_seasonal_indicator
+    , a.is_campus_indicator
+    , a.address_line_1
+    , a.address_line_2
+    , a.address_line_3
+    , a.address_line_4
+    , a.address_city
+    , a.address_state
+    , a.address_postal_code
+    , a.address_country
+    , a.address_location_latitude
+    , a.address_location_longitude
+    , a.address_start_date
+    , a.address_end_date
+    -- Seasonal address to_date logic
+    , a.address_seasonal_start
+    , a.address_seasonal_end
+    , NULL
+      As address_seasonal_start_date
+    , NULL
+      As address_seasonal_end_date
+    , a.etl_update_date
+  From table(dw_pkg_base.tbl_address) a
+  Cross Join table(ksm_pkg_calendar.tbl_current_calendar) cal
+  Where a.address_status = 'Current'
 ;
 
 --------------------------------------
@@ -127,6 +196,22 @@ Private functions
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
+
+--------------------------------------
+Function tbl_address
+  Return address Pipelined As
+    -- Declarations
+    addr address;
+
+  Begin
+    Open c_address_current;
+      Fetch c_address_current Bulk Collect Into addr;
+    Close c_address_current;
+    For i in 1..(addr.count) Loop
+      Pipe row(addr(i));
+    End Loop;
+    Return;
+  End;
 
 --------------------------------------
 Function tbl_linkedin

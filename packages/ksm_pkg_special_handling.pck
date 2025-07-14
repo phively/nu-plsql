@@ -5,8 +5,7 @@ Author  : PBH634
 Created : 5-27-2025
 Purpose : Combined service indicators, committees, and other special handling
   indicators for mailing and other contact lists
-Dependencies: dw_pkg_base, ksm_pkg_entity (mv_entity),
-  ksm_pkg_special_handling (mv_special_handling)
+Dependencies: dw_pkg_base, ksm_pkg_entity (mv_entity)
 
 Suggested naming conventions:
   Pure functions: [function type]_[description]
