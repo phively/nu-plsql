@@ -1,6 +1,19 @@
 Create Or Replace Package ksm_pkg_calendar Is
 
 /*************************************************************************
+Author  : PBH634
+Created : 4/14/2025
+Purpose : Provide key NU and KSM dates to other code in a consistent way.
+  Combined into a package for ease of parameter checks/updates.
+Dependencies: ksm_pkg_utility
+
+Suggested naming conventions:
+  Pure functions: [function type]_[description]
+  Row-by-row retrieval (slow): get_[object type]_[action or description] e.g.
+  Table or cursor retrieval (fast): tbl_[object type]_[action or description]
+*************************************************************************/
+
+/*************************************************************************
 Public constant declarations
 *************************************************************************/
 
@@ -15,7 +28,7 @@ py_start_month_py21 Constant number := 6; -- performance start month, 6 = June i
 Public type declarations
 *************************************************************************/
 
-Type calendar Is Record (
+Type rec_calendar Is Record (
   today date
   , yesterday date
   , yesterday_last_year date
@@ -42,7 +55,7 @@ Type calendar Is Record (
 Public table declarations
 *************************************************************************/
 
-Type t_calendar Is Table Of calendar;
+Type calendar Is Table Of rec_calendar;
 
 /*************************************************************************
 Public function declarations
@@ -94,10 +107,14 @@ Public pipelined functions declarations
 -- Returns a 1-row table with selectable date objects (safe to cross join)
 -- Pipelined version
 Function tbl_current_calendar
-  Return t_calendar Pipelined;
+  Return calendar Pipelined;
+
+End ksm_pkg_calendar;
+/
+Create Or Replace Package Body ksm_pkg_calendar Is
 
 /*************************************************************************
-Public cursors -- data definitions
+Private cursors -- data definitions
 *************************************************************************/
 
 -- Compiles useful dates together for use in other functions.
@@ -128,14 +145,10 @@ Cursor c_current_calendar (
   )
   -- Final table with definitions
   Select
-    -- Current day
     curr_date.today As today
-    -- Yesterday
     , curr_date.today - 1 As yesterday
     , add_months(curr_date.today - 1, -12) As yesterday_last_year
-    -- 90 days ago (for clearance)
     , curr_date.today - 90 As ninety_days_ago
-    -- Current fiscal year
     , curr_date.yr As curr_fy
     -- Start of fiscal year objects
     , to_date(fy_start_month || '/01/' || (curr_date.yr - yr_dif - 1), 'mm/dd/yyyy')
@@ -144,9 +157,8 @@ Cursor c_current_calendar (
       As curr_fy_start
     , to_date(fy_start_month || '/01/' || (curr_date.yr - yr_dif + 1), 'mm/dd/yyyy')
       As next_fy_start
-    -- Current performance year
+    -- Performance year
     , curr_date.perf_yr As curr_py
-    -- Start of performance year objects
     -- Previous PY correction for 2021
     , Case
         When perf_yr - 1 = 2021
@@ -180,10 +192,6 @@ Cursor c_current_calendar (
   From curr_date
   ;
 
-End ksm_pkg_calendar;
-/
-Create Or Replace Package Body ksm_pkg_calendar Is
-
 /*************************************************************************
 Functions
 *************************************************************************/
@@ -203,13 +211,13 @@ Function get_numeric_constant(const_name In varchar2)
     Else
       var := const_name;
     End If;
-    -- Run command
     Execute Immediate
       'Begin :val := ' || var || '; End;'
       Using Out val;
       Return val;
   End;
 
+--------------------------------------
 -- Fiscal year to date indicator: Takes as an argument any date object and returns Y/N
 Function fytd_indicator(dt In date, day_offset In number)
   Return character Is
@@ -223,9 +231,9 @@ Function fytd_indicator(dt In date, day_offset In number)
   Begin
     -- extract dt fiscal month and day
     today_fisc_day := extract(day from sysdate);
-    today_fisc_mo  := math_mod(m => extract(month from sysdate) - fy_start_month, n => 12) + 1;
+    today_fisc_mo  := ksm_pkg_utility.mod_math(m => extract(month from sysdate) - fy_start_month, n => 12) + 1;
     dt_fisc_day    := extract(day from dt);
-    dt_fisc_mo     := math_mod(m => extract(month from dt) - fy_start_month, n => 12) + 1;
+    dt_fisc_mo     := ksm_pkg_utility.mod_math(m => extract(month from dt) - fy_start_month, n => 12) + 1;
     -- logic to construct output
     If dt_fisc_mo < today_fisc_mo Then
       -- if dt_fisc_mo is earlier than today_fisc_mo no need to continue checking
@@ -239,13 +247,13 @@ Function fytd_indicator(dt In date, day_offset In number)
         output := 'N';
       End If;
     Else
-      -- fallback condition
       output := NULL;
     End If;
     
     Return(output);
   End;
 
+--------------------------------------
 -- Compute fiscal or performance quarter from date
 -- Defaults to fiscal quarter
 Function get_quarter(dt In date, fisc_or_perf In varchar2 Default 'fiscal')
@@ -258,14 +266,15 @@ Function get_quarter(dt In date, fisc_or_perf In varchar2 Default 'fiscal')
     this_month := extract(month from dt);
     -- Convert to chronological month number, where FY/PY start month = 1
     If lower(fisc_or_perf) Like 'f%' Then
-      chron_month := math_mod(this_month - fy_start_month, 12) + 1;
+      chron_month := ksm_pkg_utility.mod_math(this_month - fy_start_month, 12) + 1;
     ElsIf lower(fisc_or_perf) Like 'p%' Then
-      chron_month := math_mod(this_month - py_start_month, 12) + 1;
+      chron_month := ksm_pkg_utility.mod_math(this_month - py_start_month, 12) + 1;
     End If;
     -- Return appropriate quarter corresponding to month; 3 months per quarter
     Return ceil(chron_month / 3);
   End;
 
+--------------------------------------
 -- Compute fiscal month from date
 Function get_fiscal_month(
   dt In date
@@ -276,9 +285,10 @@ Function get_fiscal_month(
   Begin
     this_month := extract(month from dt);
     -- Modulo 12, add 1 so range is 1-12 instead of 0-11
-    Return math_mod(this_month - fy_start_month, 12) + 1;
+    Return ksm_pkg_utility.mod_math(this_month - fy_start_month, 12) + 1;
   End;
 
+--------------------------------------
 -- Compute fiscal year from date parameter
 -- Date version
 Function get_fiscal_year(dt In date)
@@ -313,6 +323,7 @@ Function get_fiscal_year(dt In varchar2, format In varchar2 Default 'yyyy/mm/dd'
     Return (this_year + 1);
   End;
 
+--------------------------------------
 -- Compute performance year from date parameter
 -- Date version
 Function get_performance_year(dt In date)
@@ -344,9 +355,9 @@ Pipelined functions
 
 -- Pipelined function returning the current calendar definition
 Function tbl_current_calendar
-  Return t_calendar Pipelined As
+  Return calendar Pipelined As
   -- Declarations
-  cal t_calendar;
+  cal calendar;
     
   Begin
     Open c_current_calendar(fy_start_month, py_start_month);

@@ -2,34 +2,41 @@
 
 Contains SQL and PL/SQL code for various Kellogg data definitions and best practices.
 
+# Data hierarchy
+
+Concept: lower level tables should be defined based on SF objects, then joined/transformed into higher level definitions. Data packages should have clear hierarchical dependencies, and a single responsibility.
+
+WIP as of May 2025. Blue are available for testing in PRD.
+
+![data_hierarchy.png](images/data_hierarchy.png "Proposed data hierarchy")
+
+# Naming conventions
+
+`id_type_description`
+
+ * `dw_pkg_`: package/view accessing SF objects or DW tables; should be very fast
+ * `ksm_pkg_`: KSM specific package/view dependent on other packages/views
+ * `mv_`: refreshing materialized views, fast indexed versions of dw_pkg and ksm_pkg definitions
+ * `tbl_`: tables and non-refreshing materialized views; should be recompiled to update
+ * `v_`: general views
+ * `tableau_`: Tableau views
+
+Examples
+
+ * `ksm_pkg_utility` wraps various utility functions, such as to_number_from_dollar()
+ * `dw_pkg_base` contains the cursor/logic to format base objects/tables including constituent, organization, etc.
+
+# Materialized view refresh
+
+To facilitate pulling the important definitions contained in the `ksm_pkg` packages, materialized views are scheduled to refresh daily. See [ksm_mv_scheduler.sql](tables/ksm_mv_scheduler.sql) for the set of scheduled views.
+
+If new materialized views are scheduled, the specs should be added to the above file, and last refresh and ETL times added to the view [ksm_mv_refresh_stats.sql](tables/ksm_mv_refresh_stats.sql).
+
+Important: respect dependencies! For example, `mv_ksm_transactions` is scheduled 10 minutes after `mv_entity` -- see their respective package descriptions.
+
 # Important views
 
-## Utility views
-
- * [v_current_calendar](https://github.com/phively/nu-plsql/blob/master/views/ksm_utility_views.sql) = self-updating dates, e.g. yesterday, today, curr_week_start
- * [v_frontline_ksm_staff](https://github.com/phively/nu-plsql/blob/master/views/ksm_utility_views.sql) = list of current and past KSM prospect managers
-
-## Definitions
-
- * [v_entity_ksm_households](https://github.com/phively/nu-plsql/blob/master/views/ksm_utility_views.sql) = householding definition; earliest KSM grad is the primary household member, with lower entity ID number as the tiebreaker
- * [v_entity_ksm_degrees](https://github.com/phively/nu-plsql/blob/master/views/ksm_utility_views.sql) = KSM alumni definition, plus concatenated degrees and name tag strings
- * [v_ksm_prospect_pool](https://github.com/phively/nu-plsql/blob/master/views/v_ksm_prospect_pool.sql) = KSM prospect pool definition: alumni, donors, and prospects
-
-## Giving views
-
- * [v_alloc_curr_use](https://github.com/phively/nu-plsql/blob/master/views/ksm_utility_views.sql) = KSM current use allocation definition
- * [v_ksm_giving_summary](https://github.com/phively/nu-plsql/blob/master/views/ksm_giving_trans_views.sql) = householded giving totals, including KSM lifetime, yearly ngc, yearly cash, yearly af and klc totals and categories, etc.
- * [v_ksm_giving_cash](https://github.com/phively/nu-plsql/blob/master/views/v_ksm_giving_cash.sql) = cash transactions view for reconciliation with Finance; they count most funds with cash_category = Expendable or Hub Campaign Cash
- * [v_ksm_giving_trans_hh](https://github.com/phively/nu-plsql/blob/master/views/ksm_giving_trans_views.sql) = householded KSM giving transactions
- * [v_ksm_giving_campaign](https://github.com/phively/nu-plsql/blob/master/views/ksm_giving_trans_views.sql) = householded KSM campaign giving totals, stewardship totals, and broken out by year
- * [v_ksm_giving_campaign_trans_hh](https://github.com/phively/nu-plsql/blob/master/views/ksm_giving_trans_views.sql) = householded KSM campaign giving transactions
- * [v_ksm_pledge_balances](https://github.com/phively/nu-plsql/blob/master/views/v_ksm_pledge_balances.sql) = KSM amounts due by allocation on currently active pledges
-
-## Prospect views
-
- * [v_assignment_history](https://github.com/phively/nu-plsql/blob/master/views/v_assignment_history.sql) = gift officer current and historical portfolio assignments
- * [v_assignment_summary](https://github.com/phively/nu-plsql/blob/master/views/v_assignment_summary.sql) = concatenated prospect manager, assist, and LGO assignments per prospect/entity
- * [v_ksm_proposal_history_fast](https://github.com/phively/nu-plsql/blob/master/views/v_ksm_proposal_history.sql) = current and historical proposals
- * [v_contact_reports_fast](https://github.com/phively/nu-plsql/blob/master/views/v_ksm_contact_reports.sql) = historical contact reports, including up to 2000 characters of the text
- * [v_nu_visits](https://github.com/phively/nu-plsql/blob/master/views/v_ksm_visits.sql) = historical visit contact reports, including up to 2000 characters of the text
- * [v_ksm_high_level_job_titles](https://github.com/phively/nu-plsql/blob/master/views/v_ksm_high_level_job_titles.sql) = standardizes C-suite and similar job titles for all KSM alumni
+ * [mv_entity](packages/ksm_pkg_entity.pck) = merged constituent and org tables, with consistent household definition (org ultimate parent is the hh primary). See `c_entity`
+ * [mv_entity_ksm_degrees](packages/ksm_pkg_degrees.pck) = KSM alumni definition, plus concatenated degrees. See `c_entity_degrees_concat`
+ * [mv_ksm_designation](packages/ksm_pkg_designation.pck) = KSM gift designations, including cash and campaign categories. See `c_ksm_designation`
+ * [mv_ksm_transactions](packages/ksm_pkg_gifts.pck) = KSM hard and soft credit to all KSM designations. See `c_ksm_transactions`
