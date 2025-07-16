@@ -92,6 +92,20 @@ from l
 inner join KSM_Degrees on KSM_Degrees.donor_id = l.ucinn_ascendv2__donor_id__c
 inner join reunion_year on reunion_year.ucinn_ascendv2__donor_id__c = l.ucinn_ascendv2__donor_id__c),
 
+--- Spouse Reunion Year  - KELLOGG ONLY!
+--- Salutation for folks that have a spouse, who is NOT a primary member of the household, AND has a Reunion 2026 year
+
+
+spr as (select en.spouse_donor_id,
+en.spouse_name,
+en.spouse_institutional_suffix,
+--- This should be Reunion for Spouses
+FR.reunion_year_concat
+from mv_entity en
+inner join FR on FR.ucinn_ascendv2__donor_id__c = en.spouse_donor_id
+inner join KSM_Degrees on KSM_Degrees.donor_id = en.spouse_donor_id),
+
+
 --- Current Linkedin Addresses
 a as (select
 stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__contact__c,
@@ -114,6 +128,7 @@ inner join a on c.id = a.ucinn_ascendv2__contact__c),
 
 e as (select mv_entity.household_id,
        mv_entity.donor_id,
+       mv_entity.household_primary,
        mv_entity.full_name,
        mv_entity.first_name,
        mv_entity.last_name,
@@ -135,6 +150,8 @@ e as (select mv_entity.household_id,
        mv_entity.preferred_address_country
  From mv_entity
  where mv_entity.is_deceased_indicator = 'N'
+ --- household primary
+ and mv_entity.household_primary = 'Y'
  ),
  
 --- Giving Summary
@@ -238,15 +255,44 @@ FROM ksm_2016_reunion r16),
 --- 20 Reunion Attendees 
 
 r22 as (SELECT r22.id_number
-FROM ksm_2022_weekend1_reunion r22)
+FROM ksm_2022_weekend1_reunion r22),
+
+--- Preferred Mail Name - From Amy
+MN as (SELECT ME.DONOR_ID,
+INDNAMESAL.UCINN_ASCENDV2__CONSTRUCTED_NAME_FORMULA__C as preferred_mail_name
+FROM stg_alumni.ucinn_ascendv2__contact_name__c  INDNAMESAL
+Inner Join mv_entity ME
+ON ME.SALESFORCE_ID = INDNAMESAL.UCINN_ASCENDV2__CONTACT__C
+AND INDNAMESAL.ucinn_ascendv2__type__c = 'Full Name'),
+
+--- Join Salutation for folks that have a spouse, who is NOT a primary member of the household, AND has a Reunion 2026 year
+
+Salutation as (Select
+        mv_entity.donor_id
+      , stgc.UCINN_ASCENDV2__SALUTATION_TYPE__c As Salutation_Type
+      , stgc.ucinn_ascendv2__salutation_record_type_formula__c As Ind_or_Joint
+      , stgc.ucinn_ascendv2__inside_salutation__c As Salutation
+      , stgc.lastmodifieddate
+      , stgc.ucinn_ascendv2__author_title__c As Sal_Author
+      , stgc.isdeleted
+From stg_alumni.ucinn_ascendv2__salutation__c stgc
+Left Join mv_entity
+     On mv_entity.salesforce_id = stgc.ucinn_ascendv2__contact__c
+Where  stgc.isdeleted = 'false'
+And stgc.ucinn_ascendv2__salutation_record_type_formula__c = 'Joint'
+--- formal
+and stgc.UCINN_ASCENDV2__SALUTATION_TYPE__c = 'Formal'
+)
 
  
 select distinct e.household_id,
        e.donor_id,
+       e.household_primary,
        e.is_deceased_indicator,
        e.primary_record_type,
        s.gender_identity,
        s.salutation,
+       MN.preferred_mail_name,
        e.full_name,
        e.first_name,
        e.last_name,
@@ -254,6 +300,11 @@ select distinct e.household_id,
        e.spouse_donor_id,
        e.spouse_name,
        e.spouse_institutional_suffix,
+       spr.reunion_year_concat as spouse_ksm_reunion_year,
+       --- Salutation
+       case when spr.reunion_year_concat is not null then salutation.salutation end as joint_salutation,
+       case when spr.reunion_year_concat is not null then salutation.Salutation_Type end as joint_salutation_type,
+       case when spr.reunion_year_concat is not null then salutation.Ind_or_Joint end as ind_joint,
        FR.reunion_year_concat,
        FR.first_ksm_year,
        FR.first_masters_year,
@@ -354,3 +405,8 @@ left join assign on assign.donor_id = e.donor_id
 left join s on s.constituent_donor_id = e.donor_id 
 left join r16 on r16.id_number = e.donor_id 
 left join r22 on r22.id_number = e.donor_id
+left join MN on MN.DONOR_ID = e.donor_id 
+--- Salutation
+left join Salutation on Salutation.donor_id = e.spouse_donor_id
+--- spouse reunion year
+left join spr on spr.spouse_donor_id = e.spouse_donor_id
