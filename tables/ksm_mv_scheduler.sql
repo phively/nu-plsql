@@ -189,6 +189,22 @@ Select
 From table(ksm_pkg_gifts.tbl_source_donors) srcd
 ;
 
+--------------------------------------
+-- ksm_pkg_special_handling
+-- tbl_special_handling
+-- Drop Materialized View mv_special_handling;
+Create Materialized View mv_special_handling
+Refresh Complete
+Start With sysdate
+-- 7:40 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.667/24)
+As
+Select
+  sh.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_special_handling.tbl_special_handling) sh
+;
+
 /*************************************************************************
 Level 2 dependencies
 7:50 AM
@@ -209,17 +225,3 @@ Select
 From v_ksm_giving_summary gs
 ;
 
---------------------------------------
--- ksm_pkg_special_handling
--- tbl_special_handling
-Create Materialized View mv_special_handling
-Refresh Complete
-Start With sysdate
--- 7:50 AM tomorrow
-Next (trunc(sysdate) + 1 + 7.833/24)
-As
-Select
-  sh.*
-  , sysdate as mv_last_refresh
-From table(ksm_pkg_special_handling.tbl_special_handling) sh
-;

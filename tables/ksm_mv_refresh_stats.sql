@@ -45,13 +45,13 @@ From mv_ksm_transactions
 Union
 Select 1, 'mv_source_donor', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_source_donor
+Union
+Select 1, 'mv_special_handling', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+From mv_special_handling
 -- 7:50 AM
 Union
 Select 2, 'mv_ksm_giving_summary', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_ksm_giving_summary
-Union
-Select 2, 'mv_special_handling', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
-From mv_special_handling
 ;
 
 Select *

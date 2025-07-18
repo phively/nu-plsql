@@ -105,171 +105,171 @@ Type rec_mini_entity Is Record (
 
 --------------------------------------
 Type rec_degrees Is Record (
-    constituent_donor_id dm_alumni.dim_degree_detail.constituent_donor_id%type
-    , constituent_name dm_alumni.dim_degree_detail.constituent_name%type
-    , degree_record_id stg_alumni.ucinn_ascendv2__degree_information__c.name%type
-    , degree_status stg_alumni.ucinn_ascendv2__degree_information__c.ap_status__c%type
-    , nu_indicator varchar2(1)
-    , degree_organization_name dm_alumni.dim_degree_detail.degree_organization_name%type
-    , degree_school_name stg_alumni.ucinn_ascendv2__degree_information__c.ap_school_name_formula__c%type
-    , degree_level stg_alumni.ucinn_ascendv2__degree_information__c.ap_degree_type_from_degreecode__c%type
-    , degree_year stg_alumni.ucinn_ascendv2__degree_information__c.ucinn_ascendv2__conferred_degree_year__c%type
-    , degree_reunion_year stg_alumni.ucinn_ascendv2__degree_information__c.ucinn_ascendv2__reunion_year__c%type
-    , degree_grad_date stg_alumni.ucinn_ascendv2__degree_information__c.ucinn_ascendv2__degree_date__c%type
-    , degree_code stg_alumni.ucinn_ascendv2__degree_code__c.ucinn_ascendv2__degree_code__c%type
-    , degree_name stg_alumni.ucinn_ascendv2__degree_code__c.ucinn_ascendv2__description__c%type
-    , department_code stg_alumni.ucinn_ascendv2__academic_organization__c.ucinn_ascendv2__code__c%type
-    , department_desc stg_alumni.ucinn_ascendv2__academic_organization__c.ucinn_ascendv2__description_short__c%type
-    , department_desc_full stg_alumni.ucinn_ascendv2__academic_organization__c.ucinn_ascendv2__description_long__c%type
-    , degree_campus stg_alumni.ucinn_ascendv2__degree_information__c.ap_campus__c%type
-    , degree_program_code stg_alumni.ap_program__c.ap_program_code__c%type
-    , degree_program stg_alumni.ap_program__c.name%type
-    , degree_concentration_desc stg_alumni.ucinn_ascendv2__specialty__c.name%type
-    , degree_major_code_1 stg_alumni.ucinn_ascendv2__post_code__c.ap_major_code__c%type
-    , degree_major_code_2 stg_alumni.ucinn_ascendv2__post_code__c.ap_major_code__c%type 
-    , degree_major_code_3 stg_alumni.ucinn_ascendv2__post_code__c.ap_major_code__c%type
-    , degree_major_1 stg_alumni.ucinn_ascendv2__post_code__c.name%type
-    , degree_major_2 stg_alumni.ucinn_ascendv2__post_code__c.name%type
-    , degree_major_3 stg_alumni.ucinn_ascendv2__post_code__c.name%type
-    , degree_notes stg_alumni.ucinn_ascendv2__degree_information__c.ap_notes__c%type
-    , etl_update_date stg_alumni.ucinn_ascendv2__degree_information__c.etl_update_date%type
+  constituent_donor_id dm_alumni.dim_degree_detail.constituent_donor_id%type
+  , constituent_name dm_alumni.dim_degree_detail.constituent_name%type
+  , degree_record_id stg_alumni.ucinn_ascendv2__degree_information__c.name%type
+  , degree_status stg_alumni.ucinn_ascendv2__degree_information__c.ap_status__c%type
+  , nu_indicator varchar2(1)
+  , degree_organization_name dm_alumni.dim_degree_detail.degree_organization_name%type
+  , degree_school_name stg_alumni.ucinn_ascendv2__degree_information__c.ap_school_name_formula__c%type
+  , degree_level stg_alumni.ucinn_ascendv2__degree_information__c.ap_degree_type_from_degreecode__c%type
+  , degree_year stg_alumni.ucinn_ascendv2__degree_information__c.ucinn_ascendv2__conferred_degree_year__c%type
+  , degree_reunion_year stg_alumni.ucinn_ascendv2__degree_information__c.ucinn_ascendv2__reunion_year__c%type
+  , degree_grad_date stg_alumni.ucinn_ascendv2__degree_information__c.ucinn_ascendv2__degree_date__c%type
+  , degree_code stg_alumni.ucinn_ascendv2__degree_code__c.ucinn_ascendv2__degree_code__c%type
+  , degree_name stg_alumni.ucinn_ascendv2__degree_code__c.ucinn_ascendv2__description__c%type
+  , department_code stg_alumni.ucinn_ascendv2__academic_organization__c.ucinn_ascendv2__code__c%type
+  , department_desc stg_alumni.ucinn_ascendv2__academic_organization__c.ucinn_ascendv2__description_short__c%type
+  , department_desc_full stg_alumni.ucinn_ascendv2__academic_organization__c.ucinn_ascendv2__description_long__c%type
+  , degree_campus stg_alumni.ucinn_ascendv2__degree_information__c.ap_campus__c%type
+  , degree_program_code stg_alumni.ap_program__c.ap_program_code__c%type
+  , degree_program stg_alumni.ap_program__c.name%type
+  , degree_concentration_desc stg_alumni.ucinn_ascendv2__specialty__c.name%type
+  , degree_major_code_1 stg_alumni.ucinn_ascendv2__post_code__c.ap_major_code__c%type
+  , degree_major_code_2 stg_alumni.ucinn_ascendv2__post_code__c.ap_major_code__c%type 
+  , degree_major_code_3 stg_alumni.ucinn_ascendv2__post_code__c.ap_major_code__c%type
+  , degree_major_1 stg_alumni.ucinn_ascendv2__post_code__c.name%type
+  , degree_major_2 stg_alumni.ucinn_ascendv2__post_code__c.name%type
+  , degree_major_3 stg_alumni.ucinn_ascendv2__post_code__c.name%type
+  , degree_notes stg_alumni.ucinn_ascendv2__degree_information__c.ap_notes__c%type
+  , etl_update_date stg_alumni.ucinn_ascendv2__degree_information__c.etl_update_date%type
 );
 
 --------------------------------------
 Type rec_designation Is Record (
-    designation_salesforce_id dm_alumni.dim_designation.designation_salesforce_id%type
-    , designation_record_id dm_alumni.dim_designation.designation_record_id%type
-    , designation_name dm_alumni.dim_designation.designation_name%type
-    , designation_status dm_alumni.dim_designation.designation_status%type
-    , legacy_allocation_code dm_alumni.dim_designation.legacy_allocation_code%type
-    , fin_fund dm_alumni.dim_designation.fin_fund%type
-    , fin_fund_id dm_alumni.dim_designation.fin_fund%type
-    , fin_department_id dm_alumni.dim_designation.designation_fin_department_id%type
-    , fin_project_id dm_alumni.dim_designation.fin_project%type
-    , fin_activity_id dm_alumni.dim_designation.designation_activity%type
-    , ksm_flag varchar2(1)
-    , nu_af_flag dm_alumni.dim_designation.annual_fund_designation_indicator%type
-    , designation_school dm_alumni.dim_designation.designation_school%type
-    , department_program dm_alumni.dim_designation.designation_department_program_code%type
-    , fasb_type dm_alumni.dim_designation.fasb_type%type
-    , case_type dm_alumni.dim_designation.case_type%type
-    , case_purpose dm_alumni.dim_designation.case_purpose%type
-    , designation_tier_1 dm_alumni.dim_designation.designation_tier_1%type
-    , designation_tier_2 dm_alumni.dim_designation.designation_tier_2%type
-    , designation_comment dm_alumni.dim_designation.designation_comment%type
-    , designation_date_added dm_alumni.dim_designation.designation_date_added%type
-    , designation_date_modified dm_alumni.dim_designation.designation_date_modified%type
-    , gl_effective_date dm_alumni.dim_designation.gl_effective_date%type
-    , gl_expiration_date dm_alumni.dim_designation.gl_expiration_date%type
-    , etl_update_date dm_alumni.dim_designation.etl_update_date%type
+  designation_salesforce_id dm_alumni.dim_designation.designation_salesforce_id%type
+  , designation_record_id dm_alumni.dim_designation.designation_record_id%type
+  , designation_name dm_alumni.dim_designation.designation_name%type
+  , designation_status dm_alumni.dim_designation.designation_status%type
+  , legacy_allocation_code dm_alumni.dim_designation.legacy_allocation_code%type
+  , fin_fund dm_alumni.dim_designation.fin_fund%type
+  , fin_fund_id dm_alumni.dim_designation.fin_fund%type
+  , fin_department_id dm_alumni.dim_designation.designation_fin_department_id%type
+  , fin_project_id dm_alumni.dim_designation.fin_project%type
+  , fin_activity_id dm_alumni.dim_designation.designation_activity%type
+  , ksm_flag varchar2(1)
+  , nu_af_flag dm_alumni.dim_designation.annual_fund_designation_indicator%type
+  , designation_school dm_alumni.dim_designation.designation_school%type
+  , department_program dm_alumni.dim_designation.designation_department_program_code%type
+  , fasb_type dm_alumni.dim_designation.fasb_type%type
+  , case_type dm_alumni.dim_designation.case_type%type
+  , case_purpose dm_alumni.dim_designation.case_purpose%type
+  , designation_tier_1 dm_alumni.dim_designation.designation_tier_1%type
+  , designation_tier_2 dm_alumni.dim_designation.designation_tier_2%type
+  , designation_comment dm_alumni.dim_designation.designation_comment%type
+  , designation_date_added dm_alumni.dim_designation.designation_date_added%type
+  , designation_date_modified dm_alumni.dim_designation.designation_date_modified%type
+  , gl_effective_date dm_alumni.dim_designation.gl_effective_date%type
+  , gl_expiration_date dm_alumni.dim_designation.gl_expiration_date%type
+  , etl_update_date dm_alumni.dim_designation.etl_update_date%type
 );
 
 --------------------------------------
 Type rec_designation_detail Is Record (
-    pledge_or_gift_record_id dm_alumni.dim_designation_detail.pledge_or_gift_record_id%type
-    , pledge_or_gift_date dm_alumni.dim_designation_detail.pledge_or_gift_date%type
-    , pledge_or_gift_status dm_alumni.dim_designation_detail.pledge_or_gift_status%type
-    , designation_detail_record_id dm_alumni.dim_designation_detail.designation_detail_record_id%type
-    , designation_record_id dm_alumni.dim_designation_detail.designation_record_id%type
-    , designation_detail_name dm_alumni.dim_designation_detail.designation_detail_name%type
-    , designation_amount dm_alumni.dim_designation_detail.designation_amount%type
-    , countable_amount_bequest dm_alumni.dim_designation_detail.countable_amount_bequest%type
-    , bequest_flag varchar2(1)
-    , total_paid_amount dm_alumni.dim_designation_detail.total_payment_credit_to_date_amount%type
-    , overpaid_flag varchar2(1)
+  pledge_or_gift_record_id dm_alumni.dim_designation_detail.pledge_or_gift_record_id%type
+  , pledge_or_gift_date dm_alumni.dim_designation_detail.pledge_or_gift_date%type
+  , pledge_or_gift_status dm_alumni.dim_designation_detail.pledge_or_gift_status%type
+  , designation_detail_record_id dm_alumni.dim_designation_detail.designation_detail_record_id%type
+  , designation_record_id dm_alumni.dim_designation_detail.designation_record_id%type
+  , designation_detail_name dm_alumni.dim_designation_detail.designation_detail_name%type
+  , designation_amount dm_alumni.dim_designation_detail.designation_amount%type
+  , countable_amount_bequest dm_alumni.dim_designation_detail.countable_amount_bequest%type
+  , bequest_flag varchar2(1)
+  , total_paid_amount dm_alumni.dim_designation_detail.total_payment_credit_to_date_amount%type
+  , overpaid_flag varchar2(1)
 );
 
 --------------------------------------
 Type rec_opportunity Is Record (
-    opportunity_salesforce_id dm_alumni.dim_opportunity.opportunity_salesforce_id%type
-    , opportunity_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
-    , opportunity_id_full stg_alumni.opportunity.name%type
-    , legacy_receipt_number dm_alumni.dim_opportunity.legacy_receipt_number%type
-    , opportunity_stage dm_alumni.dim_opportunity.opportunity_stage%type
-    , opportunity_closed_stage stg_alumni.opportunity.stagename%type
-    , opportunity_record_type dm_alumni.dim_opportunity.opportunity_record_type%type
-    , opportunity_type dm_alumni.dim_opportunity.opportunity_type%type
-    , opportunity_donor_id dm_alumni.dim_opportunity.opportunity_donor_id%type
-    , opportunity_donor_name dm_alumni.dim_opportunity.opportunity_constituent_name%type
-    , credit_date dm_alumni.dim_opportunity.opportunity_credit_date%type
-    , fiscal_year dm_alumni.dim_opportunity.opportunity_funded_fiscal_year%type
-    , entry_date dm_alumni.dim_opportunity.opportunity_entry_date%type
-    , amount dm_alumni.dim_opportunity.opportunity_amount%type
-    , discounted_amount dm_alumni.dim_opportunity.pledge_total_countable_amount%type
-    , tender_type dm_alumni.dim_opportunity.tender_type%type
-    , designation_salesforce_id dm_alumni.dim_opportunity.designation_salesforce_id%type
-    , is_anonymous_indicator dm_alumni.dim_opportunity.is_anonymous_indicator%type
-    , anonymous_type dm_alumni.dim_opportunity.anonymous_type%type
-    , linked_proposal_record_id dm_alumni.dim_opportunity.linked_proposal_record_id%type
-    , linked_proposal_active_proposal_manager dm_alumni.dim_opportunity.linked_proposal_active_proposal_manager%type
-    , payment_schedule stg_alumni.opportunity.ap_payment_schedule__c%type
-    , opp_amount_paid dm_alumni.dim_opportunity.pledge_amount_paid_to_date%type
-    , next_scheduled_payment_date dm_alumni.dim_opportunity.next_scheduled_payment_date%type
-    , next_scheduled_payment_amount dm_alumni.dim_opportunity.next_scheduled_payment_amount%type
-    , matched_gift_record_id dm_alumni.dim_opportunity.matched_gift_record_id%type
-    , matching_gift_stage dm_alumni.dim_opportunity.matching_gift_stage%type
-    , etl_update_date dm_alumni.dim_opportunity.etl_update_date%type
+  opportunity_salesforce_id dm_alumni.dim_opportunity.opportunity_salesforce_id%type
+  , opportunity_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
+  , opportunity_id_full stg_alumni.opportunity.name%type
+  , legacy_receipt_number dm_alumni.dim_opportunity.legacy_receipt_number%type
+  , opportunity_stage dm_alumni.dim_opportunity.opportunity_stage%type
+  , opportunity_closed_stage stg_alumni.opportunity.stagename%type
+  , opportunity_record_type dm_alumni.dim_opportunity.opportunity_record_type%type
+  , opportunity_type dm_alumni.dim_opportunity.opportunity_type%type
+  , opportunity_donor_id dm_alumni.dim_opportunity.opportunity_donor_id%type
+  , opportunity_donor_name dm_alumni.dim_opportunity.opportunity_constituent_name%type
+  , credit_date dm_alumni.dim_opportunity.opportunity_credit_date%type
+  , fiscal_year dm_alumni.dim_opportunity.opportunity_funded_fiscal_year%type
+  , entry_date dm_alumni.dim_opportunity.opportunity_entry_date%type
+  , amount dm_alumni.dim_opportunity.opportunity_amount%type
+  , discounted_amount dm_alumni.dim_opportunity.pledge_total_countable_amount%type
+  , tender_type dm_alumni.dim_opportunity.tender_type%type
+  , designation_salesforce_id dm_alumni.dim_opportunity.designation_salesforce_id%type
+  , is_anonymous_indicator dm_alumni.dim_opportunity.is_anonymous_indicator%type
+  , anonymous_type dm_alumni.dim_opportunity.anonymous_type%type
+  , linked_proposal_record_id dm_alumni.dim_opportunity.linked_proposal_record_id%type
+  , linked_proposal_active_proposal_manager dm_alumni.dim_opportunity.linked_proposal_active_proposal_manager%type
+  , payment_schedule stg_alumni.opportunity.ap_payment_schedule__c%type
+  , opp_amount_paid dm_alumni.dim_opportunity.pledge_amount_paid_to_date%type
+  , next_scheduled_payment_date dm_alumni.dim_opportunity.next_scheduled_payment_date%type
+  , next_scheduled_payment_amount dm_alumni.dim_opportunity.next_scheduled_payment_amount%type
+  , matched_gift_record_id dm_alumni.dim_opportunity.matched_gift_record_id%type
+  , matching_gift_stage dm_alumni.dim_opportunity.matching_gift_stage%type
+  , etl_update_date dm_alumni.dim_opportunity.etl_update_date%type
 );
 
 --------------------------------------
 Type rec_payment Is Record (
-    payment_salesforce_id stg_alumni.ucinn_ascendv2__payment__c.id%type
-    , payment_record_id stg_alumni.ucinn_ascendv2__payment__c.name%type
-    , legacy_receipt_number stg_alumni.ucinn_ascendv2__payment__c.ap_legacy_receipt_number__c%type
-    , opportunity_stage stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__opportunity_stage__c%type
-    , opportunity_record_type stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__opportunity_record_type__c%type
-    , opportunity_type stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__transaction_type__c%type
-    , payment_donor_id stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__donor_id_formula__c%type
-    , payment_donor_name  stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__gift_receipt_name_formula__c%type
-    , credit_date stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__credit_date__c%type
-    , fiscal_year stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__fiscal_year_formula__c%type
-    , entry_date stg_alumni.ucinn_ascendv2__payment__c.ap_processed_date__c%type
-    , amount stg_alumni.ucinn_ascendv2__payment__c.ap_transaction_amount__c%type
-    , tender_type stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__tender_type_formula__c%type
-    , designation_salesforce_id stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__designation_detail__c%type
-    , is_anonymous_indicator stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__is_anonymous__c%type
-    , anonymous_type stg_alumni.ucinn_ascendv2__payment__c.anonymous_type__c%type
-    , etl_update_date stg_alumni.ucinn_ascendv2__payment__c.etl_update_date%type
+  payment_salesforce_id stg_alumni.ucinn_ascendv2__payment__c.id%type
+  , payment_record_id stg_alumni.ucinn_ascendv2__payment__c.name%type
+  , legacy_receipt_number stg_alumni.ucinn_ascendv2__payment__c.ap_legacy_receipt_number__c%type
+  , opportunity_stage stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__opportunity_stage__c%type
+  , opportunity_record_type stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__opportunity_record_type__c%type
+  , opportunity_type stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__transaction_type__c%type
+  , payment_donor_id stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__donor_id_formula__c%type
+  , payment_donor_name  stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__gift_receipt_name_formula__c%type
+  , credit_date stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__credit_date__c%type
+  , fiscal_year stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__fiscal_year_formula__c%type
+  , entry_date stg_alumni.ucinn_ascendv2__payment__c.ap_processed_date__c%type
+  , amount stg_alumni.ucinn_ascendv2__payment__c.ap_transaction_amount__c%type
+  , tender_type stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__tender_type_formula__c%type
+  , designation_salesforce_id stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__designation_detail__c%type
+  , is_anonymous_indicator stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__is_anonymous__c%type
+  , anonymous_type stg_alumni.ucinn_ascendv2__payment__c.anonymous_type__c%type
+  , etl_update_date stg_alumni.ucinn_ascendv2__payment__c.etl_update_date%type
 );
 
 --------------------------------------
 Type rec_gift_credit Is Record (
-    hard_and_soft_credit_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.id%type
-    , receipt_number stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__receipt_number__c%type
-    , hard_and_soft_credit_record_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.name%type
-    , credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
-    , hard_credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
-    , credit_date stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_date_formula__c%type
-    , fiscal_year stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.nu_fiscal_year__c%type
-    , credit_type stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_type__c%type
-    , source_type stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__source__c%type
-    , source_type_detail stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__gift_type_formula__c%type
-    , opportunity_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__opportunity__c%type
-    , payment_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__payment__c%type
-    , designation_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__designation__c%type
-    , designation_record_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__designation_code_formula__c%type
-    , donor_name_and_id varchar2(255) -- Original is varchar2(1300)
-    , donor_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_id__c%type
-    , hard_credit_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__hard_credit_recipient_account__c%type
-    , hard_credit_donor_name stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__hard_credit_formula__c%type
-    , etl_update_date stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.etl_update_date%type
+  hard_and_soft_credit_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.id%type
+  , receipt_number stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__receipt_number__c%type
+  , hard_and_soft_credit_record_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.name%type
+  , credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
+  , hard_credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
+  , credit_date stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_date_formula__c%type
+  , fiscal_year stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.nu_fiscal_year__c%type
+  , credit_type stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_type__c%type
+  , source_type stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__source__c%type
+  , source_type_detail stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__gift_type_formula__c%type
+  , opportunity_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__opportunity__c%type
+  , payment_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__payment__c%type
+  , designation_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__designation__c%type
+  , designation_record_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__designation_code_formula__c%type
+  , donor_name_and_id varchar2(255) -- Original is varchar2(1300)
+  , donor_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_id__c%type
+  , hard_credit_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__hard_credit_recipient_account__c%type
+  , hard_credit_donor_name stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__hard_credit_formula__c%type
+  , etl_update_date stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.etl_update_date%type
 );
 
 --------------------------------------
 Type rec_involvement Is Record (
-    constituent_donor_id dm_alumni.dim_involvement.constituent_donor_id%type
-    , constituent_name dm_alumni.dim_involvement.constituent_name%type
-    , involvement_record_id dm_alumni.dim_involvement.involvement_record_id%type
-    , involvement_code stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type
-    , involvement_name dm_alumni.dim_involvement.involvement_name%type
-    , involvement_status dm_alumni.dim_involvement.involvement_status%type
-    , involvement_type dm_alumni.dim_involvement.involvement_type%type
-    , involvement_role dm_alumni.dim_involvement.involvement_role%type
-    , involvement_business_unit dm_alumni.dim_involvement.involvement_business_unit%type
-    , involvement_start_date dm_alumni.dim_involvement.involvement_start_date%type
-    , involvement_end_date dm_alumni.dim_involvement.involvement_end_date%type
-    , involvement_comment stg_alumni.ucinn_ascendv2__involvement__c.nu_comments__c%type
-    , etl_update_date dm_alumni.dim_involvement.etl_update_date%type
+  constituent_donor_id dm_alumni.dim_involvement.constituent_donor_id%type
+  , constituent_name dm_alumni.dim_involvement.constituent_name%type
+  , involvement_record_id dm_alumni.dim_involvement.involvement_record_id%type
+  , involvement_code stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type
+  , involvement_name dm_alumni.dim_involvement.involvement_name%type
+  , involvement_status dm_alumni.dim_involvement.involvement_status%type
+  , involvement_type dm_alumni.dim_involvement.involvement_type%type
+  , involvement_role dm_alumni.dim_involvement.involvement_role%type
+  , involvement_business_unit dm_alumni.dim_involvement.involvement_business_unit%type
+  , involvement_start_date dm_alumni.dim_involvement.involvement_start_date%type
+  , involvement_end_date dm_alumni.dim_involvement.involvement_end_date%type
+  , involvement_comment stg_alumni.ucinn_ascendv2__involvement__c.nu_comments__c%type
+  , etl_update_date dm_alumni.dim_involvement.etl_update_date%type
 );
 
 --------------------------------------
@@ -288,57 +288,106 @@ Type rec_service_indicators Is Record (
 
 --------------------------------------
 Type rec_assignment Is Record (
-    assignment_record_id stg_alumni.ucinn_ascendv2__assignment__c.name%type
-    , staff_user_salesforce_id stg_alumni.user_tbl.id%type
-    , staff_username stg_alumni.user_tbl.username%type
-    , staff_constituent_salesforce_id stg_alumni.user_tbl.contactid%type
-    , staff_name stg_alumni.user_tbl.name%type
-    , staff_is_active stg_alumni.user_tbl.isactive%type
-    , assignment_type stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_type__c%type
-    , assignment_code varchar2(8)
-    , assignment_business_unit stg_alumni.ucinn_ascendv2__assignment__c.ap_business_unit__c%type
-    , ksm_flag varchar2(1)
-    , assigneee_salesforce_id stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__contact__c%type
-    , assignee_donor_id stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__donor_id_formula__c%type
-    , assignee_last_name stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__contact_last_name_formula__c%type
-    , assignee_stage stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__stage_of_readiness_formula__c%type
-    , is_active_indicator stg_alumni.ucinn_ascendv2__assignment__c.ap_is_active__c%type
-    , start_date stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_start_date__c%type
-    , end_date stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_end_date__c%type
-    , etl_update_date stg_alumni.ucinn_ascendv2__assignment__c.etl_update_date%type
+  assignment_record_id stg_alumni.ucinn_ascendv2__assignment__c.name%type
+  , staff_user_salesforce_id stg_alumni.user_tbl.id%type
+  , staff_username stg_alumni.user_tbl.username%type
+  , staff_constituent_salesforce_id stg_alumni.user_tbl.contactid%type
+  , staff_name stg_alumni.user_tbl.name%type
+  , staff_is_active stg_alumni.user_tbl.isactive%type
+  , assignment_type stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_type__c%type
+  , assignment_code varchar2(8)
+  , assignment_business_unit stg_alumni.ucinn_ascendv2__assignment__c.ap_business_unit__c%type
+  , ksm_flag varchar2(1)
+  , assigneee_salesforce_id stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__contact__c%type
+  , assignee_donor_id stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__donor_id_formula__c%type
+  , assignee_last_name stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__contact_last_name_formula__c%type
+  , assignee_stage stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__stage_of_readiness_formula__c%type
+  , is_active_indicator stg_alumni.ucinn_ascendv2__assignment__c.ap_is_active__c%type
+  , start_date stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_start_date__c%type
+  , end_date stg_alumni.ucinn_ascendv2__assignment__c.ucinn_ascendv2__assignment_end_date__c%type
+  , etl_update_date stg_alumni.ucinn_ascendv2__assignment__c.etl_update_date%type
 );
 
 --------------------------------------
 Type rec_proposal Is Record (
-    opportunity_salesforce_id dm_alumni.dim_proposal_opportunity.opportunity_salesforce_id%type
-    , proposal_record_id dm_alumni.dim_proposal_opportunity.proposal_record_id%type
-    , proposal_legacy_id dm_alumni.dim_proposal_opportunity.proposal_legacy_id%type
-    , proposal_strategy_record_id dm_alumni.dim_proposal_opportunity.proposal_strategy_record_id%type
-    , donor_id dm_alumni.fact_proposal_opportunity.constituent_donor_id%type
-    , proposal_active_indicator dm_alumni.dim_proposal_opportunity.proposal_active_indicator%type
-    , proposal_stage dm_alumni.dim_proposal_opportunity.proposal_stage%type
-    , proposal_type dm_alumni.dim_proposal_opportunity.proposal_type%type
-    , proposal_name dm_alumni.dim_proposal_opportunity.proposal_name%type
-    , proposal_probability dm_alumni.dim_proposal_opportunity.proposal_probability%type
-    , proposal_amount dm_alumni.dim_proposal_opportunity.proposal_amount%type
-    , proposal_submitted_amount dm_alumni.dim_proposal_opportunity.proposal_submitted_amount%type
-    , proposal_anticipated_amount dm_alumni.dim_proposal_opportunity.proposal_anticipated_amount%type
-    , proposal_funded_amount dm_alumni.dim_proposal_opportunity.proposal_funded_amount%type
-    , proposal_created_date dm_alumni.dim_proposal_opportunity.proposal_created_date%type
-    , proposal_submitted_date dm_alumni.dim_proposal_opportunity.proposal_submitted_date%type
-    , proposal_close_date dm_alumni.dim_proposal_opportunity.proposal_close_date%type
-    , proposal_payment_schedule dm_alumni.dim_proposal_opportunity.proposal_payment_schedule%type
-    , proposal_designation_units dm_alumni.dim_proposal_opportunity.proposal_designation_work_plan_units%type
-    , ksm_flag varchar2(1)
-    , active_proposal_manager_salesforce_id dm_alumni.dim_proposal_opportunity.active_proposal_manager_salesforce_id%type
-    , active_proposal_manager_name dm_alumni.dim_proposal_opportunity.active_proposal_manager_name%type
-    , active_proposal_manager_unit dm_alumni.dim_proposal_opportunity.active_proposal_manager_business_unit%type
-    , historical_pm_user_id stg_alumni.opportunityteammember.id%type
-    , historical_pm_name stg_alumni.opportunityteammember.name%type
-    , historical_pm_role stg_alumni.opportunityteammember.teammemberrole%type
-    , historical_pm_business_unit stg_alumni.opportunityteammember.ap_business_unit__c%type
-    , historical_pm_is_active stg_alumni.user_tbl.isactive%type
-    , etl_update_date dm_alumni.dim_proposal_opportunity.etl_update_date%type
+  opportunity_salesforce_id dm_alumni.dim_proposal_opportunity.opportunity_salesforce_id%type
+  , proposal_record_id dm_alumni.dim_proposal_opportunity.proposal_record_id%type
+  , proposal_legacy_id dm_alumni.dim_proposal_opportunity.proposal_legacy_id%type
+  , proposal_strategy_record_id dm_alumni.dim_proposal_opportunity.proposal_strategy_record_id%type
+  , donor_id dm_alumni.fact_proposal_opportunity.constituent_donor_id%type
+  , proposal_active_indicator dm_alumni.dim_proposal_opportunity.proposal_active_indicator%type
+  , proposal_stage dm_alumni.dim_proposal_opportunity.proposal_stage%type
+  , proposal_type dm_alumni.dim_proposal_opportunity.proposal_type%type
+  , proposal_name dm_alumni.dim_proposal_opportunity.proposal_name%type
+  , proposal_probability dm_alumni.dim_proposal_opportunity.proposal_probability%type
+  , proposal_amount dm_alumni.dim_proposal_opportunity.proposal_amount%type
+  , proposal_submitted_amount dm_alumni.dim_proposal_opportunity.proposal_submitted_amount%type
+  , proposal_anticipated_amount dm_alumni.dim_proposal_opportunity.proposal_anticipated_amount%type
+  , proposal_funded_amount dm_alumni.dim_proposal_opportunity.proposal_funded_amount%type
+  , proposal_created_date dm_alumni.dim_proposal_opportunity.proposal_created_date%type
+  , proposal_submitted_date dm_alumni.dim_proposal_opportunity.proposal_submitted_date%type
+  , proposal_close_date dm_alumni.dim_proposal_opportunity.proposal_close_date%type
+  , proposal_payment_schedule dm_alumni.dim_proposal_opportunity.proposal_payment_schedule%type
+  , proposal_designation_units dm_alumni.dim_proposal_opportunity.proposal_designation_work_plan_units%type
+  , ksm_flag varchar2(1)
+  , active_proposal_manager_salesforce_id dm_alumni.dim_proposal_opportunity.active_proposal_manager_salesforce_id%type
+  , active_proposal_manager_name dm_alumni.dim_proposal_opportunity.active_proposal_manager_name%type
+  , active_proposal_manager_unit dm_alumni.dim_proposal_opportunity.active_proposal_manager_business_unit%type
+  , historical_pm_user_id stg_alumni.opportunityteammember.id%type
+  , historical_pm_name stg_alumni.opportunityteammember.name%type
+  , historical_pm_role stg_alumni.opportunityteammember.teammemberrole%type
+  , historical_pm_business_unit stg_alumni.opportunityteammember.ap_business_unit__c%type
+  , historical_pm_is_active stg_alumni.user_tbl.isactive%type
+  , etl_update_date dm_alumni.dim_proposal_opportunity.etl_update_date%type
+);
+
+--------------------------------------
+Type rec_econtact Is Record (
+  contact_salesforce_id stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__contact__c%type
+  , donor_id stg_alumni.contact.ucinn_ascendv2__donor_id__c%type
+  , social_media_record_id stg_alumni.ucinn_ascendv2__social_media__c.name%type
+  , status stg_alumni.ucinn_ascendv2__social_media__c.ap_status__c%type
+  , platform stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__platform__c%type
+  , social_media_handle stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__social_handle__c%type
+  , social_media_url stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__url__c%type
+  , notes stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__notes__c%type
+  , last_modified_date stg_alumni.ucinn_ascendv2__social_media__c.lastmodifieddate%type
+  , etl_update_date stg_alumni.ucinn_ascendv2__social_media__c.etl_update_date%type
+);
+
+--------------------------------------
+Type rec_address Is Record (
+  address_donor_id dm_alumni.dim_address.address_donor_id%type
+  , address_record_id dm_alumni.dim_address.address_record_id%type
+  , address_relation_record_id dm_alumni.dim_address.address_relation_record_id%type
+  , address_type dm_alumni.dim_address.address_type%type
+  , address_status dm_alumni.dim_address.address_status%type
+  , address_preferred_indicator dm_alumni.dim_address.address_prefered_indicator%type
+  , address_primary_home_indicator dm_alumni.dim_address.address_primary_home_indicator%type
+  , address_primary_business_indicator dm_alumni.dim_address.address_primary_business_indicator%type
+  , address_seasonal_indicator dm_alumni.dim_address.address_seasonal_indicator%type
+  , is_campus_indicator dm_alumni.dim_address.is_campus_indicator%type
+  , address_line_1 dm_alumni.dim_address.address_line_1%type
+  , address_line_2 dm_alumni.dim_address.address_line_2%type
+  , address_line_3 dm_alumni.dim_address.address_line_3%type
+  , address_line_4 dm_alumni.dim_address.address_line_4%type
+  , address_city dm_alumni.dim_address.address_city%type
+  , address_state dm_alumni.dim_address.address_state%type
+  , address_postal_code dm_alumni.dim_address.address_postal_code%type
+  , address_country dm_alumni.dim_address.address_country%type
+  , address_location_latitude dm_alumni.dim_address.address_location_latitude%type
+  , address_location_longitude dm_alumni.dim_address.address_location_longitude%type
+  , address_start_date dm_alumni.dim_address.address_start_date%type
+  , address_end_date dm_alumni.dim_address.address_end_date%type
+  , address_seasonal_start_year dm_alumni.dim_address.address_seasonal_start_year%type
+  , address_seasonal_start_month dm_alumni.dim_address.address_seasonal_start_month%type
+  , address_seasonal_start_day dm_alumni.dim_address.address_seasonal_start_day%type
+  , address_seasonal_start varchar2(8)
+  , address_seasonal_end_year dm_alumni.dim_address.address_seasonal_end_year%type
+  , address_seasonal_end_month dm_alumni.dim_address.address_seasonal_end_month%type
+  , address_seasonal_end_day dm_alumni.dim_address.address_seasonal_end_day%type
+  , address_seasonal_end varchar2(8)
+  , etl_update_date dm_alumni.dim_address.etl_update_date%type
 );
 
 /*************************************************************************
@@ -358,6 +407,8 @@ Type involvement Is Table Of rec_involvement;
 Type service_indicators Is Table Of rec_service_indicators;
 Type assignments Is Table Of rec_assignment;
 Type proposals Is Table Of rec_proposal;
+Type econtacts Is Table Of rec_econtact;
+Type address Is Table Of rec_address;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -401,6 +452,12 @@ Function tbl_assignments
 
 Function tbl_proposals
   Return proposals Pipelined;
+
+Function tbl_social_media
+  Return econtacts Pipelined;
+
+Function tbl_address
+  Return address Pipelined;
 
 /*********************** About pipelined functions ***********************
 Q: What is a pipelined function?
@@ -1124,6 +1181,99 @@ Cursor c_proposals Is
     On fpo.opportunity_salesforce_id = dpo.opportunity_salesforce_id
 ;
 
+--------------------------------------
+Cursor c_econtacts Is
+  Select
+    sm.ucinn_ascendv2__contact__c
+      As contact_salesforce_id
+    , c.ucinn_ascendv2__donor_id__c
+      As donor_id
+    , sm.name
+      As social_media_record_id
+    , sm.ap_status__c
+      As status
+    , sm.ucinn_ascendv2__platform__c
+      As platform
+    , sm.ucinn_ascendv2__social_handle__c
+      As social_media_handle
+    , sm.ucinn_ascendv2__url__c
+      As social_media_url
+    , sm.ucinn_ascendv2__notes__c
+      As notes
+    , trunc(sm.lastmodifieddate)
+      As last_modified_date
+    , sm.etl_update_date
+      As etl_update_date
+  From stg_alumni.ucinn_ascendv2__social_media__c sm
+  Inner Join stg_alumni.contact c
+    On c.id = sm.ucinn_ascendv2__contact__c
+;
+
+--------------------------------------
+Cursor c_address Is
+  Select
+    a.address_donor_id
+    , a.address_record_id
+    , a.address_relation_record_id
+    , nullif(a.address_type, '-')
+      As address_type
+    , nullif(a.address_status, '-')
+      As address_status
+    , address_prefered_indicator
+      As address_preferred_indicator
+    , address_primary_home_indicator
+    , address_primary_business_indicator
+    , address_seasonal_indicator
+    , is_campus_indicator
+    , nullif(address_line_1, '-')
+      As address_line_1
+    , nullif(address_line_2, '-')
+      As address_line_2
+    , nullif(address_line_3, '-')
+      As address_line_3
+    , nullif(address_line_4, '-')
+      As address_line_4
+    , nullif(address_city, '-')
+      As address_city
+    , nullif(address_state, '-')
+      As address_state
+    , nullif(address_postal_code, '-')
+      As address_postal_code
+    , nullif(address_country, '-')
+      As address_country
+    , address_location_latitude
+    , address_location_longitude
+    , address_start_date
+    , address_end_date
+    , nullif(address_seasonal_start_year, '-')
+      As address_seasonal_start_year
+    , nullif(address_seasonal_start_month, '-')
+      As address_seasonal_start_month
+    , nullif(address_seasonal_start_day, '-')
+      As address_seasonal_start_day
+    , replace( 
+        replace(address_seasonal_start_year, '-', '0000') ||
+        replace(address_seasonal_start_month || address_seasonal_start_day, '-', '00')
+        , '00000000'
+        , NULL
+      ) As address_seasonal_start
+    , nullif(address_seasonal_end_year, '-')
+      As address_seasonal_end_year
+    , nullif(address_seasonal_end_month, '-')
+      As address_seasonal_end_month
+    , nullif(address_seasonal_end_day, '-')
+      As address_seasonal_end_day
+    , replace(
+        replace(address_seasonal_end_year, '-', '0000') ||
+        replace(address_seasonal_end_month || address_seasonal_end_day, '-', '00')
+        , '00000000'
+        , NULL
+      ) As address_seasonal_end
+    , trunc(etl_update_date)
+      As etl_update_date
+  From dm_alumni.dim_address a
+;
+
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
@@ -1336,5 +1486,37 @@ Function tbl_proposals
     Return;
   End;
   
+--------------------------------------
+Function tbl_social_media
+  Return econtacts Pipelined As
+    -- Declarations
+    ec econtacts;
+
+  Begin
+    Open c_econtacts;
+      Fetch c_econtacts Bulk Collect Into ec;
+    Close c_econtacts;
+    For i in 1..(ec.count) Loop
+      Pipe row(ec(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_address
+  Return address Pipelined As
+    -- Declarations
+    addr address;
+
+  Begin
+    Open c_address;
+      Fetch c_address Bulk Collect Into addr;
+    Close c_address;
+    For i in 1..(addr.count) Loop
+      Pipe row(addr(i));
+    End Loop;
+    Return;
+  End;
+
 End dw_pkg_base;
 /
