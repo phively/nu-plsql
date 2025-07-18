@@ -36,3 +36,15 @@ Order By
   constituent_name
   , degree_code  
 ;
+
+Select
+  'MiM >= 2024, MSMS <= 2023' As test_desc
+  , deg.donor_id
+  , deg.degrees_concat
+  , deg.first_ksm_year
+  , deg.first_ksm_grad_date
+  , deg.program
+  , deg.program_group
+From table(ksm_pkg_degrees.tbl_entity_ksm_degrees) deg
+Where deg.program In ('FT-MIM', 'FT-MIM NONGRAD', 'FT-MS', 'FT-MS NONGRAD')
+;
