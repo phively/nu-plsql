@@ -225,3 +225,18 @@ Select
 From v_ksm_giving_summary gs
 ;
 
+--------------------------------------
+-- ksm_pkg_contacts
+-- mv_entity_contact_info
+-- Drop Materialized View mv_entity_contact_info;
+Create Materialized View mv_entity_contact_info
+Refresh Complete
+Start With sysdate
+-- 7:50 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.833/24)
+As
+Select
+  eci.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_contacts.tbl_entity_contact_info) eci
+;

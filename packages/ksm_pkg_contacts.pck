@@ -26,7 +26,7 @@ Public type declarations
 
 --------------------------------------
 Type rec_address Is Record (
-  address_donor_id dm_alumni.dim_address.address_donor_id%type
+  donor_id dm_alumni.dim_address.address_donor_id%type
   , address_record_id dm_alumni.dim_address.address_record_id%type
   , address_relation_record_id dm_alumni.dim_address.address_relation_record_id%type
   , address_type dm_alumni.dim_address.address_type%type
@@ -52,6 +52,8 @@ Type rec_address Is Record (
   , address_seasonal_end varchar2(8)
   , address_seasonal_start_date dm_alumni.dim_address.address_start_date%type
   , address_seasonal_end_date dm_alumni.dim_address.address_end_date%type
+  , address_modified_date dm_alumni.dim_address.address_modified_date%type
+  , address_relation_modified_date dm_alumni.dim_address.address_relation_modified_date%type
   , etl_update_date dm_alumni.dim_address.etl_update_date%type
 );
 
@@ -68,12 +70,40 @@ Type rec_linkedin Is Record (
   , etl_update_date stg_alumni.ucinn_ascendv2__social_media__c.etl_update_date%type 
 );
 
+--------------------------------------
+Type rec_contact_info Is Record (
+  donor_id mv_entity.donor_id%type
+  , sort_name mv_entity.sort_name%type
+  , linkedin_url stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__url__c%type
+  , home_address_line_1 dm_alumni.dim_address.address_line_1%type
+  , home_address_line_2 dm_alumni.dim_address.address_line_2%type
+  , home_address_line_3 dm_alumni.dim_address.address_line_3%type
+  , home_address_line_4 dm_alumni.dim_address.address_line_4%type
+  , home_address_city dm_alumni.dim_address.address_city%type
+  , home_address_state dm_alumni.dim_address.address_state%type
+  , home_address_postal_code dm_alumni.dim_address.address_postal_code%type
+  , home_address_country dm_alumni.dim_address.address_country%type
+  , home_address_latitude dm_alumni.dim_address.address_location_latitude%type
+  , home_address_longitude dm_alumni.dim_address.address_location_longitude%type
+  , business_address_line_1 dm_alumni.dim_address.address_line_1%type
+  , business_address_line_2 dm_alumni.dim_address.address_line_2%type
+  , business_address_line_3 dm_alumni.dim_address.address_line_3%type
+  , business_address_line_4 dm_alumni.dim_address.address_line_4%type
+  , business_address_city dm_alumni.dim_address.address_city%type
+  , business_address_state dm_alumni.dim_address.address_state%type
+  , business_address_postal_code dm_alumni.dim_address.address_postal_code%type
+  , business_address_country dm_alumni.dim_address.address_country%type
+  , business_address_latitude dm_alumni.dim_address.address_location_latitude%type
+  , business_address_longitude dm_alumni.dim_address.address_location_longitude%type
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
 
 Type address Is Table Of rec_address;
 Type linkedin Is Table Of rec_linkedin;
+Type contact_info Is Table Of rec_contact_info;
 
 /*************************************************************************
 Public function declarations
@@ -88,6 +118,9 @@ Function tbl_address
 
 Function tbl_linkedin
   Return linkedin Pipelined;
+
+Function tbl_entity_contact_info
+  Return contact_info Pipelined;
 
 /*********************** About pipelined functions ***********************
 Q: What is a pipelined function?
@@ -137,7 +170,7 @@ Cursor c_email Is
 --------------------------------------
 Cursor c_address_current Is
   Select
-    address_donor_id
+    address_donor_id As donor_id
     , a.address_record_id
     , a.address_relation_record_id
     , a.address_type
@@ -166,6 +199,8 @@ Cursor c_address_current Is
       As address_seasonal_start_date
     , NULL
       As address_seasonal_end_date
+    , a.address_modified_date
+    , a.address_relation_modified_date
     , a.etl_update_date
   From table(dw_pkg_base.tbl_address) a
   Cross Join table(ksm_pkg_calendar.tbl_current_calendar) cal
@@ -187,6 +222,105 @@ Cursor c_linkedin Is
     , sm.etl_update_date
   From table(dw_pkg_base.tbl_social_media) sm
   Where lower(platform) Like '%linked%in%'
+;
+
+--------------------------------------
+Cursor c_contact_info Is
+
+  With
+  
+  -- Find shortest LI URL
+  linkedin As (
+    Select
+      li.donor_id
+      , min(li.linkedin_url) keep(dense_rank First Order By length(li.linkedin_url) Asc, li.linkedin_url Asc)
+        As linkedin_url
+    From table(ksm_pkg_contacts.tbl_linkedin) li
+    Where li.status = 'Current'
+    Group By li.donor_id
+  )
+  
+  -- All active addresses
+  , addr As (
+    Select *
+    From table(ksm_pkg_contacts.tbl_address) a
+  )
+    
+  -- Home address; keep last primary added
+  , addr_home As (
+    Select
+      donor_id
+      , address_line_1
+      , address_line_2
+      , address_line_3
+      , address_line_4
+      , address_city
+      , address_state
+      , address_postal_code
+      , address_country
+      , address_latitude
+      , address_longitude
+      , row_number()
+        Over (Partition By donor_id Order By address_modified_date Desc, address_record_id Desc)
+        As addr_rank
+    From addr
+    Where addr.address_primary_home_indicator = 'Y'
+  )
+  
+  -- Business address; keep last primary added
+  , addr_bus As (
+    Select
+      donor_id
+      , address_line_1
+      , address_line_2
+      , address_line_3
+      , address_line_4
+      , address_city
+      , address_state
+      , address_postal_code
+      , address_country
+      , address_latitude
+      , address_longitude
+      , row_number()
+        Over (Partition By donor_id Order By address_modified_date Desc, address_record_id Desc)
+        As addr_rank
+    From addr
+    Where addr.address_primary_business_indicator = 'Y'
+  )
+  
+  Select
+    mve.donor_id
+    , mve.sort_name
+    , linkedin.linkedin_url
+    , addr_home.address_line_1 As home_address_line_1
+    , addr_home.address_line_2 As home_address_line_2
+    , addr_home.address_line_3 As home_address_line_3
+    , addr_home.address_line_4 As home_address_line_4
+    , addr_home.address_city As home_address_city
+    , addr_home.address_state As home_address_state
+    , addr_home.address_postal_code As home_address_postal_code
+    , addr_home.address_country As home_address_country
+    , addr_home.address_latitude As home_address_latitude
+    , addr_home.address_longitude As home_address_longitude
+    , addr_bus.address_line_1 As business_address_line_1
+    , addr_bus.address_line_2 As business_address_line_2
+    , addr_bus.address_line_3 As business_address_line_3
+    , addr_bus.address_line_4 As business_address_line_4
+    , addr_bus.address_city As business_address_city
+    , addr_bus.address_state As business_address_state
+    , addr_bus.address_postal_code As business_address_postal_code
+    , addr_bus.address_country As business_address_country
+    , addr_bus.address_latitude As business_address_latitude
+    , addr_bus.address_longitude As business_address_longitude
+  From mv_entity mve
+  Left Join linkedin
+    On linkedin.donor_id = mve.donor_id
+  Left Join addr_home
+    On addr_home.donor_id = mve.donor_id
+    And addr_home.addr_rank = 1
+  Left Join addr_bus
+    On addr_bus.donor_id = mve.donor_id
+    And addr_bus.addr_rank = 1
 ;
 
 /*************************************************************************
@@ -225,6 +359,22 @@ Function tbl_linkedin
     Close c_linkedin;
     For i in 1..(li.count) Loop
       Pipe row(li(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_entity_contact_info
+  Return contact_info Pipelined As
+    -- Declarations
+    ci contact_info;
+
+  Begin
+    Open c_contact_info;
+      Fetch c_contact_info Bulk Collect Into ci;
+    Close c_contact_info;
+    For i in 1..(ci.count) Loop
+      Pipe row(ci(i));
     End Loop;
     Return;
   End;
