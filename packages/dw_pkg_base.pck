@@ -31,7 +31,9 @@ Type rec_constituent Is Record (
   , donor_id dm_alumni.dim_constituent.constituent_donor_id%type
   , full_name dm_alumni.dim_constituent.full_name%type
   , sort_name dm_alumni.dim_constituent.full_name%type
+  , salutation dm_alumni.dim_constituent.salutation%type
   , first_name dm_alumni.dim_constituent.first_name%type
+  , middle_name dm_alumni.dim_constituent.middle_name%type
   , last_name dm_alumni.dim_constituent.last_name%type
   , is_deceased_indicator dm_alumni.dim_constituent.is_deceased_indicator%type
   , primary_constituent_type dm_alumni.dim_constituent.primary_constituent_type%type
@@ -49,6 +51,9 @@ Type rec_constituent Is Record (
   , preferred_address_state dm_alumni.dim_constituent.preferred_address_state%type
   , preferred_address_postal_code dm_alumni.dim_constituent.preferred_address_postal_code%type
   , preferred_address_country dm_alumni.dim_constituent.preferred_address_country_name%type
+  , gender_identity dm_alumni.dim_constituent.gender_identity%type
+  , citizenship dm_alumni.dim_constituent.citizenship_list%type
+  , ethnicity dm_alumni.dim_constituent.ethnicity%type
   , constituent_university_overall_rating dm_alumni.dim_constituent.constituent_university_overall_rating%type
   , constituent_research_evaluation dm_alumni.dim_constituent.constituent_research_evaluation%type
   , constituent_research_evaluation_date dm_alumni.dim_constituent.constituent_research_evaluation_date%type
@@ -65,6 +70,7 @@ Type rec_organization Is Record (
   , sort_name dm_alumni.dim_organization.organization_name%type
   , organization_inactive_indicator dm_alumni.dim_organization.organization_inactive_indicator%type
   , organization_type dm_alumni.dim_organization.organization_type%type
+  , donor_advised_fund_indicator stg_alumni.account.ap_donor_advised_fund__c%type
   , org_ult_parent_donor_id dm_alumni.dim_organization.organization_ultimate_parent_donor_id%type
   , org_ult_parent_name dm_alumni.dim_organization.organization_ultimate_parent_name%type
   , preferred_address_status dm_alumni.dim_organization.preferred_address_status%type
@@ -500,8 +506,14 @@ Cursor c_constituent Is
     , full_name
     , trim(trim(last_name || ', ' || first_name) || ' ' || Case When middle_name != '-' Then middle_name End)
       As sort_name
-    , first_name
-    , last_name
+    , nullif(salutation, '-')
+      As salutation
+    , nullif(first_name, '-')
+      As first_name
+    , nullif(middle_name, '-')
+      As middle_name
+    , nullif(last_name, '-')
+      As last_name
     , is_deceased_indicator
     , primary_constituent_type
     , nullif(institutional_suffix, '-')
@@ -532,6 +544,12 @@ Cursor c_constituent Is
       As preferred_address_postal_code
     , nullif(preferred_address_country_name, '-')
       As preferred_address_country
+    , nullif(gender_identity, '-') 
+      As gender_identity
+    , nullif(citizenship_list, '-')
+      As citizenship
+    , nullif(ethnicity, '-')
+      As ethnicity
     , nullif(constituent_university_overall_rating, '-')
       As constituent_university_overall_rating
     , nullif(constituent_research_evaluation, '-')
@@ -564,6 +582,8 @@ Cursor c_organization Is
     , organization_inactive_indicator
     , nullif(organization_type, '-')
       As organization_type
+    , nullif(a.ap_donor_advised_fund__c, '-')
+      As donor_advised_fund_indicator
     , organization_ultimate_parent_donor_id
       As org_ult_parent_donor_id
     , organization_ultimate_parent_name
@@ -593,9 +613,11 @@ Cursor c_organization Is
     , nullif(organization_research_evaluation, '-')
       As organization_research_evaluation
     , organization_research_evaluation_date
-    , trunc(etl_update_date)
+    , trunc(org.etl_update_date)
       As etl_update_date
   From dm_alumni.dim_organization org
+  Left Join stg_alumni.account a
+    On org.organization_donor_id = a.ucinn_ascendv2__donor_id__c
   Where org.organization_salesforce_id != '-'
 ;
 
