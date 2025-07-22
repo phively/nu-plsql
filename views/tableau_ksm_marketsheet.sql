@@ -1,5 +1,4 @@
---- Employment - primary
---- Also use keep dense rank function to pull most recent employee start date
+Create or Replace View tableau_ksm_marketsheet as 
 
 with employ as (select distinct
 c.UCINN_ASCENDV2__RELATED_CONTACT_DONOR_ID_FORMULA__C,
@@ -77,9 +76,10 @@ a.linkedin_address
 from stg_alumni.contact c
 inner join a on c.id = a.ucinn_ascendv2__contact__c)
 
-select e.person_or_org,
-       e.household_primary,
+select 
        e.donor_id,
+       e.person_or_org,
+       e.household_primary,
        e.full_name,
        e.institutional_suffix,
        e.preferred_address_city,
