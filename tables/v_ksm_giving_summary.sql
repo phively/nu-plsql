@@ -40,6 +40,7 @@ params As (
     On kt.household_id = hh.household_id
   Cross Join params
   Cross Join v_current_calendar cal
+  Where hh.household_primary = 'Y'
 )
 
 -- Sum cash amounts
@@ -64,6 +65,7 @@ params As (
     , sum(Case When cash.cash_category = 'Expendable' And cal.curr_fy = cash.fiscal_year + 5 Then cash.hh_countable_credit Else 0 End) As expendable_pfy5
     -- Giving history
     , min(cash.fiscal_year) As cash_fy_giving_first_yr
+    , min(cash.credit_date) As cash_giving_first_credit_dt
     , max(cash.fiscal_year) As cash_fy_giving_last_yr
     --, count(Distinct cash.fiscal_year) As fy_giving_yr_count_cash
     , min(Case When cash.cash_category = 'Expendable' Then cash.fiscal_year End) As expendable_fy_giving_first_yr
@@ -116,8 +118,16 @@ params As (
     , sum(Case When cal.curr_fy = ngc.fiscal_year + 3 Then ngc.hh_credit Else 0 End) As ngc_pfy3
     , sum(Case When cal.curr_fy = ngc.fiscal_year + 4 Then ngc.hh_credit Else 0 End) As ngc_pfy4
     , sum(Case When cal.curr_fy = ngc.fiscal_year + 5 Then ngc.hh_credit Else 0 End) As ngc_pfy5
+    -- Pledge totals
+    , sum(Case When ngc.gypm_ind = 'P' And cal.curr_fy = ngc.fiscal_year     Then ngc.hh_credit Else 0 End) As pledge_cfy
+    , sum(Case When ngc.gypm_ind = 'P' And cal.curr_fy = ngc.fiscal_year + 1 Then ngc.hh_credit Else 0 End) As pledge_pfy1
+    , sum(Case When ngc.gypm_ind = 'P' And cal.curr_fy = ngc.fiscal_year + 2 Then ngc.hh_credit Else 0 End) As pledge_pfy2
+    , sum(Case When ngc.gypm_ind = 'P' And cal.curr_fy = ngc.fiscal_year + 3 Then ngc.hh_credit Else 0 End) As pledge_pfy3
+    , sum(Case When ngc.gypm_ind = 'P' And cal.curr_fy = ngc.fiscal_year + 4 Then ngc.hh_credit Else 0 End) As pledge_pfy4
+    , sum(Case When ngc.gypm_ind = 'P' And cal.curr_fy = ngc.fiscal_year + 5 Then ngc.hh_credit Else 0 End) As pledge_pfy5
     -- Giving history
     , min(ngc.fiscal_year) As ngc_fy_giving_first_yr
+    , min(ngc.credit_date) As ngc_giving_first_credit_dt
     , max(ngc.fiscal_year) As ngc_fy_giving_last_yr
     --, count(Distinct ngc.fiscal_year) As fy_giving_yr_count_ngc
     -- Last KSM NGC
@@ -210,6 +220,12 @@ Select
   , ngc.ngc_pfy3
   , ngc.ngc_pfy4
   , ngc.ngc_pfy5
+  , ngc.pledge_cfy
+  , ngc.pledge_pfy1
+  , ngc.pledge_pfy2
+  , ngc.pledge_pfy3
+  , ngc.pledge_pfy4
+  , ngc.pledge_pfy5
   , cash.cash_cfy
   , cash.cash_pfy1
   , cash.cash_pfy2
@@ -222,8 +238,10 @@ Select
   , cash.expendable_pfy3
   , cash.expendable_pfy4
   , cash.expendable_pfy5
+  , ngc.ngc_giving_first_credit_dt
   , ngc.ngc_fy_giving_first_yr
   , ngc.ngc_fy_giving_last_yr
+  , cash.cash_giving_first_credit_dt
   , cash.cash_fy_giving_first_yr
   , cash.cash_fy_giving_last_yr
   -- Gift transaction info

@@ -51,6 +51,9 @@ Type rec_entity Is Record (
     , preferred_address_state dm_alumni.dim_constituent.preferred_address_state%type
     , preferred_address_postal_code dm_alumni.dim_constituent.preferred_address_postal_code%type
     , preferred_address_country dm_alumni.dim_constituent.preferred_address_country_name%type
+    , university_overall_rating dm_alumni.dim_constituent.constituent_university_overall_rating%type
+    , research_evaluation dm_alumni.dim_constituent.constituent_research_evaluation%type
+    , research_evaluation_date dm_alumni.dim_constituent.constituent_research_evaluation_date%type
     , etl_update_date dm_alumni.dim_constituent.etl_update_date%type
 );
 
@@ -106,6 +109,9 @@ Cursor c_entity Is
     , preferred_address_state
     , preferred_address_postal_code
     , preferred_address_country
+    , constituent_university_overall_rating As university_overall_rating
+    , constituent_research_evaluation As research_evaluation
+    , constituent_research_evaluation_date As research_evaluation_date
     , c.etl_update_date
   From table(dw_pkg_base.tbl_constituent) c
   ) Union All ( 
@@ -136,7 +142,10 @@ Cursor c_entity Is
     , preferred_address_city
     , preferred_address_state
     , preferred_address_postal_code
-    , preferred_address_country 
+    , preferred_address_country
+    , organization_university_overall_rating As university_overall_rating
+    , organization_research_evaluation As research_evaluation
+    , organization_research_evaluation_date As research_evaluation_date
     , o.etl_update_date
   From table(dw_pkg_base.tbl_organization) o
   )

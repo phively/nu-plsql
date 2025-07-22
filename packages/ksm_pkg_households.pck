@@ -23,21 +23,30 @@ Public type declarations
 *************************************************************************/
 
 Type rec_household Is Record (
-  household_id mv_entity.household_id%type
-  , household_account_name mv_entity.full_name%type
+  donor_id mv_entity.donor_id%type
+  , full_name mv_entity.full_name%type
+  , sort_name mv_entity.sort_name%type
   , person_or_org mv_entity.person_or_org%type
+  , household_primary mv_entity.household_primary%type
+  , household_id mv_entity.household_id%type
+  , household_account_name mv_entity.full_name%type
   , household_primary_donor_id mv_entity.donor_id%type
   , household_primary_full_name mv_entity.full_name%type
   , household_primary_sort_name mv_entity.sort_name%type
   , household_suffix mv_entity.institutional_suffix%type
   , household_spouse_donor_id mv_entity.spouse_donor_id%type
   , household_spouse_full_name mv_entity.spouse_name%type
+  , household_spouse_sort_name mv_entity.sort_name%type
   , household_spouse_suffix mv_entity.spouse_institutional_suffix%type
   , household_first_ksm_year mv_entity_ksm_degrees.first_ksm_year%type
   , household_first_masters_year mv_entity_ksm_degrees.first_masters_year%type
   , household_last_masters_year mv_entity_ksm_degrees.last_masters_year%type
   , household_program mv_entity_ksm_degrees.program%type
   , household_program_group mv_entity_ksm_degrees.program_group%type
+  , household_university_overall_rating mv_entity.university_overall_rating%type
+  , household_research_evaluation mv_entity.research_evaluation%type
+  , household_research_evaluation_date mv_entity.research_evaluation_date%type
+  , household_qualification_rating mv_entity.university_overall_rating%type
   , etl_update_date mv_entity.etl_update_date%type
 );
 
@@ -108,35 +117,94 @@ Cursor c_households Is
   )
 
   -- Primary HH member info
+  , hh_primary As (
+    Select
+      mve.household_id
+      , Case
+          When hh.household_account_name Is Not Null
+            Then hh.household_account_name
+          Else mve.full_name
+        End
+        As household_account_name
+      , mve.donor_id As household_primary_donor_id
+      , mve.full_name As household_primary_full_name
+      , mve.sort_name As household_primary_sort_name
+      , mve.institutional_suffix As household_suffix
+      , mve.spouse_donor_id As household_spouse_donor_id
+      , mve.spouse_name As household_spouse_full_name
+      , spouse.sort_name As household_spouse_sort_name
+      , mve.spouse_institutional_suffix As household_spouse_suffix
+      , hhdeg.household_first_ksm_year
+      , hhdeg.household_first_masters_year
+      , hhdeg.household_last_masters_year
+      , hhdeg.household_program
+      , hhdeg.household_program_group
+      , greatest(mve.etl_update_date, hhdeg.etl_update_date, trunc(hh.etl_update_date))
+        As etl_update_date
+    From mv_entity mve
+    Left Join mv_entity spouse
+      On spouse.donor_id = mve.spouse_donor_id
+    Left Join dm_alumni.dim_household hh
+      On hh.household_donor_id = mve.household_id
+    Left Join hhdeg
+      On hhdeg.household_id = mve.household_id
+    Where mve.household_primary = 'Y'
+  )
+  
+  -- Householded rating
+  , hh_rating As (
+    Select
+      household_id
+      , min(university_overall_rating)
+        As household_university_overall_rating
+      , max(research_evaluation)
+        keep(dense_rank First Order By research_evaluation_date Desc, research_evaluation Asc)
+        As household_research_evaluation
+      , max(research_evaluation_date)
+        keep(dense_rank First Order By research_evaluation_date Desc, research_evaluation Asc)
+        As household_research_evaluation_date
+    From mv_entity
+    Where university_overall_rating Is Not Null
+      Or research_evaluation Is Not Null
+    Group By household_id
+  )
+  
   Select
-    mve.household_id
-    , Case
-        When hh.household_account_name Is Not Null
-          Then hh.household_account_name
-        Else mve.full_name
-      End
-      As household_account_name
+    mve.donor_id
+    , mve.full_name
+    , mve.sort_name
     , mve.person_or_org
-    , mve.donor_id As household_primary_donor_id
-    , mve.full_name As household_primary_full_name
-    , mve.sort_name As household_primary_sort_name
-    , mve.institutional_suffix As household_suffix
-    , mve.spouse_donor_id As household_spouse_donor_id
-    , mve.spouse_name As household_spouse_full_name
-    , mve.spouse_institutional_suffix As household_spouse_suffix
-    , hhdeg.household_first_ksm_year
-    , hhdeg.household_first_masters_year
-    , hhdeg.household_last_masters_year
-    , hhdeg.household_program
-    , hhdeg.household_program_group
-    , greatest(mve.etl_update_date, hhdeg.etl_update_date, trunc(hh.etl_update_date))
-      As etl_update_date
+    , mve.household_primary
+    , hhp.household_id
+    , hhp.household_account_name
+    , hhp.household_primary_donor_id
+    , hhp.household_primary_full_name
+    , hhp.household_primary_sort_name
+    , hhp.household_suffix
+    , hhp.household_spouse_donor_id
+    , hhp.household_spouse_full_name
+    , hhp.household_spouse_sort_name
+    , hhp.household_spouse_suffix
+    , hhp.household_first_ksm_year
+    , hhp.household_first_masters_year
+    , hhp.household_last_masters_year
+    , hhp.household_program
+    , hhp.household_program_group
+    , hhr.household_university_overall_rating
+    , hhr.household_research_evaluation
+    , hhr.household_research_evaluation_date
+    , Case
+        When hhr.household_university_overall_rating Is Not Null
+          Then hhr.household_university_overall_rating
+        Else hhr.household_research_evaluation
+        End
+      As household_qualification_rating
+    , hhp.etl_update_date
   From mv_entity mve
-  Left Join dm_alumni.dim_household hh
-    On hh.household_donor_id = mve.household_id
-  Left Join hhdeg
-    On hhdeg.household_id = mve.household_id
-  Where mve.household_primary = 'Y'
+  Inner Join hh_primary hhp
+    On hhp.household_id = mve.household_id
+  Left Join hh_rating hhr
+    On hhr.household_id = mve.household_id
 ;
 
 /*************************************************************************

@@ -31,23 +31,10 @@ Select
 From table(dw_pkg_base.tbl_designation_detail) dd
 ;
 
--- tbl_proposals
--- Drop Materialized View mv_proposals;
-Create Materialized View mv_proposals
-Refresh Complete
-Start With sysdate
--- 7:30 AM tomorrow
-Next (trunc(sysdate) + 1 + 7.5/24)
-As
-Select
-  prp.*
-  , sysdate as mv_last_refresh
-From table(dw_pkg_base.tbl_proposals) prp
-;
-
 --------------------------------------
 -- ksm_pkg_entity
 -- tbl_entity
+-- Drop Materialized View mv_entity;
 Create Materialized View mv_entity
 Refresh Complete
 Start With sysdate
@@ -108,6 +95,22 @@ From table(ksm_pkg_transactions.tbl_transactions) tr
 ;
 
 --------------------------------------
+-- ksm_pkg_proposals
+-- tbl_proposals
+-- Drop Materialized View mv_proposals;
+Create Materialized View mv_proposals
+Refresh Complete
+Start With sysdate
+-- 7:30 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.5/24)
+As
+Select
+  prp.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_proposals.tbl_proposals) prp
+;
+
+--------------------------------------
 -- ksm_pkg_prospect
 -- tbl_assignment_summary
 Create Materialized View mv_assignments
@@ -143,6 +146,7 @@ Level 1 dependencies
 --------------------------------------
 -- ksm_pkg_households
 -- tbl_entity_households
+-- Drop Materialized View mv_households;
 Create Materialized View mv_households
 Refresh Complete
 Start With sysdate
@@ -171,6 +175,36 @@ Select
 From table(ksm_pkg_gifts.tbl_ksm_transactions) trn
 ;
 
+-- tbl_source_donor
+-- Drop Materialized View mv_source_donor;
+Create Materialized View mv_source_donor
+Refresh Complete
+Start With sysdate
+-- 7:40 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.667/24)
+As
+Select
+  srcd.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_gifts.tbl_source_donors) srcd
+;
+
+--------------------------------------
+-- ksm_pkg_special_handling
+-- tbl_special_handling
+-- Drop Materialized View mv_special_handling;
+Create Materialized View mv_special_handling
+Refresh Complete
+Start With sysdate
+-- 7:40 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.667/24)
+As
+Select
+  sh.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_special_handling.tbl_special_handling) sh
+;
+
 /*************************************************************************
 Level 2 dependencies
 7:50 AM
@@ -191,17 +225,3 @@ Select
 From v_ksm_giving_summary gs
 ;
 
---------------------------------------
--- ksm_pkg_special_handling
--- tbl_special_handling
-Create Materialized View mv_special_handling
-Refresh Complete
-Start With sysdate
--- 7:50 AM tomorrow
-Next (trunc(sysdate) + 1 + 7.833/24)
-As
-Select
-  sh.*
-  , sysdate as mv_last_refresh
-From table(ksm_pkg_special_handling.tbl_special_handling) sh
-;

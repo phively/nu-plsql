@@ -1,41 +1,43 @@
-Create Or Replace View vt_cash_hierarchy As
+Create Or Replace View tableau_cash_hierarchy As
 
 With
 
-hhf As (
-  Select *
-  From v_entity_ksm_households_fast
-)
-
-, attr_cash As (
+attr_cash As (
   Select
     kgc.*
     -- All past managed grouped into Unmanaged
     , Case
         When substr(managed_hierarchy, 1, 9) = 'Unmanaged'
           Then 'Unmanaged'
+        When managed_hierarchy = 'CFR'
+          Then 'NU'
         Else managed_hierarchy
         End
       As managed_grp
-  From rpt_pbh634.v_ksm_giving_cash kgc
+    , mve.household_id
+      As src_donor_hhid
+  From v_ksm_gifts_cash kgc
+  Inner Join mv_entity mve
+    On mve.donor_id = kgc.source_donor_id
 )
 
 , grouped_cash As (
   Select
     attr_cash.cash_category
-    , attr_cash.household_id
+    , attr_cash.src_donor_hhid
+      As household_id
     , attr_cash.fiscal_year
     , attr_cash.managed_grp
-    , sum(attr_cash.legal_amount)
-      As sum_legal_amount
-    , sum(Case When attr_cash.fytd_ind = 'Y' Then attr_cash.legal_amount Else 0 End)
-      As sum_legal_amount_ytd
-    , count(attr_cash.household_id) Over(Partition By cash_category, attr_cash.household_id, fiscal_year)
+    , sum(attr_cash.cash_countable_amount)
+      As sum_cash_countable_amount
+    , sum(Case When attr_cash.fytd_indicator = 'Y' Then attr_cash.cash_countable_amount Else 0 End)
+      As sum_cash_countable_amount_ytd
+    , count(attr_cash.src_donor_hhid) Over(Partition By cash_category, attr_cash.src_donor_hhid, fiscal_year)
       As n_managed_in_group
   From attr_cash
   Group By
     attr_cash.cash_category
-    , attr_cash.household_id
+    , attr_cash.src_donor_hhid
     , attr_cash.fiscal_year
     , attr_cash.managed_grp
 )
@@ -49,11 +51,11 @@ hhf As (
       , household_id
       , fiscal_year
       , managed_grp
-      , sum_legal_amount
+      , sum_cash_countable_amount
       , n_managed_in_group
   From grouped_cash
   ) Pivot (
-    sum(sum_legal_amount)
+    sum(sum_cash_countable_amount)
     For managed_grp In ('Unmanaged', 'MGO', 'LGO', 'KSM', 'NU')
   )
 )
@@ -67,41 +69,41 @@ hhf As (
       , household_id
       , fiscal_year
       , managed_grp
-      , sum_legal_amount_ytd
+      , sum_cash_countable_amount_ytd
       , n_managed_in_group
   From grouped_cash
   ) Pivot (
-    sum(sum_legal_amount_ytd)
+    sum(sum_cash_countable_amount_ytd)
     For managed_grp In ('Unmanaged', 'MGO', 'LGO', 'KSM', 'NU')
   )
 )
 
 , pivot_retention As (
-  -- Pivot sum(legal_amount) by fiscal year, to compute retained status
+  -- Pivot sum(cash_countable_amount) by fiscal year, to compute retained status
   Select *
   From (
     Select
       household_id
       , fiscal_year
-      , sum_legal_amount
+      , sum_cash_countable_amount
     From grouped_cash
   ) Pivot (
-    sum(sum_legal_amount)
+    sum(sum_cash_countable_amount)
     For fiscal_year In (2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030)
   )
 )
 
 , pivot_retention_ytd As (
-  -- Pivot sum(legal_amount) by fiscal year, to compute retained status
+  -- Pivot sum(cash_countable_amount) by fiscal year, to compute retained status
   Select *
   From (
     Select
       household_id
       , fiscal_year
-      , sum_legal_amount_ytd
+      , sum_cash_countable_amount_ytd
     From grouped_cash
   ) Pivot (
-    sum(sum_legal_amount_ytd)
+    sum(sum_cash_countable_amount_ytd)
     For fiscal_year In (2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030)
   )
 )
@@ -159,143 +161,140 @@ hhf As (
   From attr_cash
 )
 
-, boards_all As (
+, boards_data As (
   Select
-    committee.id_number
-    , committee.committee_code
-    , committee.committee_title
-    , committee.committee_role_code
-    , committee.committee_status_code
-    , committee.start_dt
-    , committee.stop_dt
-    -- Start date is used, if present; else fill in Sep 1 for partial dates; else use date added
+      ca.constituent_donor_id
+      As donor_id
+    , ca.involvement_code
+    , ca.involvement_name
+    , ca.involvement_role
+    , ca.involvement_status
+    , ca.involvement_start_date
+    , ca.involvement_end_date
+    , nvl(ca.involvement_start_fy, 2021)
+      As fy_start
+    , nvl(ca.involvement_end_fy, 9999)
+      As fy_stop
+    -- Start date is used, if present; else fill in Sep 1 for partial dates
     , Case
-        When rpt_pbh634.ksm_pkg_utility.to_date2(committee.start_dt) Is Not Null
-          Then rpt_pbh634.ksm_pkg_utility.to_date2(committee.start_dt)
-        When committee.start_dt <> '00000000'
-          Then rpt_pbh634.ksm_pkg_utility.date_parse(committee.start_dt, fallback_dt => to_date('20200901', 'yyyymmdd'))
-        Else trunc(date_added)
+        When ca.involvement_start_date Is Not Null
+          Then ca.involvement_start_date
+        When ca.involvement_start_date Is Null
+          Then ksm_pkg_utility.to_date_parse(ca.involvement_start_date, fallback_dt => to_date('20200901', 'yyyymmdd'))
         End
       As start_dt_calc
     -- Stop date is used if present; else fill in Aug 31 for partial dates; else for past participation use date modified
     -- If committee status is current use a far future date (year 9999)
     , Case
-        When rpt_pbh634.ksm_pkg_utility.to_date2(committee.stop_dt) Is Not Null
-          Then rpt_pbh634.ksm_pkg_utility.to_date2(committee.stop_dt)
-        When committee_status_code <> 'C' And stop_dt <> '00000000'
-          Then rpt_pbh634.ksm_pkg_utility.date_parse(committee.stop_dt, fallback_dt => to_date('20200831', 'yyyymmdd'))
-        When committee.committee_status_code <> 'C'
-          Then trunc(date_modified)
-        When committee.committee_status_code = 'C'
+        When ca.involvement_end_date Is Not Null
+          Then ca.involvement_end_date
+        When ca.involvement_status <> 'Current' And ca.involvement_end_date Is Not Null
+          Then ksm_pkg_utility.to_date_parse(ca.involvement_end_date, fallback_dt => to_date('20200831', 'yyyymmdd'))
+        When ca.involvement_status = 'Current'
           Then to_date('99991231', 'yyyymmdd')
         End
       As stop_dt_calc
-    , trunc(committee.date_added)
-      As date_added
-    , trunc(committee.date_modified)
-      As date_modified
-  From committee
-  Where committee.committee_code In (
-    'KEBA' -- ebfa
-    , 'KAMP' -- amp
-    , 'KREAC' -- real estate
-    , 'HAK' -- healthcare
-    , 'KPETC' -- peac
-    , 'KACNA' -- kac
-    , 'KWLC' -- kwlc
-  ) Or (
-    -- GAB but not GAB Life
-    committee.committee_code = 'U' -- gab
-    And committee.committee_role_code <> 'F' -- Life Member
-  )
-)
-
-, boards_data As (
-  Select
-    boards_all.*
-    , rpt_pbh634.ksm_pkg_calendar.get_fiscal_year(boards_all.start_dt_calc)
-      As fy_start
-    , rpt_pbh634.ksm_pkg_calendar.get_fiscal_year(boards_all.stop_dt_calc)
-      As fy_stop
-  From boards_all
-  -- Include only board membership within the cash counting period
-  Where rpt_pbh634.ksm_pkg_calendar.get_fiscal_year(boards_all.start_dt_calc) >= (Select min(fiscal_year) From cash_years)
-    Or rpt_pbh634.ksm_pkg_calendar.get_fiscal_year(boards_all.stop_dt_calc) >= (Select min(fiscal_year) From cash_years)
+    , trunc(ca.etl_update_date)
+      As etl_update_date
+  From v_committees_all ca
+  Where
+    (
+      -- Select boards
+      ca.involvement_code In (
+        'COM-KEBA' -- ebfa
+        , 'COM-KAMP' -- amp
+        , 'COM-KREAC' -- real estate
+        , 'COM-HAK' -- healthcare
+        , 'COM-KPETC' -- peac
+        , 'VOL-KACNA' -- kac
+        , 'COM-KWLC' -- kwlc
+      ) Or (
+        -- GAB but not GAB Life
+        ca.involvement_code = 'COM-U' -- gab
+        And ca.involvement_role <> 'Former' -- Life Member
+      )
+    ) And (
+      -- Include only board membership within the cash counting period
+      involvement_start_fy >= (Select min(fiscal_year) From cash_years)
+      Or involvement_end_fy >= (Select min(fiscal_year) From cash_years)
+    )
 )
 
 , board_ids As (
-  Select Distinct id_number
+  Select Distinct donor_id
   From boards_data
 )
 
 , entity_boards As (
-  -- Year-by-year board membership; one year + id_number per row
+  -- Year-by-year board membership; one year + donor_id per row
   Select
     cash_years.fiscal_year
-    , entity.id_number
-    , entity.report_name
-    , entity.institutional_suffix
-    , Case When gab.id_number Is Not Null Then 'Y' End
+    , mve.household_id
+    , mve.donor_id
+    , mve.sort_name
+    , mve.institutional_suffix
+    , Case When gab.donor_id Is Not Null Then 'Y' End
       As gab
-    , Case When ebfa.id_number Is Not Null Then 'Y' End
+    , Case When ebfa.donor_id Is Not Null Then 'Y' End
       As ebfa
-    , Case When amp.id_number Is Not Null Then 'Y' End
+    , Case When amp.donor_id Is Not Null Then 'Y' End
       As amp
-      , Case When re.id_number Is Not Null Then 'Y' End
+      , Case When re.donor_id Is Not Null Then 'Y' End
       As re
-      , Case When health.id_number Is Not Null Then 'Y' End
+      , Case When health.donor_id Is Not Null Then 'Y' End
       As health
-      , Case When peac.id_number Is Not Null Then 'Y' End
+      , Case When peac.donor_id Is Not Null Then 'Y' End
       As peac
-      , Case When kac.id_number Is Not Null Then 'Y' End
+      , Case When kac.donor_id Is Not Null Then 'Y' End
       As kac
-    , Case When kwlc.id_number Is Not Null Then 'Y' End
+    , Case When kwlc.donor_id Is Not Null Then 'Y' End
       As kwlc
   From board_ids
   Cross Join cash_years
-  Inner Join entity
-    On entity.id_number = board_ids.id_number
+  Inner Join mv_entity mve
+    On mve.donor_id = board_ids.donor_id
   Left Join boards_data gab
-    On gab.id_number = entity.id_number
+    On gab.donor_id = mve.donor_id
     And cash_years.fiscal_year Between gab.fy_start And gab.fy_stop
-    And gab.committee_code = 'U'
+    And gab.involvement_code = 'COM-U'
   Left Join boards_data ebfa
-    On ebfa.id_number = entity.id_number
+    On ebfa.donor_id = mve.donor_id
     And cash_years.fiscal_year Between ebfa.fy_start And ebfa.fy_stop
-    And ebfa.committee_code = 'KEBA'
+    And ebfa.involvement_code = 'COM-KEBA'
   Left Join boards_data amp
-    On amp.id_number = entity.id_number
+    On amp.donor_id = mve.donor_id
     And cash_years.fiscal_year Between amp.fy_start And amp.fy_stop
-    And amp.committee_code = 'KAMP'
+    And amp.involvement_code = 'COM-KAMP'
   Left Join boards_data re
-    On re.id_number = entity.id_number
+    On re.donor_id = mve.donor_id
     And cash_years.fiscal_year Between re.fy_start And re.fy_stop
-    And re.committee_code = 'KREAC'
+    And re.involvement_code = 'COM-KREAC'
   Left Join boards_data health
-    On health.id_number = entity.id_number
+    On health.donor_id = mve.donor_id
     And cash_years.fiscal_year Between health.fy_start And health.fy_stop
-    And health.committee_code = 'HAK'
+    And health.involvement_code = 'COM-HAK'
   Left Join boards_data peac
-    On peac.id_number = entity.id_number
+    On peac.donor_id = mve.donor_id
     And cash_years.fiscal_year Between peac.fy_start And peac.fy_stop
-    And peac.committee_code = 'KPETC'
+    And peac.involvement_code = 'COM-KPETC'
   Left Join boards_data kac
-    On kac.id_number = entity.id_number
+    On kac.donor_id = mve.donor_id
     And cash_years.fiscal_year Between kac.fy_start And kac.fy_stop
-    And kac.committee_code = 'KACNA'
+    And kac.involvement_code = 'VOL-KACNA'
   Left Join boards_data kwlc
-    On kwlc.id_number = entity.id_number
+    On kwlc.donor_id = mve.donor_id
     And cash_years.fiscal_year Between kwlc.fy_start And kwlc.fy_stop
-    And kwlc.committee_code = 'KWLC'
+    And kwlc.involvement_code = 'COM-KWLC'
   Order By
-    entity.report_name Asc
+    mve.sort_name Asc
     , cash_years.fiscal_year Asc
 )
 
 , boards As (
   Select
     fiscal_year
-    , id_number
+    , household_id
+    , donor_id
     , gab
     , ebfa
     , amp
@@ -327,7 +326,7 @@ hhf As (
 
 , boards_hh As (
   Select
-    hhf.household_id
+    boards.household_id
     , boards.fiscal_year
     , sum(boards.total_dues)
       As total_dues_hh
@@ -340,13 +339,11 @@ hhf As (
     , count(boards.kac) As kac
     , count(boards.kwlc) As kwlc
   From boards
-  Inner Join hhf
-    On hhf.id_number = boards.id_number
   Group By
-    hhf.household_id
+    boards.household_id
     , boards.fiscal_year
   Order By
-    hhf.household_id Asc
+    boards.household_id Asc
     , boards.fiscal_year Asc
 )
 
@@ -371,7 +368,7 @@ hhf As (
         End
       As total_dues_hh
     -- Board dues: first take from unmanaged, then KSM, then NU, then MGO, then LGO
-    -- For expendable, board_amt is at least sum_legal_amount up to total_dues_hh
+    -- For expendable, board_amt is at least sum_cash_countable_amount up to total_dues_hh
     , Case
         When cash_category = 'Expendable'
           And total_dues_hh Is Not Null
@@ -505,7 +502,7 @@ hhf As (
     Select *
     From prefinal_data
     Unpivot (
-      legal_amount
+      cash_countable_amount
       For managed_grp In ("Boards", "Unmanaged", "KSM", "NU", "MGO", "LGO")
     )
   ) unpiv
@@ -539,7 +536,7 @@ hhf As (
         End
       As total_dues_hh
     -- Board dues: first take from unmanaged, then KSM, then NU, then MGO, then LGO
-    -- For expendable, board_amt is at least sum_legal_amount up to total_dues_hh
+    -- For expendable, board_amt is at least sum_cash_countable_amount up to total_dues_hh
     , Case
         When cash_category = 'Expendable'
           And total_dues_hh Is Not Null
@@ -664,7 +661,7 @@ hhf As (
     Select *
     From prefinal_data_ytd
     Unpivot (
-      legal_amount
+      cash_countable_amount
       For managed_grp In ("Boards", "Unmanaged", "KSM", "NU", "MGO", "LGO")
     )
   ) unpiv
@@ -679,8 +676,9 @@ hhf As (
 Select
   f.cash_category
   , f.household_id
-  , hhf.household_rpt_name
-  , hhf.household_spouse
+  , hh.household_account_name
+  , hh.household_primary_full_name
+  , hh.household_spouse_full_name
   , f.fiscal_year
   , f.n_managed_in_group
   , f.gab
@@ -699,7 +697,7 @@ Select
   , f.m
   , f.l
   , f.managed_grp
-  , f.legal_amount
+  , f.cash_countable_amount
   , f.retained_cfy
   , f.retained_cfy_year
   , f.retained_nfy
@@ -717,8 +715,8 @@ Select
     As ytd_m
   , fy.l
     As ytd_l
-  , fy.legal_amount
-    As ytd_legal_amount
+  , fy.cash_countable_amount
+    As ytd_cash_countable_amount
   , fy.retained_cfy
     As ytd_retained_cfy
   , fy.retained_cfy_year
@@ -728,8 +726,9 @@ Select
   , fy.retained_nfy_year
     As ytd_retained_nfy_year
 From finalnonytd f
-Inner Join hhf
-  On hhf.id_number = f.household_id -- This is intended; need to use hhf.id_number for deduping
+Inner Join mv_households hh
+  On hh.household_id = f.household_id
+  And hh.household_primary = 'Y'
 Left Join finalytd fy
   On fy.household_id = f.household_id
   And fy.fiscal_year = f.fiscal_year

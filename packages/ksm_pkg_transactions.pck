@@ -23,6 +23,7 @@ pkg_name Constant varchar2(64) := 'ksm_pkg_transactions';
 Public type declarations
 *************************************************************************/
 
+--------------------------------------
 Type rec_transaction Is Record (
   credited_donor_id mv_entity.donor_id%type
   , credited_donor_name mv_entity.full_name%type
@@ -31,6 +32,7 @@ Type rec_transaction Is Record (
   , opportunity_donor_id mv_entity.donor_id%type
   , opportunity_donor_name mv_entity.full_name%type
   , tx_id dm_alumni.dim_opportunity.opportunity_record_id%type
+  , opportunity_salesforce_id dm_alumni.dim_opportunity.opportunity_salesforce_id%type
   , opportunity_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
   , payment_record_id stg_alumni.ucinn_ascendv2__payment__c.name%type
   , anonymous_type dm_alumni.dim_opportunity.anonymous_type%type
@@ -55,7 +57,7 @@ Type rec_transaction Is Record (
   , fin_fund_id dm_alumni.dim_designation.fin_fund%type
   , fin_department_id dm_alumni.dim_designation.designation_fin_department_id%type
   , fin_project_id dm_alumni.dim_designation.fin_project%type
-  , fin_activity dm_alumni.dim_designation.designation_activity%type
+  , fin_activity_id dm_alumni.dim_designation.designation_activity%type
   , credit_date stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_date_formula__c%type
   , fiscal_year integer
   , entry_date dm_alumni.dim_opportunity.opportunity_entry_date%type
@@ -67,11 +69,20 @@ Type rec_transaction Is Record (
   , max_etl_update_date mv_entity.etl_update_date%type
 );
 
+--------------------------------------
+Type rec_tribute Is Record (   
+  opportunity_salesforce_id stg_alumni.ucinn_ascendv2__tribute__c.ucinn_ascendv2__opportunity__c%type
+  , tributee_salesforce_id stg_alumni.ucinn_ascendv2__tribute__c.ucinn_ascendv2__contact__c%type
+  , tributee_name_text stg_alumni.ucinn_ascendv2__tribute__c.ucinn_ascendv2__tributee__c%type
+  , tribute_type stg_alumni.ucinn_ascendv2__tribute__c.ucinn_ascendv2__tribute_type__c%type
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
 
 Type transactions Is Table Of rec_transaction;
+Type tributes Is Table Of rec_tribute;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -79,6 +90,9 @@ Public pipelined functions declarations
 
 Function tbl_transactions
   Return transactions Pipelined;
+
+Function tbl_tributes
+  Return tributes Pipelined;
 
 /*********************** About pipelined functions ***********************
 Q: What is a pipelined function?
@@ -107,6 +121,7 @@ Create Or Replace Package Body ksm_pkg_transactions Is
 Private cursors -- data definitions
 *************************************************************************/
 
+--------------------------------------
 Cursor c_transactions Is
 
   With
@@ -153,6 +168,7 @@ Cursor c_transactions Is
         Else opp.opportunity_record_id
         End
       As tx_id
+    , opp.opportunity_salesforce_id
     , opp.opportunity_record_id
     , pay.payment_record_id
     , Case
@@ -204,7 +220,7 @@ Cursor c_transactions Is
     , des.fin_fund_id
     , des.fin_department_id
     , des.fin_project_id
-    , des.fin_activity
+    , des.fin_activity_id
     -- Credit date is from opportunity object for matching gift payments
     , Case
         When gcred.source_type_detail = 'Matching Gift Payment'
@@ -251,10 +267,23 @@ Cursor c_transactions Is
     On pay.payment_salesforce_id = gcred.payment_salesforce_id
 ;
 
+--------------------------------------
+Cursor c_tributes Is
+  
+  -- In memory/honor of
+  Select Distinct
+    trib.ucinn_ascendv2__opportunity__c As opportunity_salesforce_id
+    , trib.ucinn_ascendv2__contact__c As tributee_salesforce_id
+    , trib.ucinn_ascendv2__tributee__c As tributee_name_text
+    , trib.ucinn_ascendv2__tribute_type__c As tribute_type
+  From stg_alumni.ucinn_ascendv2__tribute__c trib
+;
+
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
 
+--------------------------------------
 Function tbl_transactions
   Return transactions Pipelined As
   -- Declarations
@@ -266,6 +295,22 @@ Function tbl_transactions
     Close c_transactions;
     For i in 1..(trn.count) Loop
       Pipe row(trn(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_tributes
+  Return tributes Pipelined As
+  -- Declarations
+  trb tributes;
+
+  Begin
+    Open c_tributes;
+      Fetch c_tributes Bulk Collect Into trb;
+    Close c_tributes;
+    For i in 1..(trb.count) Loop
+      Pipe row(trb(i));
     End Loop;
     Return;
   End;

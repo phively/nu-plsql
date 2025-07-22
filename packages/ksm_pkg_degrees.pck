@@ -108,7 +108,25 @@ Cursor c_entity_degrees_concat Is
         As nongrad
       , deg.degree_level
       , deg.degree_code
+        As degree_code_orig
       , deg.degree_name
+        As degree_name_orig
+      -- MSMS is MiM for 2024 and later grads
+      , Case
+          When deg.degree_code = 'MSMS'
+            And deg.degree_year >= 2024
+            Then 'MIM'
+          Else deg.degree_code
+          End
+        As degree_code
+      , Case
+          When deg.degree_code = 'MSMS'
+            And deg.degree_year >= 2024
+            Then 'Master in Management'
+          Else deg.degree_name
+          End
+        As degree_name
+      -- Revert J L Kellogg name change
       , Case 
           When deg.degree_school_name Like '%J%L%Kellogg%'
             Then 'Kellogg'
@@ -296,6 +314,7 @@ Cursor c_entity_degrees_concat Is
             When clean_degrees_concat Like '%MBA %' Then 'FT'
             When clean_degrees_concat Like '%CERT%' Then 'EXECED'
             When clean_degrees_concat Like '%Institute for Mgmt%' Then 'EXECED'
+            When clean_degrees_concat Like '%MIM%' Then 'FT-MIM'
             When clean_degrees_concat Like '%MS %' Then 'FT-MS'
             When clean_degrees_concat Like '%LLM%' Then 'CERT-LLM'
             When clean_degrees_concat Like '%MMGT%' Then 'FT-MMGT'
@@ -330,6 +349,7 @@ Cursor c_entity_degrees_concat Is
             When degrees_concat Like '%MBA %' Then 'FT NONGRAD'
             When degrees_concat Like '%CERT%' Then 'EXECED NONGRAD'
             When degrees_concat Like '%Institute for Mgmt%' Then 'EXECED NONGRAD'
+            When degrees_concat Like '%MIM%' Then 'FT-MIM NONGRAD'
             When degrees_concat Like '%MS %' Then 'FT-MS NONGRAD'
             When degrees_concat Like '%LLM%' Then 'CERT-LLM NONGRAD'
             When degrees_concat Like '%MMGT%' Then 'FT-MMGT NONGRAD'
