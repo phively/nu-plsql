@@ -1,4 +1,4 @@
-----Create or Replace View tableau_nametags as 
+Create or Replace View tableau_nametags as 
 
 With K AS (
 Select CONSTITUENT_DONOR_ID  ,
