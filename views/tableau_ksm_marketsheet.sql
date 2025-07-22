@@ -10,97 +10,6 @@ from stg_alumni.ucinn_ascendv2__Affiliation__c c
 where c.ap_is_primary_employment__c = 'true'
 group by c.UCINN_ASCENDV2__RELATED_CONTACT_DONOR_ID_FORMULA__C),
 
-/* 
-
-Wait on Geocode 
-
-geocode as (select distinct g.ap_address_relation_record_type__c,
-                        g.ap_address_relation__c,
-                        g.ap_constituent__c,
-                        g.ap_end_date__c,
-                        g.ap_geocode_value_description__c,
-                        g.ap_geocode_value_end_zip_formula__c,
-                        g.ap_geocode_value_start_zip_formula__c,
-                        g.ap_geocode_value_type__c,
-                        g.ap_geocode_value__c,
-                        g.ap_is_active__c,
-                        g.ap_is_constituent_address_relation__c,
-                        g.ap_is_patient_only__c,
-                        g.ap_notes__c,
-                        g.ap_organization__c,
-                        g.ap_start_date__c,
-                        g.ap_zone__c,
-                        g.createdbyid,
-                        g.createddate,
-                        g.geocode_value_type_description__c,
-                        g.id,
-                        g.isdeleted,
-                        g.lastactivitydate,
-                        g.lastmodifiedbyid,
-                        g.lastmodifieddate,
-                        g.lastreferenceddate,
-                        g.lastvieweddate,
-                        g.name,
-                        g.ownerid,
-                        g.recordtypeid,
-                        g.systemmodstamp,
-                        g.etl_create_date,
-                        g.etl_update_date
-from stg_alumni.ap_geocode__c g
-where g.ap_is_active__c = 'true'),
-
-fa as (select geocode.id,
-s.firstname,
-s.lastname,
-s.ucinn_ascendv2__donor_id__c,
-       geocode.ap_geocode_value_description__c,
-       a.ucinn_ascendv2__address__c,
-       a.ucinn_ascendv2__account__c,
-       a.ucinn_ascendv2__address_relation_name_auto_number__c,
-       a.ucinn_ascendv2__contact__c,
-       a.ucinn_ascendv2__data_source__c,
-       a.ucinn_ascendv2__end_date__c,
-       a.ucinn_ascendv2__in_care_of__c,
-       a.ucinn_ascendv2__is_preferred__c,
-       a.ucinn_ascendv2__seasonal_end_day__c,
-       a.ucinn_ascendv2__seasonal_end_month__c,
-       a.ucinn_ascendv2__seasonal_end_year__c,
-       a.ucinn_ascendv2__seasonal_start_day__c,
-       a.ucinn_ascendv2__seasonal_start_month__c,
-       a.ucinn_ascendv2__seasonal_start_year__c,
-       a.ucinn_ascendv2__source__c,
-       a.ucinn_ascendv2__start_date__c,
-       a.ucinn_ascendv2__status__c,
-       a.ucinn_ascendv2__type__c,
-       a.ucinn_ascendv2__address_city_formula__c,
-       a.ucinn_ascendv2__address_postal_code_formula__c,
-       a.ucinn_ascendv2__address_state_formula__c,
-       a.ucinn_ascendv2__address_street_formula__c,
-       a.ucinn_ascendv2__full_address_formula__c,
-       a.ucinn_ascendv2__is_active_seasonal_address__c,
-       a.ap_is_campus__c,
-       a.ap_number_of_times_returned__c,
-       a.etl_create_date,
-       a.etl_update_date,
-       
-from stg_alumni.ucinn_ascendv2__address_relation__c a
-inner join geocode on geocode.ap_address_relation__c = a.id
-left join stg_alumni.contact s on s.id = a.ucinn_ascendv2__contact__c
-left join fa on fa.ucinn_ascendv2__donor_id__c = e.donor_id
-
-where a.ucinn_ascendv2__is_preferred__c = 'true'
-
-),
-
-*/
-
---- Top Prospect
-
-TP as (select C.CONSTITUENT_DONOR_ID,
-c.constituent_university_overall_rating,
-c.constituent_research_evaluation
-from DM_ALUMNI.DIM_CONSTITUENT C ),
-
 
 --- Special Handling
 
@@ -168,7 +77,6 @@ a.linkedin_address
 from stg_alumni.contact c
 inner join a on c.id = a.ucinn_ascendv2__contact__c)
 
-
 select e.person_or_org,
        e.household_primary,
        e.donor_id,
@@ -193,6 +101,7 @@ select e.person_or_org,
        employ.primary_employer,
        employ.primary_job_title,
        l.linkedin_address,
+--- giving 
        give.ngc_lifetime,
        give.ngc_cfy,
        give.ngc_pfy1,
@@ -200,10 +109,11 @@ select e.person_or_org,
        give.ngc_pfy3,
        give.ngc_pfy4,
        give.ngc_pfy5,
+--- ratings 
        e.university_overall_rating,
        e.research_evaluation,
        e.research_evaluation_date,
-       s.donor_id,
+--- special handling and gab, trustee, ebfa flags 
        s.no_contact,
        s.no_email_ind,
        s.gab,
@@ -214,7 +124,6 @@ select e.person_or_org,
        s.no_email_sol_ind,
        s.no_mail_sol_ind,
        s.no_texts_sol_ind
-       
 from mv_entity e
 inner join d on d.donor_id = e.donor_id 
 --- empoloyment
