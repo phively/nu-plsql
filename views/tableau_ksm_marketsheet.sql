@@ -85,7 +85,6 @@ select
        e.preferred_address_city,
        e.preferred_address_state,
        e.preferred_address_country,
-       d.full_name,
        d.sort_name,
        d.degrees_verbose,
        d.degrees_concat,
