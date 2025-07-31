@@ -100,8 +100,10 @@ Cursor c_entity_degrees_concat Is
       , deg.degree_reunion_year
       , deg.degree_status
       , Case
-          When deg.degree_status = 'Inactive'
+          When deg.degree_status In ('Inactive', 'Discontinued', 'Dismissed or Revoked')
             Then 'NONGRAD '
+          When deg.degree_status In ('Active', 'Deposited', 'Leave of Absence')
+            Then 'STUDENT '
           When deg.degree_code Like '%-STU'
             Then 'STUDENT '
           End
@@ -272,7 +274,12 @@ Cursor c_entity_degrees_concat Is
             -- Account for certificate degree level/degree program mismatch by choosing exec ed
             When last_noncert_year Is Null
               And clean_degrees_concat Is Not Null
+              -- Specific degree exclusions
               And clean_degrees_concat Not Like '%Undergraduate Business%'
+              And clean_degrees_concat Not Like '%MBA %'
+              And clean_degrees_concat Not Like '%MMGT %'
+              And clean_degrees_concat Not Like '%PHD %'
+              And majors_concat Not Like '%MBA%'
               Then
                 Case
                   When clean_degrees_concat Like '%Kellogg AEP%' Then 'CERT-AEP'
@@ -305,7 +312,6 @@ Cursor c_entity_degrees_concat Is
             When clean_degrees_concat Like '%Kellogg RU%' Then 'EMP-ISR'
             When clean_degrees_concat Like '%Kellogg PKU%' Then 'EMP-CHI'
             When clean_degrees_concat Like '% EMP%' Then 'EMP'
-            When clean_degrees_concat Like '%KGS%' Then 'FT'
             When clean_degrees_concat Like '%BEV%' Then 'FT-EB'
             When clean_degrees_concat Like '%BCH%' Then 'FT-CB'
             When clean_degrees_concat Like '%PHD%' Then 'PHD'
@@ -318,8 +324,11 @@ Cursor c_entity_degrees_concat Is
             When clean_degrees_concat Like '%MS %' Then 'FT-MS'
             When clean_degrees_concat Like '%LLM%' Then 'CERT-LLM'
             When clean_degrees_concat Like '%MMGT%' Then 'FT-MMGT'
+            When clean_degrees_concat Like '%KGS%' Then 'FT'
             When clean_degrees_verbose Like '%Certificate%' Then 'CERT'
             -- People who don't have a completed degree
+            -- Students
+            When degrees_concat Like 'STUDENT%' Then 'STUDENT'
             -- ***** IMPORTANT: Keep in same order as above *****
             When degrees_concat Like '%KGS2Y%' Then 'FT-2Y NONGRAD'
             When degrees_concat Like '%KGS1Y%' Then 'FT-1Y NONGRAD'
@@ -346,16 +355,14 @@ Cursor c_entity_degrees_concat Is
             When degrees_concat Like '%PHD%' Then 'PHD NONGRAD'
             When degrees_concat Like '%Kellogg AEP%' Then 'CERT-AEP NONGRAD'
             When degrees_concat Like '%KSMEE%' Then 'EXECED NONGRAD'
-            When degrees_concat Like '%MBA %' Then 'FT NONGRAD'
             When degrees_concat Like '%CERT%' Then 'EXECED NONGRAD'
             When degrees_concat Like '%Institute for Mgmt%' Then 'EXECED NONGRAD'
             When degrees_concat Like '%MIM%' Then 'FT-MIM NONGRAD'
             When degrees_concat Like '%MS %' Then 'FT-MS NONGRAD'
             When degrees_concat Like '%LLM%' Then 'CERT-LLM NONGRAD'
             When degrees_concat Like '%MMGT%' Then 'FT-MMGT NONGRAD'
+            When degrees_concat Like '%MBA %' Then 'FT NONGRAD'
             When degrees_verbose Like '%Certificate%' Then 'CERT NONGRAD'
-            -- Students
-            When degrees_concat Like 'STUDENT%' Then 'STUDENT'
             -- Unable to determine program
             Else 'UNK'
           End As program

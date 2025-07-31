@@ -48,3 +48,29 @@ Select
 From table(ksm_pkg_degrees.tbl_entity_ksm_degrees) deg
 Where deg.program In ('FT-MIM', 'FT-MIM NONGRAD', 'FT-MS', 'FT-MS NONGRAD')
 ;
+
+Select
+  'Students have blank date' As test_desc
+  , deg.donor_id
+  , deg.degrees_concat
+  , deg.first_ksm_year
+  , deg.first_ksm_grad_date
+  , deg.program
+  , deg.program_group
+From table(ksm_pkg_degrees.tbl_entity_ksm_degrees) deg
+Where deg.program = 'STUDENT'
+;
+
+Select
+  'Check for non-execed degree names' As test_desc
+  , deg.donor_id
+  , deg.degrees_concat
+  , deg.degrees_verbose
+  , deg.first_ksm_year
+  , deg.program
+  , deg.program_group
+From table(ksm_pkg_degrees.tbl_entity_ksm_degrees) deg
+Where deg.program = 'EXECED'
+  And deg.first_ksm_year Is Null
+  And deg.majors_concat Is Not Null
+;
