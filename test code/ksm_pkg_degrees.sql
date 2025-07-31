@@ -74,3 +74,14 @@ Where deg.program = 'EXECED'
   And deg.first_ksm_year Is Null
   And deg.majors_concat Is Not Null
 ;
+
+With
+
+test_cases As (
+  Select '0000084513' As donor_id, 'FT' As expected_result, 'FT and CERT' As explanation
+  From DUAL
+)
+
+Select NULL
+From DUAL
+;
