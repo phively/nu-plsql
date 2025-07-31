@@ -109,6 +109,28 @@ Cursor c_entity_degrees_concat Is
           End
         As nongrad
       , deg.degree_level
+      -- Degree level hierarchy
+      , Case
+          When degree_level Like '%Doctorate%'
+            Then '01 PHD'
+          When degree_level Like '%Master%'
+            Then '02 MBA'
+          When degree_level Like '%Undergrad%'
+            Then '03 BBA'
+          When degree_level Like '%Other%'
+            Then '04 OTH'
+          When degree_level Like '%Cert%'
+            Then '05 CER'
+          -- Placeholders
+          When degree_level = 'Student_placeholder'
+            Then '10 STU'
+          When degree_level = 'Nongrad_placeholder'
+            Then '50 NON'
+          When degree_level Is Null
+            Then '90 UNK'
+          Else '99 TBD'
+        End
+        As degree_level_rank
       , deg.degree_code
         As degree_code_orig
       , deg.degree_name
@@ -185,6 +207,18 @@ Cursor c_entity_degrees_concat Is
     Select
       constituent_donor_id
       , constituent_name
+      -- Degree rank
+      -- Student and Nongrad override completed degrees
+      , min(
+          Case
+            When nongrad = 'NONGRAD '
+              Then '50 NON'
+            When nongrad = 'STUDENT '
+              Then '10 STU'
+            Else degree_level_rank
+          End
+        )
+        As degree_level_ranked
       -- Verbose degrees
       -- ***** IMPORTANT: If updating, make sure normal and clean definitions match *****
       , Listagg(
