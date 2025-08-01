@@ -50,6 +50,7 @@ From table(ksm_pkg_entity.tbl_entity) entity
 --------------------------------------
 -- ksm_pkg_degrees
 -- tbl_entity_ksm_degrees
+-- Drop Materialized View mv_entity_ksm_degrees;
 Create Materialized View mv_entity_ksm_degrees
 Refresh Complete
 Start With sysdate

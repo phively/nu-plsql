@@ -118,6 +118,7 @@ Cursor c_entity_degrees_concat Is
           When degree_level Like '%Master%'
             Then '02 MBA'
           When degree_level Like '%Undergrad%'
+            Or degree_school_name = 'Undergraduate Business'
             Then '03 BBA'
           When degree_level Like '%Other%'
             Then '04 OTH'
@@ -337,15 +338,15 @@ Cursor c_entity_degrees_concat Is
               When completed_degrees_concat Like '%MIM%' Then 'FT-MIM'
               When completed_degrees_concat Like '%MS %' Then 'FT-MS'
               When completed_degrees_concat Like '%MMGT%' Then 'FT-MMGT'
-              Else 'FT-UNK-MASTERS'
+              Else 'FT-UNK-MBA'
               End
           When degree_level_ranked = '03 BBA'
             Then Case
               When completed_degrees_concat Like '%BEV%' Then 'FT-EB'
               When completed_degrees_concat Like '%BCH%' Then 'FT-CB'
-              Else 'FT-UNK-UNDERGRAD'
+              Else 'FT-UNK-BBA'
               End
-          When degree_level_ranked = '05 CER'
+          When degree_level_ranked In ('04 OTH', '05 CER')
             Then Case
               When completed_degrees_concat Like '%Kellogg AEP%' Then 'CERT-AEP'
               When completed_degrees_concat Like '%KSMEE%' Then 'EXECED'
