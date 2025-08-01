@@ -31,9 +31,12 @@ Type rec_entity Is Record (
     , donor_id dm_alumni.dim_constituent.constituent_donor_id%type
     , full_name dm_alumni.dim_constituent.full_name%type
     , sort_name dm_alumni.dim_constituent.full_name%type
+    , salutation dm_alumni.dim_constituent.salutation%type
     , first_name dm_alumni.dim_constituent.full_name%type
+    , middle_name dm_alumni.dim_constituent.middle_name%type
     , last_name dm_alumni.dim_constituent.full_name%type
     , is_deceased_indicator dm_alumni.dim_constituent.is_deceased_indicator%type
+    , donor_advised_fund_indicator varchar2(1)
     , primary_record_type dm_alumni.dim_constituent.primary_constituent_type%type
     , institutional_suffix dm_alumni.dim_constituent.institutional_suffix%type
     , spouse_donor_id dm_alumni.dim_constituent.spouse_constituent_donor_id%type
@@ -51,6 +54,9 @@ Type rec_entity Is Record (
     , preferred_address_state dm_alumni.dim_constituent.preferred_address_state%type
     , preferred_address_postal_code dm_alumni.dim_constituent.preferred_address_postal_code%type
     , preferred_address_country dm_alumni.dim_constituent.preferred_address_country_name%type
+    , gender_identity dm_alumni.dim_constituent.gender_identity%type
+    , citizenship dm_alumni.dim_constituent.citizenship_list%type
+    , ethnicity dm_alumni.dim_constituent.ethnicity%type
     , university_overall_rating dm_alumni.dim_constituent.constituent_university_overall_rating%type
     , research_evaluation dm_alumni.dim_constituent.constituent_research_evaluation%type
     , research_evaluation_date dm_alumni.dim_constituent.constituent_research_evaluation_date%type
@@ -89,9 +95,12 @@ Cursor c_entity Is
     , c.donor_id
     , c.full_name
     , c.sort_name
+    , c.salutation
     , c.first_name
+    , c.middle_name
     , c.last_name
     , c.is_deceased_indicator
+    , NULL As donor_advised_fund_indicator
     , c.primary_constituent_type As primary_record_type
     , institutional_suffix
     , spouse_donor_id
@@ -109,6 +118,9 @@ Cursor c_entity Is
     , preferred_address_state
     , preferred_address_postal_code
     , preferred_address_country
+    , gender_identity
+    , citizenship
+    , ethnicity
     , constituent_university_overall_rating As university_overall_rating
     , constituent_research_evaluation As research_evaluation
     , constituent_research_evaluation_date As research_evaluation_date
@@ -123,9 +135,13 @@ Cursor c_entity Is
     , o.donor_id
     , o.organization_name
     , o.sort_name
+    , NULL As salutation
     , o.organization_name As first_name
+    , NULL As middle_name
     , NULL As last_name
     , o.organization_inactive_indicator
+    , Case When donor_advised_fund_indicator = 'true' Then 'Y' End
+      As donor_advised_fund_indicator
     , o.organization_type As primary_record_type
     , NULL As institutional_suffix
     , NULL As spouse_donor_id
@@ -143,6 +159,9 @@ Cursor c_entity Is
     , preferred_address_state
     , preferred_address_postal_code
     , preferred_address_country
+    , NULL As gender_identity
+    , NULL As citizenship
+    , NULL As ethnicity
     , organization_university_overall_rating As university_overall_rating
     , organization_research_evaluation As research_evaluation
     , organization_research_evaluation_date As research_evaluation_date
