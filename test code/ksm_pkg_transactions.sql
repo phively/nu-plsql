@@ -26,3 +26,14 @@ Where tx_id In ('T2934818', 'T2934800', 'T2584353', 'T2584354', 'T2584825', 'T25
   And hard_credit_amount > 0
 Order By credited_donor_name Asc
 ;
+
+
+---------------------------
+-- Matching gift tests
+---------------------------
+
+Select match.*
+From table(ksm_pkg_transactions.tbl_matches) match
+Where
+  matching_gift_opportunity_name In ('MN3037385')
+;
