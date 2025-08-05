@@ -687,7 +687,12 @@ Cursor c_degrees Is
       As degree_school_name
     , deginf.ap_degree_type_from_degreecode__c
       As degree_level
-    , deginf.ucinn_ascendv2__conferred_degree_year__c
+    , Case
+        -- Reunion year is fallback
+        When deginf.ucinn_ascendv2__conferred_degree_year__c Is Null
+          Then deginf.ucinn_ascendv2__reunion_year__c
+        Else deginf.ucinn_ascendv2__conferred_degree_year__c
+        End
       As degree_year
     , deginf.ucinn_ascendv2__reunion_year__c
       As degree_reunion_year
