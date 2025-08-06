@@ -33,16 +33,6 @@ Type rec_match Is Record (
   , matching_gift_original_gift_receipt stg_alumni.opportunity.ucinn_ascendv2__matching_source__c%type
 );
 
-Type rec_match_v2 Is Record (
-  original_gift_opportunity_name stg_alumni.opportunity.name%type
-  , original_gift_credit_date stg_alumni.opportunity.ucinn_ascendv2__credit_date__c%type
-  , src varchar2(30)
-  , matching_gift_opportunity_name stg_alumni.opportunity.name%type
-  , matching_gift_amount stg_alumni.opportunity.amount%type
-  , matching_gift_credit_date stg_alumni.opportunity.ucinn_ascendv2__credit_date__c%type
-  , matching_gift_linked_receipt stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__receipt_number__c%type
-);
-
 --------------------------------------
 Type rec_transaction Is Record (
   credited_donor_id mv_entity.donor_id%type
@@ -102,7 +92,6 @@ Public table declarations
 *************************************************************************/
 
 Type matches Is Table Of rec_match;
-Type matches_v2 Is Table Of rec_match_v2;
 Type transactions Is Table Of rec_transaction;
 Type tributes Is Table Of rec_tribute;
 
@@ -112,9 +101,6 @@ Public pipelined functions declarations
 
 Function tbl_matches
   Return matches Pipelined;
-
-Function tbl_matches_v2
-  Return matches_v2 Pipelined;
 
 Function tbl_transactions
   Return transactions Pipelined;
@@ -198,91 +184,6 @@ Cursor c_matches Is
       On pay.id = mgo.ucinn_ascendv2__payment__c
     Where opp.ap_opp_record_type_developer_name__c = 'Matching_Gift'
       And opp.stagename Not In ('Potential Match', 'Adjusted')
-  )
-;
-
---------------------------------------
-Cursor c_matches_v2 Is
-
-  With
-  
-  original_gift As (
-    Select
-        name
-        As original_gift_opportunity_name
-      , amount
-        As original_gift_amount
-      , ucinn_ascendv2__credit_date__c
-        As original_gift_credit_date
-      , ucinn_ascendv2__receipt_number__c
-        As original_gift_receipt
-    From stg_alumni.opportunity
-  )
-  
-  , matching_gift_a As (
-    Select
-        opp.name
-        As matching_gift_opportunity_name
-      , opp.amount
-        As matching_gift_amount
-      , opp.ucinn_ascendv2__credit_date__c
-        As matching_gift_credit_date
-      , opp.ucinn_ascendv2__matching_source__c
-        As matching_gift_original_gift_receipt
-      , p.ucinn_ascendv2__receipt_number__c
-        As matching_gift_receipt_number
-    From stg_alumni.opportunity opp
-    Inner Join stg_alumni.ucinn_ascendv2__payment__c p
-      On p.ucinn_ascendv2__opportunity__c = opp.id
-    Where opp.ap_opp_record_type_developer_name__c = 'Matching_Gift'
-  )
-  
-  , matching_gift_b As (
-    Select
-        opp.name
-        As matching_gift_opportunity_name
-      , opp.amount
-        As matching_gift_amount
-      , opp.ucinn_ascendv2__credit_date__c
-        As matching_gift_credit_date
-      , opp.ucinn_ascendv2__matching_source__c
-        As matching_gift_original_gift_receipt
-      , p.ucinn_ascendv2__receipt_number__c
-        As matching_gift_receipt_number
-    From stg_alumni.opportunity opp
-    Inner Join stg_alumni.ucinn_ascendv2__matching_gift_origination__c mgo
-      On opp.id = mgo.ucinn_ascendv2__opportunity__c
-    Inner Join stg_alumni.ucinn_ascendv2__payment__c p
-      On p.id = mgo.ucinn_ascendv2__payment__c
-    Where opp.ap_opp_record_type_developer_name__c = 'Matching_Gift'
-  )
-  
-  (
-    Select
-      og.original_gift_opportunity_name
-      , og.original_gift_credit_date
-      , 'original_gift_receipt' As src
-      , mga.matching_gift_opportunity_name
-      , mga.matching_gift_amount
-      , mga.matching_gift_credit_date
-      , mga.matching_gift_original_gift_receipt
-        As matching_gift_linked_receipt
-    From original_gift og
-    Inner Join  matching_gift_a mga
-      On og.original_gift_receipt = mga.matching_gift_original_gift_receipt
-  ) Union (
-    Select
-      og.original_gift_opportunity_name
-      , og.original_gift_credit_date
-      , 'matching_gift_receipt' As src
-      , mgb.matching_gift_opportunity_name
-      , mgb.matching_gift_amount
-      , mgb.matching_gift_credit_date
-      , mgb.matching_gift_receipt_number
-        As matching_gift_linked_receipt
-    From original_gift og
-    Inner Join matching_gift_b mgb
-      On og.original_gift_receipt = mgb.matching_gift_receipt_number
   )
 ;
 
@@ -458,21 +359,6 @@ Function tbl_matches
     Open c_matches;
       Fetch c_matches Bulk Collect Into mch;
     Close c_matches;
-    For i in 1..(mch.count) Loop
-      Pipe row(mch(i));
-    End Loop;
-    Return;
-  End;
-
-Function tbl_matches_v2
-  Return matches_v2 Pipelined As
-  -- Declarations
-  mch matches_v2;
-
-  Begin
-    Open c_matches_v2;
-      Fetch c_matches_v2 Bulk Collect Into mch;
-    Close c_matches_v2;
     For i in 1..(mch.count) Loop
       Pipe row(mch(i));
     End Loop;
