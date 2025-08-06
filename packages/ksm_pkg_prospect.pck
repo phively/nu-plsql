@@ -66,8 +66,10 @@ Type rec_assignment_summary Is Record (
   , household_primary dm_alumni.dim_constituent.household_primary_constituent_indicator%type
   , prospect_manager_user_id varchar2(1600)
   , prospect_manager_name varchar2(1600)
+  , prospect_manager_business_unit varchar2(1600)
   , lagm_user_id varchar2(1600)
   , lagm_name varchar2(1600)
+  , lagm_business_unit varchar2(1600)
   , ksm_manager_flag varchar2(1)
   , etl_update_date stg_alumni.ap_unit_strategy_assignment__c.etl_update_date%type
 );
@@ -189,6 +191,8 @@ Cursor c_assignment_summary Is
         As prospect_manager_user_id
       , Listagg(Distinct staff_name, '; ') Within Group (Order By staff_name)
         As prospect_manager_name
+      , Listagg(Distinct assignment_business_unit, '; ' ) Within Group (Order By staff_name)
+        As prospect_manager_business_unit
       , max(ksm_flag)
         As ksm_flag
       , max(etl_update_date)
@@ -211,6 +215,8 @@ Cursor c_assignment_summary Is
         As lagm_user_id
       , Listagg(Distinct staff_name, '; ') Within Group (Order By staff_name)
         As lagm_name
+      , Listagg(Distinct assignment_business_unit, '; ' ) Within Group (Order By staff_name)
+        As lagm_business_unit
       , max(ksm_flag)
         As ksm_flag
       , max(etl_update_date)
@@ -234,8 +240,10 @@ Cursor c_assignment_summary Is
     , d.household_primary
     , pms.prospect_manager_user_id
     , pms.prospect_manager_name
+    , pms.prospect_manager_business_unit
     , lgos.lagm_user_id
     , lgos.lagm_name
+    , lgos.lagm_business_unit
     , Case
         When pms.ksm_flag = 'Y'
           Or lgos.ksm_flag = 'Y'

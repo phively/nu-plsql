@@ -114,6 +114,7 @@ From table(ksm_pkg_proposals.tbl_proposals) prp
 --------------------------------------
 -- ksm_pkg_prospect
 -- tbl_assignment_summary
+-- Drop Materialized View mv_assignments;
 Create Materialized View mv_assignments
 Refresh Complete
 Start With sysdate
