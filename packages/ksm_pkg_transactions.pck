@@ -183,8 +183,59 @@ Cursor c_matches Is
     Inner Join stg_alumni.ucinn_ascendv2__payment__c pay
       On pay.id = mgo.ucinn_ascendv2__payment__c
     Where opp.ap_opp_record_type_developer_name__c = 'Matching_Gift'
-    And opp.stagename Not In ('Potential Match', 'Adjusted')
+      And opp.stagename Not In ('Potential Match', 'Adjusted')
   )
+;
+
+--------------------------------------
+Cursor c_matches_v2 Is
+
+  select original_gift.*
+  , matching_gift.*
+  from (
+  select name as original_gift_opportunity_name
+  , amount as original_gift_amount
+  , ucinn_ascendv2__credit_date__c as original_gift_credit_date
+  , ucinn_ascendv2__receipt_number__c as original_gift_receipt
+  from stg_alumni.opportunity
+  where name IN ('GN2230971', 'GN2872700', 'GN3035148', 'GN3013552', 'GN2234795')
+  ) original_gift
+  join (
+  select opp.name as matching_gift_opportunity_name
+  , opp.amount as matching_gift_amount
+  , opp.ucinn_ascendv2__credit_date__c as matching_gift_credit_date
+  , opp.ucinn_ascendv2__matching_source__c as matching_gift_original_gift_receipt
+  , p.ucinn_ascendv2__receipt_number__c as matching_gift_receipt_number
+  from stg_alumni.opportunity opp
+  join stg_alumni.ucinn_ascendv2__payment__c p
+  on (p.ucinn_ascendv2__opportunity__c = opp.id)
+  where opp.ap_opp_record_type_developer_name__c = 'Matching_Gift'
+  ) matching_gift
+  on (original_gift.original_gift_receipt = matching_gift.matching_gift_original_gift_receipt)
+  UNION
+  select original_gift.*
+  , matching_gift.*
+  from (
+  select name as original_gift_opportunity_name
+  , amount as original_gift_amount
+  , ucinn_ascendv2__credit_date__c as original_gift_credit_date
+  , ucinn_ascendv2__receipt_number__c as original_gift_receipt
+  from stg_alumni.opportunity
+  where name IN ('GN2230971', 'GN2872700', 'GN3035148', 'GN3013552','GN2234795')
+  ) original_gift
+  INNER join (
+  select opp.name as matching_gift_opportunity_name
+  , opp.amount as matching_gift_amount
+  , opp.ucinn_ascendv2__credit_date__c as matching_gift_credit_date
+  , opp.ucinn_ascendv2__matching_source__c as matching_gift_original_gift_receipt
+  , p.ucinn_ascendv2__receipt_number__c as matching_gift_receipt_number
+  from stg_alumni.opportunity opp
+  INNER JOIN stg_alumni.ucinn_ascendv2__matching_gift_origination__c MGO
+  ON OPP.ID = MGO.UCINN_ASCENDV2__OPPORTUNITY__C
+  INNER join stg_alumni.ucinn_ascendv2__payment__c p
+  on p.Id = MGO.UCINN_ASCENDV2__PAYMENT__C
+  where opp.ap_opp_record_type_developer_name__c = 'Matching_Gift') matching_gift
+  ON (original_gift.original_gift_receipt = matching_gift.matching_gift_receipt_number)
 ;
 
 --------------------------------------
