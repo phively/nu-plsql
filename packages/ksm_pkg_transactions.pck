@@ -33,6 +33,16 @@ Type rec_match Is Record (
   , matching_gift_original_gift_receipt stg_alumni.opportunity.ucinn_ascendv2__matching_source__c%type
 );
 
+Type rec_match_v2 Is Record (
+  original_gift_opportunity_name stg_alumni.opportunity.name%type
+  , original_gift_credit_date stg_alumni.opportunity.ucinn_ascendv2__credit_date__c%type
+  , src varchar2(30)
+  , matching_gift_opportunity_name stg_alumni.opportunity.name%type
+  , matching_gift_amount stg_alumni.opportunity.amount%type
+  , matching_gift_credit_date stg_alumni.opportunity.ucinn_ascendv2__credit_date__c%type
+  , matching_gift_linked_receipt stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__receipt_number__c%type
+);
+
 --------------------------------------
 Type rec_transaction Is Record (
   credited_donor_id mv_entity.donor_id%type
@@ -92,6 +102,7 @@ Public table declarations
 *************************************************************************/
 
 Type matches Is Table Of rec_match;
+Type matches_v2 Is Table Of rec_match_v2;
 Type transactions Is Table Of rec_transaction;
 Type tributes Is Table Of rec_tribute;
 
@@ -101,6 +112,9 @@ Public pipelined functions declarations
 
 Function tbl_matches
   Return matches Pipelined;
+
+Function tbl_matches_v2
+  Return matches_v2 Pipelined;
 
 Function tbl_transactions
   Return transactions Pipelined;
@@ -449,7 +463,22 @@ Function tbl_matches
     End Loop;
     Return;
   End;
-  
+
+Function tbl_matches_v2
+  Return matches_v2 Pipelined As
+  -- Declarations
+  mch matches_v2;
+
+  Begin
+    Open c_matches_v2;
+      Fetch c_matches_v2 Bulk Collect Into mch;
+    Close c_matches_v2;
+    For i in 1..(mch.count) Loop
+      Pipe row(mch(i));
+    End Loop;
+    Return;
+  End;
+
 --------------------------------------
 Function tbl_transactions
   Return transactions Pipelined As
