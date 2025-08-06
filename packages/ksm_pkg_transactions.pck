@@ -190,52 +190,86 @@ Cursor c_matches Is
 --------------------------------------
 Cursor c_matches_v2 Is
 
-  select original_gift.*
-  , matching_gift.*
-  from (
-  select name as original_gift_opportunity_name
-  , amount as original_gift_amount
-  , ucinn_ascendv2__credit_date__c as original_gift_credit_date
-  , ucinn_ascendv2__receipt_number__c as original_gift_receipt
-  from stg_alumni.opportunity
-  where name IN ('GN2230971', 'GN2872700', 'GN3035148', 'GN3013552', 'GN2234795')
-  ) original_gift
-  join (
-  select opp.name as matching_gift_opportunity_name
-  , opp.amount as matching_gift_amount
-  , opp.ucinn_ascendv2__credit_date__c as matching_gift_credit_date
-  , opp.ucinn_ascendv2__matching_source__c as matching_gift_original_gift_receipt
-  , p.ucinn_ascendv2__receipt_number__c as matching_gift_receipt_number
-  from stg_alumni.opportunity opp
-  join stg_alumni.ucinn_ascendv2__payment__c p
-  on (p.ucinn_ascendv2__opportunity__c = opp.id)
-  where opp.ap_opp_record_type_developer_name__c = 'Matching_Gift'
-  ) matching_gift
-  on (original_gift.original_gift_receipt = matching_gift.matching_gift_original_gift_receipt)
-  UNION
-  select original_gift.*
-  , matching_gift.*
-  from (
-  select name as original_gift_opportunity_name
-  , amount as original_gift_amount
-  , ucinn_ascendv2__credit_date__c as original_gift_credit_date
-  , ucinn_ascendv2__receipt_number__c as original_gift_receipt
-  from stg_alumni.opportunity
-  where name IN ('GN2230971', 'GN2872700', 'GN3035148', 'GN3013552','GN2234795')
-  ) original_gift
-  INNER join (
-  select opp.name as matching_gift_opportunity_name
-  , opp.amount as matching_gift_amount
-  , opp.ucinn_ascendv2__credit_date__c as matching_gift_credit_date
-  , opp.ucinn_ascendv2__matching_source__c as matching_gift_original_gift_receipt
-  , p.ucinn_ascendv2__receipt_number__c as matching_gift_receipt_number
-  from stg_alumni.opportunity opp
-  INNER JOIN stg_alumni.ucinn_ascendv2__matching_gift_origination__c MGO
-  ON OPP.ID = MGO.UCINN_ASCENDV2__OPPORTUNITY__C
-  INNER join stg_alumni.ucinn_ascendv2__payment__c p
-  on p.Id = MGO.UCINN_ASCENDV2__PAYMENT__C
-  where opp.ap_opp_record_type_developer_name__c = 'Matching_Gift') matching_gift
-  ON (original_gift.original_gift_receipt = matching_gift.matching_gift_receipt_number)
+  With
+  
+  original_gift As (
+    Select
+        name
+        As original_gift_opportunity_name
+      , amount
+        As original_gift_amount
+      , ucinn_ascendv2__credit_date__c
+        As original_gift_credit_date
+      , ucinn_ascendv2__receipt_number__c
+        As original_gift_receipt
+    From stg_alumni.opportunity
+  )
+  
+  , matching_gift_a As (
+    Select
+        opp.name
+        As matching_gift_opportunity_name
+      , opp.amount
+        As matching_gift_amount
+      , opp.ucinn_ascendv2__credit_date__c
+        As matching_gift_credit_date
+      , opp.ucinn_ascendv2__matching_source__c
+        As matching_gift_original_gift_receipt
+      , p.ucinn_ascendv2__receipt_number__c
+        As matching_gift_receipt_number
+    From stg_alumni.opportunity opp
+    Inner Join stg_alumni.ucinn_ascendv2__payment__c p
+      On p.ucinn_ascendv2__opportunity__c = opp.id
+    Where opp.ap_opp_record_type_developer_name__c = 'Matching_Gift'
+  )
+  
+  , matching_gift_b As (
+    Select
+        opp.name
+        As matching_gift_opportunity_name
+      , opp.amount
+        As matching_gift_amount
+      , opp.ucinn_ascendv2__credit_date__c
+        As matching_gift_credit_date
+      , opp.ucinn_ascendv2__matching_source__c
+        As matching_gift_original_gift_receipt
+      , p.ucinn_ascendv2__receipt_number__c
+        As matching_gift_receipt_number
+    From stg_alumni.opportunity opp
+    Inner Join stg_alumni.ucinn_ascendv2__matching_gift_origination__c mgo
+      On opp.id = mgo.ucinn_ascendv2__opportunity__c
+    Inner Join stg_alumni.ucinn_ascendv2__payment__c p
+      On p.id = mgo.ucinn_ascendv2__payment__c
+    Where opp.ap_opp_record_type_developer_name__c = 'Matching_Gift'
+  )
+  
+  (
+    Select
+      og.original_gift_opportunity_name
+      , og.original_gift_credit_date
+      , 'original_gift_receipt' As src
+      , mga.matching_gift_opportunity_name
+      , mga.matching_gift_amount
+      , mga.matching_gift_credit_date
+      , mga.matching_gift_original_gift_receipt
+        As matching_gift_linked_receipt
+    From original_gift og
+    Inner Join  matching_gift_a mga
+      On og.original_gift_receipt = mga.matching_gift_original_gift_receipt
+  ) Union (
+    Select
+      og.original_gift_opportunity_name
+      , og.original_gift_credit_date
+      , 'matching_gift_receipt' As src
+      , mgb.matching_gift_opportunity_name
+      , mgb.matching_gift_amount
+      , mgb.matching_gift_credit_date
+      , mgb.matching_gift_receipt_number
+        As matching_gift_linked_receipt
+    From original_gift og
+    Inner Join matching_gift_b mgb
+      On og.original_gift_receipt = mgb.matching_gift_receipt_number
+  )
 ;
 
 --------------------------------------
