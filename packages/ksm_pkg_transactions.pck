@@ -30,7 +30,9 @@ Type rec_match Is Record (
   , matching_gift_amount stg_alumni.opportunity.amount%type
   , matching_gift_donor stg_alumni.opportunity.ucinn_ascendv2__donor_name_formula__c%type
   , matching_gift_credit_date stg_alumni.opportunity.ucinn_ascendv2__credit_date__c%type
+  , matching_gift_fy stg_alumni.opportunity.fiscalyear%type
   , matching_gift_original_gift_receipt stg_alumni.opportunity.ucinn_ascendv2__matching_source__c%type
+  , etl_update_date mv_entity.etl_update_date%type
 );
 
 --------------------------------------
@@ -138,7 +140,9 @@ Private cursors -- data definitions
 --------------------------------------
 Cursor c_matches Is
 
-  (
+  With
+  matches_union As
+  ((
     Select
         opp.name
         As matching_gift_opportunity_name
@@ -153,6 +157,7 @@ Cursor c_matches Is
         As matching_gift_credit_date
       , opp.ucinn_ascendv2__matching_source__c
         As matching_gift_original_gift_receipt
+      , opp.etl_update_date
     From stg_alumni.opportunity opp
     Inner Join stg_alumni.ucinn_ascendv2__designation__c des
       On opp.ucinn_ascendv2__designation__c = des.id
@@ -175,6 +180,7 @@ Cursor c_matches Is
         As matching_gift_credit_date
       , pay.ucinn_ascendv2__receipt_number__c
         As matching_gift_original_gift_receipt
+      , pay.etl_update_date
     From stg_alumni.opportunity opp
     Inner Join stg_alumni.ucinn_ascendv2__matching_gift_origination__c mgo
       On opp.id = mgo.ucinn_ascendv2__opportunity__c
@@ -184,7 +190,45 @@ Cursor c_matches Is
       On pay.id = mgo.ucinn_ascendv2__payment__c
     Where opp.ap_opp_record_type_developer_name__c = 'Matching_Gift'
       And opp.stagename Not In ('Potential Match', 'Adjusted')
+  ))
+  
+  , matches As (
+    Select
+      matching_gift_opportunity_name
+      , matching_gift_designation
+      , stagename
+      , matching_gift_amount
+      , matching_gift_donor
+      , matching_gift_credit_date
+      , matching_gift_original_gift_receipt
+      , etl_update_date
+      , row_number() Over(
+          Partition By
+            matching_gift_opportunity_name
+            , matching_gift_designation
+            , stagename
+            , matching_gift_amount
+            , matching_gift_donor
+            , matching_gift_credit_date
+          Order By
+            matching_gift_original_gift_receipt Asc
+        ) As rn
+    From matches_union
   )
+  
+  Select Distinct
+    matching_gift_opportunity_name
+    , matching_gift_designation
+    , stagename
+    , matching_gift_amount
+    , matching_gift_donor
+    , matching_gift_credit_date
+    , ksm_pkg_calendar.get_fiscal_year(matching_gift_credit_date)
+      As matching_gift_fy
+    , matching_gift_original_gift_receipt
+    , etl_update_date
+  From matches
+  Where rn = 1
 ;
 
 --------------------------------------
@@ -217,7 +261,7 @@ Cursor c_transactions Is
     Left Join mini_entity me
       On me.salesforce_id = gc.donor_salesforce_id
   )
-  
+
   Select
     gcred.credited_donor_id
     , me.full_name

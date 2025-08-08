@@ -32,8 +32,18 @@ Order By credited_donor_name Asc
 -- Matching gift tests
 ---------------------------
 
-Select match.*
+With
+
+test_cases As (
+  Select 'MN3037385' As mg_opp_name, 'Check no ThirdParty' As explanation From DUAL
+  Union Select 'MN3000513', 'Is legacy receipt no RN' From DUAL
+  Union Select 'MN2983900', 'FY24 match on FY23 gift' From DUAL
+)
+  
+Select
+  explanation
+  , match.*
 From table(ksm_pkg_transactions.tbl_matches) match
-Where
-  matching_gift_opportunity_name In ('MN3037385')
+Inner Join test_cases
+  On match.matching_gift_opportunity_name = test_cases.mg_opp_name
 ;
