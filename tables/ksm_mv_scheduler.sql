@@ -19,6 +19,7 @@ From table(dw_pkg_base.tbl_involvement) inv
 ;
 
 -- tbl_designation_detail
+-- Drop Materialized View mv_designation_detail;
 Create Materialized View mv_designation_detail
 Refresh Complete
 Start With sysdate

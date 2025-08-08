@@ -278,7 +278,7 @@ Cursor c_designation_campaign_kfc Is
           , '3203007028801GFT', '3203007025701GFT', '4104007025901END'
           , '4104007025901END', '3203007026801GFT', '3203003203701GFT')
           Then 'Faculty'
-        When des.designation_record_id In ('N6038786', 'N3038579')
+        When des.designation_record_id In ('N6038786', 'N3038579', 'N3039186', 'N4039131')
           Then 'Faculty'
         -- Building
         When des.legacy_allocation_code In ('3203006213301GFT')

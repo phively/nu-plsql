@@ -335,18 +335,6 @@ Cursor c_ksm_transactions Is
       -- TBD funds (clean up as moved)
       Union All
       Select 'PN2480673', NULL, 'Faculty' From DUAL
-      Union All
-      Select 'PN2482912', NULL, 'Faculty' From DUAL
-      Union All
-      Select 'PN2481184', NULL, 'Students' From DUAL
-      Union All
-      Select 'GN2218698', NULL, 'Students' From DUAL
-      Union All
-      Select 'PN2484020', NULL, 'Students' From DUAL
-      Union All
-      Select 'GN2233453', NULL, 'Students' From DUAL
-      Union All
-      Select 'GN2217992', NULL, 'Students' From DUAL
     )
     
     , tribute As (
