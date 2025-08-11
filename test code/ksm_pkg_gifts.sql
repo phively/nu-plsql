@@ -93,6 +93,35 @@ Inner Join test_cases
 ;
 
 ---------------------------
+-- mv_ksm_transactions matching gifts tests
+---------------------------
+
+Select
+  NULL As "Check matching gifts populate"
+  , mkt.*
+From mv_ksm_transactions mkt
+Where mkt.credited_donor_id = '0000564117'
+  And mkt.gypm_ind = 'M'
+;
+
+Select
+  'Matching payment date is FY22' As explanation
+  , mkt.credited_donor_audit
+  , mkt.opportunity_donor_id
+  , mkt.source_type_detail
+  , mkt.gypm_ind
+  , mkt.tx_id
+  , mkt.credit_receipt_number
+  , mkt.matched_gift_record_id
+  , mkt.matching_gift_original_gift_receipt
+  , mkt.matching_gift_credit_date
+  , mkt.matching_gift_fy
+From mv_ksm_transactions mkt
+Where mkt.credit_receipt_number = '0002916204'
+  Or mkt.opportunity_record_id = 'MN2984602'
+;
+
+---------------------------
 -- mv_ksm_transactions tests
 ---------------------------
 
@@ -149,27 +178,11 @@ Where mkt.opportunity_record_id = 'PN2296500'
 ;
 
 Select
-  NULL As "Matching payment date is FY22"
-  , mkt.*
-From mv_ksm_transactions mkt
-Where mkt.credit_receipt_number = '0002916204'
-  Or mkt.opportunity_record_id = 'MN2984602'
-;
-
-Select
   NULL As "Payment date after pledge credit date"
   , mkt.*
 From mv_ksm_transactions mkt
 Where mkt.legacy_receipt_number = '0002431969'
   Or mkt.opportunity_record_id = 'PN2269769'
-;
-
-Select
-  NULL As "Check matching gifts populate"
-  , mkt.*
-From mv_ksm_transactions mkt
-Where mkt.credited_donor_id = '0000564117'
-  And mkt.gypm_ind = 'M'
 ;
 
 Select

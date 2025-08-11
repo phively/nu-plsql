@@ -7,8 +7,8 @@ Purpose : Base table combining hard and soft credit, opportunity, designation,
   constituent, and organization into a normalized transactions list. One credited donor
   transaction per row.
 Dependencies: dw_pkg_base (mv_designation_detail), ksm_pkg_entity (mv_entity),
-  ksm_pkg_designation (mv_designation), ksm_pkg_transactions (mv_transactions), ksm_pkg_utility,
-  ksm_pkg_prospect (mv_assignment_history)
+  ksm_pkg_designation (mv_designation), ksm_pkg_transactions (mv_transactions, mv_matches),
+  ksm_pkg_utility, ksm_pkg_prospect (mv_assignment_history)
 
 Suggested naming conventions:
   Pure functions: [function type]_[description]
@@ -100,6 +100,9 @@ Type rec_transaction Is Record (
       , hard_and_soft_credit_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.id%type
       , credit_receipt_number stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__receipt_number__c%type
       , matched_gift_record_id dm_alumni.dim_opportunity.matched_gift_record_id%type
+      , matching_gift_original_gift_receipt mv_matches.matching_gift_original_gift_receipt%type
+      , matching_gift_credit_date mv_matches.matching_gift_credit_date%type
+      , matching_gift_fy mv_matches.matching_gift_fy%type
       , pledge_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
       , linked_proposal_record_id dm_alumni.dim_opportunity.linked_proposal_record_id%type
       , historical_pm_user_id mv_proposals.historical_pm_user_id%type
@@ -439,6 +442,9 @@ Cursor c_ksm_transactions Is
         , trans.hard_and_soft_credit_salesforce_id
         , trans.credit_receipt_number
         , trans.matched_gift_record_id
+        , match.matching_gift_original_gift_receipt
+        , match.matching_gift_credit_date
+        , match.matching_gift_fy
         , trans.pledge_record_id
         , trans.linked_proposal_record_id
         , prop.historical_pm_user_id
@@ -548,6 +554,9 @@ Cursor c_ksm_transactions Is
         On mve.donor_id = trans.credited_donor_id
       Inner Join mv_ksm_designation kdes
         On kdes.designation_record_id = trans.designation_record_id
+      -- Matching gift
+      Left Join mv_matches match
+        On match.matching_gift_record_id = trans.tx_id
       -- Discounted bequests
       Left Join table(ksm_pkg_gifts.tbl_discounted_transactions) bequests
         -- Pledge + designation should be a unique identifier

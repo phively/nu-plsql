@@ -24,8 +24,9 @@ Public type declarations
 *************************************************************************/
 
 Type rec_match Is Record (
-  matching_gift_opportunity_name stg_alumni.opportunity.name%type
-  , matching_gift_designation stg_alumni.ucinn_ascendv2__designation__c.ucinn_ascendv2__designation_name__c%type
+  matching_gift_record_id stg_alumni.opportunity.name%type
+  , matching_gift_designation_id dm_alumni.dim_designation_detail.designation_record_id%type
+  , matching_gift_designation_name stg_alumni.ucinn_ascendv2__designation__c.ucinn_ascendv2__designation_name__c%type
   , stagename stg_alumni.opportunity.stagename%type
   , matching_gift_amount stg_alumni.opportunity.amount%type
   , matching_gift_donor stg_alumni.opportunity.ucinn_ascendv2__donor_name_formula__c%type
@@ -145,8 +146,10 @@ Cursor c_matches Is
   ((
     Select
         opp.name
-        As matching_gift_opportunity_name
-      , des.ucinn_ascendv2__designation_name__c
+        As matching_gift_record_id
+      , des.designation_record_id
+        As matching_gift_designation_id
+      , des.designation_name
         As matching_gift_designation
       , opp.stagename
       , opp.amount
@@ -159,8 +162,10 @@ Cursor c_matches Is
         As matching_gift_original_gift_receipt
       , opp.etl_update_date
     From stg_alumni.opportunity opp
-    Inner Join stg_alumni.ucinn_ascendv2__designation__c des
-      On opp.ucinn_ascendv2__designation__c = des.id
+    Inner Join table(dw_pkg_base.tbl_designation) des
+      On opp.ucinn_ascendv2__designation__c = des.designation_salesforce_id
+    Inner Join stg_alumni.ucinn_ascendv2__payment__c pay
+      On pay.ucinn_ascendv2__opportunity__c = opp.id
     Inner Join stg_alumni.ucinn_ascendv2__payment__c pay
       On pay.ucinn_ascendv2__opportunity__c = opp.id
     Where opp.ap_opp_record_type_developer_name__c = 'Matching_Gift'
@@ -168,8 +173,10 @@ Cursor c_matches Is
   ) Union (
     Select
         opp.name
-        As matching_gift_opportunity_name
-      , des.ucinn_ascendv2__designation_name__c
+        As matching_gift_record_id
+      , des.designation_record_id
+        As matching_gift_designation_id
+      , des.designation_name
         As matching_gift_designation
       , opp.stagename
       , opp.amount
@@ -182,10 +189,10 @@ Cursor c_matches Is
         As matching_gift_original_gift_receipt
       , pay.etl_update_date
     From stg_alumni.opportunity opp
+    Inner Join table(dw_pkg_base.tbl_designation) des
+      On opp.ucinn_ascendv2__designation__c = des.designation_salesforce_id
     Inner Join stg_alumni.ucinn_ascendv2__matching_gift_origination__c mgo
       On opp.id = mgo.ucinn_ascendv2__opportunity__c
-    Inner Join stg_alumni.ucinn_ascendv2__designation__c des
-      On opp.ucinn_ascendv2__designation__c = des.id
     Inner Join stg_alumni.ucinn_ascendv2__payment__c pay
       On pay.id = mgo.ucinn_ascendv2__payment__c
     Where opp.ap_opp_record_type_developer_name__c = 'Matching_Gift'
@@ -194,7 +201,8 @@ Cursor c_matches Is
   
   , matches As (
     Select
-      matching_gift_opportunity_name
+      matching_gift_record_id
+      , matching_gift_designation_id
       , matching_gift_designation
       , stagename
       , matching_gift_amount
@@ -204,7 +212,8 @@ Cursor c_matches Is
       , etl_update_date
       , row_number() Over(
           Partition By
-            matching_gift_opportunity_name
+            matching_gift_record_id
+            , matching_gift_designation_id
             , matching_gift_designation
             , stagename
             , matching_gift_amount
@@ -217,7 +226,8 @@ Cursor c_matches Is
   )
   
   Select Distinct
-    matching_gift_opportunity_name
+    matching_gift_record_id
+    , matching_gift_designation_id
     , matching_gift_designation
     , stagename
     , matching_gift_amount
