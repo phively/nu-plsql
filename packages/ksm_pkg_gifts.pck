@@ -101,6 +101,8 @@ Type rec_transaction Is Record (
       , credit_receipt_number stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__receipt_number__c%type
       , matched_gift_record_id dm_alumni.dim_opportunity.matched_gift_record_id%type
       , matching_gift_original_gift_receipt mv_matches.matching_gift_original_gift_receipt%type
+      , original_gift_credit_date mv_matches.original_gift_credit_date%type
+      , original_gift_fy mv_matches.original_gift_fy%type
       , matching_gift_credit_date mv_matches.matching_gift_credit_date%type
       , matching_gift_fy mv_matches.matching_gift_fy%type
       , pledge_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
@@ -444,6 +446,8 @@ Cursor c_ksm_transactions Is
         -- Matching gifts
         , trans.matched_gift_record_id
         , match.matching_gift_original_gift_receipt
+        , match.original_gift_credit_date
+        , match.original_gift_fy
         , match.matching_gift_credit_date
         , match.matching_gift_fy
         , trans.pledge_record_id
@@ -557,7 +561,7 @@ Cursor c_ksm_transactions Is
         On kdes.designation_record_id = trans.designation_record_id
       -- Matching gift
       Left Join mv_matches match
-        On match.original_gift_record_id = trans.matched_gift_record_id
+        On match.matching_gift_record_id = trans.opportunity_record_id
       -- Discounted bequests
       Left Join table(ksm_pkg_gifts.tbl_discounted_transactions) bequests
         -- Pledge + designation should be a unique identifier

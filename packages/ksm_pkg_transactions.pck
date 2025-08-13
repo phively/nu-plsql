@@ -34,6 +34,8 @@ Type rec_match Is Record (
   , matching_gift_fy stg_alumni.opportunity.fiscalyear%type
   , matching_gift_original_gift_receipt stg_alumni.opportunity.ucinn_ascendv2__matching_source__c%type
   , original_gift_record_id stg_alumni.opportunity.name%type
+  , original_gift_credit_date stg_alumni.opportunity.ucinn_ascendv2__credit_date__c%type
+  , original_gift_fy integer
   , etl_update_date mv_entity.etl_update_date%type
 );
 
@@ -216,6 +218,10 @@ Cursor c_matches Is
       , mu.matching_gift_original_gift_receipt
       , opp.name
         As original_gift_record_id
+      , dwo.credit_date
+        As original_gift_credit_date
+      , dwo.fiscal_year
+        As original_gift_fy
       , mu.etl_update_date
       , row_number() Over(
           Partition By
@@ -232,6 +238,9 @@ Cursor c_matches Is
     From matches_union mu
     Left Join stg_alumni.opportunity opp
       On opp.ucinn_ascendv2__receipt_number__c = mu.matching_gift_original_gift_receipt
+      And opp.stagename Not In ('Potential Match', 'Adjusted')
+    Left Join table(dw_pkg_base.tbl_opportunity) dwo
+      On dwo.opportunity_record_id = opp.name
   )
   
   Select Distinct
@@ -246,6 +255,8 @@ Cursor c_matches Is
       As matching_gift_fy
     , matching_gift_original_gift_receipt
     , original_gift_record_id
+    , original_gift_credit_date
+    , original_gift_fy
     , etl_update_date
   From matches
   Where rn = 1

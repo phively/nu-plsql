@@ -105,6 +105,14 @@ Where mkt.credited_donor_id = '0000564117'
 ;
 
 Select
+  'Exactly 2 rows' As explanation
+  , mkt.*
+From mv_ksm_transactions mkt
+Where mkt.legacy_receipt_number = '0003103274'
+;
+
+
+Select
   'Matching payment date is FY22' As explanation
   , mkt.credited_donor_audit
   , mkt.opportunity_donor_id
@@ -115,6 +123,8 @@ Select
   , mkt.credit_receipt_number
   , mkt.matched_gift_record_id
   , mkt.matching_gift_original_gift_receipt
+  , mkt.original_gift_credit_date
+  , mkt.original_gift_fy
   , mkt.matching_gift_credit_date
   , mkt.matching_gift_fy
 From mv_ksm_transactions mkt
@@ -131,6 +141,8 @@ Select
   , mkt.credit_receipt_number
   , mkt.matched_gift_record_id
   , mkt.matching_gift_original_gift_receipt
+  , mkt.original_gift_credit_date
+  , mkt.original_gift_fy
   , mkt.matching_gift_credit_date
   , mkt.matching_gift_fy
 From mv_ksm_transactions mkt
