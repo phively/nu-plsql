@@ -36,6 +36,7 @@ Type rec_entity Is Record (
     , middle_name dm_alumni.dim_constituent.middle_name%type
     , last_name dm_alumni.dim_constituent.full_name%type
     , is_deceased_indicator dm_alumni.dim_constituent.is_deceased_indicator%type
+    , lost_indicator varchar2(1)
     , donor_advised_fund_indicator varchar2(1)
     , primary_record_type dm_alumni.dim_constituent.primary_constituent_type%type
     , institutional_suffix dm_alumni.dim_constituent.institutional_suffix%type
@@ -100,6 +101,8 @@ Cursor c_entity Is
     , c.middle_name
     , c.last_name
     , c.is_deceased_indicator
+    , Case When preferred_address_status Is Null Then 'Y' Else 'N' End
+      As lost_indicator
     , NULL As donor_advised_fund_indicator
     , c.primary_constituent_type As primary_record_type
     , institutional_suffix
@@ -140,6 +143,8 @@ Cursor c_entity Is
     , NULL As middle_name
     , NULL As last_name
     , o.organization_inactive_indicator
+    , Case When preferred_address_status Is Null Then 'Y' Else 'N' End
+      As lost_indicator
     , Case When donor_advised_fund_indicator = 'true' Then 'Y' End
       As donor_advised_fund_indicator
     , o.organization_type As primary_record_type
