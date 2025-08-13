@@ -27,6 +27,9 @@ Union
 Select 0, 'mv_transactions', count(*), min(mv_last_refresh), max(max_etl_update_date), min(max_etl_update_date)
 From mv_transactions
 Union
+Select 0, 'mv_matches', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+From mv_matches
+Union
 Select 0, 'mv_assignments', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_assignments
 Union

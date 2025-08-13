@@ -222,6 +222,8 @@ Type rec_payment Is Record (
   payment_salesforce_id stg_alumni.ucinn_ascendv2__payment__c.id%type
   , payment_record_id stg_alumni.ucinn_ascendv2__payment__c.name%type
   , legacy_receipt_number stg_alumni.ucinn_ascendv2__payment__c.ap_legacy_receipt_number__c%type
+  , original_gift_receipt stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__receipt_number__c%type
+  , opportunity_salesforce_id stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__opportunity__c%type
   , opportunity_stage stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__opportunity_stage__c%type
   , opportunity_record_type stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__opportunity_record_type__c%type
   , opportunity_type stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__transaction_type__c%type
@@ -922,6 +924,10 @@ Cursor c_payment Is
       As payment_record_id
     , pay.ap_legacy_receipt_number__c
       As legacy_receipt_number
+    , pay.ucinn_ascendv2__receipt_number__c
+      As original_gift_receipt
+    , pay.ucinn_ascendv2__opportunity__c
+      As opportunity_salesforce_id
     , pay.ucinn_ascendv2__opportunity_stage__c
       As opportunity_stage
     , pay.ucinn_ascendv2__opportunity_record_type__c

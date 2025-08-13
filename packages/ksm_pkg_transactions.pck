@@ -23,6 +23,22 @@ pkg_name Constant varchar2(64) := 'ksm_pkg_transactions';
 Public type declarations
 *************************************************************************/
 
+Type rec_match Is Record (
+  matching_gift_record_id stg_alumni.opportunity.name%type
+  , matching_gift_designation_id dm_alumni.dim_designation_detail.designation_record_id%type
+  , matching_gift_designation_name stg_alumni.ucinn_ascendv2__designation__c.ucinn_ascendv2__designation_name__c%type
+  , stagename stg_alumni.opportunity.stagename%type
+  , matching_gift_amount stg_alumni.opportunity.amount%type
+  , matching_gift_donor stg_alumni.opportunity.ucinn_ascendv2__donor_name_formula__c%type
+  , matching_gift_credit_date stg_alumni.opportunity.ucinn_ascendv2__credit_date__c%type
+  , matching_gift_fy stg_alumni.opportunity.fiscalyear%type
+  , matching_gift_original_gift_receipt stg_alumni.opportunity.ucinn_ascendv2__matching_source__c%type
+  , original_gift_record_id stg_alumni.opportunity.name%type
+  , original_gift_credit_date stg_alumni.opportunity.ucinn_ascendv2__credit_date__c%type
+  , original_gift_fy integer
+  , etl_update_date mv_entity.etl_update_date%type
+);
+
 --------------------------------------
 Type rec_transaction Is Record (
   credited_donor_id mv_entity.donor_id%type
@@ -81,12 +97,16 @@ Type rec_tribute Is Record (
 Public table declarations
 *************************************************************************/
 
+Type matches Is Table Of rec_match;
 Type transactions Is Table Of rec_transaction;
 Type tributes Is Table Of rec_tribute;
 
 /*************************************************************************
 Public pipelined functions declarations
 *************************************************************************/
+
+Function tbl_matches
+  Return matches Pipelined;
 
 Function tbl_transactions
   Return transactions Pipelined;
@@ -122,6 +142,127 @@ Private cursors -- data definitions
 *************************************************************************/
 
 --------------------------------------
+Cursor c_matches Is
+
+  With
+  
+  matches_union As
+  ((
+    -- First part adds opportunity gift receipt
+    Select
+        opp.name
+        As matching_gift_record_id
+      , des.designation_record_id
+        As matching_gift_designation_id
+      , des.designation_name
+        As matching_gift_designation
+      , opp.stagename
+      , opp.amount
+        As matching_gift_amount
+      , opp.ucinn_ascendv2__donor_name_formula__c
+        As matching_gift_donor
+      , opp.ucinn_ascendv2__credit_date__c
+        As matching_gift_credit_date
+      , opp.ucinn_ascendv2__matching_source__c
+        As matching_gift_original_gift_receipt
+      , opp.etl_update_date
+    From stg_alumni.opportunity opp
+    Inner Join table(dw_pkg_base.tbl_designation) des
+      On opp.ucinn_ascendv2__designation__c = des.designation_salesforce_id
+    Inner Join stg_alumni.ucinn_ascendv2__payment__c pay
+      On pay.ucinn_ascendv2__opportunity__c = opp.id
+    Inner Join stg_alumni.ucinn_ascendv2__payment__c pay
+      On pay.ucinn_ascendv2__opportunity__c = opp.id
+    Where opp.ap_opp_record_type_developer_name__c = 'Matching_Gift'
+      And opp.stagename Not In ('Potential Match', 'Adjusted')
+  ) Union (
+    -- Second part adds payment schedule receipt
+    Select
+        opp.name
+        As matching_gift_record_id
+      , des.designation_record_id
+        As matching_gift_designation_id
+      , des.designation_name
+        As matching_gift_designation
+      , opp.stagename
+      , opp.amount
+        As matching_gift_amount
+      , opp.ucinn_ascendv2__donor_name_formula__c
+        As matching_gift_donor
+      , opp.ucinn_ascendv2__credit_date__c
+        As matching_gift_credit_date
+      , pay.ucinn_ascendv2__receipt_number__c
+        As matching_gift_original_gift_receipt
+      , pay.etl_update_date
+    From stg_alumni.opportunity opp
+    Inner Join table(dw_pkg_base.tbl_designation) des
+      On opp.ucinn_ascendv2__designation__c = des.designation_salesforce_id
+    Inner Join stg_alumni.ucinn_ascendv2__matching_gift_origination__c mgo
+      On opp.id = mgo.ucinn_ascendv2__opportunity__c
+    Inner Join stg_alumni.ucinn_ascendv2__payment__c pay
+      On pay.id = mgo.ucinn_ascendv2__payment__c
+    Where opp.ap_opp_record_type_developer_name__c = 'Matching_Gift'
+      And opp.stagename Not In ('Potential Match', 'Adjusted')
+  ))
+  
+  -- Needed to dedupe records that have both an RN- and ThirdParty receipt
+  , matches As (
+    Select
+      mu.matching_gift_record_id
+      , mu.matching_gift_designation_id
+      , mu.matching_gift_designation
+      , mu.stagename
+      , mu.matching_gift_amount
+      , mu.matching_gift_donor
+      , mu.matching_gift_credit_date
+      , mu.matching_gift_original_gift_receipt
+      , opp.name
+        As original_gift_record_id
+      , dwo.credit_date
+        As original_gift_credit_date
+      , dwo.fiscal_year
+        As original_gift_fy
+      , mu.etl_update_date
+      , row_number() Over(
+          Partition By
+            mu.matching_gift_record_id
+            , mu.matching_gift_designation_id
+            , mu.matching_gift_designation
+            , mu.stagename
+            , mu.matching_gift_amount
+            , mu.matching_gift_donor
+            , mu.matching_gift_credit_date
+          Order By
+            mu.matching_gift_original_gift_receipt Asc
+        ) As rn
+    From matches_union mu
+    Left Join stg_alumni.opportunity opp
+      On opp.ucinn_ascendv2__receipt_number__c = mu.matching_gift_original_gift_receipt
+      And opp.stagename Not In ('Potential Match', 'Adjusted')
+    Left Join table(dw_pkg_base.tbl_opportunity) dwo
+      On dwo.opportunity_record_id = opp.name
+  )
+  
+  Select Distinct
+    matches.matching_gift_record_id
+    , matching_gift_designation_id
+    , matching_gift_designation
+    , stagename
+    , matching_gift_amount
+    , matching_gift_donor
+    , matching_gift_credit_date
+    , ksm_pkg_calendar.get_fiscal_year(matching_gift_credit_date)
+      As matching_gift_fy
+    , matching_gift_original_gift_receipt
+    , original_gift_record_id
+    , original_gift_credit_date
+    , original_gift_fy
+    , etl_update_date
+  From matches
+  Where rn = 1
+;
+
+--------------------------------------
 Cursor c_transactions Is
 
   With
@@ -151,7 +292,7 @@ Cursor c_transactions Is
     Left Join mini_entity me
       On me.salesforce_id = gc.donor_salesforce_id
   )
-  
+
   Select
     gcred.credited_donor_id
     , me.full_name
@@ -282,6 +423,22 @@ Cursor c_tributes Is
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
+
+--------------------------------------
+Function tbl_matches
+  Return matches Pipelined As
+  -- Declarations
+  mch matches;
+
+  Begin
+    Open c_matches;
+      Fetch c_matches Bulk Collect Into mch;
+    Close c_matches;
+    For i in 1..(mch.count) Loop
+      Pipe row(mch(i));
+    End Loop;
+    Return;
+  End;
 
 --------------------------------------
 Function tbl_transactions
