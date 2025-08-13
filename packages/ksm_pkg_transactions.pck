@@ -33,6 +33,7 @@ Type rec_match Is Record (
   , matching_gift_credit_date stg_alumni.opportunity.ucinn_ascendv2__credit_date__c%type
   , matching_gift_fy stg_alumni.opportunity.fiscalyear%type
   , matching_gift_original_gift_receipt stg_alumni.opportunity.ucinn_ascendv2__matching_source__c%type
+  , original_gift_record_id stg_alumni.opportunity.name%type
   , etl_update_date mv_entity.etl_update_date%type
 );
 
@@ -142,8 +143,10 @@ Private cursors -- data definitions
 Cursor c_matches Is
 
   With
+  
   matches_union As
   ((
+    -- First part adds opportunity gift receipt
     Select
         opp.name
         As matching_gift_record_id
@@ -171,6 +174,7 @@ Cursor c_matches Is
     Where opp.ap_opp_record_type_developer_name__c = 'Matching_Gift'
       And opp.stagename Not In ('Potential Match', 'Adjusted')
   ) Union (
+    -- Second part adds payment schedule receipt
     Select
         opp.name
         As matching_gift_record_id
@@ -199,34 +203,39 @@ Cursor c_matches Is
       And opp.stagename Not In ('Potential Match', 'Adjusted')
   ))
   
+  -- Needed to dedupe records that have both an RN- and ThirdParty receipt
   , matches As (
     Select
-      matching_gift_record_id
-      , matching_gift_designation_id
-      , matching_gift_designation
-      , stagename
-      , matching_gift_amount
-      , matching_gift_donor
-      , matching_gift_credit_date
-      , matching_gift_original_gift_receipt
-      , etl_update_date
+      mu.matching_gift_record_id
+      , mu.matching_gift_designation_id
+      , mu.matching_gift_designation
+      , mu.stagename
+      , mu.matching_gift_amount
+      , mu.matching_gift_donor
+      , mu.matching_gift_credit_date
+      , mu.matching_gift_original_gift_receipt
+      , opp.name
+        As original_gift_record_id
+      , mu.etl_update_date
       , row_number() Over(
           Partition By
-            matching_gift_record_id
-            , matching_gift_designation_id
-            , matching_gift_designation
-            , stagename
-            , matching_gift_amount
-            , matching_gift_donor
-            , matching_gift_credit_date
+            mu.matching_gift_record_id
+            , mu.matching_gift_designation_id
+            , mu.matching_gift_designation
+            , mu.stagename
+            , mu.matching_gift_amount
+            , mu.matching_gift_donor
+            , mu.matching_gift_credit_date
           Order By
-            matching_gift_original_gift_receipt Asc
+            mu.matching_gift_original_gift_receipt Asc
         ) As rn
-    From matches_union
+    From matches_union mu
+    Left Join stg_alumni.opportunity opp
+      On opp.ucinn_ascendv2__receipt_number__c = mu.matching_gift_original_gift_receipt
   )
   
   Select Distinct
-    matching_gift_record_id
+    matches.matching_gift_record_id
     , matching_gift_designation_id
     , matching_gift_designation
     , stagename
@@ -236,6 +245,7 @@ Cursor c_matches Is
     , ksm_pkg_calendar.get_fiscal_year(matching_gift_credit_date)
       As matching_gift_fy
     , matching_gift_original_gift_receipt
+    , original_gift_record_id
     , etl_update_date
   From matches
   Where rn = 1

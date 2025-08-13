@@ -441,6 +441,7 @@ Cursor c_ksm_transactions Is
         , trans.adjusted_opportunity_ind
         , trans.hard_and_soft_credit_salesforce_id
         , trans.credit_receipt_number
+        -- Matching gifts
         , trans.matched_gift_record_id
         , match.matching_gift_original_gift_receipt
         , match.matching_gift_credit_date
@@ -556,7 +557,7 @@ Cursor c_ksm_transactions Is
         On kdes.designation_record_id = trans.designation_record_id
       -- Matching gift
       Left Join mv_matches match
-        On match.matching_gift_record_id = trans.tx_id
+        On match.original_gift_record_id = trans.matched_gift_record_id
       -- Discounted bequests
       Left Join table(ksm_pkg_gifts.tbl_discounted_transactions) bequests
         -- Pledge + designation should be a unique identifier

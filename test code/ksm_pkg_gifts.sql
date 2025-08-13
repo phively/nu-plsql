@@ -21,28 +21,28 @@ From table(ksm_pkg_gifts.tbl_source_donors)
 ---------------------------
 
 Select
-  NULL As "Check discounted countable amounts are non-round numbers (e.g. 305 instead of 500)"
+  'Check discounted countable amounts are non-round numbers (e.g. 305 instead of 500)' As explanation
   , dt.*
 From table(ksm_pkg_gifts.tbl_discounted_transactions) dt
 Where dt.designation_detail_record_id In ('DD-2555697', 'DD-2372155')
 ;
 
 Select
-  NULL As "Check bequest amount calc receive full paid credit for paid"
+  'Check bequest amount calc receive full paid credit for paid' As explanation
   , dt.*
 From table(ksm_pkg_gifts.tbl_discounted_transactions) dt
 Where dt.pledge_or_gift_record_id In ('PN2241905', 'PN2241904')
 ;
 
 Select
-  NULL As "Check total paid amount <= countable amount"
+  'Check total paid amount <= countable amount' As explanation
   , dt.*
 From table(ksm_pkg_gifts.tbl_discounted_transactions) dt
 Where dt.pledge_or_gift_record_id In ('PN2442329', 'PN2347181')
 ;
 
 Select
-  NULL As "Should be $25M"
+  'Should be $25M' As explanation
   , ua.*
 From table(ksm_pkg_gifts.tbl_unsplit_amounts) ua
 Where ua.pledge_or_gift_record_id = 'PN2482912'
@@ -97,7 +97,7 @@ Inner Join test_cases
 ---------------------------
 
 Select
-  NULL As "Check matching gifts populate"
+  'Check matching gifts populate' As explanation
   , mkt.*
 From mv_ksm_transactions mkt
 Where mkt.credited_donor_id = '0000564117'
@@ -111,6 +111,7 @@ Select
   , mkt.source_type_detail
   , mkt.gypm_ind
   , mkt.tx_id
+  , mkt.opportunity_record_id
   , mkt.credit_receipt_number
   , mkt.matched_gift_record_id
   , mkt.matching_gift_original_gift_receipt
@@ -119,6 +120,22 @@ Select
 From mv_ksm_transactions mkt
 Where mkt.credit_receipt_number = '0002916204'
   Or mkt.opportunity_record_id = 'MN2984602'
+;
+
+Select
+  'All but gypm_ind = G populated' As explanation
+  , mkt.credited_donor_name
+  , mkt.source_type_detail
+  , mkt.gypm_ind
+  , mkt.tx_id
+  , mkt.credit_receipt_number
+  , mkt.matched_gift_record_id
+  , mkt.matching_gift_original_gift_receipt
+  , mkt.matching_gift_credit_date
+  , mkt.matching_gift_fy
+From mv_ksm_transactions mkt
+Where mkt.matched_gift_record_id = 'GN2150702'
+  Or mkt.opportunity_record_id = 'GN2150702'
 ;
 
 ---------------------------
@@ -135,50 +152,63 @@ Where mkt.fiscal_year Between 2022 And 2024
 ;
 
 Select
-  NULL As "Check for multiple credited donors, single opportunity donor on pledge"
-  , mkt.*
+  'Check for multiple credited donors, single opportunity donor on pledge' As explanation
+  , mkt.credited_donor_name
+  , mkt.opportunity_donor_name
 From mv_ksm_transactions mkt
 Where mkt.legacy_receipt_number = '0001659131'
   Or mkt.opportunity_record_id = 'PN2438947'
 ;
 
 Select
-  NULL As "Check discounted bequest amount"
-  , mkt.*
+  'Check discounted bequest amount' As explanation
+  , mkt.credited_donor_audit
+  , mkt.tx_id
+  , mkt.credit_amount
+  , mkt.hard_credit_amount
+  , mkt.recognition_credit
 From mv_ksm_transactions mkt
 Where mkt.legacy_receipt_number = '0002999795'
 ;
 
 Select
-  NULL As "Split bequest, should be hard credit = recognition"
-  , mkt.*
+  'Split bequest, should be credit = recognition' As explanation
+  , mkt.credited_donor_audit
+  , mkt.tx_id
+  , mkt.credit_amount
+  , mkt.hard_credit_amount
+  , mkt.recognition_credit
 From mv_ksm_transactions mkt
 Where mkt.legacy_receipt_number = '0003068356'
 ;
 
 Select
-  NULL As "Partially paid pledge"
+  'Partially paid pledge' As explanation
   , mkt.*
 From mv_ksm_transactions mkt
 Where mkt.legacy_receipt_number = '0003068751'
 ;
 
 Select
-  NULL As "Written off pledge"
+  'Written off pledge' As explanation
   , mkt.*
 From mv_ksm_transactions mkt
 Where mkt.legacy_receipt_number = '0002992956'
 ;
 
 Select
-  NULL As "Written off bequest, check credit = recognition"
-  , mkt.*
+  'Written off bequest, check credit = recognition' As explanation
+  , mkt.credited_donor_audit
+  , mkt.tx_id
+  , mkt.credit_amount
+  , mkt.hard_credit_amount
+  , mkt.recognition_credit
 From mv_ksm_transactions mkt
 Where mkt.opportunity_record_id = 'PN2296500'
 ;
 
 Select
-  NULL As "Payment date after pledge credit date"
+  'Payment date after pledge credit date' As explanation
   , mkt.*
 From mv_ksm_transactions mkt
 Where mkt.legacy_receipt_number = '0002431969'
@@ -186,23 +216,34 @@ Where mkt.legacy_receipt_number = '0002431969'
 ;
 
 Select
-  NULL As "Recognition credit: total payments > original amount"
-  , mkt.*
+  'Recognition credit: total payments > original amount' As explanation
+  , mkt.credited_donor_audit
+  , mkt.tx_id
+  , mkt.credit_amount
+  , mkt.hard_credit_amount
+  , mkt.recognition_credit
 From mv_ksm_transactions mkt
 Where mkt.opportunity_record_id = 'PN2463109'
   Order By gypm_ind
 ;
 
 Select
-  NULL As "Gift exceptions check"
+  'Gift exceptions check' As explanation
   , mkt.*
 From mv_ksm_transactions mkt
 Where mkt.opportunity_record_id In ('PN2463400', 'PN2297936')
 ;
 
 Select
-  NULL As "Check bequest hard credit sum < hh_recognition_credit"
-  , mkt.*
+  'Check bequest hard credit sum < hh_recognition_credit' As explanation
+  , credited_donor_audit
+  , tx_id
+  , opportunity_record_id
+  , gypm_ind
+  , hard_credit_amount
+  , recognition_credit
+  , hh_credit
+  , hh_recognition_credit
 From mv_ksm_transactions mkt
 Where mkt.opportunity_record_id In ('PN2442329', 'PN2347181')
   And mkt.hard_credit_amount > 0
