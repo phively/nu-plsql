@@ -262,6 +262,12 @@ Select Distinct
     , mve.household_id
 ;
 
+--------------------------------------
+-- Source donor:
+-- Exclude in honor of, in memory of
+-- Person trumps org
+-- Earlier KSM grad year trumps later grad year
+-- Matching gifts use MATCHED gift credited donor, not own
 Cursor c_source_donors Is
   
   With
@@ -276,10 +282,14 @@ Cursor c_source_donors Is
       , mvt.gypm_ind
       , mvt.opportunity_record_id
       , mvt.matched_gift_record_id
+      , match.original_gift_record_id
       , mvt.pledge_record_id
       , mvt.credit_type
       , mvt.max_etl_update_date
     From mv_transactions mvt
+    -- Matching gifts
+    Left Join mv_matches match
+      On match.matching_gift_record_id = mvt.opportunity_record_id
     -- Exclude in honor/memory of donors
     Left Join table(ksm_pkg_transactions.tbl_tributes) trib
       On trib.opportunity_salesforce_id = mvt.opportunity_salesforce_id
@@ -287,14 +297,25 @@ Cursor c_source_donors Is
   )
   
   Select
-    tx_id
-    , min(legacy_receipt_number)
+    trans.tx_id
+    , min(trans.legacy_receipt_number)
       As legacy_receipt_number
     , Case
-        -- Matching gift logic pending
-        When max(gypm_ind) = 'MatchTBD'
-          Then 'MatchTBD'
-        Else max(credited_donor_id)
+        -- Matching gift logic
+        -- IMPORTANT: same keep() order as below
+        When max(trans.gypm_ind) = 'M'
+          Then max(orig_match.credited_donor_id)
+          keep(dense_rank First Order By
+            -- 'P'erson before 'O'rg
+            om_mve.person_or_org Desc
+            -- Earlier grad year before later grad year
+            , om_deg.first_ksm_year Asc Nulls Last
+            -- Donor ID as tiebreak
+            , om_mve.donor_id Asc
+          )
+        -- All others
+        -- IMPORTANT: same keep() order as above
+        Else max(trans.credited_donor_id)
           keep(dense_rank First Order By
             -- 'P'erson before 'O'rg
             mve.person_or_org Desc
@@ -312,6 +333,13 @@ Cursor c_source_donors Is
     On mve.donor_id = trans.credited_donor_id
   Left Join mv_entity_ksm_degrees deg
     On deg.donor_id = trans.credited_donor_id
+  -- Matching gift logic
+  Left Join trans orig_match
+    On orig_match.opportunity_record_id = trans.matched_gift_record_id
+  Left Join mv_entity om_mve
+    On om_mve.donor_id = orig_match.credited_donor_id
+  Left Join mv_entity_ksm_degrees om_deg
+    On om_deg.donor_id = orig_match.credited_donor_id
   Group By trans.tx_id
 ;
 
