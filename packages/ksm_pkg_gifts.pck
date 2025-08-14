@@ -7,8 +7,8 @@ Purpose : Base table combining hard and soft credit, opportunity, designation,
   constituent, and organization into a normalized transactions list. One credited donor
   transaction per row.
 Dependencies: dw_pkg_base (mv_designation_detail), ksm_pkg_entity (mv_entity),
-  ksm_pkg_designation (mv_designation), ksm_pkg_transactions (mv_transactions), ksm_pkg_utility,
-  ksm_pkg_prospect (mv_assignment_history)
+  ksm_pkg_designation (mv_designation), ksm_pkg_transactions (mv_transactions, mv_matches),
+  ksm_pkg_utility, ksm_pkg_prospect (mv_assignment_history)
 
 Suggested naming conventions:
   Pure functions: [function type]_[description]
@@ -97,9 +97,16 @@ Type rec_transaction Is Record (
       , source_type_detail stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__gift_type_formula__c%type
       , gypm_ind varchar2(1)
       , adjusted_opportunity_ind varchar2(1)
+      , opportunity_adjustment_type mv_transactions.opportunity_adjustment_type%type
+      , payment_adjustment_type mv_transactions.payment_adjustment_type%type
       , hard_and_soft_credit_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.id%type
       , credit_receipt_number stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__receipt_number__c%type
       , matched_gift_record_id dm_alumni.dim_opportunity.matched_gift_record_id%type
+      , matching_gift_original_gift_receipt mv_matches.matching_gift_original_gift_receipt%type
+      , original_gift_credit_date mv_matches.original_gift_credit_date%type
+      , original_gift_fy mv_matches.original_gift_fy%type
+      , matching_gift_credit_date mv_matches.matching_gift_credit_date%type
+      , matching_gift_fy mv_matches.matching_gift_fy%type
       , pledge_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
       , linked_proposal_record_id dm_alumni.dim_opportunity.linked_proposal_record_id%type
       , historical_pm_user_id mv_proposals.historical_pm_user_id%type
@@ -257,6 +264,12 @@ Select Distinct
     , mve.household_id
 ;
 
+--------------------------------------
+-- Source donor:
+-- Exclude in honor of, in memory of
+-- Person trumps org
+-- Earlier KSM grad year trumps later grad year
+-- Matching gifts use MATCHED gift credited donor, not own
 Cursor c_source_donors Is
   
   With
@@ -271,10 +284,14 @@ Cursor c_source_donors Is
       , mvt.gypm_ind
       , mvt.opportunity_record_id
       , mvt.matched_gift_record_id
+      , match.original_gift_record_id
       , mvt.pledge_record_id
       , mvt.credit_type
       , mvt.max_etl_update_date
     From mv_transactions mvt
+    -- Matching gifts
+    Left Join mv_matches match
+      On match.matching_gift_record_id = mvt.opportunity_record_id
     -- Exclude in honor/memory of donors
     Left Join table(ksm_pkg_transactions.tbl_tributes) trib
       On trib.opportunity_salesforce_id = mvt.opportunity_salesforce_id
@@ -282,14 +299,25 @@ Cursor c_source_donors Is
   )
   
   Select
-    tx_id
-    , min(legacy_receipt_number)
+    trans.tx_id
+    , min(trans.legacy_receipt_number)
       As legacy_receipt_number
     , Case
-        -- Matching gift logic pending
-        When max(gypm_ind) = 'MatchTBD'
-          Then 'MatchTBD'
-        Else max(credited_donor_id)
+        -- Matching gift logic
+        -- IMPORTANT: same keep() order as below
+        When max(trans.gypm_ind) = 'M'
+          Then max(orig_match.credited_donor_id)
+          keep(dense_rank First Order By
+            -- 'P'erson before 'O'rg
+            om_mve.person_or_org Desc
+            -- Earlier grad year before later grad year
+            , om_deg.first_ksm_year Asc Nulls Last
+            -- Donor ID as tiebreak
+            , om_mve.donor_id Asc
+          )
+        -- All others
+        -- IMPORTANT: same keep() order as above
+        Else max(trans.credited_donor_id)
           keep(dense_rank First Order By
             -- 'P'erson before 'O'rg
             mve.person_or_org Desc
@@ -307,6 +335,13 @@ Cursor c_source_donors Is
     On mve.donor_id = trans.credited_donor_id
   Left Join mv_entity_ksm_degrees deg
     On deg.donor_id = trans.credited_donor_id
+  -- Matching gift logic
+  Left Join trans orig_match
+    On orig_match.opportunity_record_id = trans.matched_gift_record_id
+  Left Join mv_entity om_mve
+    On om_mve.donor_id = orig_match.credited_donor_id
+  Left Join mv_entity_ksm_degrees om_deg
+    On om_deg.donor_id = orig_match.credited_donor_id
   Group By trans.tx_id
 ;
 
@@ -335,18 +370,6 @@ Cursor c_ksm_transactions Is
       -- TBD funds (clean up as moved)
       Union All
       Select 'PN2480673', NULL, 'Faculty' From DUAL
-      Union All
-      Select 'PN2482912', NULL, 'Faculty' From DUAL
-      Union All
-      Select 'PN2481184', NULL, 'Students' From DUAL
-      Union All
-      Select 'GN2218698', NULL, 'Students' From DUAL
-      Union All
-      Select 'PN2484020', NULL, 'Students' From DUAL
-      Union All
-      Select 'GN2233453', NULL, 'Students' From DUAL
-      Union All
-      Select 'GN2217992', NULL, 'Students' From DUAL
     )
     
     , tribute As (
@@ -448,9 +471,17 @@ Cursor c_ksm_transactions Is
         , trans.source_type_detail
         , trans.gypm_ind
         , trans.adjusted_opportunity_ind
+        , trans.opportunity_adjustment_type
+        , trans.payment_adjustment_type
         , trans.hard_and_soft_credit_salesforce_id
         , trans.credit_receipt_number
+        -- Matching gifts
         , trans.matched_gift_record_id
+        , match.matching_gift_original_gift_receipt
+        , match.original_gift_credit_date
+        , match.original_gift_fy
+        , match.matching_gift_credit_date
+        , match.matching_gift_fy
         , trans.pledge_record_id
         , trans.linked_proposal_record_id
         , prop.historical_pm_user_id
@@ -560,6 +591,9 @@ Cursor c_ksm_transactions Is
         On mve.donor_id = trans.credited_donor_id
       Inner Join mv_ksm_designation kdes
         On kdes.designation_record_id = trans.designation_record_id
+      -- Matching gift
+      Left Join mv_matches match
+        On match.matching_gift_record_id = trans.opportunity_record_id
       -- Discounted bequests
       Left Join table(ksm_pkg_gifts.tbl_discounted_transactions) bequests
         -- Pledge + designation should be a unique identifier

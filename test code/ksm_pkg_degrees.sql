@@ -36,3 +36,73 @@ Order By
   constituent_name
   , degree_code  
 ;
+
+Select
+  'MiM >= 2024, MSMS <= 2023' As test_desc
+  , deg.donor_id
+  , deg.degrees_concat
+  , deg.first_ksm_year
+  , deg.first_ksm_grad_date
+  , deg.program
+  , deg.program_group
+From table(ksm_pkg_degrees.tbl_entity_ksm_degrees) deg
+Where deg.program In ('FT-MIM', 'FT-MIM NONGRAD', 'FT-MS', 'FT-MS NONGRAD')
+;
+
+Select
+  'Students have blank date' As test_desc
+  , deg.donor_id
+  , deg.degrees_concat
+  , deg.first_ksm_year
+  , deg.first_ksm_grad_date
+  , deg.program
+  , deg.program_group
+From table(ksm_pkg_degrees.tbl_entity_ksm_degrees) deg
+Where deg.program = 'STUDENT'
+;
+
+Select
+  'Check for non-execed degree names' As test_desc
+  , deg.donor_id
+  , deg.degrees_concat
+  , deg.degrees_verbose
+  , deg.first_ksm_year
+  , deg.program
+  , deg.program_group
+From table(ksm_pkg_degrees.tbl_entity_ksm_degrees) deg
+Where deg.program = 'EXECED'
+  And deg.first_ksm_year Is Null
+  And deg.majors_concat Is Not Null
+;
+
+---------------------------
+-- Test cases
+---------------------------
+
+With
+
+test_cases As (
+  Select '0000084513' As donor_id, 'FT-MMGT' As expected_result, 'MMGT and CERT' As explanation From DUAL
+  Union Select '0000043879', 'FT-EB', 'BBA no deg code'  From DUAL
+  Union Select '0000145897', 'FT-MMM', 'MMM no program'  From DUAL
+  Union Select '0000047624', 'PHD', 'MBA and PHD'  From DUAL
+)
+
+Select
+  deg.program
+  , test_cases.expected_result
+  , test_cases.explanation
+  , Case
+      When test_cases.expected_result = deg.program
+        Then 'Y'
+      Else 'FALSE' End
+    As pass
+  , deg.degree_level_ranked
+  , deg.degrees_concat
+  , deg.completed_degrees_concat
+  , deg.donor_id
+  , deg.sort_name
+From mv_entity_ksm_degrees deg
+Inner Join test_cases
+  On test_cases.donor_id = deg.donor_id
+;

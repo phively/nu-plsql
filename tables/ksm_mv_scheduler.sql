@@ -19,6 +19,7 @@ From table(dw_pkg_base.tbl_involvement) inv
 ;
 
 -- tbl_designation_detail
+-- Drop Materialized View mv_designation_detail;
 Create Materialized View mv_designation_detail
 Refresh Complete
 Start With sysdate
@@ -50,6 +51,7 @@ From table(ksm_pkg_entity.tbl_entity) entity
 --------------------------------------
 -- ksm_pkg_degrees
 -- tbl_entity_ksm_degrees
+-- Drop Materialized View mv_entity_ksm_degrees;
 Create Materialized View mv_entity_ksm_degrees
 Refresh Complete
 Start With sysdate
@@ -94,6 +96,20 @@ Select
 From table(ksm_pkg_transactions.tbl_transactions) tr
 ;
 
+-- tbl_matches
+-- Drop Materialized View mv_matches;
+Create Materialized View mv_matches
+Refresh Complete
+Start With sysdate
+-- 7:30 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.5/24)
+As
+Select
+  m.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_transactions.tbl_matches) m
+;
+
 --------------------------------------
 -- ksm_pkg_proposals
 -- tbl_proposals
@@ -113,6 +129,7 @@ From table(ksm_pkg_proposals.tbl_proposals) prp
 --------------------------------------
 -- ksm_pkg_prospect
 -- tbl_assignment_summary
+-- Drop Materialized View mv_assignments;
 Create Materialized View mv_assignments
 Refresh Complete
 Start With sysdate

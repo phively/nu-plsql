@@ -31,7 +31,9 @@ Type rec_constituent Is Record (
   , donor_id dm_alumni.dim_constituent.constituent_donor_id%type
   , full_name dm_alumni.dim_constituent.full_name%type
   , sort_name dm_alumni.dim_constituent.full_name%type
+  , salutation dm_alumni.dim_constituent.salutation%type
   , first_name dm_alumni.dim_constituent.first_name%type
+  , middle_name dm_alumni.dim_constituent.middle_name%type
   , last_name dm_alumni.dim_constituent.last_name%type
   , is_deceased_indicator dm_alumni.dim_constituent.is_deceased_indicator%type
   , primary_constituent_type dm_alumni.dim_constituent.primary_constituent_type%type
@@ -49,6 +51,9 @@ Type rec_constituent Is Record (
   , preferred_address_state dm_alumni.dim_constituent.preferred_address_state%type
   , preferred_address_postal_code dm_alumni.dim_constituent.preferred_address_postal_code%type
   , preferred_address_country dm_alumni.dim_constituent.preferred_address_country_name%type
+  , gender_identity dm_alumni.dim_constituent.gender_identity%type
+  , citizenship dm_alumni.dim_constituent.citizenship_list%type
+  , ethnicity dm_alumni.dim_constituent.ethnicity%type
   , constituent_university_overall_rating dm_alumni.dim_constituent.constituent_university_overall_rating%type
   , constituent_research_evaluation dm_alumni.dim_constituent.constituent_research_evaluation%type
   , constituent_research_evaluation_date dm_alumni.dim_constituent.constituent_research_evaluation_date%type
@@ -65,6 +70,7 @@ Type rec_organization Is Record (
   , sort_name dm_alumni.dim_organization.organization_name%type
   , organization_inactive_indicator dm_alumni.dim_organization.organization_inactive_indicator%type
   , organization_type dm_alumni.dim_organization.organization_type%type
+  , donor_advised_fund_indicator stg_alumni.account.ap_donor_advised_fund__c%type
   , org_ult_parent_donor_id dm_alumni.dim_organization.organization_ultimate_parent_donor_id%type
   , org_ult_parent_name dm_alumni.dim_organization.organization_ultimate_parent_name%type
   , preferred_address_status dm_alumni.dim_organization.preferred_address_status%type
@@ -187,6 +193,7 @@ Type rec_opportunity Is Record (
   , legacy_receipt_number dm_alumni.dim_opportunity.legacy_receipt_number%type
   , opportunity_stage dm_alumni.dim_opportunity.opportunity_stage%type
   , opportunity_closed_stage stg_alumni.opportunity.stagename%type
+  , opportunity_adjustment_type stg_alumni.opportunity.ucinn_ascendv2__adjustment_type__c%type
   , opportunity_record_type dm_alumni.dim_opportunity.opportunity_record_type%type
   , opportunity_type dm_alumni.dim_opportunity.opportunity_type%type
   , opportunity_donor_id dm_alumni.dim_opportunity.opportunity_donor_id%type
@@ -216,6 +223,8 @@ Type rec_payment Is Record (
   payment_salesforce_id stg_alumni.ucinn_ascendv2__payment__c.id%type
   , payment_record_id stg_alumni.ucinn_ascendv2__payment__c.name%type
   , legacy_receipt_number stg_alumni.ucinn_ascendv2__payment__c.ap_legacy_receipt_number__c%type
+  , original_gift_receipt stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__receipt_number__c%type
+  , opportunity_salesforce_id stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__opportunity__c%type
   , opportunity_stage stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__opportunity_stage__c%type
   , opportunity_record_type stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__opportunity_record_type__c%type
   , opportunity_type stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__transaction_type__c%type
@@ -229,6 +238,7 @@ Type rec_payment Is Record (
   , designation_salesforce_id stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__designation_detail__c%type
   , is_anonymous_indicator stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__is_anonymous__c%type
   , anonymous_type stg_alumni.ucinn_ascendv2__payment__c.anonymous_type__c%type
+  , payment_adjustment_type stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__adjustment_type__c%type
   , etl_update_date stg_alumni.ucinn_ascendv2__payment__c.etl_update_date%type
 );
 
@@ -502,8 +512,14 @@ Cursor c_constituent Is
     , full_name
     , trim(trim(last_name || ', ' || first_name) || ' ' || Case When middle_name != '-' Then middle_name End)
       As sort_name
-    , first_name
-    , last_name
+    , nullif(salutation, '-')
+      As salutation
+    , nullif(first_name, '-')
+      As first_name
+    , nullif(middle_name, '-')
+      As middle_name
+    , nullif(last_name, '-')
+      As last_name
     , is_deceased_indicator
     , primary_constituent_type
     , nullif(institutional_suffix, '-')
@@ -534,6 +550,12 @@ Cursor c_constituent Is
       As preferred_address_postal_code
     , nullif(preferred_address_country_name, '-')
       As preferred_address_country
+    , nullif(gender_identity, '-') 
+      As gender_identity
+    , nullif(citizenship_list, '-')
+      As citizenship
+    , nullif(ethnicity, '-')
+      As ethnicity
     , nullif(constituent_university_overall_rating, '-')
       As constituent_university_overall_rating
     , nullif(constituent_research_evaluation, '-')
@@ -566,6 +588,8 @@ Cursor c_organization Is
     , organization_inactive_indicator
     , nullif(organization_type, '-')
       As organization_type
+    , nullif(a.ap_donor_advised_fund__c, '-')
+      As donor_advised_fund_indicator
     , organization_ultimate_parent_donor_id
       As org_ult_parent_donor_id
     , organization_ultimate_parent_name
@@ -595,9 +619,11 @@ Cursor c_organization Is
     , nullif(organization_research_evaluation, '-')
       As organization_research_evaluation
     , organization_research_evaluation_date
-    , trunc(etl_update_date)
+    , trunc(org.etl_update_date)
       As etl_update_date
   From dm_alumni.dim_organization org
+  Left Join stg_alumni.account a
+    On org.organization_donor_id = a.ucinn_ascendv2__donor_id__c
   Where org.organization_salesforce_id != '-'
 ;
 
@@ -667,7 +693,12 @@ Cursor c_degrees Is
       As degree_school_name
     , deginf.ap_degree_type_from_degreecode__c
       As degree_level
-    , deginf.ucinn_ascendv2__conferred_degree_year__c
+    , Case
+        -- Reunion year is fallback
+        When deginf.ucinn_ascendv2__conferred_degree_year__c Is Null
+          Then deginf.ucinn_ascendv2__reunion_year__c
+        Else deginf.ucinn_ascendv2__conferred_degree_year__c
+        End
       As degree_year
     , deginf.ucinn_ascendv2__reunion_year__c
       As degree_reunion_year
@@ -828,9 +859,10 @@ Cursor c_opportunity Is
       , ap_payment_schedule__c As payment_schedule
       , name As opportunity_id_full
       , stagename As opportunity_closed_stage
+      , ucinn_ascendv2__adjustment_type__c As opportunity_adjustment_type
     From stg_alumni.opportunity o
   )
-
+  
   Select
     opp.opportunity_salesforce_id
     , opp.opportunity_record_id
@@ -839,6 +871,7 @@ Cursor c_opportunity Is
       As legacy_receipt_number
     , opportunity_stage
     , opp_raw.opportunity_closed_stage
+    , opp_raw.opportunity_adjustment_type
     , opportunity_record_type
     , opportunity_type
     , opportunity_donor_id
@@ -897,6 +930,10 @@ Cursor c_payment Is
       As payment_record_id
     , pay.ap_legacy_receipt_number__c
       As legacy_receipt_number
+    , pay.ucinn_ascendv2__receipt_number__c
+      As original_gift_receipt
+    , pay.ucinn_ascendv2__opportunity__c
+      As opportunity_salesforce_id
     , pay.ucinn_ascendv2__opportunity_stage__c
       As opportunity_stage
     , pay.ucinn_ascendv2__opportunity_record_type__c
@@ -923,6 +960,8 @@ Cursor c_payment Is
       As is_anonymous_indicator
     , pay.anonymous_type__c
       As anonymous_type
+    , pay.ucinn_ascendv2__adjustment_type__c
+      As payment_adjustment_type
     , trunc(etl_update_date)
       As etl_update_date
   From stg_alumni.ucinn_ascendv2__payment__c pay

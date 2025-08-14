@@ -29,7 +29,7 @@ d as (select c.id,
        c.ap_school_reunion_year__c
 from stg_alumni.ucinn_ascendv2__degree_information__c c
 where c.ap_school_reunion_year__c like '%Kellogg%'
-and c.ap_degree_type_from_degreecode__c != 'Certificate'
+and c.ap_degree_type_from_degreecode__c Not In ('Certificate', 'Doctorate Degree')
 ),
 
 --- Reunion Year 
@@ -92,12 +92,27 @@ from l
 inner join KSM_Degrees on KSM_Degrees.donor_id = l.ucinn_ascendv2__donor_id__c
 inner join reunion_year on reunion_year.ucinn_ascendv2__donor_id__c = l.ucinn_ascendv2__donor_id__c),
 
+--- Spouse Reunion Year  - KELLOGG ONLY!
+--- Salutation for folks that have a spouse, who is NOT a primary member of the household, AND has a Reunion 2026 year
+
+
+spr as (select en.spouse_donor_id,
+en.spouse_name,
+en.spouse_institutional_suffix,
+--- This should be Reunion for Spouses
+FR.reunion_year_concat
+from mv_entity en
+inner join FR on FR.ucinn_ascendv2__donor_id__c = en.spouse_donor_id
+inner join KSM_Degrees on KSM_Degrees.donor_id = en.spouse_donor_id),
+
+
 --- Current Linkedin Addresses
 a as (select
 stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__contact__c,
 max (stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__url__c) keep (dense_rank first order by stg_alumni.ucinn_ascendv2__social_media__c.lastmodifieddate) as Linkedin_address
 from stg_alumni.ucinn_ascendv2__social_media__c
 where stg_alumni.ucinn_ascendv2__social_media__c.ap_status__c like '%Current%'
+and stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__platform__c = 'LinkedIn'
 group BY stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__contact__c
 ),
 
@@ -113,6 +128,7 @@ inner join a on c.id = a.ucinn_ascendv2__contact__c),
 
 e as (select mv_entity.household_id,
        mv_entity.donor_id,
+       mv_entity.household_primary,
        mv_entity.full_name,
        mv_entity.first_name,
        mv_entity.last_name,
@@ -134,6 +150,8 @@ e as (select mv_entity.household_id,
        mv_entity.preferred_address_country
  From mv_entity
  where mv_entity.is_deceased_indicator = 'N'
+ --- household primary
+ and mv_entity.household_primary = 'Y'
  ),
  
 --- Giving Summary
@@ -237,32 +255,103 @@ FROM ksm_2016_reunion r16),
 --- 20 Reunion Attendees 
 
 r22 as (SELECT r22.id_number
-FROM ksm_2022_weekend1_reunion r22)
+FROM ksm_2022_weekend1_reunion r22),
+
+--- Preferred Mail Name - From Amy
+MN as (SELECT ME.DONOR_ID,
+INDNAMESAL.UCINN_ASCENDV2__CONSTRUCTED_NAME_FORMULA__C as preferred_mail_name
+FROM stg_alumni.ucinn_ascendv2__contact_name__c  INDNAMESAL
+Inner Join mv_entity ME
+ON ME.SALESFORCE_ID = INDNAMESAL.UCINN_ASCENDV2__CONTACT__C
+AND INDNAMESAL.ucinn_ascendv2__type__c = 'Full Name'),
+
+--- Join Salutation for folks that have a spouse, who is NOT a primary member of the household, AND has a Reunion 2026 year
+
+Salutation as (Select
+        mv_entity.donor_id
+      , stgc.UCINN_ASCENDV2__SALUTATION_TYPE__c As Salutation_Type
+      , stgc.ucinn_ascendv2__salutation_record_type_formula__c As Ind_or_Joint
+      , stgc.ucinn_ascendv2__inside_salutation__c As Salutation
+      , stgc.lastmodifieddate
+      , stgc.ucinn_ascendv2__author_title__c As Sal_Author
+      , stgc.isdeleted
+From stg_alumni.ucinn_ascendv2__salutation__c stgc
+Left Join mv_entity
+     On mv_entity.salesforce_id = stgc.ucinn_ascendv2__contact__c
+Where  stgc.isdeleted = 'false'
+And stgc.ucinn_ascendv2__salutation_record_type_formula__c = 'Joint'
+--- formal
+and stgc.UCINN_ASCENDV2__SALUTATION_TYPE__c = 'Formal'
+),
+
+i as (select i.constituent_donor_id,
+       i.constituent_name,
+       i.involvement_record_id,
+       i.involvement_code,
+       i.involvement_name,
+       i.involvement_status,
+       i.involvement_type,
+       i.involvement_role,
+       i.involvement_business_unit,
+       i.involvement_start_date,
+       i.involvement_end_date,
+       i.involvement_comment,
+       i.etl_update_date,
+       i.mv_last_refresh
+from mv_involvement i),
+
+--- Club Leaders of KSM
+
+club as (select i.constituent_donor_id,
+       i.constituent_name,
+       i.involvement_name,
+       i.involvement_status,
+       i.involvement_type,
+       i.involvement_role,
+       i.involvement_business_unit,
+       i.involvement_start_date
+from i
+where (i.involvement_role IN ('Club Leader',
+'President','President-Elect','Director',
+'Secretary','Treasurer','Executive')
+--- Current will suffice for the date
+and i.involvement_status = 'Current'
+and (i.involvement_name  like '%Kellogg%'
+or i.involvement_name  like '%KSM%')))
 
  
 select distinct e.household_id,
        e.donor_id,
+       e.household_primary,
+       g.household_primary_donor_id,
        e.is_deceased_indicator,
-       e.primary_record_type,
+       ---e.primary_record_type,
        s.gender_identity,
-       s.salutation,
+      ---- s.salutation, Use Zach's Salutation 
+       MN.preferred_mail_name,
        e.full_name,
        e.first_name,
        e.last_name,
        e.institutional_suffix,
-       e.spouse_donor_id,
-       e.spouse_name,
-       e.spouse_institutional_suffix,
        FR.reunion_year_concat,
        FR.first_ksm_year,
        FR.first_masters_year,
-       FR.degrees_verbose,
+       ---FR.degrees_verbose,
+       --- MiM readjusted in Paul's view. Coming soon. 
        FR.program,
        FR.program_group,
        FR.class_section,
+       --- Salutation
+       e.spouse_donor_id,
+       e.spouse_name,
+       e.spouse_institutional_suffix,
        case when r16.id_number is not null then 'Reunion 2016 Attendee' end as Reunion_16_Attendee,
        case when r22.id_number is not null then 'Reunion 2022 Attendee' end as Reunion_22_Attendee,
-       e.preferred_address_status,
+       ---- need to create temp table for 2026
+       spr.reunion_year_concat as spouse_ksm_reunion_year,
+       case when spr.reunion_year_concat is not null then salutation.salutation end as joint_salutation,
+       case when spr.reunion_year_concat is not null then salutation.Salutation_Type end as joint_salutation_type,
+       case when spr.reunion_year_concat is not null then salutation.Ind_or_Joint end as ind_joint,
        e.preferred_address_type,
        e.preferred_address_line_1,
        e.preferred_address_line_2,
@@ -272,10 +361,9 @@ select distinct e.household_id,
        e.preferred_address_state,
        e.preferred_address_postal_code,
        e.preferred_address_country,
-       g.household_id,
-       g.household_primary_donor_id,
        g.ngc_fy_giving_first_yr,
        g.cash_fy_giving_first_yr,
+       --- Write down expendable, cash, ngc explanations for team
        g.ngc_lifetime,
        g.ngc_cfy,
        g.ngc_pfy1,
@@ -283,7 +371,6 @@ select distinct e.household_id,
        g.ngc_pfy3,
        g.ngc_pfy4,
        g.ngc_pfy5,
-       g.ngc_lifetime,
        g.cash_lifetime,
        g.expendable_cfy,
        g.expendable_pfy1,
@@ -291,6 +378,7 @@ select distinct e.household_id,
        g.expendable_pfy3,
        g.expendable_pfy4,
        g.expendable_pfy5,
+       ---- Pull last 4 Gifts per Kellogg Fund 
        g.last_cash_tx_id,
        g.last_cash_date,
        g.last_cash_opportunity_type,
@@ -312,7 +400,6 @@ select distinct e.household_id,
        employ.primary_employer,
        case when sh.no_email_ind is null and sh.no_contact is null then email.email end as email,
        case when sh.no_phone_ind is null and sh.no_contact is null then phone.phone end as phone,
-       phone.phone,
        sh.no_contact,
        sh.no_mail_ind,
        sh.no_email_ind,
@@ -322,6 +409,14 @@ select distinct e.household_id,
        trustee.involvement_name as trustee,
        kac.involvement_name as kac,
        asia.involvement_name as asia_exec_board,
+       --- I will probably need to listag club leader - check data first
+       club.involvement_name as club_leader,
+       --- Add KLC
+       --- Add Club Leader
+       --- NU/KSM KSM
+       --- Given in Last 5 Years
+       --- 0s or Null in the Blanks
+       --- KSM Reunion 2016 committee 
        tp.constituent_university_overall_rating,
        tp.constituent_research_evaluation,
        s.constituent_contact_report_count,
@@ -353,3 +448,10 @@ left join assign on assign.donor_id = e.donor_id
 left join s on s.constituent_donor_id = e.donor_id 
 left join r16 on r16.id_number = e.donor_id 
 left join r22 on r22.id_number = e.donor_id
+left join MN on MN.DONOR_ID = e.donor_id 
+--- Salutation
+left join Salutation on Salutation.donor_id = e.spouse_donor_id
+--- spouse reunion year
+left join spr on spr.spouse_donor_id = e.spouse_donor_id
+--- Club Leaders
+left join club on club.constituent_donor_id = e.donor_id 
