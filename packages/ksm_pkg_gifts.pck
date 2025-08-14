@@ -97,6 +97,8 @@ Type rec_transaction Is Record (
       , source_type_detail stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__gift_type_formula__c%type
       , gypm_ind varchar2(1)
       , adjusted_opportunity_ind varchar2(1)
+      , opportunity_adjustment_type mv_transactions.opportunity_adjustment_type%type
+      , payment_adjustment_type mv_transactions.payment_adjustment_type%type
       , hard_and_soft_credit_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.id%type
       , credit_receipt_number stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__receipt_number__c%type
       , matched_gift_record_id dm_alumni.dim_opportunity.matched_gift_record_id%type
@@ -469,6 +471,8 @@ Cursor c_ksm_transactions Is
         , trans.source_type_detail
         , trans.gypm_ind
         , trans.adjusted_opportunity_ind
+        , trans.opportunity_adjustment_type
+        , trans.payment_adjustment_type
         , trans.hard_and_soft_credit_salesforce_id
         , trans.credit_receipt_number
         -- Matching gifts
