@@ -59,12 +59,17 @@ override As (
     , kt.opportunity_record_type
     , kt.opportunity_type
     , kt.adjusted_opportunity_ind
+    , kt.opportunity_adjustment_type
+    , kt.payment_adjustment_type
     , kt.source_type
     , kt.source_type_detail
     , kt.gypm_ind
     , kt.hard_and_soft_credit_salesforce_id
     , kt.credit_receipt_number
     , kt.matched_gift_record_id
+    , kt.matching_gift_original_gift_receipt
+    , kt.original_gift_credit_date
+    , kt.original_gift_fy
     , kt.pledge_record_id
     , kt.payment_schedule
     , kt.linked_proposal_record_id
@@ -120,9 +125,14 @@ override As (
     , 'Manual Add' As opportunity_record_type
     , 'Manual Add' As opportunity_type
     , NULL
+    , NULL
+    , NULL
     , 'Internal Transfer' As source_type
     , 'Internal Transfer' As source_type_detail
     , mge.gypm_ind
+    , NULL
+    , NULL
+    , NULL
     , NULL
     , NULL
     , NULL
