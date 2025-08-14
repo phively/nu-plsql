@@ -193,6 +193,7 @@ Type rec_opportunity Is Record (
   , legacy_receipt_number dm_alumni.dim_opportunity.legacy_receipt_number%type
   , opportunity_stage dm_alumni.dim_opportunity.opportunity_stage%type
   , opportunity_closed_stage stg_alumni.opportunity.stagename%type
+  , opportunity_adjustment_type stg_alumni.opportunity.ucinn_ascendv2__adjustment_type__c%type
   , opportunity_record_type dm_alumni.dim_opportunity.opportunity_record_type%type
   , opportunity_type dm_alumni.dim_opportunity.opportunity_type%type
   , opportunity_donor_id dm_alumni.dim_opportunity.opportunity_donor_id%type
@@ -237,6 +238,7 @@ Type rec_payment Is Record (
   , designation_salesforce_id stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__designation_detail__c%type
   , is_anonymous_indicator stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__is_anonymous__c%type
   , anonymous_type stg_alumni.ucinn_ascendv2__payment__c.anonymous_type__c%type
+  , payment_adjustment_type stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__adjustment_type__c%type
   , etl_update_date stg_alumni.ucinn_ascendv2__payment__c.etl_update_date%type
 );
 
@@ -855,9 +857,10 @@ Cursor c_opportunity Is
       , ap_payment_schedule__c As payment_schedule
       , name As opportunity_id_full
       , stagename As opportunity_closed_stage
+      , ucinn_ascendv2__adjustment_type__c As opportunity_adjustment_type
     From stg_alumni.opportunity o
   )
-
+  
   Select
     opp.opportunity_salesforce_id
     , opp.opportunity_record_id
@@ -866,6 +869,7 @@ Cursor c_opportunity Is
       As legacy_receipt_number
     , opportunity_stage
     , opp_raw.opportunity_closed_stage
+    , opp_raw.opportunity_adjustment_type
     , opportunity_record_type
     , opportunity_type
     , opportunity_donor_id
@@ -954,6 +958,8 @@ Cursor c_payment Is
       As is_anonymous_indicator
     , pay.anonymous_type__c
       As anonymous_type
+    , pay.ucinn_ascendv2__adjustment_type__c
+      As payment_adjustment_type
     , trunc(etl_update_date)
       As etl_update_date
   From stg_alumni.ucinn_ascendv2__payment__c pay

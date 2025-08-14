@@ -61,6 +61,8 @@ Type rec_transaction Is Record (
   , source_type_detail stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__gift_type_formula__c%type
   , gypm_ind varchar2(1)
   , adjusted_opportunity_ind varchar2(1)
+  , opportunity_adjustment_type stg_alumni.opportunity.ucinn_ascendv2__adjustment_type__c%type
+  , payment_adjustment_type stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__adjustment_type__c%type
   , hard_and_soft_credit_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.id%type
   , credit_receipt_number stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__receipt_number__c%type
   , matched_gift_record_id dm_alumni.dim_opportunity.matched_gift_record_id%type
@@ -344,6 +346,8 @@ Cursor c_transactions Is
         When opp.opportunity_closed_stage = 'Adjusted' Then 'Y'
         End
       As adjusted_opportunity_ind
+    , opp.opportunity_adjustment_type
+    , pay.payment_adjustment_type
     , gcred.hard_and_soft_credit_salesforce_id
     , gcred.receipt_number
       As credit_receipt_number
