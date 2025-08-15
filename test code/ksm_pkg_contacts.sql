@@ -3,6 +3,10 @@
 ---------------------------
 
 Select *
+From table(ksm_pkg_contacts.tbl_email)
+;
+
+Select *
 From table(ksm_pkg_contacts.tbl_address)
 ;
 

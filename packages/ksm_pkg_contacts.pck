@@ -24,6 +24,22 @@ pkg_name Constant varchar2(64) := 'ksm_pkg_contacts';
 Public type declarations
 *************************************************************************/
 
+Type rec_email Is Record (
+  account_salesforce_id stg_alumni.ucinn_ascendv2__email__c.ucinn_ascendv2__account__c%type
+    , contact_salesforce_id stg_alumni.ucinn_ascendv2__email__c.ucinn_ascendv2__contact__c%type
+    , donor_id dm_alumni.dim_constituent.constituent_donor_id%type
+    , email_record_id stg_alumni.ucinn_ascendv2__email__c.name%type
+    , email_type stg_alumni.ucinn_ascendv2__email__c.ucinn_ascendv2__type__c%type
+    , email_status stg_alumni.ucinn_ascendv2__email__c.ucinn_ascendv2__status__c%type
+    , email_preferred_indicator stg_alumni.ucinn_ascendv2__email__c.ucinn_ascendv2__is_preferred__c%type
+    , email_address stg_alumni.ucinn_ascendv2__email__c.ucinn_ascendv2__email_address__c%type
+    , email_data_source stg_alumni.ucinn_ascendv2__email__c.ucinn_ascendv2__data_source__c%type
+    , email_start_date stg_alumni.ucinn_ascendv2__email__c.ucinn_ascendv2__start_date__c%type
+    , email_stop_date stg_alumni.ucinn_ascendv2__email__c.ucinn_ascendv2__end_date__c%type
+    , email_modified_date stg_alumni.ucinn_ascendv2__email__c.lastmodifieddate%type
+    , etl_update_date stg_alumni.ucinn_ascendv2__email__c.etl_update_date%type
+);
+
 --------------------------------------
 Type rec_address Is Record (
   donor_id dm_alumni.dim_address.address_donor_id%type
@@ -95,12 +111,18 @@ Type rec_contact_info Is Record (
   , business_address_country dm_alumni.dim_address.address_country%type
   , business_address_latitude dm_alumni.dim_address.address_location_latitude%type
   , business_address_longitude dm_alumni.dim_address.address_location_longitude%type
+  , email_preferred_type stg_alumni.ucinn_ascendv2__email__c.ucinn_ascendv2__type__c%type
+  , email_preferred stg_alumni.ucinn_ascendv2__email__c.ucinn_ascendv2__email_address__c%type
+  , email_personal stg_alumni.ucinn_ascendv2__email__c.ucinn_ascendv2__email_address__c%type
+  , email_business stg_alumni.ucinn_ascendv2__email__c.ucinn_ascendv2__email_address__c%type
+  , emails_concat varchar2(2000)
 );
 
 /*************************************************************************
 Public table declarations
 *************************************************************************/
 
+Type email Is Table Of rec_email;
 Type address Is Table Of rec_address;
 Type linkedin Is Table Of rec_linkedin;
 Type contact_info Is Table Of rec_contact_info;
@@ -112,6 +134,9 @@ Public function declarations
 /*************************************************************************
 Public pipelined functions declarations
 *************************************************************************/
+
+Function tbl_email
+    Return email Pipelined;
 
 Function tbl_address
   Return address Pipelined;
@@ -163,8 +188,35 @@ Cursor c_phone Is
 
 --------------------------------------
 Cursor c_email Is
-  Select NULL
-  From DUAL
+  Select
+    e.ucinn_ascendv2__account__c
+      As account_salesforce_id
+    , e.ucinn_ascendv2__contact__c
+      As contact_salesforce_id
+    , dc.constituent_donor_id
+      As donor_id
+    , e.name
+      As email_record_id
+    , e.ucinn_ascendv2__type__c
+      As email_type
+    , e.ucinn_ascendv2__status__c
+      As email_status
+    , e.ucinn_ascendv2__is_preferred__c
+      As email_preferred_indicator
+    , e.ucinn_ascendv2__email_address__c
+      As email_address
+    , e.ucinn_ascendv2__data_source__c
+      As email_data_source
+    , e.ucinn_ascendv2__start_date__c
+      As email_start_date
+    , e.ucinn_ascendv2__end_date__c
+      As email_stop_date
+    , e.lastmodifieddate
+      As email_modified_date
+    , e.etl_update_date
+  From stg_alumni.ucinn_ascendv2__email__c e
+  Left Join dm_alumni.dim_constituent dc
+    On dc.constituent_salesforce_id = e.ucinn_ascendv2__contact__c
 ;
 
 --------------------------------------
@@ -288,6 +340,58 @@ Cursor c_contact_info Is
     Where addr.address_primary_business_indicator = 'Y'
   )
   
+  -- All active emails
+  , email As (
+    Select e.*
+    From table(ksm_pkg_contacts.tbl_email) e
+    Where e.email_status = 'Current'
+      And e.donor_id Is Not Null
+  )
+  
+  , emails_concat As (
+    -- Sort order: preferred, then recently added, then type, then alphabetical
+    Select
+      donor_id
+      , Listagg(Distinct email_address, '; ') Within Group
+        (Order By email_preferred_indicator Desc, email_start_date Desc, email_type Asc, email_address Asc)
+        As emails_concat
+    From email
+    Group By donor_id
+  )
+  
+  , email_personal As (
+    Select
+      donor_id
+      , email_address
+      , row_number()
+        Over (Partition By donor_id
+          Order By email_preferred_indicator Desc, email_start_date Desc, email_address Asc)
+        As email_rank
+    From email
+    Where email_type = 'Personal'
+  )
+  
+  , email_business As (
+    Select
+      donor_id
+      , email_address
+      , row_number()
+        Over (Partition By donor_id
+          Order By email_preferred_indicator Desc, email_start_date Desc, email_address Asc)
+        As email_rank
+    From email
+    Where email_type = 'Business'
+  )
+  
+  , email_preferred As (
+    Select
+      donor_id
+      , email_type
+      , email_address
+    From email
+    Where email_preferred_indicator = 'true'
+  )
+  
   Select
     mve.donor_id
     , mve.sort_name
@@ -312,6 +416,11 @@ Cursor c_contact_info Is
     , addr_bus.address_country As business_address_country
     , addr_bus.address_latitude As business_address_latitude
     , addr_bus.address_longitude As business_address_longitude
+    , email_preferred.email_type As email_preferred_type
+    , email_preferred.email_address As email_preferred
+    , email_personal.email_address As email_personal
+    , email_business.email_address As email_business
+    , emails_concat.emails_concat
   From mv_entity mve
   Left Join linkedin
     On linkedin.donor_id = mve.donor_id
@@ -321,6 +430,16 @@ Cursor c_contact_info Is
   Left Join addr_bus
     On addr_bus.donor_id = mve.donor_id
     And addr_bus.addr_rank = 1
+  Left Join emails_concat 
+    On emails_concat.donor_id = mve.donor_id
+  Left Join email_personal 
+    On email_personal.donor_id = mve.donor_id
+    And email_personal.email_rank = 1
+  Left Join email_business
+    On email_business.donor_id = mve.donor_id
+    And email_business.email_rank = 1
+  Left Join email_preferred 
+    On email_preferred.donor_id = mve.donor_id
 ;
 
 /*************************************************************************
@@ -331,6 +450,22 @@ Private functions
 Pipelined functions
 *************************************************************************/
 
+--------------------------------------
+Function tbl_email
+  Return email Pipelined As
+    -- Declarations
+    em email;
+
+  Begin
+    Open c_email;
+      Fetch c_email Bulk Collect Into em;
+    Close c_email;
+    For i in 1..(em.count) Loop
+      Pipe row(em(i));
+    End Loop;
+    Return;
+  End;
+  
 --------------------------------------
 Function tbl_address
   Return address Pipelined As
