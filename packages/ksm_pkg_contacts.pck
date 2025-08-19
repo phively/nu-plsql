@@ -24,6 +24,22 @@ pkg_name Constant varchar2(64) := 'ksm_pkg_contacts';
 Public type declarations
 *************************************************************************/
 
+Type rec_phone Is Record (
+  account_salesforce_id stg_alumni.ucinn_ascendv2__phone__c.ucinn_ascendv2__account__c%type
+  , contact_salesforce_id stg_alumni.ucinn_ascendv2__phone__c.ucinn_ascendv2__contact__c%type
+  , donor_id dm_alumni.dim_constituent.constituent_donor_id%type
+  , phone_record_id stg_alumni.ucinn_ascendv2__phone__c.name%type
+  , phone_type stg_alumni.ucinn_ascendv2__phone__c.ucinn_ascendv2__type__c%type
+  , phone_status stg_alumni.ucinn_ascendv2__phone__c.ucinn_ascendv2__status__c%type
+  , phone_preferred_indicator stg_alumni.ucinn_ascendv2__phone__c.ucinn_ascendv2__is_preferred__c%type
+  , phone_number stg_alumni.ucinn_ascendv2__phone__c.ucinn_ascendv2__phone_number__c%type
+  , phone_data_source stg_alumni.ucinn_ascendv2__phone__c.ucinn_ascendv2__data_source__c%type
+  , phone_start_date stg_alumni.ucinn_ascendv2__phone__c.ucinn_ascendv2__start_date__c%type
+  , phone_end_date stg_alumni.ucinn_ascendv2__phone__c.ucinn_ascendv2__end_date__c%type
+  , phone_modified_date stg_alumni.ucinn_ascendv2__phone__c.lastmodifieddate%type
+  , etl_update_date stg_alumni.ucinn_ascendv2__phone__c.etl_update_date%type
+);
+
 Type rec_email Is Record (
   account_salesforce_id stg_alumni.ucinn_ascendv2__email__c.ucinn_ascendv2__account__c%type
     , contact_salesforce_id stg_alumni.ucinn_ascendv2__email__c.ucinn_ascendv2__contact__c%type
@@ -116,12 +132,16 @@ Type rec_contact_info Is Record (
   , email_personal stg_alumni.ucinn_ascendv2__email__c.ucinn_ascendv2__email_address__c%type
   , email_business stg_alumni.ucinn_ascendv2__email__c.ucinn_ascendv2__email_address__c%type
   , emails_concat varchar2(2000)
+  , phone_mobile stg_alumni.ucinn_ascendv2__phone__c.ucinn_ascendv2__phone_number__c%type
+  , phone_home stg_alumni.ucinn_ascendv2__phone__c.ucinn_ascendv2__phone_number__c%type
+  , phone_business stg_alumni.ucinn_ascendv2__phone__c.ucinn_ascendv2__phone_number__c%type
 );
 
 /*************************************************************************
 Public table declarations
 *************************************************************************/
 
+Type phone Is Table Of rec_phone;
 Type email Is Table Of rec_email;
 Type address Is Table Of rec_address;
 Type linkedin Is Table Of rec_linkedin;
@@ -135,8 +155,11 @@ Public function declarations
 Public pipelined functions declarations
 *************************************************************************/
 
+Function tbl_phone
+  Return phone Pipelined;
+
 Function tbl_email
-    Return email Pipelined;
+  Return email Pipelined;
 
 Function tbl_address
   Return address Pipelined;
@@ -182,8 +205,41 @@ Cursor c_geo_codes Is
 
 --------------------------------------
 Cursor c_phone Is
-  Select NULL
-  From DUAL
+  Select
+    p.ucinn_ascendv2__account__c
+      As account_salesforce_id
+    , p.ucinn_ascendv2__contact__c
+      As contact_salesforce_id
+    , Case
+        When dc.constituent_donor_id Is Not Null
+          Then dc.constituent_donor_id
+        Else mve.donor_id
+        End
+      As donor_id
+    , p.name
+      As phone_record_id
+    , p.ucinn_ascendv2__type__c
+      As phone_type
+    , p.ucinn_ascendv2__status__c
+      As phone_status
+    , p.ucinn_ascendv2__is_preferred__c
+      As phone_preferred_indicator
+    , p.ucinn_ascendv2__phone_number__c
+      As phone_number
+    , p.ucinn_ascendv2__data_source__c
+      As phone_data_source
+    , p.ucinn_ascendv2__start_date__c
+      As phone_start_date
+    , p.ucinn_ascendv2__end_date__c
+      As phone_end_date
+    , p.lastmodifieddate
+      As phone_modified_date
+    , p.etl_update_date
+  From stg_alumni.ucinn_ascendv2__phone__c p
+  Left Join dm_alumni.dim_constituent dc
+    On dc.constituent_salesforce_id = p.ucinn_ascendv2__contact__c
+  Left Join mv_entity mve
+    On mve.salesforce_id = p.ucinn_ascendv2__account__c
 ;
 
 --------------------------------------
@@ -193,7 +249,11 @@ Cursor c_email Is
       As account_salesforce_id
     , e.ucinn_ascendv2__contact__c
       As contact_salesforce_id
-    , dc.constituent_donor_id
+    , Case
+        When dc.constituent_donor_id Is Not Null
+          Then dc.constituent_donor_id
+        Else mve.donor_id
+        End
       As donor_id
     , e.name
       As email_record_id
@@ -217,6 +277,8 @@ Cursor c_email Is
   From stg_alumni.ucinn_ascendv2__email__c e
   Left Join dm_alumni.dim_constituent dc
     On dc.constituent_salesforce_id = e.ucinn_ascendv2__contact__c
+  Left Join mv_entity mve
+    On mve.salesforce_id = e.ucinn_ascendv2__account__c
 ;
 
 --------------------------------------
@@ -392,6 +454,51 @@ Cursor c_contact_info Is
     Where email_preferred_indicator = 'true'
   )
   
+  -- All active phone
+  , phone As (
+    Select p.*
+    From table(ksm_pkg_contacts.tbl_phone) p
+    Where p.phone_status = 'Current'
+      And p.donor_id Is Not Null
+  )
+  
+  , phone_home As (
+    Select
+      donor_id
+      , phone_number
+      , row_number()
+        Over (Partition By donor_id
+          Order By phone_preferred_indicator Desc, phone_start_date Desc, phone_number Asc)
+        As phone_rank
+    From phone
+    Where phone_type = 'Home'
+  )
+  
+  , phone_business As (
+    Select
+      donor_id
+      , phone_number
+      , row_number()
+        Over (Partition By donor_id
+          Order By phone_preferred_indicator Desc, phone_start_date Desc, phone_number Asc)
+        As phone_rank
+    From phone
+    Where phone_type = 'Business'
+  )
+  
+  , phone_mobile As (
+    Select
+      donor_id
+      , phone_number
+      , row_number()
+        Over (Partition By donor_id
+          Order By phone_preferred_indicator Desc, phone_start_date Desc, phone_number Asc)
+        As phone_rank
+    From phone
+    Where phone_type In ('Mobile', 'Mobile 2')
+  )
+  
+  
   Select
     mve.donor_id
     , mve.sort_name
@@ -421,6 +528,9 @@ Cursor c_contact_info Is
     , email_personal.email_address As email_personal
     , email_business.email_address As email_business
     , emails_concat.emails_concat
+    , phone_mobile.phone_number As phone_mobile
+    , phone_home.phone_number As phone_home
+    , phone_business.phone_number As phone_business
   From mv_entity mve
   Left Join linkedin
     On linkedin.donor_id = mve.donor_id
@@ -440,6 +550,15 @@ Cursor c_contact_info Is
     And email_business.email_rank = 1
   Left Join email_preferred 
     On email_preferred.donor_id = mve.donor_id
+  Left Join phone_home
+    On phone_home.donor_id = mve.donor_id
+    And phone_home.phone_rank = 1
+  Left Join phone_business
+    On phone_business.donor_id = mve.donor_id
+    And phone_business.phone_rank = 1
+  Left Join phone_mobile
+    On phone_mobile.donor_id = mve.donor_id
+    And phone_mobile.phone_rank = 1
 ;
 
 /*************************************************************************
@@ -450,6 +569,22 @@ Private functions
 Pipelined functions
 *************************************************************************/
 
+--------------------------------------
+Function tbl_phone
+  Return phone Pipelined As
+    -- Declarations
+    ph phone;
+
+  Begin
+    Open c_phone;
+      Fetch c_phone Bulk Collect Into ph;
+    Close c_phone;
+    For i in 1..(ph.count) Loop
+      Pipe row(ph(i));
+    End Loop;
+    Return;
+  End;
+  
 --------------------------------------
 Function tbl_email
   Return email Pipelined As
