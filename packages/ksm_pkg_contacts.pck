@@ -135,6 +135,8 @@ Type rec_contact_info Is Record (
   , phone_mobile stg_alumni.ucinn_ascendv2__phone__c.ucinn_ascendv2__phone_number__c%type
   , phone_home stg_alumni.ucinn_ascendv2__phone__c.ucinn_ascendv2__phone_number__c%type
   , phone_business stg_alumni.ucinn_ascendv2__phone__c.ucinn_ascendv2__phone_number__c%type
+  , max_etl_update_date mv_entity.etl_update_date%type
+  , min_etl_update_date mv_entity.etl_update_date%type
 );
 
 /*************************************************************************
@@ -498,6 +500,23 @@ Cursor c_contact_info Is
     Where phone_type In ('Mobile', 'Mobile 2')
   )
   
+  -- ETL dates
+  , etl_union As (
+    Select donor_id, etl_update_date From phone
+    Union All Select donor_id, etl_update_date From email
+    Union All Select donor_id, etl_update_date From addr
+  )
+  
+  , etl As (
+    Select
+      donor_id
+      , max(etl_update_date)
+        As max_etl_update_date
+      , min(etl_update_date)
+        As min_etl_update_date
+    From etl_union
+    Group By donor_id
+  )
   
   Select
     mve.donor_id
@@ -531,6 +550,8 @@ Cursor c_contact_info Is
     , phone_mobile.phone_number As phone_mobile
     , phone_home.phone_number As phone_home
     , phone_business.phone_number As phone_business
+    , etl.max_etl_update_date
+    , etl.min_etl_update_date
   From mv_entity mve
   Left Join linkedin
     On linkedin.donor_id = mve.donor_id
@@ -559,6 +580,8 @@ Cursor c_contact_info Is
   Left Join phone_mobile
     On phone_mobile.donor_id = mve.donor_id
     And phone_mobile.phone_rank = 1
+  Left Join etl
+    On etl.donor_id = mve.donor_id
 ;
 
 /*************************************************************************
