@@ -1,4 +1,4 @@
-Create Or Replace Package ksm_pkg_contacts Is
+Create Or Replace Package ksm_pkg_contact_info Is
 
 /*************************************************************************
 Author  : PBH634
@@ -18,7 +18,7 @@ Suggested naming conventions:
 Public constant declarations
 *************************************************************************/
 
-pkg_name Constant varchar2(64) := 'ksm_pkg_contacts';
+pkg_name Constant varchar2(64) := 'ksm_pkg_contact_info';
 
 /*************************************************************************
 Public type declarations
@@ -191,9 +191,9 @@ to be individually named.
 End of package
 *************************************************************************/
 
-End ksm_pkg_contacts;
+End ksm_pkg_contact_info;
 /
-Create Or Replace Package Body ksm_pkg_contacts Is
+Create Or Replace Package Body ksm_pkg_contact_info Is
 
 /*************************************************************************
 Private cursors -- data definitions
@@ -201,6 +201,12 @@ Private cursors -- data definitions
 
 --------------------------------------
 Cursor c_geo_codes Is
+  Select NULL
+  From DUAL
+;
+
+--------------------------------------
+Cursor c_continents Is
   Select NULL
   From DUAL
 ;
@@ -351,7 +357,7 @@ Cursor c_contact_info Is
       li.donor_id
       , min(li.linkedin_url) keep(dense_rank First Order By length(li.linkedin_url) Asc, li.linkedin_url Asc)
         As linkedin_url
-    From table(ksm_pkg_contacts.tbl_linkedin) li
+    From table(ksm_pkg_contact_info.tbl_linkedin) li
     Where li.status = 'Current'
     Group By li.donor_id
   )
@@ -359,7 +365,7 @@ Cursor c_contact_info Is
   -- All active addresses
   , addr As (
     Select *
-    From table(ksm_pkg_contacts.tbl_address) a
+    From table(ksm_pkg_contact_info.tbl_address) a
   )
     
   -- Home address; keep last primary added
@@ -407,7 +413,7 @@ Cursor c_contact_info Is
   -- All active emails
   , email As (
     Select e.*
-    From table(ksm_pkg_contacts.tbl_email) e
+    From table(ksm_pkg_contact_info.tbl_email) e
     Where e.email_status = 'Current'
       And e.donor_id Is Not Null
   )
@@ -459,7 +465,7 @@ Cursor c_contact_info Is
   -- All active phone
   , phone As (
     Select p.*
-    From table(ksm_pkg_contacts.tbl_phone) p
+    From table(ksm_pkg_contact_info.tbl_phone) p
     Where p.phone_status = 'Current'
       And p.donor_id Is Not Null
   )
@@ -672,5 +678,5 @@ Function tbl_entity_contact_info
     Return;
   End;
 
-End ksm_pkg_contacts;
+End ksm_pkg_contact_info;
 /
