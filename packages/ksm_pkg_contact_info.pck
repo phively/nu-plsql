@@ -24,6 +24,15 @@ pkg_name Constant varchar2(64) := 'ksm_pkg_contact_info';
 Public type declarations
 *************************************************************************/
 
+--------------------------------------
+Type rec_continent Is Record (
+  country stg_alumni.ucinn_ascendv2__address__c.ucinn_ascendv2__country__c%type
+  , n_rows integer
+  , continent varchar2(30)
+  , ksm_continent varchar2(30)
+);
+
+--------------------------------------
 Type rec_phone Is Record (
   account_salesforce_id stg_alumni.ucinn_ascendv2__phone__c.ucinn_ascendv2__account__c%type
   , contact_salesforce_id stg_alumni.ucinn_ascendv2__phone__c.ucinn_ascendv2__contact__c%type
@@ -40,6 +49,7 @@ Type rec_phone Is Record (
   , etl_update_date stg_alumni.ucinn_ascendv2__phone__c.etl_update_date%type
 );
 
+--------------------------------------
 Type rec_email Is Record (
   account_salesforce_id stg_alumni.ucinn_ascendv2__email__c.ucinn_ascendv2__account__c%type
     , contact_salesforce_id stg_alumni.ucinn_ascendv2__email__c.ucinn_ascendv2__contact__c%type
@@ -143,6 +153,7 @@ Type rec_contact_info Is Record (
 Public table declarations
 *************************************************************************/
 
+Type continents Is Table Of rec_continent;
 Type phone Is Table Of rec_phone;
 Type email Is Table Of rec_email;
 Type address Is Table Of rec_address;
@@ -156,6 +167,9 @@ Public function declarations
 /*************************************************************************
 Public pipelined functions declarations
 *************************************************************************/
+
+Function tbl_continents
+  Return continents Pipelined;
 
 Function tbl_phone
   Return phone Pipelined;
@@ -207,8 +221,370 @@ Cursor c_geo_codes Is
 
 --------------------------------------
 Cursor c_continents Is
-  Select NULL
-  From DUAL
+  
+  With
+
+  countries As (
+    Select
+      a.ucinn_ascendv2__country__c As country
+      , count(*) As n_rows
+    From stg_alumni.ucinn_ascendv2__address__c a
+    Group By a.ucinn_ascendv2__country__c
+  )
+
+  Select Distinct
+    country
+    , n_rows
+    , Case
+      When country In (
+        'Algeria'
+        , 'Angola'
+        , 'Benin'
+        , 'Botswana'
+        , 'British Indian Ocean Territory'
+        , 'Burkina Faso'
+        , 'Burundi'
+        , 'Cameroon'
+        , 'Cape Verde'
+        , 'Central African Republic'
+        , 'Chad'
+        , 'Comoros'
+        , 'Congo'
+        , 'Congo, Democratic Republic of'
+        , 'Djibouti'
+        , 'Egypt'
+        , 'Equatorial Guinea'
+        , 'Eritrea'
+        , 'Eswatini'
+        , 'Ethiopia'
+        , 'French Southern Territories'
+        , 'Gabon'
+        , 'Gambia'
+        , 'Ghana'
+        , 'Guinea'
+        , 'Guinea-Bissau'
+        , 'Ivory Coast'
+        , 'Kenya'
+        , 'Lesotho'
+        , 'Liberia'
+        , 'Libya'
+        , 'Madagascar'
+        , 'Malawi'
+        , 'Mali'
+        , 'Mauritania'
+        , 'Mauritius'
+        , 'Mayotte'
+        , 'Morocco'
+        , 'Mozambique'
+        , 'Namibia'
+        , 'Niger'
+        , 'Nigeria'
+        , 'Reunion'
+        , 'Rwanda'
+        , 'Sao Tome & Principe'
+        , 'Senegal'
+        , 'Seychelles'
+        , 'Sierra Leone'
+        , 'Somalia'
+        , 'South Africa'
+        , 'South Sudan'
+        , 'St. Helena'
+        , 'Sudan'
+        , 'Swaziland'
+        , 'Tanzania'
+        , 'Togo'
+        , 'Tunisia'
+        , 'Uganda'
+        , 'Western Sahara'
+        , 'Zaire'
+        , 'Zambia'
+        , 'Zimbabwe'
+      ) Then 'Africa'
+      When country In (
+        'Antarctica'
+        , 'Antartica' -- sic
+        , 'Bouvet Island'
+      ) Then 'Antarctica'
+      When country In (
+        'Afghanistan'
+        , 'Bahrain'
+        , 'Bangladesh'
+        , 'Bhutan'
+        , 'Brunei'
+        , 'Brunei Darussalam'
+        , 'Burma'
+        , 'Cambodia'
+        , 'Cambodia (Kampuchea)'
+        , 'China'
+        , 'Christmas Island'
+        , 'Cocos (Keeling) Islands'
+        , 'East Timor'
+        , 'Hong Kong'
+        , 'India'
+        , 'Indonesia'
+        , 'Iran'
+        , 'Iraq'
+        , 'Israel'
+        , 'Japan'
+        , 'Jordan'
+        , 'Kazakhstan'
+        , 'Korea'
+        , 'Korea, North'
+        , 'Korea, South'
+        , 'Korea (South)'
+        , 'Kuwait'
+        , 'Kyrgyzstan'
+        , 'Laos'
+        , 'Lebanon'
+        , 'Macao' -- sic
+        , 'Malaysia'
+        , 'Maldives'
+        , 'Mongolia'
+        , 'Myanmar'
+        , 'Nepal'
+        , 'North Korea'
+        , 'Oman'
+        , 'Pakistan'
+        , 'Palestine'
+        , 'Philippines'
+        , 'Qatar'
+        , 'Saudi Arabia'
+        , 'Singapore'
+        , 'South Korea'
+        , 'Sri Lanka'
+        , 'Syria'
+        , 'Taiwan'
+        , 'Tajikistan'
+        , 'Thailand'
+        , 'Turkey'
+        , 'Turkmenistan'
+        , 'United Arab Emirates'
+        , 'Uzbekistan'
+        , 'Vietnam'
+        , 'Yemen'
+        , 'Yemen Peoples Republic' -- sic
+      ) Then 'Asia'
+      When country In (
+        'Albania'
+        , 'Andorra'
+        , 'Armenia'
+        , 'Austria'
+        , 'Azerbaijan'
+        , 'Belarus'
+        , 'Belgium'
+        , 'Bosnia & Herzegovina'
+        , 'Bulgaria'
+        , 'Channel Islands'
+        , 'Croatia'
+        , 'Corsica'
+        , 'Cyprus'
+        , 'Czech Republic'
+        , 'Denmark'
+        , 'England'
+        , 'Estonia'
+        , 'Faroe Islands'
+        , 'Finland'
+        , 'France'
+        , 'Georgia'
+        , 'Germany'
+        , 'Gibralter' -- sic
+        , 'Greece'
+        , 'Hungary'
+        , 'Iceland'
+        , 'Ireland'
+        , 'Italy'
+        , 'Kosovo'
+        , 'Latvia'
+        , 'Liechtenstein'
+        , 'Lithuania'
+        , 'Luxembourg'
+        , 'Macedonia'
+        , 'Malta'
+        , 'Moldova'
+        , 'Monaco'
+        , 'Montenegro'
+        , 'Netherlands'
+        , 'Northern Ireland'
+        , 'North Macedonia'
+        , 'Norway'
+        , 'Poland'
+        , 'Portugal'
+        , 'Republic of Macedonia'
+        , 'Romania'
+        , 'Russia'
+        , 'Russian Federation'
+        , 'San Marino'
+        , 'Scotland'
+        , 'Serbia'
+        , 'Serbia and Montenegro'
+        , 'Slovakia'
+        , 'Slovenia'
+        , 'Spain'
+        , 'Svalbard & Jan Mayen'
+        , 'Sweden'
+        , 'Switzerland'
+        , 'Switzerland, Liechtenstein'
+        , 'Ukraine'
+        , 'United Kingdom'
+        , 'Vatican City'
+        , 'Wales'
+        , 'Yugoslavia'
+      ) Then 'Europe'
+      When country In (
+        'Anguilla'
+        , 'Antigua & Barbuda'
+        , 'Bahamas'
+        , 'Barbados'
+        , 'Belize'
+        , 'Bermuda'
+        , 'British Virgin Islands'
+        , 'Canada'
+        , 'Cayman Islands'
+        , 'Costa Rica'
+        , 'Cuba'
+        , 'Dominica'
+        , 'Dominican Republic'
+        , 'El Salvador'
+        , 'Greenland'
+        , 'Grenada'
+        , 'Guadeloupe'
+        , 'Guatemala'
+        , 'Haiti'
+        , 'Honduras'
+        , 'Jamaica'
+        , 'Martinique'
+        , 'Mexico'
+        , 'Montserrat'
+        , 'Nicaragua'
+        , 'Panama'
+        , 'Puerto Rico'
+        , 'St. Kitts & Nevis'
+        , 'St. Lucia'
+        , 'St Maarten' -- sic
+        , 'St. Pierre & Miquelon'
+        , 'Saint Vincent & the Grenadines'
+        , 'St. Vincent & the Grenadines'
+        , 'Trinidad & Tobago'
+        , 'Turks and Caicos Islands'
+        , 'United States'
+        , 'United States of America'
+        , 'U.S. Minor Outlying Islands'
+        , 'U.S. Virgin Islands'
+        , 'West Indies'
+      ) Then 'North America'
+      When country In (
+        'American Samoa'
+        , 'Australia'
+        , 'Cook Islands'
+        , 'Fed. States of Micronesia'
+        , 'Fiji'
+        , 'French Polynesia'
+        , 'Guam'
+        , 'Kiribati'
+        , 'Marshall Islands'
+        , 'Micronesia'
+        , 'Nauru'
+        , 'New Caledonia'
+        , 'New Guinea'
+        , 'New Zealand'
+        , 'Niue'
+        , 'Norfolk Island'
+        , 'Northern Mariana Islands'
+        , 'Palau'
+        , 'Papua New Guinea'
+        , 'Pitcairn'
+        , 'Samoa'
+        , 'Solomon Islands'
+        , 'Tokelau'
+        , 'Tonga'
+        , 'Tuvalu'
+        , 'Vanuatu'
+        , 'Wallis & Futuna Islands'
+        , 'Western Samoa'
+      ) Then 'Oceania'
+      When country In (
+        'Argentina'
+        , 'Aruba'
+        , 'Bolivia'
+        , 'Brazil'
+        , 'Chile'
+        , 'Colombia'
+        , 'Ecuador'
+        , 'Falkland Islands (Malvinas)'
+        , 'French Guiana'
+        , 'Guyana'
+        , 'Netherlands Antilles'
+        , 'Paraguay'
+        , 'Peru'
+        , 'South Georgia & South Sandwich Island'
+        , 'Surinam' -- sic
+        , 'Suriname'
+        , 'Uruguay'
+        , 'Venezuela'
+      ) Then 'South America'
+      Else 'CHECK'
+    End As continent
+    -- Special Regions: Latin America, South Asia and Middle East
+    , Case When country In (
+        'Antigua & Barbuda'
+        , 'Argentina'
+        , 'Aruba'
+        , 'Bahamas'
+        , 'Barbados'
+        , 'Belize'
+        , 'Bolivia'
+        , 'Brazil'
+        , 'British Virgin Islands'
+        , 'Cayman Islands'
+        , 'Chile'
+        , 'Colombia'
+        , 'Costa Rica'
+        , 'Cuba'
+        , 'Dominican Republic'
+        , 'Ecuador'
+        , 'El Salvador'
+        , 'Guadeloupe'
+        , 'Guatemala'
+        , 'Haiti'
+        , 'Honduras'
+        , 'Jamaica'
+        , 'Mexico'
+        , 'Netherlands Antilles'
+        , 'Nicaragua'
+        , 'Panama'
+        , 'Paraguay'
+        , 'Peru'
+        , 'Puerto Rico'
+        , 'Trinidad & Tobago'
+        , 'Uruguay'
+        , 'Venezuela'
+        , 'West Indies'
+      ) Then 'Latin America'
+      When country In (
+        'Bahrain'
+        , 'Cyprus'
+        , 'Egypt'
+        , 'Iran'
+        , 'Iraq'
+        , 'Israel'
+        , 'Jordan'
+        , 'Kuwait'
+        , 'Lebanon'
+        , 'Oman'
+        , 'Pakistan'
+        , 'Palestine'
+        , 'Qatar'
+        , 'Saudi Arabia'
+        , 'Turkey'
+        , 'United Arab Emirates'
+      ) Then 'Middle East'
+      When country In (
+        'Bangladesh'
+        , 'India'
+        , 'Sri Lanka'
+      ) Then 'South Asia'
+    End As ksm_continent
+  From countries
 ;
 
 --------------------------------------
@@ -597,6 +973,22 @@ Private functions
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
+
+--------------------------------------
+Function tbl_continents
+  Return continents Pipelined As
+    -- Declarations
+    c continents;
+
+  Begin
+    Open c_continents;
+      Fetch c_continents Bulk Collect Into c;
+    Close c_continents;
+    For i in 1..(c.count) Loop
+      Pipe row(c(i));
+    End Loop;
+    Return;
+  End;
 
 --------------------------------------
 Function tbl_phone

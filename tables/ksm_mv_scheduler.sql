@@ -255,5 +255,5 @@ As
 Select
   eci.*
   , sysdate as mv_last_refresh
-From table(ksm_pkg_contacts.tbl_entity_contact_info) eci
+From table(ksm_pkg_contact_info.tbl_entity_contact_info) eci
 ;
