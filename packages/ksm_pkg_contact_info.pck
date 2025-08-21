@@ -116,6 +116,7 @@ Type rec_linkedin Is Record (
 Type rec_contact_info Is Record (
   donor_id mv_entity.donor_id%type
   , sort_name mv_entity.sort_name%type
+  , service_indicators_concat mv_special_handling.service_indicators_concat%type
   , linkedin_url stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__url__c%type
   , home_address_line_1 dm_alumni.dim_address.address_line_1%type
   , home_address_line_2 dm_alumni.dim_address.address_line_2%type
@@ -142,6 +143,8 @@ Type rec_contact_info Is Record (
   , email_personal stg_alumni.ucinn_ascendv2__email__c.ucinn_ascendv2__email_address__c%type
   , email_business stg_alumni.ucinn_ascendv2__email__c.ucinn_ascendv2__email_address__c%type
   , emails_concat varchar2(2000)
+  , phone_preferred_type stg_alumni.ucinn_ascendv2__phone__c.ucinn_ascendv2__type__c%type
+  , phone_preferred stg_alumni.ucinn_ascendv2__phone__c.ucinn_ascendv2__phone_number__c%type
   , phone_mobile stg_alumni.ucinn_ascendv2__phone__c.ucinn_ascendv2__phone_number__c%type
   , phone_home stg_alumni.ucinn_ascendv2__phone__c.ucinn_ascendv2__phone_number__c%type
   , phone_business stg_alumni.ucinn_ascendv2__phone__c.ucinn_ascendv2__phone_number__c%type
@@ -834,6 +837,10 @@ Cursor c_contact_info Is
       donor_id
       , email_type
       , email_address
+      , row_number()
+        Over (Partition By donor_id
+          Order By email_preferred_indicator Desc, email_start_date Desc, email_address Asc)
+        As email_rank
     From email
     Where email_preferred_indicator = 'true'
   )
@@ -882,6 +889,19 @@ Cursor c_contact_info Is
     Where phone_type In ('Mobile', 'Mobile 2')
   )
   
+  , phone_preferred As (
+    Select
+      donor_id
+      , phone_number
+      , phone_type
+      , row_number()
+        Over (Partition By donor_id
+          Order By phone_preferred_indicator Desc, phone_start_date Desc, phone_number Asc)
+        As phone_rank
+    From phone
+    Where phone_preferred_indicator = 'true'
+  )
+  
   -- ETL dates
   , etl_union As (
     Select donor_id, etl_update_date From phone
@@ -900,9 +920,10 @@ Cursor c_contact_info Is
     Group By donor_id
   )
   
-  Select
+  Select Distinct
     mve.donor_id
     , mve.sort_name
+    , sh.service_indicators_concat
     , linkedin.linkedin_url
     , addr_home.address_line_1 As home_address_line_1
     , addr_home.address_line_2 As home_address_line_2
@@ -924,17 +945,33 @@ Cursor c_contact_info Is
     , addr_bus.address_country As business_address_country
     , addr_bus.address_latitude As business_address_latitude
     , addr_bus.address_longitude As business_address_longitude
+    -- Preferred email handling
     , email_preferred.email_type As email_preferred_type
-    , email_preferred.email_address As email_preferred
+    , Case
+        When sh.no_email_ind Is Null
+          Then email_preferred.email_address
+        Else 'DO NOT EMAIL'
+        End
+      As email_preferred
     , email_personal.email_address As email_personal
     , email_business.email_address As email_business
     , emails_concat.emails_concat
+    -- Preferred phone handling
+    , phone_preferred.phone_type As phone_preferred_type
+    , Case
+        When sh.no_phone_ind Is Null
+          Then phone_preferred.phone_number
+        Else 'DO NOT PHONE'
+        End
+      As phone_preferred
     , phone_mobile.phone_number As phone_mobile
     , phone_home.phone_number As phone_home
     , phone_business.phone_number As phone_business
     , etl.max_etl_update_date
     , etl.min_etl_update_date
   From mv_entity mve
+  Left Join mv_special_handling sh
+    On sh.donor_id = mve.donor_id
   Left Join linkedin
     On linkedin.donor_id = mve.donor_id
   Left Join addr_home
@@ -953,6 +990,7 @@ Cursor c_contact_info Is
     And email_business.email_rank = 1
   Left Join email_preferred 
     On email_preferred.donor_id = mve.donor_id
+    And email_preferred.email_rank = 1
   Left Join phone_home
     On phone_home.donor_id = mve.donor_id
     And phone_home.phone_rank = 1
@@ -962,6 +1000,9 @@ Cursor c_contact_info Is
   Left Join phone_mobile
     On phone_mobile.donor_id = mve.donor_id
     And phone_mobile.phone_rank = 1
+  Left Join phone_preferred 
+    On phone_preferred.donor_id = mve.donor_id
+    And phone_preferred.phone_rank = 1
   Left Join etl
     On etl.donor_id = mve.donor_id
 ;
