@@ -118,6 +118,17 @@ Type rec_contact_info Is Record (
   , sort_name mv_entity.sort_name%type
   , service_indicators_concat mv_special_handling.service_indicators_concat%type
   , linkedin_url stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__url__c%type
+  , address_preferred_type dm_alumni.dim_address.address_type%type
+  , preferred_address_line_1 dm_alumni.dim_address.address_line_1%type
+  , preferred_address_line_2 dm_alumni.dim_address.address_line_2%type
+  , preferred_address_line_3 dm_alumni.dim_address.address_line_3%type
+  , preferred_address_line_4 dm_alumni.dim_address.address_line_4%type
+  , preferred_address_city dm_alumni.dim_address.address_city%type
+  , preferred_address_state dm_alumni.dim_address.address_state%type
+  , preferred_address_postal_code dm_alumni.dim_address.address_postal_code%type
+  , preferred_address_country dm_alumni.dim_address.address_country%type
+  , preferred_address_latitude dm_alumni.dim_address.address_location_latitude%type
+  , preferred_address_longitude dm_alumni.dim_address.address_location_longitude%type
   , home_address_line_1 dm_alumni.dim_address.address_line_1%type
   , home_address_line_2 dm_alumni.dim_address.address_line_2%type
   , home_address_line_3 dm_alumni.dim_address.address_line_3%type
@@ -788,6 +799,30 @@ Cursor c_contact_info Is
     From addr
     Where addr.address_primary_business_indicator = 'Y'
   )
+
+  -- Preferred address (not seasonal)
+  , addr_preferred As (
+    Select
+      donor_id
+      , address_type
+      , address_line_1
+      , address_line_2
+      , address_line_3
+      , address_line_4
+      , address_city
+      , address_state
+      , address_postal_code
+      , address_country
+      , address_latitude
+      , address_longitude
+      , row_number()
+        Over (Partition By donor_id
+          Order By address_preferred_indicator Desc, address_primary_home_indicator Desc, address_primary_business_indicator Desc
+            , address_start_date Desc, address_line_1 Asc)
+        As addr_rank
+    From addr
+    Where address_preferred_indicator = 'Y'
+  )
   
   -- All active emails
   , email As (
@@ -925,6 +960,38 @@ Cursor c_contact_info Is
     , mve.sort_name
     , sh.service_indicators_concat
     , linkedin.linkedin_url
+    -- Preferred address handling
+    , addr_preferred.address_type As address_preferred_type
+    , Case
+        When sh.no_mail_ind Is Null
+          Then addr_preferred.address_line_1
+        Else 'DO NOT MAIL'
+        End
+      As preferred_address_line_1
+    , Case
+        When sh.no_mail_ind Is Null
+          Then addr_preferred.address_line_2
+        Else NULL
+        End
+      As preferred_address_line_2
+    , Case
+        When sh.no_mail_ind Is Null
+          Then addr_preferred.address_line_3
+        Else NULL
+        End
+      As preferred_address_line_3
+    , Case
+        When sh.no_mail_ind Is Null
+          Then addr_preferred.address_line_4
+        Else NULL
+        End
+      As preferred_address_line_4
+    , addr_preferred.address_city As preferred_address_city
+    , addr_preferred.address_state As preferred_address_state
+    , addr_preferred.address_postal_code As preferred_address_postal_code
+    , addr_preferred.address_country As preferred_address_country
+    , addr_preferred.address_latitude As preferred_address_latitude
+    , addr_preferred.address_longitude As preferred_address_longitude
     , addr_home.address_line_1 As home_address_line_1
     , addr_home.address_line_2 As home_address_line_2
     , addr_home.address_line_3 As home_address_line_3
@@ -980,6 +1047,9 @@ Cursor c_contact_info Is
   Left Join addr_bus
     On addr_bus.donor_id = mve.donor_id
     And addr_bus.addr_rank = 1
+  Left Join addr_preferred
+    On addr_preferred.donor_id = mve.donor_id
+    And addr_preferred.addr_rank = 1
   Left Join emails_concat 
     On emails_concat.donor_id = mve.donor_id
   Left Join email_personal 
