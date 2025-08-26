@@ -15,6 +15,10 @@ From table(ksm_pkg_contact_info.tbl_address)
 ;
 
 Select *
+From table(ksm_pkg_contact_info.tbl_address_seasonal)
+;
+
+Select *
 From table(ksm_pkg_contact_info.tbl_linkedin)
 ;
 
