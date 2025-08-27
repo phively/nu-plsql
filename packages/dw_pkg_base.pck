@@ -397,6 +397,8 @@ Type rec_address Is Record (
   , address_seasonal_end_month dm_alumni.dim_address.address_seasonal_end_month%type
   , address_seasonal_end_day dm_alumni.dim_address.address_seasonal_end_day%type
   , address_seasonal_end varchar2(8)
+  , address_modified_date dm_alumni.dim_address.address_modified_date%type
+  , address_relation_modified_date dm_alumni.dim_address.address_relation_modified_date%type
   , etl_update_date dm_alumni.dim_address.etl_update_date%type
 );
 
@@ -1308,6 +1310,8 @@ Cursor c_address Is
         , '00000000'
         , NULL
       ) As address_seasonal_end
+    , a.address_modified_date
+    , a.address_relation_modified_date
     , trunc(etl_update_date)
       As etl_update_date
   From dm_alumni.dim_address a

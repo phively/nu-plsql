@@ -297,7 +297,7 @@ Cursor c_special_handling Is
   )
   
   -- Main query
-  Select
+  Select Distinct
     mve.household_id
     , ids.donor_id
     , ids.spouse_donor_id
