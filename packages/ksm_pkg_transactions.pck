@@ -236,6 +236,7 @@ Cursor c_matches Is
             , mu.matching_gift_credit_date
           Order By
             mu.matching_gift_original_gift_receipt Asc
+            , dwo.credit_date Asc
         ) As rn
     From matches_union mu
     Left Join stg_alumni.opportunity opp
