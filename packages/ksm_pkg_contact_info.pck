@@ -100,6 +100,29 @@ Type rec_address Is Record (
 );
 
 --------------------------------------
+Type rec_address_seasonal Is Record (
+    donor_id dm_alumni.dim_address.address_donor_id%type
+    , address_record_id dm_alumni.dim_address.address_record_id%type
+    , address_status dm_alumni.dim_address.address_status%type
+    , address_type dm_alumni.dim_address.address_type%type
+    , address_preferred_indicator dm_alumni.dim_address.address_prefered_indicator%type
+    , address_line_1 dm_alumni.dim_address.address_line_1%type
+    , address_line_2 dm_alumni.dim_address.address_line_2%type
+    , address_line_3 dm_alumni.dim_address.address_line_3%type
+    , address_line_4 dm_alumni.dim_address.address_line_4%type
+    , address_city dm_alumni.dim_address.address_city%type
+    , address_state dm_alumni.dim_address.address_state%type
+    , address_postal_code dm_alumni.dim_address.address_postal_code%type
+    , address_country dm_alumni.dim_address.address_country%type
+    , address_latitude dm_alumni.dim_address.address_location_latitude%type
+    , address_longitude dm_alumni.dim_address.address_location_longitude%type
+    , seasonal_start_date dm_alumni.dim_address.address_start_date%type
+    , seasonal_stop_date dm_alumni.dim_address.address_end_date%type
+    , address_seasonal_start varchar2(8)
+    , address_seasonal_end varchar2(8)
+);
+
+--------------------------------------
 Type rec_linkedin Is Record (
   contact_salesforce_id stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__contact__c%type 
   , donor_id stg_alumni.contact.ucinn_ascendv2__donor_id__c%type
@@ -118,6 +141,17 @@ Type rec_contact_info Is Record (
   , sort_name mv_entity.sort_name%type
   , service_indicators_concat mv_special_handling.service_indicators_concat%type
   , linkedin_url stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__url__c%type
+  , address_preferred_type dm_alumni.dim_address.address_type%type
+  , preferred_address_line_1 dm_alumni.dim_address.address_line_1%type
+  , preferred_address_line_2 dm_alumni.dim_address.address_line_2%type
+  , preferred_address_line_3 dm_alumni.dim_address.address_line_3%type
+  , preferred_address_line_4 dm_alumni.dim_address.address_line_4%type
+  , preferred_address_city dm_alumni.dim_address.address_city%type
+  , preferred_address_state dm_alumni.dim_address.address_state%type
+  , preferred_address_postal_code dm_alumni.dim_address.address_postal_code%type
+  , preferred_address_country dm_alumni.dim_address.address_country%type
+  , preferred_address_latitude dm_alumni.dim_address.address_location_latitude%type
+  , preferred_address_longitude dm_alumni.dim_address.address_location_longitude%type
   , home_address_line_1 dm_alumni.dim_address.address_line_1%type
   , home_address_line_2 dm_alumni.dim_address.address_line_2%type
   , home_address_line_3 dm_alumni.dim_address.address_line_3%type
@@ -160,6 +194,7 @@ Type continents Is Table Of rec_continent;
 Type phone Is Table Of rec_phone;
 Type email Is Table Of rec_email;
 Type address Is Table Of rec_address;
+Type address_seasonal Is Table Of rec_address_seasonal;
 Type linkedin Is Table Of rec_linkedin;
 Type contact_info Is Table Of rec_contact_info;
 
@@ -182,6 +217,9 @@ Function tbl_email
 
 Function tbl_address
   Return address Pipelined;
+
+Function tbl_address_seasonal
+  Return address_seasonal Pipelined;
 
 Function tbl_linkedin
   Return linkedin Pipelined;
@@ -709,6 +747,121 @@ Cursor c_address_current Is
 ;
 
 --------------------------------------
+Cursor c_address_seasonal Is
+  With
+
+  seasonal As (
+    Select
+      a.*
+      , a.address_donor_id
+        As donor_id
+      , to_number(a.address_seasonal_start_day)
+        As start_day
+      , to_number(a.address_seasonal_start_month)
+        As start_month
+      , to_number(a.address_seasonal_end_day)
+        As stop_day
+      , to_number(a.address_seasonal_end_month)
+        As stop_month
+      , extract(day from cal.today) As today_day
+      , extract(month from cal.today) As today_month
+      , extract(year from cal.today) As today_year
+      , cal.curr_fy
+    From table(dw_pkg_base.tbl_address) a
+    Cross Join v_current_calendar cal
+    Where a.address_status = 'Current'
+      -- Seasonal type and flag should be interchangeable
+      And a.address_seasonal_indicator = 'Y'
+      -- Seasonal addresses should all have non-null start/end mo and day, but not necessarily year    
+      And a.address_seasonal_start Is Not Null
+  )
+
+  , get_year As (
+    -- Compute true start/stop dates. Consider two cases:
+    -- Jan1 --- Start -- Stop -- Dec31
+    -- Simple, use range as-is
+    -- Jan1 -- Stop -- Start -- Dec31
+    -- Second case must wrap around, containing both Jan1 and Dec31
+    Select
+      donor_id
+      , address_record_id
+      , Case
+          -- create start/stop with the end year
+          When start_month <= stop_month
+            Then curr_fy
+          -- create start/stop where the start year is 1 less than end year
+          When start_month > stop_month
+            Then (curr_fy - 1)
+          Else NULL
+          End
+        As start_year1
+      , Case
+          When start_month >= stop_month
+            Then curr_fy
+          -- No need to offset stop date (done for start date above)
+          When start_month < stop_month
+            Then curr_fy
+          Else NULL
+          End
+        As stop_year1
+      From seasonal
+  )
+
+  , final_dates As (
+    Select
+      gy.donor_id
+      , gy.address_record_id
+      , Case
+          /* Sergio comments: Make Case Statements to Reflect Start and Stop Dates
+          If the Start and Stop date have Already Passed, then we go to next year
+          If the Start and Stop Date have not passed, then we stay in the current year and timeframe */ 
+          -- Leap year handling
+          When start_month = 2
+            And start_day = 29
+            Then to_date ('03' || '01' || start_year1, 'mmddyyyy') - 1
+          Else to_date(lpad(start_month, 2, '0') || lpad(start_day, 2, '0') || start_year1, 'mmddyyyy')
+          End
+        As seasonal_start_date
+      , Case
+          When stop_month = 2
+            And stop_day = 29
+            Then to_date ('03' || '01' || stop_year1, 'mmddyyyy') - 1
+          Else to_date(lpad(stop_month, 2, '0') || lpad(stop_day, 2, '0') || stop_year1, 'mmddyyyy')
+          End
+        As seasonal_stop_date     
+    From get_year gy
+    Inner Join seasonal
+      On seasonal.donor_id = gy.donor_id
+      And seasonal.address_record_id = gy.address_record_id
+  )
+
+  Select
+    s.donor_id
+    , s.address_record_id
+    , s.address_status
+    , s.address_type
+    , s.address_preferred_indicator
+    , s.address_line_1
+    , s.address_line_2
+    , s.address_line_3
+    , s.address_line_4
+    , s.address_city
+    , s.address_state
+    , s.address_postal_code
+    , s.address_country
+    , s.address_location_latitude
+    , s.address_location_longitude
+    , fd.seasonal_start_date
+    , fd.seasonal_stop_date
+    , s.address_seasonal_start
+    , s.address_seasonal_end
+  From seasonal s
+  Inner Join final_dates fd
+    On fd.donor_id = s.donor_id
+    And fd.address_record_id = s.address_record_id
+;
+
+--------------------------------------
 Cursor c_linkedin Is
   Select
     sm.contact_salesforce_id
@@ -787,6 +940,30 @@ Cursor c_contact_info Is
         As addr_rank
     From addr
     Where addr.address_primary_business_indicator = 'Y'
+  )
+
+  -- Preferred address (not seasonal)
+  , addr_preferred As (
+    Select
+      donor_id
+      , address_type
+      , address_line_1
+      , address_line_2
+      , address_line_3
+      , address_line_4
+      , address_city
+      , address_state
+      , address_postal_code
+      , address_country
+      , address_latitude
+      , address_longitude
+      , row_number()
+        Over (Partition By donor_id
+          Order By address_preferred_indicator Desc, address_primary_home_indicator Desc, address_primary_business_indicator Desc
+            , address_start_date Desc, address_line_1 Asc)
+        As addr_rank
+    From addr
+    Where address_preferred_indicator = 'Y'
   )
   
   -- All active emails
@@ -907,6 +1084,7 @@ Cursor c_contact_info Is
     Select donor_id, etl_update_date From phone
     Union All Select donor_id, etl_update_date From email
     Union All Select donor_id, etl_update_date From addr
+    Union All Select donor_id, etl_update_date From phone
   )
   
   , etl As (
@@ -925,6 +1103,38 @@ Cursor c_contact_info Is
     , mve.sort_name
     , sh.service_indicators_concat
     , linkedin.linkedin_url
+    -- Preferred address handling
+    , addr_preferred.address_type As address_preferred_type
+    , Case
+        When sh.no_mail_ind Is Null
+          Then addr_preferred.address_line_1
+        Else 'DO NOT MAIL'
+        End
+      As preferred_address_line_1
+    , Case
+        When sh.no_mail_ind Is Null
+          Then addr_preferred.address_line_2
+        Else NULL
+        End
+      As preferred_address_line_2
+    , Case
+        When sh.no_mail_ind Is Null
+          Then addr_preferred.address_line_3
+        Else NULL
+        End
+      As preferred_address_line_3
+    , Case
+        When sh.no_mail_ind Is Null
+          Then addr_preferred.address_line_4
+        Else NULL
+        End
+      As preferred_address_line_4
+    , addr_preferred.address_city As preferred_address_city
+    , addr_preferred.address_state As preferred_address_state
+    , addr_preferred.address_postal_code As preferred_address_postal_code
+    , addr_preferred.address_country As preferred_address_country
+    , addr_preferred.address_latitude As preferred_address_latitude
+    , addr_preferred.address_longitude As preferred_address_longitude
     , addr_home.address_line_1 As home_address_line_1
     , addr_home.address_line_2 As home_address_line_2
     , addr_home.address_line_3 As home_address_line_3
@@ -980,6 +1190,9 @@ Cursor c_contact_info Is
   Left Join addr_bus
     On addr_bus.donor_id = mve.donor_id
     And addr_bus.addr_rank = 1
+  Left Join addr_preferred
+    On addr_preferred.donor_id = mve.donor_id
+    And addr_preferred.addr_rank = 1
   Left Join emails_concat 
     On emails_concat.donor_id = mve.donor_id
   Left Join email_personal 
@@ -1075,6 +1288,22 @@ Function tbl_address
     Close c_address_current;
     For i in 1..(addr.count) Loop
       Pipe row(addr(i));
+    End Loop;
+    Return;
+  End;
+  
+--------------------------------------
+Function tbl_address_seasonal
+  Return address_seasonal Pipelined As
+    -- Declarations
+    ads address_seasonal;
+
+  Begin
+    Open c_address_seasonal;
+      Fetch c_address_seasonal Bulk Collect Into ads;
+    Close c_address_seasonal;
+    For i in 1..(ads.count) Loop
+      Pipe row(ads(i));
     End Loop;
     Return;
   End;

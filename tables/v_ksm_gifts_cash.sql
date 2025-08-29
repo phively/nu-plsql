@@ -92,6 +92,8 @@ override As (
     , kt.fin_department_id
     , kt.fin_project_id
     , kt.fin_activity
+    , kt.campaign_code
+    , kt.campaign_name
     , kt.ksm_af_flag
     , kt.ksm_cru_flag
     , kt.cash_category
@@ -158,6 +160,8 @@ override As (
     , kdes.fin_department_id
     , kdes.fin_project_id
     , kdes.fin_activity_id
+    , kt.campaign_code
+    , kt.campaign_name
     , kdes.ksm_af_flag
     , kdes.ksm_cru_flag
     , kdes.cash_category
@@ -321,6 +325,8 @@ Select
   , kt.fin_department_id
   , kt.fin_project_id
   , kt.fin_activity
+  , kt.campaign_code
+  , kt.campaign_name
   , kt.ksm_af_flag
   , kt.ksm_cru_flag
   , kt.cash_category

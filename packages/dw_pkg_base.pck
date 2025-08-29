@@ -171,6 +171,26 @@ Type rec_designation Is Record (
 );
 
 --------------------------------------
+Type rec_campaign_appeal Is Record (
+    campaign_salesforce_id stg_alumni.campaign.id%type
+    , campaign_code stg_alumni.campaign.ucinn_ascendv2__motivation_code__c%type
+    , campaign_name stg_alumni.campaign.name%type
+    , campaign_status stg_alumni.campaign.status%type
+    , campaign_type stg_alumni.campaign.type%type
+    , campaign_purpose stg_alumni.campaign.nu_purpose__c%type
+    , campaign_appeal_group stg_alumni.campaign.appeal_group__c%type
+    , campaign_appeal_team stg_alumni.campaign.appeal_team__c%type
+    , campaign_start_date stg_alumni.campaign.startdate%type
+    , campaign_end_date stg_alumni.campaign.enddate%type
+    , count_total_contacts stg_alumni.campaign.hierarchynumberofcontacts%type
+    , count_opportunities stg_alumni.campaign.hierarchynumberofresponses%type
+    , value_all_opportunities stg_alumni.campaign.hierarchyamountallopportunities%type
+    , count_won_opportunities stg_alumni.campaign.hierarchynumberofwonopportunities%type
+    , value_won_opportunities stg_alumni.campaign.hierarchyamountwonopportunities%type
+    , etl_update_date stg_alumni.campaign.etl_update_date%type 
+);
+
+--------------------------------------
 Type rec_designation_detail Is Record (
   pledge_or_gift_record_id dm_alumni.dim_designation_detail.pledge_or_gift_record_id%type
   , pledge_or_gift_date dm_alumni.dim_designation_detail.pledge_or_gift_date%type
@@ -205,6 +225,7 @@ Type rec_opportunity Is Record (
   , discounted_amount dm_alumni.dim_opportunity.pledge_total_countable_amount%type
   , tender_type dm_alumni.dim_opportunity.tender_type%type
   , designation_salesforce_id dm_alumni.dim_opportunity.designation_salesforce_id%type
+  , campaign_salesforce_id dm_alumni.dim_opportunity.campaign_salesforce_id%type
   , is_anonymous_indicator dm_alumni.dim_opportunity.is_anonymous_indicator%type
   , anonymous_type dm_alumni.dim_opportunity.anonymous_type%type
   , linked_proposal_record_id dm_alumni.dim_opportunity.linked_proposal_record_id%type
@@ -413,6 +434,7 @@ Type degrees Is Table Of rec_degrees;
 Type designation Is Table Of rec_designation;
 Type designation_detail Is Table Of rec_designation_detail;
 Type opportunity Is Table Of rec_opportunity;
+Type campaign_appeal Is Table Of rec_campaign_appeal;
 Type payment Is Table Of rec_payment;
 Type gift_credit Is Table Of rec_gift_credit;
 Type involvement Is Table Of rec_involvement;
@@ -446,6 +468,9 @@ Function tbl_designation_detail
 
 Function tbl_opportunity
   Return opportunity Pipelined;
+
+Function tbl_campaign_appeal
+  Return campaign_appeal Pipelined;
 
 Function tbl_payment
   Return payment Pipelined;
@@ -894,6 +919,7 @@ Cursor c_opportunity Is
     , nullif(opp.tender_type, '-')
       As tender_type
     , designation_salesforce_id
+    , opp.campaign_salesforce_id
     , nullif(is_anonymous_indicator, '-')
       As is_anonymous_indicator
     , nullif(anonymous_type, '-')
@@ -919,6 +945,28 @@ Cursor c_opportunity Is
   Left Join opp_raw opp_sch
     On opp_sch.opportunity_salesforce_id = opp.linked_proposal_salesforce_id
   Where opportunity_record_id != '-'
+;
+
+--------------------------------------
+Cursor c_campaign_appeal Is
+  Select
+    c.id As opportunity_salesforce_id
+    , c.ucinn_ascendv2__motivation_code__c As campaign_code
+    , name As campaign_name
+    , status As campaign_status
+    , type As campaign_type
+    , nu_purpose__c As campaign_purpose
+    , appeal_group__c As campaign_appeal_group
+    , appeal_team__c As campaign_appeal_team
+    , startdate As campaign_start_date
+    , enddate As campaign_end_date
+    , hierarchynumberofcontacts As count_total_contacts
+    , hierarchynumberofresponses As count_opportunities
+    , hierarchyamountallopportunities As value_all_opportunities
+    , hierarchynumberofwonopportunities As count_won_opportunities
+    , hierarchyamountwonopportunities As value_won_opportunities
+    , trunc(etl_update_date) As etl_update_date
+  From stg_alumni.campaign c
 ;
 
 --------------------------------------
@@ -1433,6 +1481,22 @@ Function tbl_opportunity
     Return;
   End;
 
+--------------------------------------
+Function tbl_campaign_appeal
+  Return campaign_appeal Pipelined As
+    -- Declarations
+    ca campaign_appeal;
+
+  Begin
+    Open c_campaign_appeal;
+      Fetch c_campaign_appeal Bulk Collect Into ca;
+    Close c_campaign_appeal;
+    For i in 1..(ca.count) Loop
+      Pipe row(ca(i));
+    End Loop;
+    Return;
+  End;
+  
 --------------------------------------
 Function tbl_payment
   Return payment Pipelined As

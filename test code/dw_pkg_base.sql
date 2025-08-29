@@ -28,6 +28,10 @@ From table(dw_pkg_base.tbl_opportunity)
 ;
 
 Select *
+From table(dw_pkg_base.tbl_campaign_appeal)
+;
+
+Select *
 From table(dw_pkg_base.tbl_payment)
 ;
 

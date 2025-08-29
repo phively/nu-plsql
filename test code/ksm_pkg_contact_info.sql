@@ -15,6 +15,10 @@ From table(ksm_pkg_contact_info.tbl_address)
 ;
 
 Select *
+From table(ksm_pkg_contact_info.tbl_address_seasonal)
+;
+
+Select *
 From table(ksm_pkg_contact_info.tbl_linkedin)
 ;
 
@@ -59,6 +63,7 @@ Select
   , ci.email_preferred
 From mv_entity_contact_info ci
 Where ci.email_preferred = 'DO NOT EMAIL'
+  And ci.phone_preferred <> 'DO NOT PHONE'
   And ROWNUM <= 5
 ) Union (
 Select
@@ -71,6 +76,22 @@ Select
   , ci.email_preferred
 From mv_entity_contact_info ci
 Where ci.phone_preferred = 'DO NOT PHONE'
+  And ci.email_preferred <> 'DO NOT EMAIL'
   And ROWNUM <= 5
 )
+;
+
+-- Check NO MAIL
+Select
+  ci.donor_id
+  , ci.sort_name
+  , ci.service_indicators_concat
+  , ci.address_preferred_type
+  , ci.preferred_address_line_1
+  , ci.preferred_address_line_2
+  , ci.preferred_address_city
+  , ci.preferred_address_state
+From mv_entity_contact_info ci
+Where ci.preferred_address_line_1 = 'DO NOT MAIL'
+  And ROWNUM <= 5
 ;
