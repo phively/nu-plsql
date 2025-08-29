@@ -172,7 +172,7 @@ Type rec_designation Is Record (
 
 --------------------------------------
 Type rec_campaign_appeal Is Record (
-    opportunity_salesforce_id stg_alumni.campaign.id%type
+    campaign_salesforce_id stg_alumni.campaign.id%type
     , campaign_code stg_alumni.campaign.ucinn_ascendv2__motivation_code__c%type
     , campaign_name stg_alumni.campaign.name%type
     , campaign_status stg_alumni.campaign.status%type

@@ -73,6 +73,8 @@ Select
   , kt.fin_department_id
   , kt.fin_project_id
   , kt.fin_activity
+  , kt.campaign_code
+  , kt.campaign_name
   , kt.ksm_af_flag
   , kt.ksm_cru_flag
   , kt.cash_category

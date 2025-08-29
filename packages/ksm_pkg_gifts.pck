@@ -75,83 +75,85 @@ Type rec_source_donor Is Record (
 --------------------------------------
 -- Gift transactions
 Type rec_transaction Is Record (
-      credited_donor_id mv_entity.donor_id%type
-      , household_id mv_entity.household_id%type
-      , credited_donor_name mv_entity.full_name%type
-      , credited_donor_sort_name mv_entity.sort_name%type
-      , credited_donor_audit varchar2(255) -- See dw_pkg_base.rec_gift_credit.donor_name_and_id
-      , opportunity_donor_id mv_entity.donor_id%type
-      , opportunity_donor_name mv_entity.full_name%type
-      , tribute_type varchar2(255)
-      , tributees varchar2(1023)
-      , tx_id dm_alumni.dim_opportunity.opportunity_record_id%type
-      , opportunity_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
-      , payment_record_id stg_alumni.ucinn_ascendv2__payment__c.name%type
-      , anonymous_type dm_alumni.dim_opportunity.anonymous_type%type
-      , legacy_receipt_number dm_alumni.dim_opportunity.legacy_receipt_number%type
-      , opportunity_stage dm_alumni.dim_opportunity.opportunity_stage%type
-      , opportunity_record_type dm_alumni.dim_opportunity.opportunity_record_type%type
-      , opportunity_type dm_alumni.dim_opportunity.opportunity_type%type
-      , payment_schedule stg_alumni.opportunity.ap_payment_schedule__c%type
-      , source_type stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__source__c%type
-      , source_type_detail stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__gift_type_formula__c%type
-      , gypm_ind varchar2(1)
-      , adjusted_opportunity_ind varchar2(1)
-      , opportunity_adjustment_type mv_transactions.opportunity_adjustment_type%type
-      , payment_adjustment_type mv_transactions.payment_adjustment_type%type
-      , hard_and_soft_credit_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.id%type
-      , credit_receipt_number stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__receipt_number__c%type
-      , matched_gift_record_id dm_alumni.dim_opportunity.matched_gift_record_id%type
-      , matching_gift_original_gift_receipt mv_matches.matching_gift_original_gift_receipt%type
-      , original_gift_credit_date mv_matches.original_gift_credit_date%type
-      , original_gift_fy mv_matches.original_gift_fy%type
-      , matching_gift_credit_date mv_matches.matching_gift_credit_date%type
-      , matching_gift_fy mv_matches.matching_gift_fy%type
-      , pledge_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
-      , linked_proposal_record_id dm_alumni.dim_opportunity.linked_proposal_record_id%type
-      , historical_pm_user_id mv_proposals.historical_pm_user_id%type
-      , historical_pm_name mv_proposals.historical_pm_name%type
-      , historical_pm_role mv_proposals.historical_pm_role%type
-      , historical_pm_unit mv_proposals.historical_pm_business_unit%type
-      , historical_pm_is_active mv_proposals.historical_pm_is_active%type
-      , historical_prm_name mv_assignment_history.staff_name%type
-      , historical_prm_start_date mv_assignment_history.start_date%type
-      , historical_prm_unit mv_assignment_history.assignment_business_unit%type
-      , historical_prm_ksm_flag mv_assignment_history.ksm_flag%type
-      , historical_lagm_name mv_assignment_history.staff_name%type
-      , historical_lagm_start_date mv_assignment_history.start_date%type
-      , historical_lagm_unit mv_assignment_history.assignment_business_unit%type
-      , historical_lagm_ksm_flag mv_assignment_history.ksm_flag%type
-      , designation_record_id mv_ksm_designation.designation_record_id%type
-      , designation_status mv_ksm_designation.designation_status%type
-      , legacy_allocation_code mv_ksm_designation.legacy_allocation_code%type
-      , designation_name mv_ksm_designation.designation_name%type
-      , fin_fund_id mv_ksm_designation.fin_fund_id%type
-      , fin_department_id mv_ksm_designation.fin_department_id%type
-      , fin_project_id mv_ksm_designation.fin_project_id%type
-      , fin_activity mv_ksm_designation.fin_activity_id%type
-      , ksm_af_flag mv_ksm_designation.ksm_af_flag%type
-      , ksm_cru_flag mv_ksm_designation.ksm_cru_flag%type
-      , cash_category mv_ksm_designation.cash_category%type
-      , full_circle_campaign_priority mv_ksm_designation.full_circle_campaign_priority%type
-      , credit_date stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_date_formula__c%type
-      , fiscal_year integer
-      , entry_date dm_alumni.dim_opportunity.opportunity_entry_date%type
-      , credit_type stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_type__c%type
-      , credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
-      , hard_credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
-      , recognition_credit stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
-      , tender_type varchar2(128)
-      , min_etl_update_date mv_entity.etl_update_date%type
-      , max_etl_update_date mv_entity.etl_update_date%type
-      , historical_credit_user_id mv_assignment_history.staff_user_salesforce_id%type
-      , historical_credit_name mv_assignment_history.staff_name%type
-      , historical_credit_assignment_type mv_assignment_history.assignment_type%type
-      , historical_credit_unit mv_assignment_history.assignment_business_unit%type
-      , historical_credit_active_flag varchar2(1)
-      , hh_credited_donors integer
-      , hh_credit number -- not currency, do not round
-      , hh_recognition_credit number -- not currency, do not round
+  credited_donor_id mv_entity.donor_id%type
+  , household_id mv_entity.household_id%type
+  , credited_donor_name mv_entity.full_name%type
+  , credited_donor_sort_name mv_entity.sort_name%type
+  , credited_donor_audit varchar2(255) -- See dw_pkg_base.rec_gift_credit.donor_name_and_id
+  , opportunity_donor_id mv_entity.donor_id%type
+  , opportunity_donor_name mv_entity.full_name%type
+  , tribute_type varchar2(255)
+  , tributees varchar2(1023)
+  , tx_id dm_alumni.dim_opportunity.opportunity_record_id%type
+  , opportunity_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
+  , payment_record_id stg_alumni.ucinn_ascendv2__payment__c.name%type
+  , anonymous_type dm_alumni.dim_opportunity.anonymous_type%type
+  , legacy_receipt_number dm_alumni.dim_opportunity.legacy_receipt_number%type
+  , opportunity_stage dm_alumni.dim_opportunity.opportunity_stage%type
+  , opportunity_record_type dm_alumni.dim_opportunity.opportunity_record_type%type
+  , opportunity_type dm_alumni.dim_opportunity.opportunity_type%type
+  , payment_schedule stg_alumni.opportunity.ap_payment_schedule__c%type
+  , source_type stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__source__c%type
+  , source_type_detail stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__gift_type_formula__c%type
+  , gypm_ind varchar2(1)
+  , adjusted_opportunity_ind varchar2(1)
+  , opportunity_adjustment_type mv_transactions.opportunity_adjustment_type%type
+  , payment_adjustment_type mv_transactions.payment_adjustment_type%type
+  , hard_and_soft_credit_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.id%type
+  , credit_receipt_number stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__receipt_number__c%type
+  , matched_gift_record_id dm_alumni.dim_opportunity.matched_gift_record_id%type
+  , matching_gift_original_gift_receipt mv_matches.matching_gift_original_gift_receipt%type
+  , original_gift_credit_date mv_matches.original_gift_credit_date%type
+  , original_gift_fy mv_matches.original_gift_fy%type
+  , matching_gift_credit_date mv_matches.matching_gift_credit_date%type
+  , matching_gift_fy mv_matches.matching_gift_fy%type
+  , pledge_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
+  , linked_proposal_record_id dm_alumni.dim_opportunity.linked_proposal_record_id%type
+  , historical_pm_user_id mv_proposals.historical_pm_user_id%type
+  , historical_pm_name mv_proposals.historical_pm_name%type
+  , historical_pm_role mv_proposals.historical_pm_role%type
+  , historical_pm_unit mv_proposals.historical_pm_business_unit%type
+  , historical_pm_is_active mv_proposals.historical_pm_is_active%type
+  , historical_prm_name mv_assignment_history.staff_name%type
+  , historical_prm_start_date mv_assignment_history.start_date%type
+  , historical_prm_unit mv_assignment_history.assignment_business_unit%type
+  , historical_prm_ksm_flag mv_assignment_history.ksm_flag%type
+  , historical_lagm_name mv_assignment_history.staff_name%type
+  , historical_lagm_start_date mv_assignment_history.start_date%type
+  , historical_lagm_unit mv_assignment_history.assignment_business_unit%type
+  , historical_lagm_ksm_flag mv_assignment_history.ksm_flag%type
+  , designation_record_id mv_ksm_designation.designation_record_id%type
+  , designation_status mv_ksm_designation.designation_status%type
+  , legacy_allocation_code mv_ksm_designation.legacy_allocation_code%type
+  , designation_name mv_ksm_designation.designation_name%type
+  , fin_fund_id mv_ksm_designation.fin_fund_id%type
+  , fin_department_id mv_ksm_designation.fin_department_id%type
+  , fin_project_id mv_ksm_designation.fin_project_id%type
+  , fin_activity mv_ksm_designation.fin_activity_id%type
+  , campaign_code stg_alumni.campaign.ucinn_ascendv2__motivation_code__c%type
+  , campaign_name stg_alumni.campaign.name%type
+  , ksm_af_flag mv_ksm_designation.ksm_af_flag%type
+  , ksm_cru_flag mv_ksm_designation.ksm_cru_flag%type
+  , cash_category mv_ksm_designation.cash_category%type
+  , full_circle_campaign_priority mv_ksm_designation.full_circle_campaign_priority%type
+  , credit_date stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_date_formula__c%type
+  , fiscal_year integer
+  , entry_date dm_alumni.dim_opportunity.opportunity_entry_date%type
+  , credit_type stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_type__c%type
+  , credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
+  , hard_credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
+  , recognition_credit stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
+  , tender_type varchar2(128)
+  , min_etl_update_date mv_entity.etl_update_date%type
+  , max_etl_update_date mv_entity.etl_update_date%type
+  , historical_credit_user_id mv_assignment_history.staff_user_salesforce_id%type
+  , historical_credit_name mv_assignment_history.staff_name%type
+  , historical_credit_assignment_type mv_assignment_history.assignment_type%type
+  , historical_credit_unit mv_assignment_history.assignment_business_unit%type
+  , historical_credit_active_flag varchar2(1)
+  , hh_credited_donors integer
+  , hh_credit number -- not currency, do not round
+  , hh_recognition_credit number -- not currency, do not round
 );
 
 /*************************************************************************
@@ -446,6 +448,15 @@ Cursor c_ksm_transactions Is
       Where assignment_code In ('PRM', 'LAGM')
     )
     
+    -- Campaign appeal codes
+    , campaign_appeal As (
+      Select Distinct
+        campaign_salesforce_id
+        , campaign_code
+        , campaign_name
+      From table(dw_pkg_base.tbl_campaign_appeal)
+    )
+    
     -- Unified transactions
     , trans_data As (
       Select
@@ -514,6 +525,8 @@ Cursor c_ksm_transactions Is
         , trans.fin_department_id
         , trans.fin_project_id
         , trans.fin_activity_id
+        , ca.campaign_code
+        , ca.campaign_name
         , kdes.ksm_af_flag
         , kdes.ksm_cru_flag
         , Case
@@ -627,6 +640,9 @@ Cursor c_ksm_transactions Is
         On lagms.tx_id = trans.tx_id
         And lagms.rank_lagm = 1
         And lagms.assignment_code = 'LAGM'
+      -- Campaign data
+      Left Join campaign_appeal ca
+        On ca.campaign_salesforce_id = trans.campaign_salesforce_id
     )
     
     -- Final householded credit
