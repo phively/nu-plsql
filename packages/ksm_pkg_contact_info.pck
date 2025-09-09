@@ -6,7 +6,7 @@ Created : 7/10/2025
 Purpose : Combined address, phone, email, social media contact information
   per entity record.
 Dependencies: dw_pkg_base, mv_entity (ksm_pkg_entity), ksm_pkg_calendar,
-  ksm_pkg_special_handling (mv_special_handling)
+  ksm_pkg_special_handling (mv_special_handling), ksm_pkg_utility
 
 Suggested naming conventions:
   Pure functions: [function type]_[description]
@@ -120,6 +120,7 @@ Type rec_address_seasonal Is Record (
     , seasonal_stop_date dm_alumni.dim_address.address_end_date%type
     , address_seasonal_start varchar2(8)
     , address_seasonal_end varchar2(8)
+    , address_seasonal_as_of date
 );
 
 --------------------------------------
@@ -220,6 +221,11 @@ Function tbl_address
 
 Function tbl_address_seasonal
   Return address_seasonal Pipelined;
+
+Function tbl_address_seasonal_as_of(
+  str In varchar2 Default Null
+  , format In varchar2 Default 'yyyymmdd'
+) Return address_seasonal Pipelined;
 
 Function tbl_linkedin
   Return linkedin Pipelined;
@@ -855,10 +861,51 @@ Cursor c_address_seasonal Is
     , fd.seasonal_stop_date
     , s.address_seasonal_start
     , s.address_seasonal_end
+    , Null As address_seasonal_as_of
   From seasonal s
   Inner Join final_dates fd
     On fd.donor_id = s.donor_id
     And fd.address_record_id = s.address_record_id
+;
+
+--------------------------------------
+Cursor c_address_seasonal_as_of(mydate date) Is
+
+  With
+  
+  all_seasonal As (
+    Select
+      s.*  
+      , row_number()
+        Over (Partition By donor_id Order By seasonal_start_date Desc, seasonal_stop_date Desc)
+        As seasonal_rank
+    From table(ksm_pkg_contact_info.tbl_address_seasonal) s
+    Where mydate Between s.seasonal_start_date And s.seasonal_stop_date
+  )
+  
+  Select
+    s.donor_id
+    , s.address_record_id
+    , s.address_status
+    , s.address_type
+    , s.address_preferred_indicator
+    , s.address_line_1
+    , s.address_line_2
+    , s.address_line_3
+    , s.address_line_4
+    , s.address_city
+    , s.address_state
+    , s.address_postal_code
+    , s.address_country
+    , s.address_latitude
+    , s.address_longitude
+    , s.seasonal_start_date
+    , s.seasonal_stop_date
+    , s.address_seasonal_start
+    , s.address_seasonal_end
+    , mydate As address_seasonal_as_of
+  From all_seasonal s
+  Where seasonal_rank = 1
 ;
 
 --------------------------------------
@@ -1308,6 +1355,31 @@ Function tbl_address_seasonal
     Return;
   End;
 
+--------------------------------------
+Function tbl_address_seasonal_as_of(
+  str In varchar2 Default Null
+  , format In varchar2 Default 'yyyymmdd'
+) Return address_seasonal Pipelined As
+    -- Declarations
+    ads address_seasonal;
+    mydate date;
+  
+  Begin
+  -- Fill in date if null
+  If str Is Null Then
+    mydate := trunc(sysdate);
+  Else mydate := ksm_pkg_utility.to_date2(str, format);
+  End If;
+  
+    Open c_address_seasonal_as_of(mydate);
+      Fetch c_address_seasonal_as_of Bulk Collect Into ads;
+    Close c_address_seasonal_as_of;
+    For i in 1..(ads.count) Loop
+      Pipe row(ads(i));
+    End Loop;
+    Return;
+  End;
+  
 --------------------------------------
 Function tbl_linkedin
   Return linkedin Pipelined As
