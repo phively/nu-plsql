@@ -223,6 +223,8 @@ Type rec_opportunity Is Record (
   , entry_date dm_alumni.dim_opportunity.opportunity_entry_date%type
   , amount dm_alumni.dim_opportunity.opportunity_amount%type
   , discounted_amount dm_alumni.dim_opportunity.pledge_total_countable_amount%type
+  , daf_contribution_amount dm_alumni.dim_opportunity.daf_contribution_amount%type
+  , daf_distribution_amount dm_alumni.dim_opportunity.daf_distribution_amount%type
   , tender_type dm_alumni.dim_opportunity.tender_type%type
   , designation_salesforce_id dm_alumni.dim_opportunity.designation_salesforce_id%type
   , campaign_salesforce_id dm_alumni.dim_opportunity.campaign_salesforce_id%type
@@ -916,6 +918,8 @@ Cursor c_opportunity Is
       As amount
     , pledge_total_countable_amount
       As discounted_amount
+    , daf_contribution_amount
+    , daf_distribution_amount
     , nullif(opp.tender_type, '-')
       As tender_type
     , designation_salesforce_id
