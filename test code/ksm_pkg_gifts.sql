@@ -167,6 +167,23 @@ From mv_ksm_transactions mkt
 Where mkt.opportunity_record_id = 'MN2982122'
 ;
 
+Select
+  'Original gift 12/24/24' As explanation
+  , mkt.credited_donor_name
+  , mkt.source_type_detail
+  , mkt.gypm_ind
+  , mkt.tx_id
+  , mkt.credit_receipt_number
+  , mkt.matched_gift_record_id
+  , mkt.matching_gift_original_gift_receipt
+  , mkt.original_gift_credit_date
+  , mkt.original_gift_fy
+  , mkt.matching_gift_credit_date
+  , mkt.matching_gift_fy
+From mv_ksm_transactions mkt
+Where mkt.opportunity_record_id = 'MN3005749'
+;
+
 ---------------------------
 -- mv_ksm_transactions tests
 ---------------------------

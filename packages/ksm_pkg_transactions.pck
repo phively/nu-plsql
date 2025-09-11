@@ -221,11 +221,24 @@ Cursor c_matches Is
       , mu.matching_gift_donor
       , mu.matching_gift_credit_date
       , mu.matching_gift_original_gift_receipt
-      , opp.name
+      -- Choose column from opportunity or payment as appropriate
+      , Case
+          When opp.name Is Not Null
+            Then opp.name
+          Else payc.name
+          End
         As original_gift_record_id
-      , dwo.credit_date
+      , Case
+          When dwo.credit_date Is Not Null
+            Then dwo.credit_date
+          Else dwp.credit_date
+          End
         As original_gift_credit_date
-      , dwo.fiscal_year
+      , Case
+          When dwo.fiscal_year Is Not Null
+            Then to_number(dwo.fiscal_year)
+          Else to_number(dwp.fiscal_year)
+          End
         As original_gift_fy
       , mu.etl_update_date
       , row_number() Over(
@@ -247,6 +260,13 @@ Cursor c_matches Is
       And opp.stagename Not In ('Potential Match', 'Adjusted')
     Left Join table(dw_pkg_base.tbl_opportunity) dwo
       On dwo.opportunity_record_id = opp.name
+    -- Joined to check payments table
+    Left Join stg_alumni.ucinn_ascendv2__payment__c payc
+      On payc.ap_legacy_receipt_number__c = mu.matching_gift_original_gift_receipt
+      And payc.ucinn_ascendv2__acknowledgement_description_formula__c = mu.matching_gift_designation
+      And payc.ucinn_ascendv2__opportunity__c Not In ('Potential Match', 'Adjusted')
+    Left Join table(dw_pkg_base.tbl_payment) dwp
+      On dwp.payment_record_id = payc.name
   )
   
   Select Distinct
