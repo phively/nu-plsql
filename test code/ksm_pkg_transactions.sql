@@ -64,7 +64,7 @@ test_cases As (
 Select
   explanation
   , match.*
-From table(ksm_pkg_transactions.tbl_matches) match
+From mv_matches match
 Inner Join test_cases
   On match.matching_gift_record_id = test_cases.mg_opp_id
 ;
