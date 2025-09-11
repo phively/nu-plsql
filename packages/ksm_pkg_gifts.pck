@@ -571,19 +571,28 @@ Cursor c_ksm_transactions Is
             -- Bequests always show discounted amount
             When bequests.bequest_flag = 'Y'
               Then bequests.bequest_amount_calc
+            -- Internal DAF checks 
+            When trans.opportunity_type Like '%NU Donor Advised Fund%'
+              And nullif(trans.daf_distribution_amount, 0) Is Not Null
+              Then trans.daf_distribution_amount
             Else trans.credit_amount
             End
           As credit_amount
         -- Hard credit
         , Case
             When trans.credit_type = 'Hard'
-              -- Keep same logic as soft credit, above
               Then Case
-                -- Bequests always show discounted amount
-                When bequests.bequest_flag = 'Y'
-                  Then bequests.bequest_amount_calc
-                Else trans.hard_credit_amount
-                End
+              -- Keep same logic as soft credit, above
+              -- Bequests always show discounted amount
+              When bequests.bequest_flag = 'Y'
+                Then bequests.bequest_amount_calc
+              -- Internal DAF checks 
+              When trans.opportunity_type Like '%NU Donor Advised Fund%'
+                And nullif(trans.daf_distribution_amount, 0) Is Not Null
+                Then trans.daf_distribution_amount
+              Else trans.credit_amount
+              End
+              -- Fallback is 0, do not edit
               Else 0
             End
           As hard_credit_amount

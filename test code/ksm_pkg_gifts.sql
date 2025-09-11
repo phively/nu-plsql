@@ -278,3 +278,16 @@ Where mkt.opportunity_record_id In ('PN2442329', 'PN2347181')
   And mkt.hard_credit_amount > 0
 Order By mkt.opportunity_record_id, source_type
 ;
+
+Select
+  'Check DAF credit amounts, should be >= $60K' As explanation
+  , mvt.credited_donor_audit
+  , mvt.opportunity_record_id
+  , mvt.opportunity_type
+  , mvt.source_type_detail
+  , mvt.credit_type
+  , mvt.credit_amount
+  , mvt.hard_credit_amount
+From mv_ksm_transactions mvt
+Where opportunity_record_id In ('GN3034268', 'GN2087965')
+;
