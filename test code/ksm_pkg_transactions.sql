@@ -57,6 +57,8 @@ test_cases As (
   Select 'MN3037385' As mg_opp_id, 'Check no ThirdParty' As explanation From DUAL
   Union Select 'MN3000513', 'Is legacy receipt no RN' From DUAL
   Union Select 'MN2983900', 'FY25 match on FY24 gift' From DUAL
+  Union Select 'MN2982122', 'Original gift date 7/7' From DUAL
+  Union Select 'MN3005749', 'Original gift date 12/24' From DUAL
 )
   
 Select
