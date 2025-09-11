@@ -31,6 +31,22 @@ Where tx_id In ('T2934818', 'T2934800', 'T2584353', 'T2584354', 'T2584825', 'T25
 Order By credited_donor_name Asc
 ;
 
+Select
+  'Check DAF credit amounts' As explanation
+  , mvt.credited_donor_audit
+  , mvt.opportunity_record_id
+  , mvt.opportunity_type
+  , mvt.source_type_detail
+  , mvt.credit_type
+  , mvt.credit_amount
+  , mvt.hard_credit_amount
+  , mvt.daf_contribution_amount
+  , mvt.daf_distribution_amount
+From mv_transactions mvt
+Where opportunity_record_id In ('GN3034268', 'GN2087965')
+  And credit_type = 'Hard'
+;
+
 ---------------------------
 -- Matching gift tests
 ---------------------------

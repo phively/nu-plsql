@@ -83,6 +83,8 @@ Type rec_transaction Is Record (
   , credit_type stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_type__c%type
   , credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
   , hard_credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
+  , daf_contribution_amount dm_alumni.dim_opportunity.daf_contribution_amount%type
+  , daf_distribution_amount dm_alumni.dim_opportunity.daf_distribution_amount%type
   , tender_type varchar2(128)
   , min_etl_update_date mv_entity.etl_update_date%type
   , max_etl_update_date mv_entity.etl_update_date%type
@@ -394,6 +396,8 @@ Cursor c_transactions Is
     , gcred.credit_type
     , gcred.credit_amount
     , gcred.hard_credit_amount
+    , opp.daf_contribution_amount
+    , opp.daf_distribution_amount
     , Case
         When pay.payment_record_id Is Not Null
           Then pay.tender_type
