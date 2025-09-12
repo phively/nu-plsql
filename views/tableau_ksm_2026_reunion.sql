@@ -62,7 +62,7 @@ AND KD.PROGRAM IN (
 --- Full Time 
  'FT', 'FT-1Y', 'FT-2Y', 'FT-JDMBA', 'FT-MMGT', 'FT-MMM',
 --- Include MSMS (AKA MiM) and MBAi 
- 'FT-MS', 'FT-MBAi', 
+ 'FT-MS', 'FT-MBAi', 'FT-MIM', 
 ---- The old Undergrad programs - should be 50+ milestone Now
  'FT-CB', 'FT-EB',
  --- Evening and Weekend 
@@ -149,9 +149,11 @@ e as (select mv_entity.household_id,
        mv_entity.preferred_address_postal_code,
        mv_entity.preferred_address_country
  From mv_entity
- where mv_entity.is_deceased_indicator = 'N'
+ --- Edit: We will include deceased records (9/11/2025) 
+--- where mv_entity.is_deceased_indicator = 'N'
  --- household primary
- and mv_entity.household_primary = 'Y'
+ --- Edit: 9/9/25 - Team wants the report not filter to primary household 
+ ---and mv_entity.household_primary = 'Y'
  ),
  
 --- Giving Summary
@@ -178,7 +180,9 @@ SH as (select  s.donor_id,
        s.no_email_ind,
        s.no_phone_ind,
        s.never_engaged_forever,
-       s.never_engaged_reunion
+       s.never_engaged_reunion,
+       s.no_solicit,
+       s.service_indicators_concat
 from mv_special_handling s),
 
 --- email
@@ -190,6 +194,7 @@ from stg_alumni.contact c),
 --- Phone
 
 phone as (select c.ucinn_ascendv2__donor_id__c,
+c.ucinn_ascendv2__preferred_phone_type__c,
 c.phone
 from stg_alumni.contact c),
 
@@ -317,7 +322,50 @@ where (i.involvement_role IN ('Club Leader',
 --- Current will suffice for the date
 and i.involvement_status = 'Current'
 and (i.involvement_name  like '%Kellogg%'
-or i.involvement_name  like '%KSM%')))
+or i.involvement_name  like '%KSM%'))),
+
+--- 2016 Reunion committee 
+
+rc16 as (select i.constituent_donor_id,
+       i.constituent_name,
+       i.involvement_record_id,
+       i.involvement_code,
+       i.involvement_name,
+       i.involvement_status,
+       i.involvement_type,
+       i.involvement_role,
+       i.involvement_business_unit,
+       i.involvement_start_date,
+       i.involvement_end_date,
+       i.involvement_comment,
+       i.etl_update_date,
+       i.mv_last_refresh
+from i 
+where i.involvement_name like '%KSM Reunion Committee%' 
+and i.involvement_start_date BETWEEN TO_DATE('09/01/2015', 'MM/DD/YYYY')
+AND TO_DATE('08/31/2016', 'MM/DD/YYYY')),
+
+
+
+assign as (Select a.household_id,
+       a.donor_id,
+       a.sort_name,
+       a.prospect_manager_name,
+       a.lagm_user_id,
+       a.lagm_name,
+       a.ksm_manager_flag
+From mv_assignments a),
+
+--- Dean Salutation 
+
+Dean as (Select e.donor_id,
+       e.P_Dean_Salut,
+       e.P_Dean_Source
+From v_entity_salutations e),
+
+klc as (Select k.DONOR_ID,
+k.segment
+from tableau_klc_members k)
 
  
 select distinct e.household_id,
@@ -325,23 +373,19 @@ select distinct e.household_id,
        e.household_primary,
        g.household_primary_donor_id,
        e.is_deceased_indicator,
-       ---e.primary_record_type,
        s.gender_identity,
-      ---- s.salutation, Use Zach's Salutation 
        MN.preferred_mail_name,
        e.full_name,
        e.first_name,
+       dean.P_Dean_Salut,
        e.last_name,
        e.institutional_suffix,
        FR.reunion_year_concat,
        FR.first_ksm_year,
        FR.first_masters_year,
-       ---FR.degrees_verbose,
-       --- MiM readjusted in Paul's view. Coming soon. 
        FR.program,
        FR.program_group,
        FR.class_section,
-       --- Salutation
        e.spouse_donor_id,
        e.spouse_name,
        e.spouse_institutional_suffix,
@@ -361,6 +405,7 @@ select distinct e.household_id,
        e.preferred_address_state,
        e.preferred_address_postal_code,
        e.preferred_address_country,
+       klc.segment as KLC,
        g.ngc_fy_giving_first_yr,
        g.cash_fy_giving_first_yr,
        --- Write down expendable, cash, ngc explanations for team
@@ -398,25 +443,30 @@ select distinct e.household_id,
        employ.primary_employ_ind,
        employ.primary_job_title,
        employ.primary_employer,
+       assign.prospect_manager_name,
+       assign.lagm_name,      
        case when sh.no_email_ind is null and sh.no_contact is null then email.email end as email,
        case when sh.no_phone_ind is null and sh.no_contact is null then phone.phone end as phone,
+       phone.ucinn_ascendv2__preferred_phone_type__c as phone_type,
        sh.no_contact,
        sh.no_mail_ind,
        sh.no_email_ind,
        sh.never_engaged_forever,
        sh.never_engaged_reunion,
+       sh.no_solicit,
+       sh.service_indicators_concat,
+       rc16.involvement_name as reunion_16_committee,
+       rc16.involvement_start_date as reunion_16_start_dt,
+       rc16.involvement_end_date as reunion_16_end_st, 
        gab.involvement_name as gab,
        trustee.involvement_name as trustee,
        kac.involvement_name as kac,
        asia.involvement_name as asia_exec_board,
        --- I will probably need to listag club leader - check data first
        club.involvement_name as club_leader,
-       --- Add KLC
-       --- Add Club Leader
        --- NU/KSM KSM
        --- Given in Last 5 Years
        --- 0s or Null in the Blanks
-       --- KSM Reunion 2016 committee 
        tp.constituent_university_overall_rating,
        tp.constituent_research_evaluation,
        s.constituent_contact_report_count,
@@ -449,9 +499,16 @@ left join s on s.constituent_donor_id = e.donor_id
 left join r16 on r16.id_number = e.donor_id 
 left join r22 on r22.id_number = e.donor_id
 left join MN on MN.DONOR_ID = e.donor_id 
+left join assign on assign.donor_id = e.donor_id 
 --- Salutation
 left join Salutation on Salutation.donor_id = e.spouse_donor_id
 --- spouse reunion year
 left join spr on spr.spouse_donor_id = e.spouse_donor_id
 --- Club Leaders
 left join club on club.constituent_donor_id = e.donor_id 
+--- Dean Salutation
+left join Dean on Dean.donor_id = e.donor_id 
+--- KLC 
+left join klc on klc.donor_id = e.donor_id 
+--- Reunion Committee 16 
+left join rc16 on rc16.constituent_donor_id = e.donor_id
