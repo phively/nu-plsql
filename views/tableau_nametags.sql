@@ -107,6 +107,9 @@ Select Distinct
   , c.first_name
   , c.middle_name
   , c.last_name
+  , dean.p_dean_salut
+  , dean.p_full_name
+  , dean.p_dean_source
   , c.institutional_suffix
   , d.degrees_verbose
   , d.degrees_concat
@@ -128,3 +131,6 @@ Inner Join dm_alumni.dim_constituent c
 Left Join mv_entity_ksm_degrees d
   On d.donor_id = k.constituent_donor_id
 -- Check Joint Degree Programs - Test Case 
+Left Join v_entity_salutations dean
+  On dean.donor_id = k.constituent_donor_id
+;
