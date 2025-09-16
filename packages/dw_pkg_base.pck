@@ -110,6 +110,21 @@ Type rec_mini_entity Is Record (
 );
 
 --------------------------------------
+Type rec_relationships Is Record (
+  relationship_salesforce_id stg_alumni.ucinn_ascendv2__relationship__c.id%type
+  , relationship_record_id stg_alumni.ucinn_ascendv2__relationship__c.name%type
+  , relationship_status stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__status__c%type
+  , primary_constituent_salesforce_id stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__contact__c%type
+  , primary_donor_id stg_alumni.contact.ucinn_ascendv2__donor_id__c%type
+  , primary_role stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__contact_role_formula__c%type
+  , relationship_constituent_salesforce_id stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__related_contact__c%type
+  , relationship_donor_id stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__related_contact_donor_id_formula__c%type
+  , relationship_role stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__related_contact_role__c%type
+  , relationship_notes stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__notes__c%type
+  , etl_update_date stg_alumni.ucinn_ascendv2__relationship__c.etl_update_date%type
+);
+
+--------------------------------------
 Type rec_degrees Is Record (
   constituent_donor_id dm_alumni.dim_degree_detail.constituent_donor_id%type
   , constituent_name dm_alumni.dim_degree_detail.constituent_name%type
@@ -432,6 +447,7 @@ Public table declarations
 Type constituent Is Table Of rec_constituent;
 Type organization Is Table Of rec_organization;
 Type mini_entity Is Table Of rec_mini_entity;
+Type relationships Is Table Of rec_relationships;
 Type degrees Is Table Of rec_degrees;
 Type designation Is Table Of rec_designation;
 Type designation_detail Is Table Of rec_designation_detail;
@@ -458,6 +474,9 @@ Function tbl_organization
 
 Function tbl_mini_entity
   Return mini_entity Pipelined;
+
+Function tbl_relationships
+  Return relationships Pipelined;
 
 Function tbl_degrees
   Return degrees Pipelined;
@@ -696,6 +715,25 @@ Cursor c_mini_entity Is
     , o.etl_update_date
   From table(dw_pkg_base.tbl_organization) o
   )
+;
+
+--------------------------------------
+Cursor c_relationships Is
+  Select
+    r.id As relationship_salesforce_id
+    , r.name As relationship_record_id
+    , r.ucinn_ascendv2__status__c As relationship_status
+    , r.ucinn_ascendv2__contact__c As primary_constituent_salesforce_id
+    , c.ucinn_ascendv2__donor_id__c As primary_donor_id
+    , r.ucinn_ascendv2__contact_role_formula__c As primary_role
+    , r.ucinn_ascendv2__related_contact__c As relationship_constituent_salesforce_id
+    , r.ucinn_ascendv2__related_contact_donor_id_formula__c As relationship_donor_id
+    , r.ucinn_ascendv2__related_contact_role__c As relationship_role
+    , r.ucinn_ascendv2__notes__c As relationship_notes
+    , r.etl_update_date
+  From stg_alumni.ucinn_ascendv2__relationship__c r
+  Inner Join stg_alumni.contact c
+    On c.id = r.ucinn_ascendv2__contact__c
 ;
 
 --------------------------------------
@@ -1421,6 +1459,22 @@ Function tbl_mini_entity
     Return;
   End;
 
+--------------------------------------
+Function tbl_relationships
+  Return relationships Pipelined As
+    -- Declarations
+    r relationships;
+
+  Begin
+    Open c_relationships;
+      Fetch c_relationships Bulk Collect Into r;
+    Close c_relationships;
+    For i in 1..(r.count) Loop
+      Pipe row(r(i));
+    End Loop;
+    Return;
+  End;
+ 
 --------------------------------------
 Function tbl_degrees
   Return degrees Pipelined As
