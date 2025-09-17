@@ -62,7 +62,7 @@ AND KD.PROGRAM IN (
 --- Full Time 
  'FT', 'FT-1Y', 'FT-2Y', 'FT-JDMBA', 'FT-MMGT', 'FT-MMM',
 --- Include MSMS (AKA MiM) and MBAi 
- 'FT-MS', 'FT-MBAi', 
+ 'FT-MS', 'FT-MBAi', 'FT-MIM', 
 ---- The old Undergrad programs - should be 50+ milestone Now
  'FT-CB', 'FT-EB',
  --- Evening and Weekend 
@@ -149,9 +149,11 @@ e as (select mv_entity.household_id,
        mv_entity.preferred_address_postal_code,
        mv_entity.preferred_address_country
  From mv_entity
- where mv_entity.is_deceased_indicator = 'N'
+ --- Edit: We will include deceased records (9/11/2025) 
+--- where mv_entity.is_deceased_indicator = 'N'
  --- household primary
- and mv_entity.household_primary = 'Y'
+ --- Edit: 9/9/25 - Team wants the report not filter to primary household 
+ ---and mv_entity.household_primary = 'Y'
  ),
  
 --- Giving Summary
@@ -178,7 +180,9 @@ SH as (select  s.donor_id,
        s.no_email_ind,
        s.no_phone_ind,
        s.never_engaged_forever,
-       s.never_engaged_reunion
+       s.never_engaged_reunion,
+       s.no_solicit,
+       s.service_indicators_concat
 from mv_special_handling s),
 
 --- email
@@ -190,6 +194,7 @@ from stg_alumni.contact c),
 --- Phone
 
 phone as (select c.ucinn_ascendv2__donor_id__c,
+c.ucinn_ascendv2__preferred_phone_type__c,
 c.phone
 from stg_alumni.contact c),
 
@@ -284,6 +289,8 @@ And stgc.ucinn_ascendv2__salutation_record_type_formula__c = 'Joint'
 and stgc.UCINN_ASCENDV2__SALUTATION_TYPE__c = 'Formal'
 ),
 
+--- Pulling Involvement, which will pull club leaders
+
 i as (select i.constituent_donor_id,
        i.constituent_name,
        i.involvement_record_id,
@@ -317,137 +324,297 @@ where (i.involvement_role IN ('Club Leader',
 --- Current will suffice for the date
 and i.involvement_status = 'Current'
 and (i.involvement_name  like '%Kellogg%'
-or i.involvement_name  like '%KSM%')))
+or i.involvement_name  like '%KSM%'))),
+
+--- 2016 Reunion committee 
+
+rc16 as (select i.constituent_donor_id,
+       i.constituent_name,
+       i.involvement_record_id,
+       i.involvement_code,
+       i.involvement_name,
+       i.involvement_status,
+       i.involvement_type,
+       i.involvement_role,
+       i.involvement_business_unit,
+       i.involvement_start_date,
+       i.involvement_end_date,
+       i.involvement_comment,
+       i.etl_update_date,
+       i.mv_last_refresh
+from i 
+where i.involvement_name like '%KSM Reunion Committee%' 
+and i.involvement_start_date BETWEEN TO_DATE('09/01/2015', 'MM/DD/YYYY')
+AND TO_DATE('08/31/2016', 'MM/DD/YYYY')),
+
+--- assignment
+
+assign as (Select a.household_id,
+       a.donor_id,
+       a.sort_name,
+       a.prospect_manager_name,
+       a.lagm_user_id,
+       a.lagm_name,
+       a.ksm_manager_flag
+From mv_assignments a),
+
+--- Dean Salutation 
+
+Dean as (Select e.donor_id,
+       e.P_Dean_Salut,
+       e.P_Dean_Source
+From v_entity_salutations e),
+
+--- Pull KLC
+
+klc as (Select k.DONOR_ID,
+k.segment
+from tableau_klc_members k),
+
+--- Last 4 Gifts
+
+MYDATA AS (
+SELECT
+    KT.CREDITED_DONOR_ID
+   ,CASE WHEN A.AP_DONOR_ADVISED_FUND__C = 'true' THEN KT.OPPORTUNITY_DONOR_NAME ELSE ' ' END AS OPPORTUNITY_DONOR_NAME
+   ,KT.FISCAL_YEAR
+   ,KT.CREDIT_DATE
+   ,KT.CREDIT_AMOUNT
+   ,KT.DESIGNATION_NAME
+   ,KT.OPPORTUNITY_TYPE
+   ,KT.CAMPAIGN_CODE
+  FROM MV_KSM_TRANSACTIONS KT
+  LEFT JOIN dm_alumni.DIM_OPPORTUNITY DOP
+  ON KT.OPPORTUNITY_RECORD_ID = DOP.OPPORTUNITY_RECORD_ID
+  LEFT JOIN stg_alumni.account A
+  ON KT.OPPORTUNITY_DONOR_ID = A.UCINN_ASCENDV2__DONOR_ID__C
+  WHERE KT.GYPM_IND NOT IN ('P', 'M')
+)
+ 
+,ROWDATA AS (
+  SELECT
+    CREDITED_DONOR_ID
+    ,ROW_NUMBER() OVER(PARTITION BY CREDITED_DONOR_ID ORDER BY CREDIT_DATE DESC) RW
+    ,OPPORTUNITY_DONOR_NAME
+    ,CREDIT_AMOUNT
+    ,CREDIT_DATE
+    ,DESIGNATION_NAME
+    ,FISCAL_YEAR
+    ,OPPORTUNITY_TYPE
+    ,CAMPAIGN_CODE
+  FROM MYDATA
+),
+ 
+GIFTINFO AS (
+  SELECT
+    CREDITED_DONOR_ID
+    ,MAX(DECODE(RW,1,FISCAL_YEAR)) YR1
+    ,max(decode(RW,1,CREDIT_DATE)) CREDIT_DATE1
+    ,MAX(DECODE(RW,1,CREDIT_AMOUNT)) CREDIT_AMT1
+    ,MAX(DECODE(RW,1,OPPORTUNITY_DONOR_NAME)) DAF_1
+    ,MAX(DECODE(RW,1,DESIGNATION_NAME)) DESIGNATION1
+    ,MAX(DECODE(RW,1,OPPORTUNITY_TYPE)) OPPORTUNITY_TYPE1
+    ,MAX(DECODE(RW,1,CAMPAIGN_CODE)) CAMPAIGN_MOTIVATION_CODE_1
+    ,MAX(DECODE(RW,2,FISCAL_YEAR)) YR2
+    ,max(decode(RW,2,CREDIT_DATE)) CREDIT_DATE2
+    ,MAX(DECODE(RW,2,CREDIT_AMOUNT)) CREDIT_AMT2
+    ,MAX(DECODE(RW,2,OPPORTUNITY_DONOR_NAME)) DAF_2
+    ,MAX(DECODE(RW,2,DESIGNATION_NAME)) DESIGNATION2
+    ,MAX(DECODE(RW,2,OPPORTUNITY_TYPE)) OPPORTUNITY_TYPE2
+    ,MAX(DECODE(RW,2,CAMPAIGN_CODE)) CAMPAIGN_MOTIVATION_CODE_2    
+    ,MAX(DECODE(RW,3,FISCAL_YEAR)) YR3
+    ,max(decode(RW,3,CREDIT_DATE)) CREDIT_DATE3
+    ,MAX(DECODE(RW,3,CREDIT_AMOUNT)) CREDIT_AMT3
+    ,MAX(DECODE(RW,3,OPPORTUNITY_DONOR_NAME)) DAF_3
+    ,MAX(DECODE(RW,3,DESIGNATION_NAME)) DESIGNATION3
+    ,MAX(DECODE(RW,3,OPPORTUNITY_TYPE)) OPPORTUNITY_TYPE3
+    ,MAX(DECODE(RW,3,CAMPAIGN_CODE)) CAMPAIGN_MOTIVATION_CODE_3
+    ,MAX(DECODE(RW,4,FISCAL_YEAR)) YR4
+    ,max(decode(RW,4,CREDIT_DATE)) CREDIT_DATE4
+    ,MAX(DECODE(RW,4,CREDIT_AMOUNT)) CREDIT_AMT4
+    ,MAX(DECODE(RW,4,OPPORTUNITY_DONOR_NAME)) DAF_4
+    ,MAX(DECODE(RW,4,DESIGNATION_NAME)) DESIGNATION4
+    ,MAX(DECODE(RW,4,OPPORTUNITY_TYPE)) OPPORTUNITY_TYPE4
+    ,MAX(DECODE(RW,4,CAMPAIGN_CODE)) CAMPAIGN_MOTIVATION_CODE_4
+FROM ROWDATA
+GROUP BY CREDITED_DONOR_ID)
 
  
 select distinct e.household_id,
-       e.donor_id,
-       e.household_primary,
-       g.household_primary_donor_id,
-       e.is_deceased_indicator,
-       ---e.primary_record_type,
-       s.gender_identity,
-      ---- s.salutation, Use Zach's Salutation 
-       MN.preferred_mail_name,
-       e.full_name,
-       e.first_name,
-       e.last_name,
-       e.institutional_suffix,
-       FR.reunion_year_concat,
-       FR.first_ksm_year,
-       FR.first_masters_year,
-       ---FR.degrees_verbose,
-       --- MiM readjusted in Paul's view. Coming soon. 
-       FR.program,
-       FR.program_group,
-       FR.class_section,
-       --- Salutation
-       e.spouse_donor_id,
-       e.spouse_name,
-       e.spouse_institutional_suffix,
-       case when r16.id_number is not null then 'Reunion 2016 Attendee' end as Reunion_16_Attendee,
-       case when r22.id_number is not null then 'Reunion 2022 Attendee' end as Reunion_22_Attendee,
-       ---- need to create temp table for 2026
-       spr.reunion_year_concat as spouse_ksm_reunion_year,
-       case when spr.reunion_year_concat is not null then salutation.salutation end as joint_salutation,
-       case when spr.reunion_year_concat is not null then salutation.Salutation_Type end as joint_salutation_type,
-       case when spr.reunion_year_concat is not null then salutation.Ind_or_Joint end as ind_joint,
-       e.preferred_address_type,
-       e.preferred_address_line_1,
-       e.preferred_address_line_2,
-       e.preferred_address_line_3,
-       e.preferred_address_line_4,
-       e.preferred_address_city,
-       e.preferred_address_state,
-       e.preferred_address_postal_code,
-       e.preferred_address_country,
-       g.ngc_fy_giving_first_yr,
-       g.cash_fy_giving_first_yr,
-       --- Write down expendable, cash, ngc explanations for team
-       g.ngc_lifetime,
-       g.ngc_cfy,
-       g.ngc_pfy1,
-       g.ngc_pfy2,
-       g.ngc_pfy3,
-       g.ngc_pfy4,
-       g.ngc_pfy5,
-       g.cash_lifetime,
-       g.expendable_cfy,
-       g.expendable_pfy1,
-       g.expendable_pfy2,
-       g.expendable_pfy3,
-       g.expendable_pfy4,
-       g.expendable_pfy5,
-       ---- Pull last 4 Gifts per Kellogg Fund 
-       g.last_cash_tx_id,
-       g.last_cash_date,
-       g.last_cash_opportunity_type,
-       g.last_cash_designation_id,
-       g.last_cash_designation,
-       g.last_cash_recognition_credit,
-       g.last_pledge_tx_id,
-       g.last_pledge_date,
-       g.last_pledge_opportunity_type,
-       g.last_pledge_designation_id,
-       g.last_pledge_designation,
-       g.last_pledge_recognition_credit,
-       g.expendable_status,
-       g.expendable_status_fy_start,
-       g.expendable_status_pfy1_start,
-       linked.linkedin_address,
-       employ.primary_employ_ind,
-       employ.primary_job_title,
-       employ.primary_employer,
-       case when sh.no_email_ind is null and sh.no_contact is null then email.email end as email,
-       case when sh.no_phone_ind is null and sh.no_contact is null then phone.phone end as phone,
-       sh.no_contact,
-       sh.no_mail_ind,
-       sh.no_email_ind,
-       sh.never_engaged_forever,
-       sh.never_engaged_reunion,
-       gab.involvement_name as gab,
-       trustee.involvement_name as trustee,
-       kac.involvement_name as kac,
-       asia.involvement_name as asia_exec_board,
-       --- I will probably need to listag club leader - check data first
-       club.involvement_name as club_leader,
-       --- Add KLC
-       --- Add Club Leader
-       --- NU/KSM KSM
-       --- Given in Last 5 Years
-       --- 0s or Null in the Blanks
-       --- KSM Reunion 2016 committee 
-       tp.constituent_university_overall_rating,
-       tp.constituent_research_evaluation,
-       s.constituent_contact_report_count,
-       s.constituent_contact_report_last_year_count,
-       s.constituent_last_contact_report_record_id,
-       s.constituent_last_contact_report_date,
-       s.constituent_last_contact_primary_relationship_manager_date,
-       s.constituent_last_contact_report_author,
-       s.constituent_last_contact_report_purpose,
-       s.constituent_last_contact_report_method,
-       s.constituent_visit_count,
-       s.constituent_visit_last_year_count,
-       s.constituent_last_visit_date
-      
+     e.donor_id,
+     e.household_primary,
+     g.household_primary_donor_id,
+     e.is_deceased_indicator,
+     s.gender_identity,
+     MN.preferred_mail_name,
+     e.full_name,
+     e.first_name,
+     dean.P_Dean_Salut,
+     e.last_name,
+     e.institutional_suffix,
+     FR.reunion_year_concat,
+     FR.first_ksm_year,
+     FR.first_masters_year,
+     FR.program,
+     FR.program_group,
+     FR.class_section,
+     e.spouse_donor_id,
+     e.spouse_name,
+     e.spouse_institutional_suffix,
+     case when r16.id_number is not null then 'Reunion 2016 Attendee' end as Reunion_16_Attendee,
+     case when r22.id_number is not null then 'Reunion 2022 Attendee' end as Reunion_22_Attendee,
+     ---- need to create temp table for 2026
+     spr.reunion_year_concat as spouse_ksm_reunion_year,
+     case when spr.reunion_year_concat is not null then salutation.salutation end as joint_salutation,
+     case when spr.reunion_year_concat is not null then salutation.Salutation_Type end as joint_salutation_type,
+     case when spr.reunion_year_concat is not null then salutation.Ind_or_Joint end as ind_joint,
+     e.preferred_address_type,
+     e.preferred_address_line_1,
+     e.preferred_address_line_2,
+     e.preferred_address_line_3,
+     e.preferred_address_line_4,
+     e.preferred_address_city,
+     e.preferred_address_state,
+     e.preferred_address_postal_code,
+     e.preferred_address_country,
+     klc.segment as KLC,
+     case when g.ngc_fy_giving_first_yr is not null then g.ngc_fy_giving_first_yr else 0 end as ngc_fy_giving_first_yr,
+     case when g.cash_fy_giving_first_yr is not null then g.cash_fy_giving_first_yr else 0 end as cash_fy_giving_first_yr,
+     --- Write down expendable, cash, ngc explanations for team
+     --- edit 9/16/25 - add zeros if blanks 
+     case when g.ngc_lifetime is not null then g.ngc_lifetime else 0 end as ngc_lifetime,
+     case when g.ngc_cfy is not null then g.ngc_cfy else 0 end as ngc_cfy,
+     case when g.ngc_pfy1 is not null then g.ngc_pfy1 else 0 end as ngc_pfy1,
+     case when g.ngc_pfy2 is not null then g.ngc_pfy2 else 0 end as ngc_pfy2,
+     case when g.ngc_pfy3 is not null then g.ngc_pfy3 else 0 end as ngc_pfy3,
+     case when g.ngc_pfy4 is not null then g.ngc_pfy4 else 0 end as ngc_pfy4,
+     case when g.ngc_pfy5 is not null then g.ngc_pfy5 else 0 end as ngc_pfy5,
+     case when g.cash_lifetime is not null then g.cash_lifetime else 0 end as cash_lifetime,
+     case when g.expendable_cfy is not null then g.expendable_cfy else 0 end as expendable_cfy,
+     case when g.expendable_pfy1 is not null then g.expendable_pfy1 else 0 end as expendable_pfy1,
+     case when g.expendable_pfy2 is not null then g.expendable_pfy2 else 0 end as expendable_pfy2,
+     case when g.expendable_pfy3 is not null then g.expendable_pfy3 else 0 end as expendable_pfy3,
+     case when g.expendable_pfy4 is not null then g.expendable_pfy4 else 0 end as expendable_pfy4,
+     case when g.expendable_pfy5 is not null then g.expendable_pfy5 else 0 end as expendable_pfy5,
+     ---- Pull last 4 Gifts per Kellogg Fund 
+     g.last_cash_tx_id,
+     g.last_cash_date,
+     g.last_cash_opportunity_type,
+     g.last_cash_designation_id,
+     g.last_cash_designation,
+     case when g.last_cash_recognition_credit is not null then g.last_cash_recognition_credit else 0 end as last_cash_recognition_credit,
+     g.last_pledge_tx_id,
+     g.last_pledge_date,
+     g.last_pledge_opportunity_type,
+     g.last_pledge_designation_id,
+     g.last_pledge_designation,
+     case when  g.last_pledge_recognition_credit is not null then g.last_pledge_recognition_credit end as last_pledge_recognition_credit,
+     g.expendable_status,
+     g.expendable_status_fy_start,
+     g.expendable_status_pfy1_start,
+     gi.YR1,
+     gi.CREDIT_DATE1,
+     gi.CREDIT_AMT1,
+     gi.DAF_1,
+     gi.DESIGNATION1,
+     gi.OPPORTUNITY_TYPE1,
+     gi.CAMPAIGN_MOTIVATION_CODE_1,
+     gi.YR2,
+     gi.CREDIT_DATE2,
+     gi.CREDIT_AMT2,
+     gi.DAF_2,
+     gi.DESIGNATION2,
+     gi.OPPORTUNITY_TYPE2,
+     gi.CAMPAIGN_MOTIVATION_CODE_2,    
+     gi.YR3,
+     gi.CREDIT_DATE3,
+     gi.CREDIT_AMT3,
+     gi.DAF_3,
+     gi.DESIGNATION3,
+     gi.OPPORTUNITY_TYPE3,
+     gi.CAMPAIGN_MOTIVATION_CODE_3,
+     gi.YR4,
+     gi.CREDIT_DATE4,
+     gi.CREDIT_AMT4,
+     gi.DAF_4,
+     gi.DESIGNATION4,
+     gi.OPPORTUNITY_TYPE4,
+     gi.CAMPAIGN_MOTIVATION_CODE_4,
+     linked.linkedin_address,
+     employ.primary_employ_ind,
+     employ.primary_job_title,
+     employ.primary_employer,
+     assign.prospect_manager_name,
+     assign.lagm_name,      
+     case when sh.no_email_ind is null and sh.no_contact is null then email.email end as email,
+     case when sh.no_phone_ind is null and sh.no_contact is null then phone.phone end as phone,
+     phone.ucinn_ascendv2__preferred_phone_type__c as phone_type,
+     sh.no_contact,
+     sh.no_mail_ind,
+     sh.no_email_ind,
+     sh.never_engaged_forever,
+     sh.never_engaged_reunion,
+     sh.no_solicit,
+     sh.service_indicators_concat,
+     rc16.involvement_name as reunion_16_committee,
+     rc16.involvement_start_date as reunion_16_start_dt,
+     rc16.involvement_end_date as reunion_16_end_st, 
+     gab.involvement_name as gab,
+     trustee.involvement_name as trustee,
+     kac.involvement_name as kac,
+     asia.involvement_name as asia_exec_board,
+     --- I will probably need to listag club leader - check data first
+     club.involvement_name as club_leader,
+     --- NU/KSM KSM
+     --- Given in Last 5 Years
+     --- 0s or Null in the Blanks
+     tp.constituent_university_overall_rating,
+     tp.constituent_research_evaluation,
+     s.constituent_contact_report_count,
+     s.constituent_contact_report_last_year_count,
+     s.constituent_last_contact_report_record_id,
+     s.constituent_last_contact_report_date,
+     s.constituent_last_contact_primary_relationship_manager_date,
+     s.constituent_last_contact_report_author,
+     s.constituent_last_contact_report_purpose,
+     s.constituent_last_contact_report_method,
+     s.constituent_visit_count,
+     s.constituent_visit_last_year_count,
+     s.constituent_last_visit_date     
 from e 
+--- Reunion eligible
 inner join FR on FR.ucinn_ascendv2__donor_id__c = e.donor_id 
+--- giving info
 left join give g on g.household_primary_donor_id = e.donor_id 
+--- linkedin
 left join linked on linked.ucinn_ascendv2__donor_id__c = e.donor_id 
+--- employment
 left join employ on employ.UCINN_ASCENDV2__RELATED_CONTACT_DONOR_ID_FORMULA__C = e.donor_id
+--- special handling
 left join SH on SH.donor_id = e.donor_id 
+--- email
 left join email on email.ucinn_ascendv2__donor_id__c = e.donor_id
+--- phone
 left join phone on phone.ucinn_ascendv2__donor_id__c = e.donor_id 
+--- gab
 left join gab on gab.constituent_donor_id = e.donor_id 
+--- trustee
 left join trustee on trustee.constituent_donor_id = e.donor_id
+--- Executive asia
 left join asia on asia.constituent_donor_id = e.donor_id
+--- KAC
 left join kac on kac.constituent_donor_id = e.donor_id
+--- Prospect view
 left join TP on TP.CONSTITUENT_DONOR_ID = e.donor_id
+--- assignment
 left join assign on assign.donor_id = e.donor_id
+--- contact reports
 left join s on s.constituent_donor_id = e.donor_id 
+--- Reunion 16 Attendee
 left join r16 on r16.id_number = e.donor_id 
+--- Reunion 22 Attendee
 left join r22 on r22.id_number = e.donor_id
+--- preferred mail name
 left join MN on MN.DONOR_ID = e.donor_id 
 --- Salutation
 left join Salutation on Salutation.donor_id = e.spouse_donor_id
@@ -455,3 +622,11 @@ left join Salutation on Salutation.donor_id = e.spouse_donor_id
 left join spr on spr.spouse_donor_id = e.spouse_donor_id
 --- Club Leaders
 left join club on club.constituent_donor_id = e.donor_id 
+--- Dean Salutation
+left join Dean on Dean.donor_id = e.donor_id 
+--- KLC 
+left join klc on klc.donor_id = e.donor_id 
+--- Reunion Committee 16 
+left join rc16 on rc16.constituent_donor_id = e.donor_id
+--- last 4 gifts
+left join GIFTINFO gi on gi.CREDITED_DONOR_ID = e.donor_id
