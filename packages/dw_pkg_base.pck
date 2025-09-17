@@ -117,6 +117,7 @@ Type rec_relationships Is Record (
   , primary_constituent_salesforce_id stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__contact__c%type
   , primary_donor_id stg_alumni.contact.ucinn_ascendv2__donor_id__c%type
   , primary_role stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__contact_role_formula__c%type
+  , primary_role_type varchar2(30)
   , relationship_constituent_salesforce_id stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__related_contact__c%type
   , relationship_donor_id stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__related_contact_donor_id_formula__c%type
   , relationship_role stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__related_contact_role__c%type
@@ -726,6 +727,27 @@ Cursor c_relationships Is
     , r.ucinn_ascendv2__contact__c As primary_constituent_salesforce_id
     , c.ucinn_ascendv2__donor_id__c As primary_donor_id
     , r.ucinn_ascendv2__contact_role_formula__c As primary_role
+    , Case
+        When ucinn_ascendv2__contact_role_formula__c In ('Deceased Spouse', 'Ex-Spouse', 'Widow')
+          Then 'Former'
+        When ucinn_ascendv2__contact_role_formula__c In (
+          'Accountant', 'Accountant Client', 'Assistant', 'Business Associate', 'Estate Administrator', 'Estate Client'
+          , 'Former Assistant', 'Former Manager', 'Lawyer/Attorney', 'Legal Client', 'Manager', 'Partner'
+          , 'PR Client', 'Public Relations'
+        ) Then 'Business'
+        When ucinn_ascendv2__contact_role_formula__c In (
+          'Child', 'Child-in-Law', 'Half-Sibling', 'Parent', 'Sibling', 'Spouse', 'Step-Child', 'Step-Parent'
+          , 'Step-Sibling'
+        ) Then 'Family-Nuclear'
+        When ucinn_ascendv2__contact_role_formula__c In (
+          'Aunt/Uncle', 'Cousin', 'Grand Niece/Nephew', 'Grandchild', 'Grandparent', 'Great Aunt/Uncle'
+          , 'Great Grandchild', 'Great Grandparent', 'Niece/Nephew', 'Parent-in-Law', 'Sibling-in-Law'
+        ) Then 'Family-Nonnuclear'
+        When ucinn_ascendv2__contact_role_formula__c In (
+          'Classmate', 'Friend', 'Legal Guardian', 'Mentee', 'Mentor', 'Other', 'Roommate', 'Ward'
+        ) Then 'Other'
+        End
+      As primary_role_type
     , r.ucinn_ascendv2__related_contact__c As relationship_constituent_salesforce_id
     , r.ucinn_ascendv2__related_contact_donor_id_formula__c As relationship_donor_id
     , r.ucinn_ascendv2__related_contact_role__c As relationship_role

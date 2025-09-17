@@ -32,6 +32,20 @@ Select
 From table(dw_pkg_base.tbl_designation_detail) dd
 ;
 
+-- tbl_mini_entity
+-- Drop Materialized View mv_mini_entity;
+Create Materialized View mv_mini_entity
+Refresh Complete
+Start With sysdate
+-- 7:30 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.5/24)
+As
+Select
+  me.*
+  , sysdate as mv_last_refresh
+From table(dw_pkg_base.tbl_mini_entity) me
+;
+
 --------------------------------------
 -- ksm_pkg_entity
 -- tbl_entity
@@ -46,6 +60,20 @@ Select
   entity.*
   , sysdate as mv_last_refresh
 From table(ksm_pkg_entity.tbl_entity) entity
+;
+
+-- tbl_entity_relationships
+-- Drop Materialized View mv_entity_relationships;
+Create Materialized View mv_entity_relationships
+Refresh Complete
+Start With sysdate
+-- 7:35 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.583/24)
+As
+Select
+  rel.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_entity.tbl_entity_relationships) rel
 ;
 
 --------------------------------------
