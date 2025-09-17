@@ -18,6 +18,12 @@ Union
 Select 0, 'mv_entity', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_entity
 Union
+Select 0, 'mv_mini_entity', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+From mv_mini_entity
+Union
+Select 0, 'mv_entity_relationships', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+From mv_entity_relationships
+Union
 Select 0, 'mv_entity_ksm_degrees', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_entity_ksm_degrees
 Union
