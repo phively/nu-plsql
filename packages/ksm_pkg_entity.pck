@@ -30,6 +30,7 @@ Type rec_entity Is Record (
   , household_id dm_alumni.dim_constituent.constituent_household_account_salesforce_id%type
   , household_primary dm_alumni.dim_constituent.household_primary_constituent_indicator%type
   , donor_id dm_alumni.dim_constituent.constituent_donor_id%type
+  , ses_id stg_alumni.contact.ucinn_ascendv2__student_information_system_id__c%type
   , full_name dm_alumni.dim_constituent.full_name%type
   , sort_name dm_alumni.dim_constituent.full_name%type
   , salutation dm_alumni.dim_constituent.salutation%type
@@ -119,6 +120,7 @@ Cursor c_entity Is
     , c.household_id
     , c.household_primary
     , c.donor_id
+    , ct.ses_id
     , c.full_name
     , c.sort_name
     , c.salutation
@@ -154,6 +156,8 @@ Cursor c_entity Is
     , constituent_research_evaluation_date As research_evaluation_date
     , c.etl_update_date
   From table(dw_pkg_base.tbl_constituent) c
+  Left Join table(dw_pkg_base.tbl_contact) ct
+    On ct.donor_id = c.donor_id
   ) Union All ( 
   Select 
     'O' As person_or_org
@@ -161,6 +165,7 @@ Cursor c_entity Is
     , o.ult_parent_id As household_id
     , o.org_primary
     , o.donor_id
+    , ct.ses_id
     , o.organization_name
     , o.sort_name
     , NULL As salutation
@@ -197,6 +202,8 @@ Cursor c_entity Is
     , organization_research_evaluation_date As research_evaluation_date
     , o.etl_update_date
   From table(dw_pkg_base.tbl_organization) o
+  Left Join table(dw_pkg_base.tbl_contact) ct
+    On ct.donor_id = o.donor_id
   )
 ;
 

@@ -12,6 +12,10 @@ From table(dw_pkg_base.tbl_organization)
 ;
 
 Select *
+From table(dw_pkg_base.tbl_contact)
+;
+
+Select *
 From table(dw_pkg_base.tbl_mini_entity)
 ;
 

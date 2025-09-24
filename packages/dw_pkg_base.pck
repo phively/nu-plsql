@@ -90,6 +90,13 @@ Type rec_organization Is Record (
 );
 
 --------------------------------------
+Type rec_contact Is Record (
+  contact_salesforce_id stg_alumni.contact.id%type
+  , donor_id stg_alumni.contact.ucinn_ascendv2__donor_id__c%type
+  , ses_id stg_alumni.contact.ucinn_ascendv2__student_information_system_id__c%type
+);
+
+--------------------------------------
 Type rec_mini_entity Is Record (
   person_or_org varchar2(1)
   , salesforce_id dm_alumni.dim_constituent.constituent_salesforce_id%type
@@ -447,6 +454,7 @@ Public table declarations
 
 Type constituent Is Table Of rec_constituent;
 Type organization Is Table Of rec_organization;
+Type contact Is Table Of rec_contact;
 Type mini_entity Is Table Of rec_mini_entity;
 Type relationships Is Table Of rec_relationships;
 Type degrees Is Table Of rec_degrees;
@@ -472,6 +480,9 @@ Function tbl_constituent
 
 Function tbl_organization
   Return organization Pipelined;
+
+Function tbl_contact
+  Return contact Pipelined;
 
 Function tbl_mini_entity
   Return mini_entity Pipelined;
@@ -674,6 +685,17 @@ Cursor c_organization Is
   Where org.organization_salesforce_id != '-'
 ;
 
+--------------------------------------
+Cursor c_contact Is
+  Select
+    s.id
+      As contact_salesforce_id
+    , s.ucinn_ascendv2__donor_id__c
+      As donor_id
+    , s.ucinn_ascendv2__student_information_system_id__c
+      As ses_id
+  From stg_alumni.contact s
+;
 
 --------------------------------------
 Cursor c_mini_entity Is
@@ -1461,6 +1483,22 @@ Function tbl_organization
     Close c_organization;
     For i in 1..(org.count) Loop
       Pipe row(org(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_contact
+  Return contact Pipelined As
+    -- Declarations
+    c contact;
+
+  Begin
+    Open c_contact;
+      Fetch c_contact Bulk Collect Into c;
+    Close c_contact;
+    For i in 1..(c.count) Loop
+      Pipe row(c(i));
     End Loop;
     Return;
   End;
