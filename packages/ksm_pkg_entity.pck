@@ -121,10 +121,12 @@ Cursor c_entity Is
     , c.salesforce_id
     , c.household_id
     , c.household_primary
-    , least(c.household_id, c.spouse_household_id)
+    , least(c.household_id, nvl(c.spouse_household_id, c.household_id))
       As household_id_ksm
     , Case
-        When c.household_id = least(c.household_id, c.spouse_household_id)
+        When c.household_primary = 'N'
+          Then 'N'
+        When c.household_id = least(c.household_id, nvl(c.spouse_household_id, c.household_id))
           Then 'Y'
         Else 'N'
         End

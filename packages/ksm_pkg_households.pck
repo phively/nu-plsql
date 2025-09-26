@@ -29,6 +29,8 @@ Type rec_household Is Record (
   , person_or_org mv_entity.person_or_org%type
   , household_primary mv_entity.household_primary%type
   , household_id mv_entity.household_id%type
+  , household_primary_ksm mv_entity.household_primary_ksm%type
+  , household_id_ksm mv_entity.household_id_ksm%type
   , household_account_name mv_entity.full_name%type
   , household_primary_donor_id mv_entity.donor_id%type
   , household_primary_full_name mv_entity.full_name%type
@@ -97,29 +99,29 @@ Cursor c_households Is
   -- Find max degree info
   hhdeg As (
     Select
-      mve.household_id
+      mve.household_id_ksm
       , min(deg.first_ksm_year)
         As household_first_ksm_year
       , min(deg.first_masters_year)
         As household_first_masters_year
       , max(deg.last_masters_year)
         As household_last_masters_year
-      , min(deg.program) keep(dense_rank First Order By deg.program_group_rank Asc, mve.household_primary Desc)
+      , min(deg.program) keep(dense_rank First Order By deg.program_group_rank Asc Nulls Last, mve.household_primary Desc Nulls Last)
         As household_program
-      , min(deg.program_group) keep(dense_rank First Order By deg.program_group_rank Asc, mve.household_primary Desc)
+      , min(deg.program_group) keep(dense_rank First Order By deg.program_group_rank Asc Nulls Last, mve.household_primary Desc Nulls Last)
         As household_program_group
       , max(deg.etl_update_date)
         As etl_update_date
     From mv_entity_ksm_degrees deg
     Inner Join mv_entity mve
       On mve.donor_id = deg.donor_id
-    Group By mve.household_id
+    Group By mve.household_id_ksm
   )
 
   -- Primary HH member info
   , hh_primary As (
     Select
-      mve.household_id
+      mve.household_id_ksm
       , Case
           When hh.household_account_name Is Not Null
             Then hh.household_account_name
@@ -145,28 +147,28 @@ Cursor c_households Is
     Left Join mv_entity spouse
       On spouse.donor_id = mve.spouse_donor_id
     Left Join dm_alumni.dim_household hh
-      On hh.household_donor_id = mve.household_id
+      On hh.household_donor_id = mve.household_id_ksm
     Left Join hhdeg
-      On hhdeg.household_id = mve.household_id
-    Where mve.household_primary = 'Y'
+      On hhdeg.household_id_ksm = mve.household_id_ksm
+    Where mve.household_primary_ksm = 'Y'
   )
   
   -- Householded rating
   , hh_rating As (
     Select
-      household_id
+      household_id_ksm
       , min(university_overall_rating)
         As household_university_overall_rating
       , max(research_evaluation)
-        keep(dense_rank First Order By research_evaluation_date Desc, research_evaluation Asc)
+        keep(dense_rank First Order By research_evaluation_date Desc Nulls Last, research_evaluation Asc Nulls Last)
         As household_research_evaluation
       , max(research_evaluation_date)
-        keep(dense_rank First Order By research_evaluation_date Desc, research_evaluation Asc)
+        keep(dense_rank First Order By research_evaluation_date Desc Nulls Last, research_evaluation Asc Nulls Last)
         As household_research_evaluation_date
     From mv_entity
     Where university_overall_rating Is Not Null
       Or research_evaluation Is Not Null
-    Group By household_id
+    Group By household_id_ksm
   )
   
   Select
@@ -175,7 +177,9 @@ Cursor c_households Is
     , mve.sort_name
     , mve.person_or_org
     , mve.household_primary
-    , hhp.household_id
+    , mve.household_id
+    , mve.household_primary_ksm
+    , mve.household_id_ksm
     , hhp.household_account_name
     , hhp.household_primary_donor_id
     , hhp.household_primary_full_name
@@ -202,9 +206,9 @@ Cursor c_households Is
     , hhp.etl_update_date
   From mv_entity mve
   Inner Join hh_primary hhp
-    On hhp.household_id = mve.household_id
+    On hhp.household_id_ksm = mve.household_id_ksm
   Left Join hh_rating hhr
-    On hhr.household_id = mve.household_id
+    On hhr.household_id_ksm = mve.household_id_ksm
 ;
 
 /*************************************************************************

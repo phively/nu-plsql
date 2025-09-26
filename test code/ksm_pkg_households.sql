@@ -10,6 +10,10 @@ From table(ksm_pkg_households.tbl_households)
 -- mv tests
 ---------------------------
 
+Select count(*)
+From mv_households
+;
+
 With
 
 dat As (
@@ -21,6 +25,8 @@ dat As (
   Union Select '0000668904' As id1, '0000666991' As id2, 'different year different programs' As explanation From DUAL
   Union Select '0000667067' As id1, '0000697199' As id2, 'KSM with non-KSM spouse' As explanation From DUAL
   Union Select '0000463496' As id1, '0000889013' As id2, 'non-KSM with non-KSM spouse' As explanation From DUAL
+  Union Select '0000469096' As id1, '0003379658' As id2, 'spouses have different hhid' As explanation From DUAL
+  Union Select '0000537440' As id1, '0000945661' As id2, 'check for duplicate records' As explanation From DUAL
 )
 
 Select Distinct
@@ -41,5 +47,5 @@ Left Join mv_entity_ksm_degrees sdeg
   On sdeg.donor_id = hh.household_spouse_donor_id
 Where dat.explanation Is Not Null
   Or sdat.explanation Is Not Null
-Order By hh.household_id Asc
+Order By hh.household_id_ksm Asc
 ;

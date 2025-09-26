@@ -26,3 +26,8 @@ Select *
 From mv_entity
 Where donor_id In ('0000469096', '0003379658')
 ;
+
+-- Ensure no nulls
+Select count(household_id), count(household_id_ksm)
+From mv_entity
+;
