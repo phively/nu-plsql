@@ -39,6 +39,7 @@ Type rec_constituent Is Record (
   , primary_constituent_type dm_alumni.dim_constituent.primary_constituent_type%type
   , institutional_suffix dm_alumni.dim_constituent.institutional_suffix%type
   , spouse_donor_id dm_alumni.dim_constituent.spouse_constituent_donor_id%type
+  , spouse_household_id dm_alumni.dim_constituent.constituent_household_account_donor_id%type
   , spouse_name dm_alumni.dim_constituent.spouse_name%type
   , spouse_instituitional_suffix dm_alumni.dim_constituent.spouse_instituitional_suffix%type
   , preferred_address_status dm_alumni.dim_constituent.preferred_address_status%type
@@ -558,6 +559,13 @@ Private cursors -- data definitions
 
 --------------------------------------
 Cursor c_constituent Is
+  With
+  spo As (
+    Select
+      constituent_donor_id As spouse_donor_id
+      , nullif(constituent_household_account_donor_id, '-') As spouse_household_id
+    From dm_alumni.dim_constituent
+  )
   Select
       constituent_salesforce_id
       As salesforce_id
@@ -584,6 +592,7 @@ Cursor c_constituent Is
       As institutional_suffix
     , nullif(spouse_constituent_donor_id, '-')
       As spouse_donor_id
+    , spo.spouse_household_id
     , nullif(spouse_name, '-')
       As spouse_name
     , nullif(spouse_instituitional_suffix, '-')
@@ -622,6 +631,8 @@ Cursor c_constituent Is
     , trunc(etl_update_date)
       As etl_update_date
   From dm_alumni.dim_constituent con
+  Left Join spo
+    On spo.spouse_donor_id = con.spouse_constituent_donor_id
   Where con.constituent_salesforce_id != '-'
 ;
 

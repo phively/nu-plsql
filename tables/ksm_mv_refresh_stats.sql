@@ -10,7 +10,7 @@ Select
   , NULL As min_etl_update_date
 From DUAL
 Where 1 = 0
--- 7:30 AM
+-- 7:20-7:30 AM
 Union
 Select 0, 'mv_involvement', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_involvement
@@ -35,34 +35,35 @@ From mv_transactions
 Union
 Select 0, 'mv_matches', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_matches
+-- 7:30-7:40 AM
 Union
-Select 0, 'mv_assignments', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+Select 1, 'mv_assignments', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_assignments
 Union
-Select 0, 'mv_assignment_history', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+Select 1, 'mv_assignment_history', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_assignment_history
 Union
-Select 0, 'mv_proposals', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+Select 1, 'mv_proposals', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_proposals
 -- 7:40 AM
 Union
-Select 1, 'mv_households', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+Select 2, 'mv_households', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_households
 Union
-Select 1, 'mv_ksm_transactions', count(*), min(mv_last_refresh), max(max_etl_update_date), min(max_etl_update_date)
+Select 2, 'mv_ksm_transactions', count(*), min(mv_last_refresh), max(max_etl_update_date), min(max_etl_update_date)
 From mv_ksm_transactions
 Union
-Select 1, 'mv_source_donor', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+Select 2, 'mv_source_donor', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_source_donor
 Union
-Select 1, 'mv_special_handling', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+Select 2, 'mv_special_handling', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_special_handling
 -- 7:50 AM
 Union
-Select 2, 'mv_ksm_giving_summary', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+Select 3, 'mv_ksm_giving_summary', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_ksm_giving_summary
 Union
-Select 2, 'mv_entity_contact_info', count(*), min(mv_last_refresh), max(max_etl_update_date), min(max_etl_update_date)
+Select 3, 'mv_entity_contact_info', count(*), min(mv_last_refresh), max(max_etl_update_date), min(max_etl_update_date)
 From mv_entity_contact_info
 ;
 

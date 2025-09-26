@@ -4,7 +4,7 @@ Create Or Replace Package ksm_pkg_prospect Is
 Author  : PBH634
 Created : 5/30/2025
 Purpose : Compile key prospect engagement and solicitation data
-Dependencies: dw_pkg_base, ksm_pkg_calendar
+Dependencies: dw_pkg_base, ksm_pkg_calendar, ksm_pkg_entity (mv_entity)
 
 Suggested naming conventions:
   Pure functions: [function type]_[description]
@@ -42,6 +42,8 @@ Type modeled_score Is Record (
 Type rec_assignment_history Is Record (
   household_id dm_alumni.dim_constituent.constituent_household_account_salesforce_id%type
   , household_primary dm_alumni.dim_constituent.household_primary_constituent_indicator%type
+  , household_id_ksm mv_entity.household_id_ksm%type
+  , household_primary_ksm mv_entity.household_primary_ksm%type
   , donor_id dm_alumni.dim_constituent.constituent_donor_id%type
   , sort_name dm_alumni.dim_constituent.full_name%type
   , assignment_record_id stg_alumni.ucinn_ascendv2__assignment__c.name%type
@@ -61,9 +63,11 @@ Type rec_assignment_history Is Record (
 
 Type rec_assignment_summary Is Record (
   household_id dm_alumni.dim_constituent.constituent_household_account_salesforce_id%type
+  , household_primary dm_alumni.dim_constituent.household_primary_constituent_indicator%type
+  , household_id_ksm dm_alumni.dim_constituent.constituent_household_account_salesforce_id%type
   , donor_id dm_alumni.dim_constituent.constituent_donor_id%type
   , sort_name dm_alumni.dim_constituent.full_name%type
-  , household_primary dm_alumni.dim_constituent.household_primary_constituent_indicator%type
+  , household_primary_ksm dm_alumni.dim_constituent.household_primary_constituent_indicator%type
   , prospect_manager_user_id varchar2(1600)
   , prospect_manager_name varchar2(1600)
   , prospect_manager_business_unit varchar2(1600)
@@ -123,19 +127,14 @@ Private cursors -- data definitions
 --------------------------------------
 Cursor c_assignment_history Is
 
-  With
-  
-  entity As (
-    Select *
-    From table(dw_pkg_base.tbl_mini_entity)
-  )
-
   Select
-    entity.household_id
-    , entity.household_primary
+    mve.household_id
+    , mve.household_primary
+    , mve.household_id_ksm
+    , mve.household_primary_ksm
     , assign.assignee_donor_id
       As donor_id
-    , entity.sort_name
+    , mve.sort_name
     , assign.assignment_record_id
     , assign.assignment_type
     , assign.assignment_code
@@ -159,8 +158,8 @@ Cursor c_assignment_history Is
     , assign.etl_update_date
   From table(dw_pkg_base.tbl_assignments) assign
   Cross Join table(ksm_pkg_calendar.tbl_current_calendar) cal
-  Inner Join entity
-    On entity.donor_id = assign.assignee_donor_id
+  Inner Join mv_entity mve
+    On mve.donor_id = assign.assignee_donor_id
   Where assign.staff_user_salesforce_id Not In (
     -- Users to suppress
     '005Uz0000015JKoIAM' -- Data Migration User
@@ -186,7 +185,7 @@ Cursor c_assignment_summary Is
 
   , pms As (
     Select
-      household_id
+      household_id_ksm
       , Listagg(Distinct staff_user_salesforce_id, '; ') Within Group (Order By staff_name)
         As prospect_manager_user_id
       , Listagg(Distinct staff_name, '; ') Within Group (Order By staff_name)
@@ -198,7 +197,7 @@ Cursor c_assignment_summary Is
       , max(etl_update_date)
         As etl_update_date
     From pm
-    Group By household_id
+    Group By household_id_ksm
   )
 
   , lgo As (
@@ -210,7 +209,7 @@ Cursor c_assignment_summary Is
 
   , lgos As (
     Select
-      household_id
+      household_id_ksm
       , Listagg(Distinct staff_user_salesforce_id, '; ') Within Group (Order By staff_name)
         As lagm_user_id
       , Listagg(Distinct staff_name, '; ') Within Group (Order By staff_name)
@@ -222,22 +221,24 @@ Cursor c_assignment_summary Is
       , max(etl_update_date)
         As etl_update_date
     From lgo
-    Group By household_id
+    Group By household_id_ksm
   )
 
   , donor_ids As (
-    Select household_id, donor_id, sort_name, household_primary
+    Select household_id, household_primary, household_id_ksm, donor_id, sort_name, household_primary_ksm
     From pm
     Union
-    Select household_id, donor_id, sort_name, household_primary
+    Select household_id, household_primary, household_id_ksm, donor_id, sort_name, household_primary_ksm
     From lgo
   )
 
   Select
     d.household_id
+    , d.household_primary
+    , d.household_id_ksm
     , d.donor_id
     , d.sort_name
-    , d.household_primary
+    , d.household_primary_ksm
     , pms.prospect_manager_user_id
     , pms.prospect_manager_name
     , pms.prospect_manager_business_unit
@@ -257,9 +258,9 @@ Cursor c_assignment_summary Is
       As etl_update_date
   From donor_ids d
   Left Join pms
-    On pms.household_id = d.household_id
+    On pms.household_id_ksm = d.household_id_ksm
   Left Join lgos
-    On lgos.household_id = d.household_id
+    On lgos.household_id_ksm = d.household_id_ksm
 ;
 
 /*************************************************************************

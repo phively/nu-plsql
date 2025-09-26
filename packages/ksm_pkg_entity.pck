@@ -29,6 +29,8 @@ Type rec_entity Is Record (
   , salesforce_id dm_alumni.dim_constituent.constituent_salesforce_id%type
   , household_id dm_alumni.dim_constituent.constituent_household_account_salesforce_id%type
   , household_primary dm_alumni.dim_constituent.household_primary_constituent_indicator%type
+  , household_id_ksm dm_alumni.dim_constituent.constituent_household_account_salesforce_id%type
+  , household_primary_ksm dm_alumni.dim_constituent.household_primary_constituent_indicator%type
   , donor_id dm_alumni.dim_constituent.constituent_donor_id%type
   , ses_id stg_alumni.contact.ucinn_ascendv2__student_information_system_id__c%type
   , full_name dm_alumni.dim_constituent.full_name%type
@@ -119,6 +121,16 @@ Cursor c_entity Is
     , c.salesforce_id
     , c.household_id
     , c.household_primary
+    , least(c.household_id, nvl(c.spouse_household_id, c.household_id))
+      As household_id_ksm
+    , Case
+        When c.household_primary = 'N'
+          Then 'N'
+        When c.household_id = least(c.household_id, nvl(c.spouse_household_id, c.household_id))
+          Then 'Y'
+        Else 'N'
+        End
+      As household_primary_ksm
     , c.donor_id
     , ct.ses_id
     , c.full_name
@@ -164,6 +176,10 @@ Cursor c_entity Is
     , o.salesforce_id
     , o.ult_parent_id As household_id
     , o.org_primary
+    , o.ult_parent_id
+      As household_id_ksm
+    , o.org_primary
+      As household_primary_ksm
     , o.donor_id
     , ct.ses_id
     , o.organization_name

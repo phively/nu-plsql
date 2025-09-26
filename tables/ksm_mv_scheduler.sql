@@ -1,5 +1,6 @@
 /*************************************************************************
 No dependencies
+7:20 AM
 7:30 AM
 *************************************************************************/
 
@@ -37,8 +38,8 @@ From table(dw_pkg_base.tbl_designation_detail) dd
 Create Materialized View mv_mini_entity
 Refresh Complete
 Start With sysdate
--- 7:30 AM tomorrow
-Next (trunc(sysdate) + 1 + 7.5/24)
+-- 7:20 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.333/24)
 As
 Select
   me.*
@@ -53,8 +54,8 @@ From table(dw_pkg_base.tbl_mini_entity) me
 Create Materialized View mv_entity
 Refresh Complete
 Start With sysdate
--- 7:30 AM tomorrow
-Next (trunc(sysdate) + 1 + 7.5/24)
+-- 7:20 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.333/24)
 As
 Select
   entity.*
@@ -67,8 +68,8 @@ From table(ksm_pkg_entity.tbl_entity) entity
 Create Materialized View mv_entity_relationships
 Refresh Complete
 Start With sysdate
--- 7:35 AM tomorrow
-Next (trunc(sysdate) + 1 + 7.583/24)
+-- 7:30 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.5/24)
 As
 Select
   rel.*
@@ -138,6 +139,41 @@ Select
 From table(ksm_pkg_transactions.tbl_matches) m
 ;
 
+/*************************************************************************
+Level 1 dependencies
+7:30 AM
+*************************************************************************/
+
+--------------------------------------
+-- ksm_pkg_prospect
+-- tbl_assignment_summary
+-- Drop Materialized View mv_assignments;
+Create Materialized View mv_assignments
+Refresh Complete
+Start With sysdate
+-- 7:35 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.583/24)
+As
+Select
+  assign.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_prospect.tbl_assignment_summary) assign
+;
+
+-- tbl_assignment_history
+-- Drop Materialized View mv_assignment_history;
+Create Materialized View mv_assignment_history
+Refresh Complete
+Start With sysdate
+-- 7:30 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.583/24)
+As
+Select
+  ah.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_prospect.tbl_assignment_history) ah
+;
+
 --------------------------------------
 -- ksm_pkg_proposals
 -- tbl_proposals
@@ -154,37 +190,8 @@ Select
 From table(ksm_pkg_proposals.tbl_proposals) prp
 ;
 
---------------------------------------
--- ksm_pkg_prospect
--- tbl_assignment_summary
--- Drop Materialized View mv_assignments;
-Create Materialized View mv_assignments
-Refresh Complete
-Start With sysdate
--- 7:30 AM tomorrow
-Next (trunc(sysdate) + 1 + 7.5/24)
-As
-Select
-  assign.*
-  , sysdate as mv_last_refresh
-From table(ksm_pkg_prospect.tbl_assignment_summary) assign
-;
-
--- tbl_assignment_history
-Create Materialized View mv_assignment_history
-Refresh Complete
-Start With sysdate
--- 7:30 AM tomorrow
-Next (trunc(sysdate) + 1 + 7.5/24)
-As
-Select
-  ah.*
-  , sysdate as mv_last_refresh
-From table(ksm_pkg_prospect.tbl_assignment_history) ah
-;
-
 /*************************************************************************
-Level 1 dependencies
+Level 2 dependencies
 7:40 AM
 *************************************************************************/
 
