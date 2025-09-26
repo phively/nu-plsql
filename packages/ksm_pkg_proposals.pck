@@ -4,7 +4,7 @@ Create Or Replace Package ksm_pkg_proposals Is
 Author  : PBH634
 Created : 6/23/2025
 Purpose : Consolidated proposals: proposal + opportunity + prospect info
-Dependencies: dw_pkg_base, ksm_pkg_calendar
+Dependencies: dw_pkg_base, ksm_pkg_calendar, ksm_pkg_entity (mv_entity)
 
 Suggested naming conventions:
   Pure functions: [function type]_[description]
@@ -29,6 +29,8 @@ Type rec_proposal Is Record (
     , proposal_strategy_record_id dm_alumni.dim_proposal_opportunity.proposal_strategy_record_id%type
     , household_id dm_alumni.dim_constituent.constituent_household_account_salesforce_id%type
     , household_primary dm_alumni.dim_constituent.household_primary_constituent_indicator%type
+    , household_id_ksm mv_entity.household_id_ksm%type
+    , household_primary_ksm mv_entity.household_primary_ksm%type
     , donor_id dm_alumni.fact_proposal_opportunity.constituent_donor_id%type
     , full_name dm_alumni.dim_constituent.full_name%type
     , sort_name dm_alumni.dim_constituent.full_name%type
@@ -110,15 +112,17 @@ Cursor c_proposals Is
     , prop.proposal_record_id
     , prop.proposal_legacy_id
     , prop.proposal_strategy_record_id
-    , me.household_id
-    , me.household_primary
+    , mve.household_id
+    , mve.household_primary
+    , mve.household_id_ksm
+    , mve.household_primary_ksm
     , prop.donor_id
-    , me.full_name
-    , me.sort_name
-    , me.institutional_suffix
-    , me.is_deceased_indicator
-    , me.person_or_org
-    , me.primary_record_type
+    , mve.full_name
+    , mve.sort_name
+    , mve.institutional_suffix
+    , mve.is_deceased_indicator
+    , mve.person_or_org
+    , mve.primary_record_type
     , prop.proposal_active_indicator
     , prop.proposal_stage
     , prop.proposal_type
@@ -146,8 +150,8 @@ Cursor c_proposals Is
     , prop.historical_pm_is_active
     , prop.etl_update_date
   From table(dw_pkg_base.tbl_proposals) prop
-  Left Join table(dw_pkg_base.tbl_mini_entity) me
-    On me.donor_id = prop.donor_id
+  Left Join mv_entity mve
+    On mve.donor_id = prop.donor_id
 ;
 
 /*************************************************************************
