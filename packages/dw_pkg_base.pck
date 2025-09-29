@@ -376,14 +376,19 @@ Type rec_proposal Is Record (
   , proposal_stage dm_alumni.dim_proposal_opportunity.proposal_stage%type
   , proposal_type dm_alumni.dim_proposal_opportunity.proposal_type%type
   , proposal_name dm_alumni.dim_proposal_opportunity.proposal_name%type
+  , proposal_description dm_alumni.dim_proposal_opportunity.proposal_description%type
+  , proposal_funding_interests dm_alumni.dim_proposal_opportunity.proposal_funding_interests%type
   , proposal_probability dm_alumni.dim_proposal_opportunity.proposal_probability%type
   , proposal_amount dm_alumni.dim_proposal_opportunity.proposal_amount%type
   , proposal_submitted_amount dm_alumni.dim_proposal_opportunity.proposal_submitted_amount%type
   , proposal_anticipated_amount dm_alumni.dim_proposal_opportunity.proposal_anticipated_amount%type
   , proposal_funded_amount dm_alumni.dim_proposal_opportunity.proposal_funded_amount%type
+  , proposal_linked_gift_pledge_ids dm_alumni.dim_proposal_opportunity.proposal_linked_gift_pledge_ids%type
   , proposal_created_date dm_alumni.dim_proposal_opportunity.proposal_created_date%type
   , proposal_submitted_date dm_alumni.dim_proposal_opportunity.proposal_submitted_date%type
   , proposal_close_date dm_alumni.dim_proposal_opportunity.proposal_close_date%type
+  , proposal_stage_date dm_alumni.dim_proposal_opportunity.proposal_stage_date%type
+  , proposal_days_in_current_stage dm_alumni.dim_proposal_opportunity.proposal_days_in_current_stage%type
   , proposal_payment_schedule dm_alumni.dim_proposal_opportunity.proposal_payment_schedule%type
   , proposal_designation_units dm_alumni.dim_proposal_opportunity.proposal_designation_work_plan_units%type
   , ksm_flag varchar2(1)
@@ -1331,14 +1336,21 @@ Cursor c_proposals Is
     , dpo.proposal_stage
     , dpo.proposal_type
     , dpo.proposal_name
+    , nullif(dpo.proposal_description, '-')
+      As proposal_description
+    , nullif(dpo.proposal_funding_interests, '-')
+      As proposal_funding_interests
     , dpo.proposal_probability
     , dpo.proposal_amount
     , dpo.proposal_submitted_amount
     , dpo.proposal_anticipated_amount
     , dpo.proposal_funded_amount
+    , dpo.proposal_linked_gift_pledge_ids
     , dpo.proposal_created_date
     , dpo.proposal_submitted_date
     , dpo.proposal_close_date
+    , dpo.proposal_stage_date
+    , dpo.proposal_days_in_current_stage
     , nullif(dpo.proposal_payment_schedule, '-')
       As proposal_payment_schedule
     , nullif(dpo.proposal_designation_work_plan_units, '-')
