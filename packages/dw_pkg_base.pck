@@ -404,6 +404,23 @@ Type rec_proposal Is Record (
 );
 
 --------------------------------------
+Type rec_strategy Is Record (
+    strategy_salesforce_id dm_alumni.dim_strategy.strategy_salesforce_id%type
+  , strategy_record_id dm_alumni.dim_strategy.strategy_record_id%type
+  , legacy_prospect_id dm_alumni.dim_strategy.strategy_legacy_prospect_id%type
+  , prospect_name dm_alumni.dim_strategy.strategy_prospect_name%type
+  , strategy_primary_relation_type dm_alumni.dim_strategy.strategy_primary_relation_type%type
+  , active_ind dm_alumni.dim_strategy.strategy_active_indicator%type
+  , strategy_start_date dm_alumni.dim_strategy.strategy_start_date%type
+  , strategy_end_date dm_alumni.dim_strategy.strategy_end_date%type
+  , stage_of_readiness dm_alumni.dim_strategy.strategy_primary_relation_stage_of_readiness%type
+  , stage_of_readiness_date dm_alumni.dim_strategy.strategy_primary_relation_stage_of_readiness_date%type
+  , active_assignment_units dm_alumni.dim_strategy.active_unit_strategy_assignments_list%type
+  , ksm_assignment_indicator varchar2(1)
+  , active_assignment_units_count dm_alumni.dim_strategy.active_unit_strategy_assignment_count%type
+);
+
+--------------------------------------
 Type rec_econtact Is Record (
   contact_salesforce_id stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__contact__c%type
   , donor_id stg_alumni.contact.ucinn_ascendv2__donor_id__c%type
@@ -474,6 +491,7 @@ Type involvement Is Table Of rec_involvement;
 Type service_indicators Is Table Of rec_service_indicators;
 Type assignments Is Table Of rec_assignment;
 Type proposals Is Table Of rec_proposal;
+Type strategy Is Table Of rec_strategy;
 Type econtacts Is Table Of rec_econtact;
 Type address Is Table Of rec_address;
 
@@ -528,6 +546,9 @@ Function tbl_assignments
 
 Function tbl_proposals
   Return proposals Pipelined;
+
+Function tbl_strategy
+  Return strategy Pipelined;
 
 Function tbl_social_media
   Return econtacts Pipelined;
@@ -1380,6 +1401,36 @@ Cursor c_proposals Is
 ;
 
 --------------------------------------
+Cursor c_strategy Is
+  Select
+    strategy_salesforce_id
+    , strategy_record_id
+    , strategy_legacy_prospect_id
+      As legacy_prospect_id
+    , strategy_prospect_name
+      As prospect_name
+    , strategy_primary_relation_type
+    , strategy_active_indicator
+      As active_ind
+    , strategy_start_date
+    , strategy_end_date
+    , strategy_primary_relation_stage_of_readiness
+      As stage_of_readiness
+    , strategy_primary_relation_stage_of_readiness_date
+      As stage_of_readiness_date
+    , nullif(active_unit_strategy_assignments_list, '-')
+      As active_assignment_units
+    , Case
+        When strategy_kellogg_unit_strategy_assignment_indicator = 'Y'
+          Then 'Y'
+        End
+      As ksm_assignment_indicator
+    , active_unit_strategy_assignment_count
+      As active_assignment_units_count
+  From dm_alumni.dim_strategy strat
+;
+
+--------------------------------------
 Cursor c_econtacts Is
   Select
     sm.ucinn_ascendv2__contact__c
@@ -1733,7 +1784,23 @@ Function tbl_proposals
     End Loop;
     Return;
   End;
-  
+
+--------------------------------------
+Function tbl_strategy
+  Return strategy Pipelined As
+    -- Declarations
+    st strategy;
+
+  Begin
+    Open c_strategy;
+      Fetch c_strategy Bulk Collect Into st;
+    Close c_strategy;
+    For i in 1..(st.count) Loop
+      Pipe row(st(i));
+    End Loop;
+    Return;
+  End;
+
 --------------------------------------
 Function tbl_social_media
   Return econtacts Pipelined As

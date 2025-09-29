@@ -64,6 +64,10 @@ From table(dw_pkg_base.tbl_proposals)
 ;
 
 Select *
+From table(dw_pkg_base.tbl_strategy)
+;
+
+Select *
 From table(dw_pkg_base.tbl_social_media)
 ;
 

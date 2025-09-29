@@ -32,6 +32,7 @@ Type rec_proposal Is Record (
   , household_primary dm_alumni.dim_constituent.household_primary_constituent_indicator%type
   , household_id_ksm mv_entity.household_id_ksm%type
   , household_primary_ksm mv_entity.household_primary_ksm%type
+  , prospect_name dm_alumni.dim_strategy.strategy_prospect_name%type
   , donor_id dm_alumni.fact_proposal_opportunity.constituent_donor_id%type
   , full_name dm_alumni.dim_constituent.full_name%type
   , sort_name dm_alumni.dim_constituent.full_name%type
@@ -145,6 +146,7 @@ Cursor c_proposals Is
     , mve.household_primary
     , mve.household_id_ksm
     , mve.household_primary_ksm
+    , strat.prospect_name
     , prop.donor_id
     , mve.full_name
     , mve.sort_name
@@ -200,6 +202,8 @@ Cursor c_proposals Is
   From table(dw_pkg_base.tbl_proposals) prop
   Left Join mv_entity mve
     On mve.donor_id = prop.donor_id
+  Left Join table(dw_pkg_base.tbl_strategy) strat
+    On strat.strategy_record_id = prop.proposal_strategy_record_id
   Left Join ksm_mgrs gos_active
     On gos_active.user_id = prop.active_proposal_manager_salesforce_id
   Left Join ksm_mgrs gos_hist
