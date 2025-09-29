@@ -376,14 +376,19 @@ Type rec_proposal Is Record (
   , proposal_stage dm_alumni.dim_proposal_opportunity.proposal_stage%type
   , proposal_type dm_alumni.dim_proposal_opportunity.proposal_type%type
   , proposal_name dm_alumni.dim_proposal_opportunity.proposal_name%type
+  , proposal_description dm_alumni.dim_proposal_opportunity.proposal_description%type
+  , proposal_funding_interests dm_alumni.dim_proposal_opportunity.proposal_funding_interests%type
   , proposal_probability dm_alumni.dim_proposal_opportunity.proposal_probability%type
   , proposal_amount dm_alumni.dim_proposal_opportunity.proposal_amount%type
   , proposal_submitted_amount dm_alumni.dim_proposal_opportunity.proposal_submitted_amount%type
   , proposal_anticipated_amount dm_alumni.dim_proposal_opportunity.proposal_anticipated_amount%type
   , proposal_funded_amount dm_alumni.dim_proposal_opportunity.proposal_funded_amount%type
+  , proposal_linked_gift_pledge_ids dm_alumni.dim_proposal_opportunity.proposal_linked_gift_pledge_ids%type
   , proposal_created_date dm_alumni.dim_proposal_opportunity.proposal_created_date%type
   , proposal_submitted_date dm_alumni.dim_proposal_opportunity.proposal_submitted_date%type
   , proposal_close_date dm_alumni.dim_proposal_opportunity.proposal_close_date%type
+  , proposal_stage_date dm_alumni.dim_proposal_opportunity.proposal_stage_date%type
+  , proposal_days_in_current_stage dm_alumni.dim_proposal_opportunity.proposal_days_in_current_stage%type
   , proposal_payment_schedule dm_alumni.dim_proposal_opportunity.proposal_payment_schedule%type
   , proposal_designation_units dm_alumni.dim_proposal_opportunity.proposal_designation_work_plan_units%type
   , ksm_flag varchar2(1)
@@ -396,6 +401,23 @@ Type rec_proposal Is Record (
   , historical_pm_business_unit stg_alumni.opportunityteammember.ap_business_unit__c%type
   , historical_pm_is_active stg_alumni.user_tbl.isactive%type
   , etl_update_date dm_alumni.dim_proposal_opportunity.etl_update_date%type
+);
+
+--------------------------------------
+Type rec_strategy Is Record (
+    strategy_salesforce_id dm_alumni.dim_strategy.strategy_salesforce_id%type
+  , strategy_record_id dm_alumni.dim_strategy.strategy_record_id%type
+  , legacy_prospect_id dm_alumni.dim_strategy.strategy_legacy_prospect_id%type
+  , prospect_name dm_alumni.dim_strategy.strategy_prospect_name%type
+  , strategy_primary_relation_type dm_alumni.dim_strategy.strategy_primary_relation_type%type
+  , active_ind dm_alumni.dim_strategy.strategy_active_indicator%type
+  , strategy_start_date dm_alumni.dim_strategy.strategy_start_date%type
+  , strategy_end_date dm_alumni.dim_strategy.strategy_end_date%type
+  , stage_of_readiness dm_alumni.dim_strategy.strategy_primary_relation_stage_of_readiness%type
+  , stage_of_readiness_date dm_alumni.dim_strategy.strategy_primary_relation_stage_of_readiness_date%type
+  , active_assignment_units dm_alumni.dim_strategy.active_unit_strategy_assignments_list%type
+  , ksm_assignment_indicator varchar2(1)
+  , active_assignment_units_count dm_alumni.dim_strategy.active_unit_strategy_assignment_count%type
 );
 
 --------------------------------------
@@ -469,6 +491,7 @@ Type involvement Is Table Of rec_involvement;
 Type service_indicators Is Table Of rec_service_indicators;
 Type assignments Is Table Of rec_assignment;
 Type proposals Is Table Of rec_proposal;
+Type strategy Is Table Of rec_strategy;
 Type econtacts Is Table Of rec_econtact;
 Type address Is Table Of rec_address;
 
@@ -523,6 +546,9 @@ Function tbl_assignments
 
 Function tbl_proposals
   Return proposals Pipelined;
+
+Function tbl_strategy
+  Return strategy Pipelined;
 
 Function tbl_social_media
   Return econtacts Pipelined;
@@ -1331,14 +1357,21 @@ Cursor c_proposals Is
     , dpo.proposal_stage
     , dpo.proposal_type
     , dpo.proposal_name
+    , nullif(dpo.proposal_description, '-')
+      As proposal_description
+    , nullif(dpo.proposal_funding_interests, '-')
+      As proposal_funding_interests
     , dpo.proposal_probability
     , dpo.proposal_amount
     , dpo.proposal_submitted_amount
     , dpo.proposal_anticipated_amount
     , dpo.proposal_funded_amount
+    , dpo.proposal_linked_gift_pledge_ids
     , dpo.proposal_created_date
     , dpo.proposal_submitted_date
     , dpo.proposal_close_date
+    , dpo.proposal_stage_date
+    , dpo.proposal_days_in_current_stage
     , nullif(dpo.proposal_payment_schedule, '-')
       As proposal_payment_schedule
     , nullif(dpo.proposal_designation_work_plan_units, '-')
@@ -1365,6 +1398,36 @@ Cursor c_proposals Is
     On last_pm.opportunity_salesforce_id = dpo.opportunity_salesforce_id
   Inner Join dm_alumni.fact_proposal_opportunity fpo
     On fpo.opportunity_salesforce_id = dpo.opportunity_salesforce_id
+;
+
+--------------------------------------
+Cursor c_strategy Is
+  Select
+    strategy_salesforce_id
+    , strategy_record_id
+    , strategy_legacy_prospect_id
+      As legacy_prospect_id
+    , strategy_prospect_name
+      As prospect_name
+    , strategy_primary_relation_type
+    , strategy_active_indicator
+      As active_ind
+    , strategy_start_date
+    , strategy_end_date
+    , strategy_primary_relation_stage_of_readiness
+      As stage_of_readiness
+    , strategy_primary_relation_stage_of_readiness_date
+      As stage_of_readiness_date
+    , nullif(active_unit_strategy_assignments_list, '-')
+      As active_assignment_units
+    , Case
+        When strategy_kellogg_unit_strategy_assignment_indicator = 'Y'
+          Then 'Y'
+        End
+      As ksm_assignment_indicator
+    , active_unit_strategy_assignment_count
+      As active_assignment_units_count
+  From dm_alumni.dim_strategy strat
 ;
 
 --------------------------------------
@@ -1721,7 +1784,23 @@ Function tbl_proposals
     End Loop;
     Return;
   End;
-  
+
+--------------------------------------
+Function tbl_strategy
+  Return strategy Pipelined As
+    -- Declarations
+    st strategy;
+
+  Begin
+    Open c_strategy;
+      Fetch c_strategy Bulk Collect Into st;
+    Close c_strategy;
+    For i in 1..(st.count) Loop
+      Pipe row(st(i));
+    End Loop;
+    Return;
+  End;
+
 --------------------------------------
 Function tbl_social_media
   Return econtacts Pipelined As
