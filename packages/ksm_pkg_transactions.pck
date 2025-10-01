@@ -363,6 +363,7 @@ Cursor c_transactions Is
         When gcred.source_type_detail = 'Matching Gift Payment' Then 'M'
         When gcred.source_type_detail = 'Pledge' Then 'P'
         When gcred.source_type_detail Like '%Payment%' Then 'Y'
+        When gcred.source_type_detail = 'Recurring Gift' Then'P'
         End
       As gypm_ind
     -- A at end of opportunity/payment number implies adjustment
