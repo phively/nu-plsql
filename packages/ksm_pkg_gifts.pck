@@ -424,6 +424,8 @@ Cursor c_ksm_transactions Is
         On mvt.credited_donor_id = mve.donor_id
         And mvt.credit_date Between ah.start_date And nvl(ah.end_date, to_date('99990101', 'yyyymmdd'))
       Where ah.assignment_code In ('PRM', 'LAGM')
+        -- Ignore DAF
+        And donor_advised_fund_indicator Is Null
     )
     
     , ranked_managers As (
