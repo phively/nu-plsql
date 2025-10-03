@@ -1431,6 +1431,48 @@ Cursor c_strategy Is
 ;
 
 --------------------------------------
+Cursor c_contact_report Is
+  Select
+    cr.id As contact_report_salesforce_id
+    , cr.name As contact_report_record_id
+    , cr.ap_contact_report_author_user__c As contact_report_user_id
+    , cr.ucinn_ascendv2__contact__c As contact_report_contact_id
+    , cr.ap_purpose__c As contact_report_purpose
+    , cr.ucinn_ascendv2__contact_method__c As contact_report_type
+    , Case When cr.ucinn_ascendv2__is_visit_formula__c  = 'true' Then 'Y' End
+      As contact_report_visit_flag
+    , cr.ucinn_ascendv2__date__c As contact_report_date
+    , cr.ucinn_ascendv2__description__c As contact_report_description
+    , cr.ucinn_ascendv2__contact_report_body__c As contact_report_body
+    , cr.etl_update_date
+  From stg_alumni.ucinn_ascendv2__contact_report__c cr
+;
+
+--------------------------------------
+Cursor c_contact_report_relation Is
+  Select
+    crr.id As cr_relation_salesforce_id
+    , crr.name As cr_relation_record_id
+    , crr.ucinn_ascendv2__contact_report__c As contact_report_salesforce_id
+    , crr.ucinn_ascendv2__contact_role__c As contact_role
+    , crr.ucinn_ascendv2__contact__c As contact_salesforce_id
+    , crr.etl_update_date
+  From stg_alumni.ucinn_ascendv2__contact_report_relation__c crr
+;
+
+--------------------------------------
+Cursor c_fundraiser_contact_report_relation Is
+  Select
+    fcr.id As fundraiser_cr_salesforce_id
+    , fcr.name As fundraiser_cr_record_id
+    , fcr.ucinn_ascendv2__contact_report__c As contact_report_salesforce_id
+    , fcr.ucinn_ascendv2__fundraiser__c As fundraiser_salesforce_id
+    , fcr.ucinn_ascendv2__fundraiser_role__c As fundraiser_role
+    , fcr.etl_update_date
+  From stg_alumni.ucinn_ascendv2__fundraiser_contact_report_relation__c fcr
+;
+
+--------------------------------------
 Cursor c_econtacts Is
   Select
     sm.ucinn_ascendv2__contact__c
