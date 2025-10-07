@@ -1,44 +1,8 @@
 create or replace view tableau_ksm_prospect as 
 
-with entity as (select e.person_or_org,
-       e.salesforce_id,
-       e.household_id,
-       e.household_primary,
-       e.donor_id,
-       e.full_name,
-       e.sort_name,
-       e.salutation,
-       e.first_name,
-       e.middle_name,
-       e.last_name,
-       e.is_deceased_indicator,
-       e.lost_indicator,
-       e.donor_advised_fund_indicator,
-       e.primary_record_type,
-       e.institutional_suffix,
-       e.spouse_donor_id,
-       e.spouse_name,
-       e.spouse_institutional_suffix,
-       e.org_ult_parent_donor_id,
-       e.org_ult_parent_name,
-       e.preferred_address_status,
-       e.preferred_address_type,
-       e.preferred_address_line_1,
-       e.preferred_address_line_2,
-       e.preferred_address_line_3,
-       e.preferred_address_line_4,
-       e.preferred_address_city,
-       e.preferred_address_state,
-       e.preferred_address_postal_code,
-       e.preferred_address_country,
-       e.gender_identity,
-       e.citizenship,
-       e.ethnicity,
-       e.university_overall_rating,
-       e.research_evaluation,
-       e.research_evaluation_date,
-       e.etl_update_date,
-       e.mv_last_refresh
+--- Entity 
+
+with entity as (select *
  From mv_entity e
  where e.is_deceased_indicator = 'N'
  ),
@@ -65,10 +29,6 @@ give as (select g.household_id,
        g.household_spouse_donor_id,
        g.household_spouse_full_name,
        g.household_last_masters_year,
-       g.af_young_alum,
-       g.af_young_alum1,
-       g.af_young_alum2,
-       g.af_young_alum3,
        g.ngc_lifetime,
        g.ngc_lifetime_full_rec,
        g.ngc_lifetime_nonanon_full_rec,
@@ -118,6 +78,7 @@ from stg_alumni.ucinn_ascendv2__Affiliation__c c
 where c.ap_is_primary_employment__c = 'true'
 group by c.UCINN_ASCENDV2__RELATED_CONTACT_DONOR_ID_FORMULA__C),
 
+--- Dean's Last Visit 
 
 a as (select
 distinct co.ucinn_ascendv2__donor_id__c,
@@ -134,7 +95,7 @@ where c.ap_contact_report_author_name_formula__c = 'Francesca Cornelli'
 and c.ucinn_ascendv2__contact_method__c = 'Visit'
 order by c.ucinn_ascendv2__date__c ASC),
 
---- Listagg this
+--- Listagg Dean's Contact Report
 
 l as (select a.ucinn_ascendv2__donor_id__c,
 Listagg (a.ap_contact_report_author_name_formula__c, ';  ') Within Group (Order By a.ucinn_ascendv2__date__c) As author_name,
@@ -143,6 +104,8 @@ Listagg (a.ucinn_ascendv2__date__c, ';  ') Within Group (Order By a.ucinn_ascend
 Listagg (a.ucinn_ascendv2__description__c, ';  ') Within Group (Order By a.ucinn_ascendv2__date__c) As ucinn_ascendv2__description__c
 from a
 group by a.ucinn_ascendv2__donor_id__c),
+
+--- Involvements 
 
 i as (select i.constituent_donor_id,
        i.constituent_name,
@@ -158,7 +121,19 @@ i as (select i.constituent_donor_id,
        i.involvement_comment,
        i.etl_update_date,
        i.mv_last_refresh
-from mv_involvement i),
+from mv_involvement i
+where i.involvement_status = 'Current'
+and (i.involvement_name like '%KSM%'
+or i.involvement_name like '%Kellogg%')
+),
+
+--- listagg involvements 
+
+involve as (select i.constituent_donor_id,
+Listagg (i.involvement_name, ';  ') Within Group (Order By i.involvement_name) As involvement_name
+from i
+group by i.constituent_donor_id),
+
 
 --- contact 
 
@@ -262,10 +237,6 @@ select  distinct
        g.household_spouse_donor_id,
        g.household_spouse_full_name,
        g.household_last_masters_year,
-       g.af_young_alum,
-       g.af_young_alum1,
-       g.af_young_alum2,
-       g.af_young_alum3,
        g.ngc_lifetime,
        g.ngc_lifetime_full_rec,
        g.ngc_lifetime_nonanon_full_rec,
@@ -282,7 +253,7 @@ select  distinct
        l.contact_type,
        l.cr_date,
        l.ucinn_ascendv2__description__c,
-       i.involvement_name,
+       involve.involvement_name,
        crf.constituent_last_contact_report_date,
        crf.constituent_last_contact_primary_relationship_manager_date,
        crf.constituent_last_contact_report_author,
@@ -292,11 +263,19 @@ select  distinct
        crf.constituent_visit_last_year_count,
        crf.constituent_last_visit_date
 from entity e 
-inner join d d on d.donor_id = e.donor_id 
+--- Inner join degrees 
+inner join d on d.donor_id = e.donor_id
+--- giving info  
 left join give g on g.household_primary_donor_id = e.donor_id 
+--- employment
 left join employ on employ.UCINN_ASCENDV2__RELATED_CONTACT_DONOR_ID_FORMULA__C = e.donor_id
+--- assingment
 left join assign a on a.donor_id = e.donor_id
+--- last contact report
 left join crf on crf.constituent_donor_id = e.donor_id
+--- francesca's contact report 
 left join l on l.ucinn_ascendv2__donor_id__c = e.donor_id
-left join i on i.constituent_donor_id = e.donor_id
+--- involvements
+left join involve on involve.constituent_donor_id = e.donor_id
+--- contacts
 left join co on co.donor_id = e.donor_id
