@@ -170,7 +170,30 @@ co as (Select c.donor_id,
        c.business_address_state,
        c.business_address_postal_code,
        c.business_address_country
-From mv_entity_contact_info c)
+From mv_entity_contact_info c),
+
+--- KSM Model Scores and AF 10K- Temp Table from Paul 
+--- TBL_KSM_MG
+
+K as (Select a.donor_id,
+       a.segment_year,
+       a.segment_month,
+       a.segment_code,
+       a.description,
+       a.score
+From tbl_ksm_model_af_10k a),
+
+mods as (Select m.donor_id,
+       m.segment_year,
+       m.segment_month,
+       m.id_code,
+       m.id_segment,
+       m.id_score,
+       m.pr_code,
+       m.pr_segment,
+       m.pr_score,
+       m.est_probability
+From tbl_ksm_model_mg m)
 
 
 select  distinct 
@@ -261,7 +284,21 @@ select  distinct
        crf.constituent_last_contact_report_method,
        crf.constituent_visit_count,
        crf.constituent_visit_last_year_count,
-       crf.constituent_last_visit_date
+       crf.constituent_last_visit_date,
+       mods.segment_year,
+       mods.segment_month,
+       mods.id_code,
+       mods.id_segment,
+       mods.id_score,
+       mods.pr_code,
+       mods.pr_segment,
+       mods.pr_score,
+       mods.est_probability,
+       K.segment_year as K_segment_year,
+       K.segment_month as K_segment_month,
+       K.segment_code as K_segment_code,
+       K.description as K_segment_description,
+       K.score as K_score
 from entity e 
 --- Inner join degrees 
 inner join d on d.donor_id = e.donor_id
@@ -279,3 +316,7 @@ left join l on l.ucinn_ascendv2__donor_id__c = e.donor_id
 left join involve on involve.constituent_donor_id = e.donor_id
 --- contacts
 left join co on co.donor_id = e.donor_id
+--- 10K 
+left join K on K.donor_id = e.donor_id
+--- model
+left join mods on mods.donor_id = e.donor_id
