@@ -1366,7 +1366,8 @@ Cursor c_proposals Is
     , dpo.proposal_submitted_amount
     , dpo.proposal_anticipated_amount
     , dpo.proposal_funded_amount
-    , dpo.proposal_linked_gift_pledge_ids
+    , nullif(dpo.proposal_linked_gift_pledge_ids, '-')
+      As proposal_linked_gift_pledge_ids
     , dpo.proposal_created_date
     , dpo.proposal_submitted_date
     , dpo.proposal_close_date
