@@ -48,6 +48,26 @@ Type rec_ksm_model_af_10k Is Record (
 );
 
 --------------------------------------
+Type rec_ksm_model_alumni_engagement Is Record (
+  donor_id svc_kellogg_alumni_reporting.tbl_ksm_model_ae.id_number%type
+  , segment_code svc_kellogg_alumni_reporting.tbl_ksm_model_ae.segment_code%type
+  , description svc_kellogg_alumni_reporting.tbl_ksm_model_ae.segment_name%type
+  , segment_year svc_kellogg_alumni_reporting.tbl_ksm_model_ae.segment_year%type
+  , segment_month svc_kellogg_alumni_reporting.tbl_ksm_model_ae.segment_month%type
+  , score svc_kellogg_alumni_reporting.tbl_ksm_model_ae.xcomment%type
+);
+
+--------------------------------------
+Type rec_ksm_model_student_supporter Is Record (
+  donor_id svc_kellogg_alumni_reporting.tbl_ksm_model_ss.id_number%type
+  , segment_code svc_kellogg_alumni_reporting.tbl_ksm_model_ss.segment_code%type
+  , description svc_kellogg_alumni_reporting.tbl_ksm_model_ss.segment_name%type
+  , segment_year svc_kellogg_alumni_reporting.tbl_ksm_model_ss.segment_year%type
+  , segment_month svc_kellogg_alumni_reporting.tbl_ksm_model_ss.segment_month%type
+  , score svc_kellogg_alumni_reporting.tbl_ksm_model_ss.xcomment%type
+);
+
+--------------------------------------
 Type rec_ksm_models Is Record (
   donor_id mv_entity.donor_id%type
   , household_id mv_entity.household_id%type
@@ -58,15 +78,21 @@ Type rec_ksm_models Is Record (
   , primary_record_type mv_entity.primary_record_type%type
   , institutional_suffix mv_entity.institutional_suffix%type
   , mg_id_code varchar2(20)
-  , mg_id_description varchar2(20)
+  , mg_id_description varchar2(60)
   , mg_id_score number
   , mg_pr_code varchar2(20)
-  , mg_pr_description varchar2(20)
+  , mg_pr_description varchar2(60)
   , mg_pr_score number
   , mg_probability number
   , af_10k_code varchar2(20)
-  , af_10k_description varchar2(20)
+  , af_10k_description varchar2(60)
   , af_10k_score number
+  , alumni_engagement_code varchar2(20)
+  , alumni_engagement_description varchar2(60)
+  , alumni_engagement_score number
+  , student_supporter_code varchar2(20)
+  , student_supporter_description varchar2(60)
+  , student_supporter_score number
   , etl_update_date date
 );
 
@@ -76,6 +102,8 @@ Public table declarations
 
 Type ksm_model_mg Is Table Of rec_ksm_model_mg;
 Type ksm_model_af_10k Is Table Of rec_ksm_model_af_10k;
+Type ksm_model_alumni_engagement Is Table Of rec_ksm_model_alumni_engagement;
+Type ksm_model_student_supporter Is Table Of rec_ksm_model_student_supporter;
 Type ksm_models Is Table Of rec_ksm_models;
 
 /*************************************************************************
@@ -87,6 +115,12 @@ Function tbl_ksm_model_mg
   
 Function tbl_ksm_model_af_10k
   Return ksm_model_af_10k Pipelined;
+
+Function tbl_ksm_model_alumni_engagement
+  Return ksm_model_alumni_engagement Pipelined;
+
+Function tbl_ksm_model_student_supporter
+  Return ksm_model_student_supporter Pipelined;
 
 Function tbl_ksm_models
   Return ksm_models Pipelined;
@@ -134,16 +168,16 @@ Cursor c_ksm_model_af_10k Is
 
 --------------------------------------
 -- All alumni engagement model scores
-Cursor c_ksm_model_ae Is
-  Select NULL
-  From DUAL
+Cursor c_ksm_model_alumni_engagement Is
+  Select *
+  From tbl_ksm_model_ae
 ;
 
 --------------------------------------
 -- All student supporter model scores
-Cursor c_ksm_model_ss Is
-  Select NULL
-  From DUAL
+Cursor c_ksm_model_student_supporter Is
+  Select *
+  From tbl_ksm_model_ss
 ;
 
 --------------------------------------
@@ -178,10 +212,36 @@ Cursor c_ksm_models Is
     From table(ksm_pkg_models.tbl_ksm_model_af_10k) af10k
   )
   
+  , ae As (
+    Select
+      alen.donor_id
+      , alen.segment_year
+      , alen.segment_month
+      , alen.segment_code
+      , alen.description
+      , alen.score
+    From table(ksm_pkg_models.tbl_ksm_model_alumni_engagement) alen
+  )
+  
+  , ss As (
+    Select
+      alss.donor_id
+      , alss.segment_year
+      , alss.segment_month
+      , alss.segment_code
+      , alss.description
+      , alss.score
+    From table(ksm_pkg_models.tbl_ksm_model_student_supporter) alss
+  )
+  
   , allids As (
     Select donor_id From mg
     Union
     Select donor_id From af
+    Union
+    Select donor_id From ae
+    Union
+    Select donor_id From ss
   )
   
   Select
@@ -213,6 +273,18 @@ Cursor c_ksm_models Is
       As af_10k_description
     , af.score
       As af_10k_score
+    , ae.segment_code
+      As alumni_engagement_code
+    , ae.description
+      As alumni_engagement_description
+    , ae.score
+      As alumni_engagement_score
+    , ss.segment_code
+      As student_supporter_code
+    , ss.description
+      As student_supporter_description
+    , ss.score
+      As student_supporter_score
     , to_date('20250504', 'yyyymmdd')
       As etl_update_date
   From allids
@@ -222,6 +294,10 @@ Cursor c_ksm_models Is
     On mg.donor_id = allids.donor_id
   Left Join af
     On af.donor_id = allids.donor_id
+  Left Join ae
+    On ae.donor_id = allids.donor_id
+  Left Join ss
+    On ss.donor_id = allids.donor_id
 ;
 
 /*************************************************************************
@@ -256,6 +332,38 @@ Function tbl_ksm_model_af_10k
     Close c_ksm_model_af_10k;
     For i in 1..(af.count) Loop
       Pipe row(af(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_ksm_model_alumni_engagement
+  Return ksm_model_alumni_engagement Pipelined As
+  -- Declarations
+  ae ksm_model_alumni_engagement;
+  
+  Begin
+    Open c_ksm_model_alumni_engagement;
+      Fetch c_ksm_model_alumni_engagement Bulk Collect Into ae;
+    Close c_ksm_model_alumni_engagement;
+    For i in 1..(ae.count) Loop
+      Pipe row(ae(i));
+    End Loop;
+    Return;
+  End;
+  
+--------------------------------------
+Function tbl_ksm_model_student_supporter
+  Return ksm_model_student_supporter Pipelined As
+  -- Declarations
+  ss ksm_model_student_supporter;
+  
+  Begin
+    Open c_ksm_model_student_supporter;
+      Fetch c_ksm_model_student_supporter Bulk Collect Into ss;
+    Close c_ksm_model_student_supporter;
+    For i in 1..(ss.count) Loop
+      Pipe row(ss(i));
     End Loop;
     Return;
   End;
