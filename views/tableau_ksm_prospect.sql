@@ -193,7 +193,27 @@ mods as (Select m.donor_id,
        m.pr_segment,
        m.pr_score,
        m.est_probability
-From tbl_ksm_model_mg m)
+From tbl_ksm_model_mg m),
+
+--- Kellogg Model Engagement Score
+
+kmes as (select ae.id_number,
+       ae.segment_code,
+       ae.segment_name,
+       ae.segment_year,
+       ae.segment_month,
+       ae.xcomment
+from tbl_ksm_model_ae ae),
+
+--- Kellogg Alumni Engagement Student Supporter Score
+
+kmss as (select s.id_number,
+       s.segment_code,
+       s.segment_name,
+       s.segment_year,
+       s.segment_month,
+       s.xcomment
+from tbl_ksm_model_ss s)
 
 
 select  distinct 
@@ -298,7 +318,17 @@ select  distinct
        K.segment_month as K_segment_month,
        K.segment_code as K_segment_code,
        K.description as K_segment_description,
-       K.score as K_score
+       K.score as K_score,
+       kmes.segment_code as ksm_engagement_score_code,
+       kmes.segment_name as ksm_engagement_score_name,
+       kmes.segment_year as ksm_engagement_score_year,
+       kmes.segment_month as ksm_engagement_score_month,
+       kmes.xcomment as ksm_engagement_score_comment,
+       kmss.segment_code as ksm_engage_stu_score_code,
+       kmss.segment_name as ksm_engage_stu_score_name,
+       kmss.segment_year as ksm_engage_stu_score_year,
+       kmss.segment_month as ksm_engage_stu_score_month,
+       kmss.xcomment as ksm_enage_stu_score_comment
 from entity e 
 --- Inner join degrees 
 inner join d on d.donor_id = e.donor_id
@@ -320,3 +350,7 @@ left join co on co.donor_id = e.donor_id
 left join K on K.donor_id = e.donor_id
 --- model
 left join mods on mods.donor_id = e.donor_id
+--- kellogg engagement score
+left join kmes on kmes.id_number = e.donor_id
+--- kellog alumni student engagement score
+left join kmss on kmss.id_number = e.donor_id
