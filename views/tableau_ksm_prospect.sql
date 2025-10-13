@@ -213,7 +213,33 @@ kmss as (select s.id_number,
        s.segment_year,
        s.segment_month,
        s.xcomment
-from tbl_ksm_model_ss s)
+from tbl_ksm_model_ss s),
+
+event as (select  
+a.NU_DONOR_ID__C  ,
+a.CONFERENCE360__ATTENDEE_FULL_NAME__C  ,
+a.CONFERENCE360__EVENT_NAME__C  ,
+a.CONFERENCE360__EVENT_START_DATE__C  ,
+a.conference360__attendance_status__c
+from stg_alumni.conference360__attendee__c a 
+where a.NU_DONOR_ID__C  is not null
+and a.conference360__attendance_status__c = 'Attended'
+and a.CONFERENCE360__EVENT_NAME__C is not null),
+
+--- event listag
+
+el as (
+select event.NU_DONOR_ID__C,
+Listagg (event.CONFERENCE360__EVENT_NAME__C, ';  ') Within Group (Order By event.CONFERENCE360__EVENT_START_DATE__C) As event_name,
+Listagg (event.CONFERENCE360__EVENT_START_DATE__C, ';  ') Within Group (Order By event.CONFERENCE360__EVENT_START_DATE__C) As event_start_date,
+Listagg (event.conference360__attendance_status__c, ';  ') Within Group (Order By event.CONFERENCE360__EVENT_START_DATE__C) As event_attendance_status
+from event
+group by event.NU_DONOR_ID__C),
+
+event_count as (select event.NU_DONOR_ID__C,
+count (event.CONFERENCE360__EVENT_NAME__C) as count_events
+from event 
+group by event.NU_DONOR_ID__C)
 
 
 select  distinct 
@@ -328,7 +354,12 @@ select  distinct
        kmss.segment_name as ksm_engage_stu_score_name,
        kmss.segment_year as ksm_engage_stu_score_year,
        kmss.segment_month as ksm_engage_stu_score_month,
-       kmss.xcomment as ksm_enage_stu_score_comment
+       kmss.xcomment as ksm_enage_stu_score_comment,
+       event_count.count_events,
+       ---- i think I should listagg this????       
+       el.event_name,
+       el.event_start_date,
+       el.event_attendance_status
 from entity e 
 --- Inner join degrees 
 inner join d on d.donor_id = e.donor_id
@@ -354,3 +385,7 @@ left join mods on mods.donor_id = e.donor_id
 left join kmes on kmes.id_number = e.donor_id
 --- kellog alumni student engagement score
 left join kmss on kmss.id_number = e.donor_id
+--- event data
+left join el on el.NU_DONOR_ID__C = e.donor_id
+--- count of evnet
+left join event_count on event_count.NU_DONOR_ID__C = e.donor_id
