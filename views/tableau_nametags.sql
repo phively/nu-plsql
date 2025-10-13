@@ -79,7 +79,16 @@ Listagg(Distinct trim(year_abbr || ' ' || degrees_group_by_year.degree_levels), 
 ) Within Group (Order By degree_year Asc, degree_strings Asc) As degree_levels
 From degrees_group_by_year
 Group By CONSTITUENT_DONOR_ID
-)
+),
+
+--- Use Zach's Dean Salutation for First and Last Names Update: 7/31/2025
+
+dean as (select e.donor_id,
+e.P_Dean_Salut,
+e.p_full_name,
+e.P_Dean_Source
+from v_entity_salutations e)
+
 
 Select distinct k.CONSTITUENT_DONOR_ID,
 k.CONSTITUENT_NAME,
@@ -88,6 +97,9 @@ c.salutation,
 c.first_name,
 c.middle_name,
 c.last_name,
+dean.P_Dean_Salut,
+dean.p_full_name,
+dean.P_Dean_Source,
 c.institutional_suffix,
 d.degrees_verbose,
 d.degrees_concat,
@@ -106,3 +118,4 @@ inner join  DM_ALUMNI.DIM_CONSTITUENT c on c.constituent_donor_id = k.CONSTITUEN
 --- Data Points from Paul's View
 left join mv_entity_ksm_degrees d on d.donor_id = k.CONSTITUENT_DONOR_ID
 ---- Check Joint Degree Programs - Test Case 
+left join dean on dean.donor_id = k.CONSTITUENT_DONOR_ID
