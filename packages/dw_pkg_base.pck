@@ -31,12 +31,15 @@ Type rec_constituent Is Record (
   , donor_id dm_alumni.dim_constituent.constituent_donor_id%type
   , full_name dm_alumni.dim_constituent.full_name%type
   , sort_name dm_alumni.dim_constituent.full_name%type
+  , salutation dm_alumni.dim_constituent.salutation%type
   , first_name dm_alumni.dim_constituent.first_name%type
+  , middle_name dm_alumni.dim_constituent.middle_name%type
   , last_name dm_alumni.dim_constituent.last_name%type
   , is_deceased_indicator dm_alumni.dim_constituent.is_deceased_indicator%type
   , primary_constituent_type dm_alumni.dim_constituent.primary_constituent_type%type
   , institutional_suffix dm_alumni.dim_constituent.institutional_suffix%type
   , spouse_donor_id dm_alumni.dim_constituent.spouse_constituent_donor_id%type
+  , spouse_household_id dm_alumni.dim_constituent.constituent_household_account_donor_id%type
   , spouse_name dm_alumni.dim_constituent.spouse_name%type
   , spouse_instituitional_suffix dm_alumni.dim_constituent.spouse_instituitional_suffix%type
   , preferred_address_status dm_alumni.dim_constituent.preferred_address_status%type
@@ -49,6 +52,9 @@ Type rec_constituent Is Record (
   , preferred_address_state dm_alumni.dim_constituent.preferred_address_state%type
   , preferred_address_postal_code dm_alumni.dim_constituent.preferred_address_postal_code%type
   , preferred_address_country dm_alumni.dim_constituent.preferred_address_country_name%type
+  , gender_identity dm_alumni.dim_constituent.gender_identity%type
+  , citizenship dm_alumni.dim_constituent.citizenship_list%type
+  , ethnicity dm_alumni.dim_constituent.ethnicity%type
   , constituent_university_overall_rating dm_alumni.dim_constituent.constituent_university_overall_rating%type
   , constituent_research_evaluation dm_alumni.dim_constituent.constituent_research_evaluation%type
   , constituent_research_evaluation_date dm_alumni.dim_constituent.constituent_research_evaluation_date%type
@@ -65,6 +71,7 @@ Type rec_organization Is Record (
   , sort_name dm_alumni.dim_organization.organization_name%type
   , organization_inactive_indicator dm_alumni.dim_organization.organization_inactive_indicator%type
   , organization_type dm_alumni.dim_organization.organization_type%type
+  , donor_advised_fund_indicator stg_alumni.account.ap_donor_advised_fund__c%type
   , org_ult_parent_donor_id dm_alumni.dim_organization.organization_ultimate_parent_donor_id%type
   , org_ult_parent_name dm_alumni.dim_organization.organization_ultimate_parent_name%type
   , preferred_address_status dm_alumni.dim_organization.preferred_address_status%type
@@ -81,6 +88,13 @@ Type rec_organization Is Record (
   , organization_research_evaluation dm_alumni.dim_organization.organization_research_evaluation%type
   , organization_research_evaluation_date dm_alumni.dim_organization.organization_research_evaluation_date%type
   , etl_update_date dm_alumni.dim_organization.etl_update_date%type
+);
+
+--------------------------------------
+Type rec_contact Is Record (
+  contact_salesforce_id stg_alumni.contact.id%type
+  , donor_id stg_alumni.contact.ucinn_ascendv2__donor_id__c%type
+  , ses_id stg_alumni.contact.ucinn_ascendv2__student_information_system_id__c%type
 );
 
 --------------------------------------
@@ -101,6 +115,22 @@ Type rec_mini_entity Is Record (
   , org_ult_parent_donor_id dm_alumni.dim_organization.organization_ultimate_parent_donor_id %type
   , org_ult_parent_name dm_alumni.dim_organization.organization_ultimate_parent_name%type
   , etl_update_date dm_alumni.dim_constituent.etl_update_date%type
+);
+
+--------------------------------------
+Type rec_relationships Is Record (
+  relationship_salesforce_id stg_alumni.ucinn_ascendv2__relationship__c.id%type
+  , relationship_record_id stg_alumni.ucinn_ascendv2__relationship__c.name%type
+  , relationship_status stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__status__c%type
+  , primary_constituent_salesforce_id stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__contact__c%type
+  , primary_donor_id stg_alumni.contact.ucinn_ascendv2__donor_id__c%type
+  , primary_role stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__contact_role_formula__c%type
+  , primary_role_type varchar2(30)
+  , relationship_constituent_salesforce_id stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__related_contact__c%type
+  , relationship_donor_id stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__related_contact_donor_id_formula__c%type
+  , relationship_role stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__related_contact_role__c%type
+  , relationship_notes stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__notes__c%type
+  , etl_update_date stg_alumni.ucinn_ascendv2__relationship__c.etl_update_date%type
 );
 
 --------------------------------------
@@ -165,6 +195,26 @@ Type rec_designation Is Record (
 );
 
 --------------------------------------
+Type rec_campaign_appeal Is Record (
+    campaign_salesforce_id stg_alumni.campaign.id%type
+    , campaign_code stg_alumni.campaign.ucinn_ascendv2__motivation_code__c%type
+    , campaign_name stg_alumni.campaign.name%type
+    , campaign_status stg_alumni.campaign.status%type
+    , campaign_type stg_alumni.campaign.type%type
+    , campaign_purpose stg_alumni.campaign.nu_purpose__c%type
+    , campaign_appeal_group stg_alumni.campaign.appeal_group__c%type
+    , campaign_appeal_team stg_alumni.campaign.appeal_team__c%type
+    , campaign_start_date stg_alumni.campaign.startdate%type
+    , campaign_end_date stg_alumni.campaign.enddate%type
+    , count_total_contacts stg_alumni.campaign.hierarchynumberofcontacts%type
+    , count_opportunities stg_alumni.campaign.hierarchynumberofresponses%type
+    , value_all_opportunities stg_alumni.campaign.hierarchyamountallopportunities%type
+    , count_won_opportunities stg_alumni.campaign.hierarchynumberofwonopportunities%type
+    , value_won_opportunities stg_alumni.campaign.hierarchyamountwonopportunities%type
+    , etl_update_date stg_alumni.campaign.etl_update_date%type 
+);
+
+--------------------------------------
 Type rec_designation_detail Is Record (
   pledge_or_gift_record_id dm_alumni.dim_designation_detail.pledge_or_gift_record_id%type
   , pledge_or_gift_date dm_alumni.dim_designation_detail.pledge_or_gift_date%type
@@ -187,6 +237,7 @@ Type rec_opportunity Is Record (
   , legacy_receipt_number dm_alumni.dim_opportunity.legacy_receipt_number%type
   , opportunity_stage dm_alumni.dim_opportunity.opportunity_stage%type
   , opportunity_closed_stage stg_alumni.opportunity.stagename%type
+  , opportunity_adjustment_type stg_alumni.opportunity.ucinn_ascendv2__adjustment_type__c%type
   , opportunity_record_type dm_alumni.dim_opportunity.opportunity_record_type%type
   , opportunity_type dm_alumni.dim_opportunity.opportunity_type%type
   , opportunity_donor_id dm_alumni.dim_opportunity.opportunity_donor_id%type
@@ -196,8 +247,11 @@ Type rec_opportunity Is Record (
   , entry_date dm_alumni.dim_opportunity.opportunity_entry_date%type
   , amount dm_alumni.dim_opportunity.opportunity_amount%type
   , discounted_amount dm_alumni.dim_opportunity.pledge_total_countable_amount%type
+  , daf_contribution_amount dm_alumni.dim_opportunity.daf_contribution_amount%type
+  , daf_distribution_amount dm_alumni.dim_opportunity.daf_distribution_amount%type
   , tender_type dm_alumni.dim_opportunity.tender_type%type
   , designation_salesforce_id dm_alumni.dim_opportunity.designation_salesforce_id%type
+  , campaign_salesforce_id dm_alumni.dim_opportunity.campaign_salesforce_id%type
   , is_anonymous_indicator dm_alumni.dim_opportunity.is_anonymous_indicator%type
   , anonymous_type dm_alumni.dim_opportunity.anonymous_type%type
   , linked_proposal_record_id dm_alumni.dim_opportunity.linked_proposal_record_id%type
@@ -216,6 +270,8 @@ Type rec_payment Is Record (
   payment_salesforce_id stg_alumni.ucinn_ascendv2__payment__c.id%type
   , payment_record_id stg_alumni.ucinn_ascendv2__payment__c.name%type
   , legacy_receipt_number stg_alumni.ucinn_ascendv2__payment__c.ap_legacy_receipt_number__c%type
+  , original_gift_receipt stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__receipt_number__c%type
+  , opportunity_salesforce_id stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__opportunity__c%type
   , opportunity_stage stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__opportunity_stage__c%type
   , opportunity_record_type stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__opportunity_record_type__c%type
   , opportunity_type stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__transaction_type__c%type
@@ -229,6 +285,7 @@ Type rec_payment Is Record (
   , designation_salesforce_id stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__designation_detail__c%type
   , is_anonymous_indicator stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__is_anonymous__c%type
   , anonymous_type stg_alumni.ucinn_ascendv2__payment__c.anonymous_type__c%type
+  , payment_adjustment_type stg_alumni.ucinn_ascendv2__payment__c.ucinn_ascendv2__adjustment_type__c%type
   , etl_update_date stg_alumni.ucinn_ascendv2__payment__c.etl_update_date%type
 );
 
@@ -319,14 +376,19 @@ Type rec_proposal Is Record (
   , proposal_stage dm_alumni.dim_proposal_opportunity.proposal_stage%type
   , proposal_type dm_alumni.dim_proposal_opportunity.proposal_type%type
   , proposal_name dm_alumni.dim_proposal_opportunity.proposal_name%type
+  , proposal_description dm_alumni.dim_proposal_opportunity.proposal_description%type
+  , proposal_funding_interests dm_alumni.dim_proposal_opportunity.proposal_funding_interests%type
   , proposal_probability dm_alumni.dim_proposal_opportunity.proposal_probability%type
   , proposal_amount dm_alumni.dim_proposal_opportunity.proposal_amount%type
   , proposal_submitted_amount dm_alumni.dim_proposal_opportunity.proposal_submitted_amount%type
   , proposal_anticipated_amount dm_alumni.dim_proposal_opportunity.proposal_anticipated_amount%type
   , proposal_funded_amount dm_alumni.dim_proposal_opportunity.proposal_funded_amount%type
+  , proposal_linked_gift_pledge_ids dm_alumni.dim_proposal_opportunity.proposal_linked_gift_pledge_ids%type
   , proposal_created_date dm_alumni.dim_proposal_opportunity.proposal_created_date%type
   , proposal_submitted_date dm_alumni.dim_proposal_opportunity.proposal_submitted_date%type
   , proposal_close_date dm_alumni.dim_proposal_opportunity.proposal_close_date%type
+  , proposal_stage_date dm_alumni.dim_proposal_opportunity.proposal_stage_date%type
+  , proposal_days_in_current_stage dm_alumni.dim_proposal_opportunity.proposal_days_in_current_stage%type
   , proposal_payment_schedule dm_alumni.dim_proposal_opportunity.proposal_payment_schedule%type
   , proposal_designation_units dm_alumni.dim_proposal_opportunity.proposal_designation_work_plan_units%type
   , ksm_flag varchar2(1)
@@ -339,6 +401,23 @@ Type rec_proposal Is Record (
   , historical_pm_business_unit stg_alumni.opportunityteammember.ap_business_unit__c%type
   , historical_pm_is_active stg_alumni.user_tbl.isactive%type
   , etl_update_date dm_alumni.dim_proposal_opportunity.etl_update_date%type
+);
+
+--------------------------------------
+Type rec_strategy Is Record (
+    strategy_salesforce_id dm_alumni.dim_strategy.strategy_salesforce_id%type
+  , strategy_record_id dm_alumni.dim_strategy.strategy_record_id%type
+  , legacy_prospect_id dm_alumni.dim_strategy.strategy_legacy_prospect_id%type
+  , prospect_name dm_alumni.dim_strategy.strategy_prospect_name%type
+  , strategy_primary_relation_type dm_alumni.dim_strategy.strategy_primary_relation_type%type
+  , active_ind dm_alumni.dim_strategy.strategy_active_indicator%type
+  , strategy_start_date dm_alumni.dim_strategy.strategy_start_date%type
+  , strategy_end_date dm_alumni.dim_strategy.strategy_end_date%type
+  , stage_of_readiness dm_alumni.dim_strategy.strategy_primary_relation_stage_of_readiness%type
+  , stage_of_readiness_date dm_alumni.dim_strategy.strategy_primary_relation_stage_of_readiness_date%type
+  , active_assignment_units dm_alumni.dim_strategy.active_unit_strategy_assignments_list%type
+  , ksm_assignment_indicator varchar2(1)
+  , active_assignment_units_count dm_alumni.dim_strategy.active_unit_strategy_assignment_count%type
 );
 
 --------------------------------------
@@ -387,6 +466,8 @@ Type rec_address Is Record (
   , address_seasonal_end_month dm_alumni.dim_address.address_seasonal_end_month%type
   , address_seasonal_end_day dm_alumni.dim_address.address_seasonal_end_day%type
   , address_seasonal_end varchar2(8)
+  , address_modified_date dm_alumni.dim_address.address_modified_date%type
+  , address_relation_modified_date dm_alumni.dim_address.address_relation_modified_date%type
   , etl_update_date dm_alumni.dim_address.etl_update_date%type
 );
 
@@ -396,17 +477,21 @@ Public table declarations
 
 Type constituent Is Table Of rec_constituent;
 Type organization Is Table Of rec_organization;
+Type contact Is Table Of rec_contact;
 Type mini_entity Is Table Of rec_mini_entity;
+Type relationships Is Table Of rec_relationships;
 Type degrees Is Table Of rec_degrees;
 Type designation Is Table Of rec_designation;
 Type designation_detail Is Table Of rec_designation_detail;
 Type opportunity Is Table Of rec_opportunity;
+Type campaign_appeal Is Table Of rec_campaign_appeal;
 Type payment Is Table Of rec_payment;
 Type gift_credit Is Table Of rec_gift_credit;
 Type involvement Is Table Of rec_involvement;
 Type service_indicators Is Table Of rec_service_indicators;
 Type assignments Is Table Of rec_assignment;
 Type proposals Is Table Of rec_proposal;
+Type strategy Is Table Of rec_strategy;
 Type econtacts Is Table Of rec_econtact;
 Type address Is Table Of rec_address;
 
@@ -420,8 +505,14 @@ Function tbl_constituent
 Function tbl_organization
   Return organization Pipelined;
 
+Function tbl_contact
+  Return contact Pipelined;
+
 Function tbl_mini_entity
   Return mini_entity Pipelined;
+
+Function tbl_relationships
+  Return relationships Pipelined;
 
 Function tbl_degrees
   Return degrees Pipelined;
@@ -434,6 +525,9 @@ Function tbl_designation_detail
 
 Function tbl_opportunity
   Return opportunity Pipelined;
+
+Function tbl_campaign_appeal
+  Return campaign_appeal Pipelined;
 
 Function tbl_payment
   Return payment Pipelined;
@@ -452,6 +546,9 @@ Function tbl_assignments
 
 Function tbl_proposals
   Return proposals Pipelined;
+
+Function tbl_strategy
+  Return strategy Pipelined;
 
 Function tbl_social_media
   Return econtacts Pipelined;
@@ -488,6 +585,13 @@ Private cursors -- data definitions
 
 --------------------------------------
 Cursor c_constituent Is
+  With
+  spo As (
+    Select
+      constituent_donor_id As spouse_donor_id
+      , nullif(constituent_household_account_donor_id, '-') As spouse_household_id
+    From dm_alumni.dim_constituent
+  )
   Select
       constituent_salesforce_id
       As salesforce_id
@@ -500,14 +604,21 @@ Cursor c_constituent Is
     , full_name
     , trim(trim(last_name || ', ' || first_name) || ' ' || Case When middle_name != '-' Then middle_name End)
       As sort_name
-    , first_name
-    , last_name
+    , nullif(salutation, '-')
+      As salutation
+    , nullif(first_name, '-')
+      As first_name
+    , nullif(middle_name, '-')
+      As middle_name
+    , nullif(last_name, '-')
+      As last_name
     , is_deceased_indicator
     , primary_constituent_type
     , nullif(institutional_suffix, '-')
       As institutional_suffix
     , nullif(spouse_constituent_donor_id, '-')
       As spouse_donor_id
+    , spo.spouse_household_id
     , nullif(spouse_name, '-')
       As spouse_name
     , nullif(spouse_instituitional_suffix, '-')
@@ -532,6 +643,12 @@ Cursor c_constituent Is
       As preferred_address_postal_code
     , nullif(preferred_address_country_name, '-')
       As preferred_address_country
+    , nullif(gender_identity, '-') 
+      As gender_identity
+    , nullif(citizenship_list, '-')
+      As citizenship
+    , nullif(ethnicity, '-')
+      As ethnicity
     , nullif(constituent_university_overall_rating, '-')
       As constituent_university_overall_rating
     , nullif(constituent_research_evaluation, '-')
@@ -540,6 +657,8 @@ Cursor c_constituent Is
     , trunc(etl_update_date)
       As etl_update_date
   From dm_alumni.dim_constituent con
+  Left Join spo
+    On spo.spouse_donor_id = con.spouse_constituent_donor_id
   Where con.constituent_salesforce_id != '-'
 ;
 
@@ -564,6 +683,8 @@ Cursor c_organization Is
     , organization_inactive_indicator
     , nullif(organization_type, '-')
       As organization_type
+    , nullif(a.ap_donor_advised_fund__c, '-')
+      As donor_advised_fund_indicator
     , organization_ultimate_parent_donor_id
       As org_ult_parent_donor_id
     , organization_ultimate_parent_name
@@ -593,12 +714,25 @@ Cursor c_organization Is
     , nullif(organization_research_evaluation, '-')
       As organization_research_evaluation
     , organization_research_evaluation_date
-    , trunc(etl_update_date)
+    , trunc(org.etl_update_date)
       As etl_update_date
   From dm_alumni.dim_organization org
+  Left Join stg_alumni.account a
+    On org.organization_donor_id = a.ucinn_ascendv2__donor_id__c
   Where org.organization_salesforce_id != '-'
 ;
 
+--------------------------------------
+Cursor c_contact Is
+  Select
+    s.id
+      As contact_salesforce_id
+    , s.ucinn_ascendv2__donor_id__c
+      As donor_id
+    , s.ucinn_ascendv2__student_information_system_id__c
+      As ses_id
+  From stg_alumni.contact s
+;
 
 --------------------------------------
 Cursor c_mini_entity Is
@@ -644,6 +778,46 @@ Cursor c_mini_entity Is
 ;
 
 --------------------------------------
+Cursor c_relationships Is
+  Select
+    r.id As relationship_salesforce_id
+    , r.name As relationship_record_id
+    , r.ucinn_ascendv2__status__c As relationship_status
+    , r.ucinn_ascendv2__contact__c As primary_constituent_salesforce_id
+    , c.ucinn_ascendv2__donor_id__c As primary_donor_id
+    , r.ucinn_ascendv2__contact_role_formula__c As primary_role
+    , Case
+        When ucinn_ascendv2__contact_role_formula__c In ('Deceased Spouse', 'Ex-Spouse', 'Widow')
+          Then 'Former'
+        When ucinn_ascendv2__contact_role_formula__c In (
+          'Accountant', 'Accountant Client', 'Assistant', 'Business Associate', 'Estate Administrator', 'Estate Client'
+          , 'Former Assistant', 'Former Manager', 'Lawyer/Attorney', 'Legal Client', 'Manager', 'Partner'
+          , 'PR Client', 'Public Relations'
+        ) Then 'Business'
+        When ucinn_ascendv2__contact_role_formula__c In (
+          'Child', 'Child-in-Law', 'Half-Sibling', 'Parent', 'Sibling', 'Spouse', 'Step-Child', 'Step-Parent'
+          , 'Step-Sibling'
+        ) Then 'Family-Nuclear'
+        When ucinn_ascendv2__contact_role_formula__c In (
+          'Aunt/Uncle', 'Cousin', 'Grand Niece/Nephew', 'Grandchild', 'Grandparent', 'Great Aunt/Uncle'
+          , 'Great Grandchild', 'Great Grandparent', 'Niece/Nephew', 'Parent-in-Law', 'Sibling-in-Law'
+        ) Then 'Family-Nonnuclear'
+        When ucinn_ascendv2__contact_role_formula__c In (
+          'Classmate', 'Friend', 'Legal Guardian', 'Mentee', 'Mentor', 'Other', 'Roommate', 'Ward'
+        ) Then 'Other'
+        End
+      As primary_role_type
+    , r.ucinn_ascendv2__related_contact__c As relationship_constituent_salesforce_id
+    , r.ucinn_ascendv2__related_contact_donor_id_formula__c As relationship_donor_id
+    , r.ucinn_ascendv2__related_contact_role__c As relationship_role
+    , r.ucinn_ascendv2__notes__c As relationship_notes
+    , r.etl_update_date
+  From stg_alumni.ucinn_ascendv2__relationship__c r
+  Inner Join stg_alumni.contact c
+    On c.id = r.ucinn_ascendv2__contact__c
+;
+
+--------------------------------------
 Cursor c_degrees Is
   Select
     dcon.constituent_donor_id
@@ -665,7 +839,12 @@ Cursor c_degrees Is
       As degree_school_name
     , deginf.ap_degree_type_from_degreecode__c
       As degree_level
-    , deginf.ucinn_ascendv2__conferred_degree_year__c
+    , Case
+        -- Reunion year is fallback
+        When deginf.ucinn_ascendv2__conferred_degree_year__c Is Null
+          Then deginf.ucinn_ascendv2__reunion_year__c
+        Else deginf.ucinn_ascendv2__conferred_degree_year__c
+        End
       As degree_year
     , deginf.ucinn_ascendv2__reunion_year__c
       As degree_reunion_year
@@ -826,9 +1005,10 @@ Cursor c_opportunity Is
       , ap_payment_schedule__c As payment_schedule
       , name As opportunity_id_full
       , stagename As opportunity_closed_stage
+      , ucinn_ascendv2__adjustment_type__c As opportunity_adjustment_type
     From stg_alumni.opportunity o
   )
-
+  
   Select
     opp.opportunity_salesforce_id
     , opp.opportunity_record_id
@@ -837,6 +1017,7 @@ Cursor c_opportunity Is
       As legacy_receipt_number
     , opportunity_stage
     , opp_raw.opportunity_closed_stage
+    , opp_raw.opportunity_adjustment_type
     , opportunity_record_type
     , opportunity_type
     , opportunity_donor_id
@@ -856,9 +1037,12 @@ Cursor c_opportunity Is
       As amount
     , pledge_total_countable_amount
       As discounted_amount
+    , daf_contribution_amount
+    , daf_distribution_amount
     , nullif(opp.tender_type, '-')
       As tender_type
     , designation_salesforce_id
+    , opp.campaign_salesforce_id
     , nullif(is_anonymous_indicator, '-')
       As is_anonymous_indicator
     , nullif(anonymous_type, '-')
@@ -887,6 +1071,28 @@ Cursor c_opportunity Is
 ;
 
 --------------------------------------
+Cursor c_campaign_appeal Is
+  Select
+    c.id As opportunity_salesforce_id
+    , c.ucinn_ascendv2__motivation_code__c As campaign_code
+    , name As campaign_name
+    , status As campaign_status
+    , type As campaign_type
+    , nu_purpose__c As campaign_purpose
+    , appeal_group__c As campaign_appeal_group
+    , appeal_team__c As campaign_appeal_team
+    , startdate As campaign_start_date
+    , enddate As campaign_end_date
+    , hierarchynumberofcontacts As count_total_contacts
+    , hierarchynumberofresponses As count_opportunities
+    , hierarchyamountallopportunities As value_all_opportunities
+    , hierarchynumberofwonopportunities As count_won_opportunities
+    , hierarchyamountwonopportunities As value_won_opportunities
+    , trunc(etl_update_date) As etl_update_date
+  From stg_alumni.campaign c
+;
+
+--------------------------------------
 Cursor c_payment Is
   Select
     pay.id
@@ -895,6 +1101,10 @@ Cursor c_payment Is
       As payment_record_id
     , pay.ap_legacy_receipt_number__c
       As legacy_receipt_number
+    , pay.ucinn_ascendv2__receipt_number__c
+      As original_gift_receipt
+    , pay.ucinn_ascendv2__opportunity__c
+      As opportunity_salesforce_id
     , pay.ucinn_ascendv2__opportunity_stage__c
       As opportunity_stage
     , pay.ucinn_ascendv2__opportunity_record_type__c
@@ -921,6 +1131,8 @@ Cursor c_payment Is
       As is_anonymous_indicator
     , pay.anonymous_type__c
       As anonymous_type
+    , pay.ucinn_ascendv2__adjustment_type__c
+      As payment_adjustment_type
     , trunc(etl_update_date)
       As etl_update_date
   From stg_alumni.ucinn_ascendv2__payment__c pay
@@ -1145,14 +1357,22 @@ Cursor c_proposals Is
     , dpo.proposal_stage
     , dpo.proposal_type
     , dpo.proposal_name
+    , nullif(dpo.proposal_description, '-')
+      As proposal_description
+    , nullif(dpo.proposal_funding_interests, '-')
+      As proposal_funding_interests
     , dpo.proposal_probability
     , dpo.proposal_amount
     , dpo.proposal_submitted_amount
     , dpo.proposal_anticipated_amount
     , dpo.proposal_funded_amount
+    , nullif(dpo.proposal_linked_gift_pledge_ids, '-')
+      As proposal_linked_gift_pledge_ids
     , dpo.proposal_created_date
     , dpo.proposal_submitted_date
     , dpo.proposal_close_date
+    , dpo.proposal_stage_date
+    , dpo.proposal_days_in_current_stage
     , nullif(dpo.proposal_payment_schedule, '-')
       As proposal_payment_schedule
     , nullif(dpo.proposal_designation_work_plan_units, '-')
@@ -1179,6 +1399,36 @@ Cursor c_proposals Is
     On last_pm.opportunity_salesforce_id = dpo.opportunity_salesforce_id
   Inner Join dm_alumni.fact_proposal_opportunity fpo
     On fpo.opportunity_salesforce_id = dpo.opportunity_salesforce_id
+;
+
+--------------------------------------
+Cursor c_strategy Is
+  Select
+    strategy_salesforce_id
+    , strategy_record_id
+    , strategy_legacy_prospect_id
+      As legacy_prospect_id
+    , strategy_prospect_name
+      As prospect_name
+    , strategy_primary_relation_type
+    , strategy_active_indicator
+      As active_ind
+    , strategy_start_date
+    , strategy_end_date
+    , strategy_primary_relation_stage_of_readiness
+      As stage_of_readiness
+    , strategy_primary_relation_stage_of_readiness_date
+      As stage_of_readiness_date
+    , nullif(active_unit_strategy_assignments_list, '-')
+      As active_assignment_units
+    , Case
+        When strategy_kellogg_unit_strategy_assignment_indicator = 'Y'
+          Then 'Y'
+        End
+      As ksm_assignment_indicator
+    , active_unit_strategy_assignment_count
+      As active_assignment_units_count
+  From dm_alumni.dim_strategy strat
 ;
 
 --------------------------------------
@@ -1269,6 +1519,8 @@ Cursor c_address Is
         , '00000000'
         , NULL
       ) As address_seasonal_end
+    , a.address_modified_date
+    , a.address_relation_modified_date
     , trunc(etl_update_date)
       As etl_update_date
   From dm_alumni.dim_address a
@@ -1311,6 +1563,22 @@ Function tbl_organization
   End;
 
 --------------------------------------
+Function tbl_contact
+  Return contact Pipelined As
+    -- Declarations
+    c contact;
+
+  Begin
+    Open c_contact;
+      Fetch c_contact Bulk Collect Into c;
+    Close c_contact;
+    For i in 1..(c.count) Loop
+      Pipe row(c(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
 Function tbl_mini_entity
   Return mini_entity Pipelined As
     -- Declarations
@@ -1326,6 +1594,22 @@ Function tbl_mini_entity
     Return;
   End;
 
+--------------------------------------
+Function tbl_relationships
+  Return relationships Pipelined As
+    -- Declarations
+    r relationships;
+
+  Begin
+    Open c_relationships;
+      Fetch c_relationships Bulk Collect Into r;
+    Close c_relationships;
+    For i in 1..(r.count) Loop
+      Pipe row(r(i));
+    End Loop;
+    Return;
+  End;
+ 
 --------------------------------------
 Function tbl_degrees
   Return degrees Pipelined As
@@ -1390,6 +1674,22 @@ Function tbl_opportunity
     Return;
   End;
 
+--------------------------------------
+Function tbl_campaign_appeal
+  Return campaign_appeal Pipelined As
+    -- Declarations
+    ca campaign_appeal;
+
+  Begin
+    Open c_campaign_appeal;
+      Fetch c_campaign_appeal Bulk Collect Into ca;
+    Close c_campaign_appeal;
+    For i in 1..(ca.count) Loop
+      Pipe row(ca(i));
+    End Loop;
+    Return;
+  End;
+  
 --------------------------------------
 Function tbl_payment
   Return payment Pipelined As
@@ -1485,7 +1785,23 @@ Function tbl_proposals
     End Loop;
     Return;
   End;
-  
+
+--------------------------------------
+Function tbl_strategy
+  Return strategy Pipelined As
+    -- Declarations
+    st strategy;
+
+  Begin
+    Open c_strategy;
+      Fetch c_strategy Bulk Collect Into st;
+    Close c_strategy;
+    For i in 1..(st.count) Loop
+      Pipe row(st(i));
+    End Loop;
+    Return;
+  End;
+
 --------------------------------------
 Function tbl_social_media
   Return econtacts Pipelined As

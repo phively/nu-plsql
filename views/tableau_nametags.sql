@@ -1,121 +1,136 @@
-Create or Replace View tableau_nametags as 
+Create Or Replace View tableau_nametags As 
 
-With K AS (
-Select CONSTITUENT_DONOR_ID  ,
-CONSTITUENT_NAME  ,
-DEGREE_SCHOOL_NAME  ,
-DEGREE_LEVEL  ,
-DEGREE_YEAR ,
-DEGREE_CODE ,
-DEGREE_NAME ,
-DEGREE_PROGRAM  
-From table(dw_pkg_base.tbl_degrees)
---- Northwestern Related Degrees Only
---where DEGREE_ORGANIZATION_NAME = 'Northwestern University'
-where nu_indicator = 'Y'
---- Let's remove students
-and DEGREE_CODE not like '%STU%'
-),
+With
 
-e as (select
-k.CONSTITUENT_DONOR_ID,
-k.CONSTITUENT_NAME,
-case when k.DEGREE_SCHOOL_NAME like '%Kellogg%'   then 'Y'  end as KSM_degree,
-k.DEGREE_LEVEL,
-k.DEGREE_YEAR,
-k.DEGREE_CODE
-from k),
+k As (
+  Select
+    constituent_donor_id
+    , constituent_name
+    , degree_school_name
+    , degree_level
+    , degree_year
+    , degree_code
+    , degree_name
+    , degree_program
+  From table(dw_pkg_base.tbl_degrees)
+  -- Northwestern Related Degrees Only
+  Where nu_indicator = 'Y'
+    -- Let's remove students
+    And degree_code Not Like '%STU%'
+)
 
---- Clean Degrees
---- Assign MBA, certificate and non MBA
+, e As (
+  Select
+    constituent_donor_id
+    , constituent_name
+    , Case When degree_school_name Like '%Kellogg%' Then 'Y' End
+      As ksm_degree
+    , degree_level
+    , degree_year
+    , degree_code
+  From k
+)
 
-degrees_clean as (
-select e.CONSTITUENT_DONOR_ID,
-e.degree_year,
-e.degree_level,
-e.degree_code,
-e.KSM_Degree,
---- honorary degrees
-case when e.degree_code = 'Honorary'
-  then 'H'
---- Undergrad degrees
-when e.degree_code = 'Undergraduate Degree'
-  then ''
---- Certificate
-when e.KSM_Degree = 'Y' and e.degree_code like '%CERT%' then 'cKSM'
---- MBA and MMGT
-when e.degree_code IN ('MBA','MMGT')
-then 'MBA'
---- Account for Students
-when e.degree_code like '%STU%' then ''
---- Account for Unknown 
-when e.degree_code like '%UNKN%' then ''
-else e.degree_code
-  --- degree strings - will be the degree abbrivation.... Honorary, Undergrad, Cert, MBA
-end as degree_string
-from e),
-
-
-degrees_group_by_year as (
-select dc.CONSTITUENT_DONOR_ID,
-dc.degree_year,
-'''' || substr(degree_year, -2) -- Last two digits of Year on Nametag
-As year_abbr,
---- Listagg multiple years - Order by degree asc
-Listagg(Distinct trim(dc.degree_string), ', ') Within Group (Order By degree_year Asc)
-as degree_strings,
-Listagg(Distinct trim(dc.degree_level), ', ') Within Group (Order By degree_year Asc)
-as degree_levels
-from degrees_clean dc
-group by dc.CONSTITUENT_DONOR_ID,
-dc.degree_year),
-
---- Final concat
-
-degrees_concat As (Select degrees_group_by_year.CONSTITUENT_DONOR_ID,
-Listagg(Distinct trim(year_abbr || ' ' || degree_strings), ', '
-) Within Group (Order By degree_year Asc, degree_strings Asc) As nu_degrees_string,
-Listagg(Distinct trim(year_abbr || ' ' || degrees_group_by_year.degree_levels), ', '
-) Within Group (Order By degree_year Asc, degree_strings Asc) As degree_levels
-From degrees_group_by_year
-Group By CONSTITUENT_DONOR_ID
-),
-
---- Use Zach's Dean Salutation for First and Last Names Update: 7/31/2025
-
-dean as (select e.donor_id,
-e.P_Dean_Salut,
-e.p_full_name,
-e.P_Dean_Source
-from v_entity_salutations e)
+-- Clean Degrees
+-- Assign MBA, certificate and non MBA
+, degrees_clean As (
+  Select
+    constituent_donor_id
+    , degree_year
+    , degree_level
+    , degree_code
+    , ksm_degree
+    , Case
+      -- Honorary degrees
+      When degree_code = 'Honorary'
+        Then 'H'
+      -- Undergrad degrees
+      When degree_code = 'Undergraduate Degree'
+        Then ''
+      -- Certificate
+      When ksm_degree = 'Y'
+        And degree_code Like '%CERT%'
+        Then 'cKSM'
+      -- MBA and MMGT
+      When degree_code In ('MBA','MMGT')
+        Then 'MBA'
+      --- Account for students
+      When degree_code Like '%STU%'
+        Then ''
+      -- Account for unknown 
+      When degree_code Like '%UNKN%'
+        Then ''
+      Else degree_code
+      -- degree strings - will be the degree abbrivation.... honorary, undergrad, cert, mba
+      End
+    As degree_string
+  From e
+)
 
 
-Select distinct k.CONSTITUENT_DONOR_ID,
-k.CONSTITUENT_NAME,
-c.primary_constituent_type,
-c.salutation,
-c.first_name,
-c.middle_name,
-c.last_name,
-dean.P_Dean_Salut,
-dean.p_full_name,
-dean.P_Dean_Source,
-c.institutional_suffix,
-d.degrees_verbose,
-d.degrees_concat,
-d.first_ksm_year,
-d.first_masters_year,
-d.last_masters_year,
-d.program,
-d.program_group,
-d.class_section,
-dc.degree_levels,
-dc.nu_degrees_string
-from k
-inner join degrees_concat dc on dc.CONSTITUENT_DONOR_ID = k.CONSTITUENT_DONOR_ID
---- get first name, record type, suffix
-inner join  DM_ALUMNI.DIM_CONSTITUENT c on c.constituent_donor_id = k.CONSTITUENT_DONOR_ID
---- Data Points from Paul's View
-left join mv_entity_ksm_degrees d on d.donor_id = k.CONSTITUENT_DONOR_ID
----- Check Joint Degree Programs - Test Case 
-left join dean on dean.donor_id = k.CONSTITUENT_DONOR_ID
+, degrees_group_by_year As (
+  Select
+    constituent_donor_id
+    , degree_year
+    , '''' || substr(degree_year, -2) -- Last two digits of Year on Nametag
+      As year_abbr
+    -- Listagg multiple years - Order by degree asc
+    , Listagg(Distinct trim(degree_string), ', ') Within Group (Order By degree_year Asc)
+      As degree_strings
+    , Listagg(Distinct trim(degree_level), ', ') Within Group (Order By degree_year Asc)
+      As degree_levels
+  From degrees_clean dc
+  Group By
+    constituent_donor_id
+    , degree_year
+)
+
+-- Final concat
+, degrees_concat As (
+  Select
+    constituent_donor_id
+  , Listagg(Distinct trim(year_abbr || ' ' || degree_strings), ', ')
+    Within Group (Order By degree_year Asc, degree_strings Asc)
+    As nu_degrees_string
+  , Listagg(Distinct trim(year_abbr || ' ' || degree_levels), ', ')
+    Within Group (Order By degree_year Asc, degree_strings Asc)
+    As degree_levels
+  From degrees_group_by_year
+  Group By constituent_donor_id
+)
+
+Select Distinct
+  k.constituent_donor_id
+  , k.constituent_name
+  , c.primary_constituent_type
+  , c.salutation
+  , c.first_name
+  , c.middle_name
+  , c.last_name
+  , dean.p_dean_salut
+  , dean.p_full_name
+  , dean.p_dean_source
+  , c.institutional_suffix
+  , d.degrees_verbose
+  , d.degrees_concat
+  , d.first_ksm_year
+  , d.first_masters_year
+  , d.last_masters_year
+  , d.program
+  , d.program_group
+  , d.class_section
+  , dc.degree_levels
+  , dc.nu_degrees_string
+From k
+Inner Join degrees_concat dc
+  On dc.constituent_donor_id = k.constituent_donor_id
+-- get first name, record type, suffix
+Inner Join dm_alumni.dim_constituent c
+  On c.constituent_donor_id = k.constituent_donor_id
+-- Data Points from Paul's View
+Left Join mv_entity_ksm_degrees d
+  On d.donor_id = k.constituent_donor_id
+-- Check Joint Degree Programs - Test Case 
+Left Join v_entity_salutations dean
+  On dean.donor_id = k.constituent_donor_id
+;

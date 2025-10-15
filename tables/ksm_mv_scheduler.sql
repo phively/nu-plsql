@@ -1,5 +1,6 @@
 /*************************************************************************
 No dependencies
+7:20 AM
 7:30 AM
 *************************************************************************/
 
@@ -19,6 +20,7 @@ From table(dw_pkg_base.tbl_involvement) inv
 ;
 
 -- tbl_designation_detail
+-- Drop Materialized View mv_designation_detail;
 Create Materialized View mv_designation_detail
 Refresh Complete
 Start With sysdate
@@ -31,6 +33,20 @@ Select
 From table(dw_pkg_base.tbl_designation_detail) dd
 ;
 
+-- tbl_mini_entity
+-- Drop Materialized View mv_mini_entity;
+Create Materialized View mv_mini_entity
+Refresh Complete
+Start With sysdate
+-- 7:20 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.333/24)
+As
+Select
+  me.*
+  , sysdate as mv_last_refresh
+From table(dw_pkg_base.tbl_mini_entity) me
+;
+
 --------------------------------------
 -- ksm_pkg_entity
 -- tbl_entity
@@ -38,8 +54,8 @@ From table(dw_pkg_base.tbl_designation_detail) dd
 Create Materialized View mv_entity
 Refresh Complete
 Start With sysdate
--- 7:30 AM tomorrow
-Next (trunc(sysdate) + 1 + 7.5/24)
+-- 7:20 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.333/24)
 As
 Select
   entity.*
@@ -47,9 +63,24 @@ Select
 From table(ksm_pkg_entity.tbl_entity) entity
 ;
 
+-- tbl_entity_relationships
+-- Drop Materialized View mv_entity_relationships;
+Create Materialized View mv_entity_relationships
+Refresh Complete
+Start With sysdate
+-- 7:30 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.5/24)
+As
+Select
+  rel.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_entity.tbl_entity_relationships) rel
+;
+
 --------------------------------------
 -- ksm_pkg_degrees
 -- tbl_entity_ksm_degrees
+-- Drop Materialized View mv_entity_ksm_degrees;
 Create Materialized View mv_entity_ksm_degrees
 Refresh Complete
 Start With sysdate
@@ -94,6 +125,55 @@ Select
 From table(ksm_pkg_transactions.tbl_transactions) tr
 ;
 
+-- tbl_matches
+-- Drop Materialized View mv_matches;
+Create Materialized View mv_matches
+Refresh Complete
+Start With sysdate
+-- 7:30 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.5/24)
+As
+Select
+  m.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_transactions.tbl_matches) m
+;
+
+/*************************************************************************
+Level 1 dependencies
+7:30 AM
+*************************************************************************/
+
+--------------------------------------
+-- ksm_pkg_prospect
+-- tbl_assignment_summary
+-- Drop Materialized View mv_assignments;
+Create Materialized View mv_assignments
+Refresh Complete
+Start With sysdate
+-- 7:35 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.583/24)
+As
+Select
+  assign.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_prospect.tbl_assignment_summary) assign
+;
+
+-- tbl_assignment_history
+-- Drop Materialized View mv_assignment_history;
+Create Materialized View mv_assignment_history
+Refresh Complete
+Start With sysdate
+-- 7:30 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.583/24)
+As
+Select
+  ah.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_prospect.tbl_assignment_history) ah
+;
+
 --------------------------------------
 -- ksm_pkg_proposals
 -- tbl_proposals
@@ -111,35 +191,23 @@ From table(ksm_pkg_proposals.tbl_proposals) prp
 ;
 
 --------------------------------------
--- ksm_pkg_prospect
--- tbl_assignment_summary
-Create Materialized View mv_assignments
+-- ksm_pkg_models
+-- tbl_ksm_models
+-- Drop Materialized View mv_ksm_models;
+Create Materialized View mv_ksm_models
 Refresh Complete
 Start With sysdate
 -- 7:30 AM tomorrow
 Next (trunc(sysdate) + 1 + 7.5/24)
 As
 Select
-  assign.*
+  km.*
   , sysdate as mv_last_refresh
-From table(ksm_pkg_prospect.tbl_assignment_summary) assign
-;
-
--- tbl_assignment_history
-Create Materialized View mv_assignment_history
-Refresh Complete
-Start With sysdate
--- 7:30 AM tomorrow
-Next (trunc(sysdate) + 1 + 7.5/24)
-As
-Select
-  ah.*
-  , sysdate as mv_last_refresh
-From table(ksm_pkg_prospect.tbl_assignment_history) ah
+From table(ksm_pkg_models.tbl_ksm_models) km
 ;
 
 /*************************************************************************
-Level 1 dependencies
+Level 2 dependencies
 7:40 AM
 *************************************************************************/
 
@@ -225,3 +293,18 @@ Select
 From v_ksm_giving_summary gs
 ;
 
+--------------------------------------
+-- ksm_pkg_contacts
+-- mv_entity_contact_info
+-- Drop Materialized View mv_entity_contact_info;
+Create Materialized View mv_entity_contact_info
+Refresh Complete
+Start With sysdate
+-- 7:50 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.833/24)
+As
+Select
+  eci.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_contact_info.tbl_entity_contact_info) eci
+;
