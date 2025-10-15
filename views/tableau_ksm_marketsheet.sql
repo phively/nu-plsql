@@ -76,11 +76,18 @@ a.linkedin_address
 from stg_alumni.contact c
 inner join a on c.id = a.ucinn_ascendv2__contact__c)
 
-select 
-       e.donor_id,
+select e.donor_id,
        e.person_or_org,
        e.household_primary,
        e.full_name,
+/* Gender 
+We will use the old definitions: M, F and U
+*/              
+case when  e.gender_identity like '%Man - Unspecified%' then 'M'
+when e.gender_identity like '%Woman - Unspecified%' then 'F'
+else 'U' end as gender_identity,
+       e.lost_indicator,
+       e.is_deceased_indicator,
        e.institutional_suffix,
        e.preferred_address_city,
        e.preferred_address_state,
