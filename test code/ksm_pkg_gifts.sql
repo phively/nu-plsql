@@ -35,6 +35,13 @@ Where dt.pledge_or_gift_record_id In ('PN2241905', 'PN2241904')
 ;
 
 Select
+  'Check prepaid bequest amount calc < face value' As explanation
+  , dt.*
+From table(ksm_pkg_gifts.tbl_discounted_transactions) dt
+Where dt.pledge_or_gift_record_id In ('PN2391224', 'PN2481659', 'PN3006164')
+;
+
+Select
   'Check total paid amount <= countable amount' As explanation
   , dt.*
 From table(ksm_pkg_gifts.tbl_discounted_transactions) dt

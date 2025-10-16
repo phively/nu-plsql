@@ -41,8 +41,9 @@ Type rec_discount Is Record (
       , designation_amount dm_alumni.dim_designation_detail.designation_amount%type
       , bequest_amount_calc number
       , bequest_flag varchar2(1)
-      , countable_amount_bequest dm_alumni.dim_designation_detail.countable_amount_bequest%type
-      , total_paid_amount dm_alumni.dim_designation_detail.total_payment_credit_to_date_amount%type
+      , countable_amount_bequest number
+      , bequest_adjustment_amount number
+      , total_paid_amount number
       , overpaid_flag varchar2(1)
 );
 
@@ -214,14 +215,16 @@ Cursor c_discounted_transactions Is
     , dd.designation_detail_name
     , dd.designation_amount
     -- Written off bequests should have actual, not countable, amount posted
+    -- In the case there is a bequest reduction, add that to the face value
     , Case
-        When dd.pledge_or_gift_status In ('Written Off', 'Paid')
+        When dd.pledge_or_gift_status In ('Written Off', 'Paid', 'Cancelled')
           Then dd.total_paid_amount
-        Else dd.countable_amount_bequest
+        Else dd.countable_amount_bequest + least(0, dd.bequest_adjustment_amount)
         End
       As bequest_amount_calc
     , dd.bequest_flag
     , dd.countable_amount_bequest
+    , dd.bequest_adjustment_amount
     , dd.total_paid_amount
     , dd.overpaid_flag
   From mv_designation_detail dd
