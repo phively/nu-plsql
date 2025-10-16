@@ -60,6 +60,7 @@ Type rec_entity Is Record (
   , preferred_address_postal_code dm_alumni.dim_constituent.preferred_address_postal_code%type
   , preferred_address_country dm_alumni.dim_constituent.preferred_address_country_name%type
   , gender_identity dm_alumni.dim_constituent.gender_identity%type
+  , gender_code varchar2(1)
   , citizenship dm_alumni.dim_constituent.citizenship_list%type
   , ethnicity dm_alumni.dim_constituent.ethnicity%type
   , university_overall_rating dm_alumni.dim_constituent.constituent_university_overall_rating%type
@@ -161,6 +162,14 @@ Cursor c_entity Is
     , preferred_address_postal_code
     , preferred_address_country
     , gender_identity
+    , Case
+        When gender_identity Like '%Man - Unspecified%'
+          Then 'M'
+        When gender_identity Like '%Woman - Unspecified%'
+          Then 'F'
+        Else 'U'
+        End
+      As gender_code
     , citizenship
     , ethnicity
     , constituent_university_overall_rating As university_overall_rating
@@ -211,6 +220,7 @@ Cursor c_entity Is
     , preferred_address_postal_code
     , preferred_address_country
     , NULL As gender_identity
+    , NULL As gender_code
     , NULL As citizenship
     , NULL As ethnicity
     , organization_university_overall_rating As university_overall_rating
