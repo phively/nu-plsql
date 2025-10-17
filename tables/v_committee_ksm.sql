@@ -90,3 +90,13 @@ Create Or Replace View v_committee_tech As
 Select *
 From table(ksm_pkg_committee.tbl_committee_members('committee_tech'))
 ;
+
+Create Or Replace View v_committee_kfc_campaign As
+Select *
+From table(ksm_pkg_committee.tbl_committee_members('committee_kfc_campaign'))
+;
+
+Create Or Replace View v_committee_climate As
+Select *
+From table(ksm_pkg_committee.tbl_committee_members('committee_climate'))
+;
