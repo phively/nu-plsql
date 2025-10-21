@@ -12,7 +12,15 @@ From table(dw_pkg_base.tbl_organization)
 ;
 
 Select *
+From table(dw_pkg_base.tbl_contact)
+;
+
+Select *
 From table(dw_pkg_base.tbl_mini_entity)
+;
+
+Select *
+From table(dw_pkg_base.tbl_relationships)
 ;
 
 Select *
@@ -25,6 +33,10 @@ From table(dw_pkg_base.tbl_designation)
 
 Select *
 From table(dw_pkg_base.tbl_opportunity)
+;
+
+Select *
+From table(dw_pkg_base.tbl_campaign_appeal)
 ;
 
 Select *
@@ -49,6 +61,10 @@ From table(dw_pkg_base.tbl_assignments)
 
 Select *
 From table(dw_pkg_base.tbl_proposals)
+;
+
+Select *
+From table(dw_pkg_base.tbl_strategy)
 ;
 
 Select *

@@ -7,8 +7,8 @@ Purpose : Base table combining hard and soft credit, opportunity, designation,
   constituent, and organization into a normalized transactions list. One credited donor
   transaction per row.
 Dependencies: dw_pkg_base (mv_designation_detail), ksm_pkg_entity (mv_entity),
-  ksm_pkg_designation (mv_designation), ksm_pkg_transactions (mv_transactions), ksm_pkg_utility,
-  ksm_pkg_prospect (mv_assignment_history)
+  ksm_pkg_designation (mv_designation), ksm_pkg_transactions (mv_transactions, mv_matches),
+  ksm_pkg_utility, ksm_pkg_prospect (mv_assignment_history)
 
 Suggested naming conventions:
   Pure functions: [function type]_[description]
@@ -75,76 +75,85 @@ Type rec_source_donor Is Record (
 --------------------------------------
 -- Gift transactions
 Type rec_transaction Is Record (
-      credited_donor_id mv_entity.donor_id%type
-      , household_id mv_entity.household_id%type
-      , credited_donor_name mv_entity.full_name%type
-      , credited_donor_sort_name mv_entity.sort_name%type
-      , credited_donor_audit varchar2(255) -- See dw_pkg_base.rec_gift_credit.donor_name_and_id
-      , opportunity_donor_id mv_entity.donor_id%type
-      , opportunity_donor_name mv_entity.full_name%type
-      , tribute_type varchar2(255)
-      , tributees varchar2(1023)
-      , tx_id dm_alumni.dim_opportunity.opportunity_record_id%type
-      , opportunity_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
-      , payment_record_id stg_alumni.ucinn_ascendv2__payment__c.name%type
-      , anonymous_type dm_alumni.dim_opportunity.anonymous_type%type
-      , legacy_receipt_number dm_alumni.dim_opportunity.legacy_receipt_number%type
-      , opportunity_stage dm_alumni.dim_opportunity.opportunity_stage%type
-      , opportunity_record_type dm_alumni.dim_opportunity.opportunity_record_type%type
-      , opportunity_type dm_alumni.dim_opportunity.opportunity_type%type
-      , payment_schedule stg_alumni.opportunity.ap_payment_schedule__c%type
-      , source_type stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__source__c%type
-      , source_type_detail stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__gift_type_formula__c%type
-      , gypm_ind varchar2(1)
-      , adjusted_opportunity_ind varchar2(1)
-      , hard_and_soft_credit_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.id%type
-      , credit_receipt_number stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__receipt_number__c%type
-      , matched_gift_record_id dm_alumni.dim_opportunity.matched_gift_record_id%type
-      , pledge_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
-      , linked_proposal_record_id dm_alumni.dim_opportunity.linked_proposal_record_id%type
-      , historical_pm_user_id mv_proposals.historical_pm_user_id%type
-      , historical_pm_name mv_proposals.historical_pm_name%type
-      , historical_pm_role mv_proposals.historical_pm_role%type
-      , historical_pm_unit mv_proposals.historical_pm_business_unit%type
-      , historical_pm_is_active mv_proposals.historical_pm_is_active%type
-      , historical_prm_name mv_assignment_history.staff_name%type
-      , historical_prm_start_date mv_assignment_history.start_date%type
-      , historical_prm_unit mv_assignment_history.assignment_business_unit%type
-      , historical_prm_ksm_flag mv_assignment_history.ksm_flag%type
-      , historical_lagm_name mv_assignment_history.staff_name%type
-      , historical_lagm_start_date mv_assignment_history.start_date%type
-      , historical_lagm_unit mv_assignment_history.assignment_business_unit%type
-      , historical_lagm_ksm_flag mv_assignment_history.ksm_flag%type
-      , designation_record_id mv_ksm_designation.designation_record_id%type
-      , designation_status mv_ksm_designation.designation_status%type
-      , legacy_allocation_code mv_ksm_designation.legacy_allocation_code%type
-      , designation_name mv_ksm_designation.designation_name%type
-      , fin_fund_id mv_ksm_designation.fin_fund_id%type
-      , fin_department_id mv_ksm_designation.fin_department_id%type
-      , fin_project_id mv_ksm_designation.fin_project_id%type
-      , fin_activity mv_ksm_designation.fin_activity_id%type
-      , ksm_af_flag mv_ksm_designation.ksm_af_flag%type
-      , ksm_cru_flag mv_ksm_designation.ksm_cru_flag%type
-      , cash_category mv_ksm_designation.cash_category%type
-      , full_circle_campaign_priority mv_ksm_designation.full_circle_campaign_priority%type
-      , credit_date stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_date_formula__c%type
-      , fiscal_year integer
-      , entry_date dm_alumni.dim_opportunity.opportunity_entry_date%type
-      , credit_type stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_type__c%type
-      , credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
-      , hard_credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
-      , recognition_credit stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
-      , tender_type varchar2(128)
-      , min_etl_update_date mv_entity.etl_update_date%type
-      , max_etl_update_date mv_entity.etl_update_date%type
-      , historical_credit_user_id mv_assignment_history.staff_user_salesforce_id%type
-      , historical_credit_name mv_assignment_history.staff_name%type
-      , historical_credit_assignment_type mv_assignment_history.assignment_type%type
-      , historical_credit_unit mv_assignment_history.assignment_business_unit%type
-      , historical_credit_active_flag varchar2(1)
-      , hh_credited_donors integer
-      , hh_credit number -- not currency, do not round
-      , hh_recognition_credit number -- not currency, do not round
+  credited_donor_id mv_entity.donor_id%type
+  , household_id mv_entity.household_id%type
+  , credited_donor_name mv_entity.full_name%type
+  , credited_donor_sort_name mv_entity.sort_name%type
+  , credited_donor_audit varchar2(255) -- See dw_pkg_base.rec_gift_credit.donor_name_and_id
+  , opportunity_donor_id mv_entity.donor_id%type
+  , opportunity_donor_name mv_entity.full_name%type
+  , tribute_type varchar2(255)
+  , tributees varchar2(1023)
+  , tx_id dm_alumni.dim_opportunity.opportunity_record_id%type
+  , opportunity_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
+  , payment_record_id stg_alumni.ucinn_ascendv2__payment__c.name%type
+  , anonymous_type dm_alumni.dim_opportunity.anonymous_type%type
+  , legacy_receipt_number dm_alumni.dim_opportunity.legacy_receipt_number%type
+  , opportunity_stage dm_alumni.dim_opportunity.opportunity_stage%type
+  , opportunity_record_type dm_alumni.dim_opportunity.opportunity_record_type%type
+  , opportunity_type dm_alumni.dim_opportunity.opportunity_type%type
+  , payment_schedule stg_alumni.opportunity.ap_payment_schedule__c%type
+  , source_type stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__source__c%type
+  , source_type_detail stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__gift_type_formula__c%type
+  , gypm_ind varchar2(1)
+  , adjusted_opportunity_ind varchar2(1)
+  , opportunity_adjustment_type mv_transactions.opportunity_adjustment_type%type
+  , payment_adjustment_type mv_transactions.payment_adjustment_type%type
+  , hard_and_soft_credit_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.id%type
+  , credit_receipt_number stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__receipt_number__c%type
+  , matched_gift_record_id dm_alumni.dim_opportunity.matched_gift_record_id%type
+  , matching_gift_original_gift_receipt mv_matches.matching_gift_original_gift_receipt%type
+  , original_gift_credit_date mv_matches.original_gift_credit_date%type
+  , original_gift_fy mv_matches.original_gift_fy%type
+  , matching_gift_credit_date mv_matches.matching_gift_credit_date%type
+  , matching_gift_fy mv_matches.matching_gift_fy%type
+  , pledge_record_id dm_alumni.dim_opportunity.opportunity_record_id%type
+  , linked_proposal_record_id dm_alumni.dim_opportunity.linked_proposal_record_id%type
+  , historical_pm_user_id mv_proposals.historical_pm_user_id%type
+  , historical_pm_name mv_proposals.historical_pm_name%type
+  , historical_pm_role mv_proposals.historical_pm_role%type
+  , historical_pm_unit mv_proposals.historical_pm_business_unit%type
+  , historical_pm_is_active mv_proposals.historical_pm_is_active%type
+  , historical_prm_name mv_assignment_history.staff_name%type
+  , historical_prm_start_date mv_assignment_history.start_date%type
+  , historical_prm_unit mv_assignment_history.assignment_business_unit%type
+  , historical_prm_ksm_flag mv_assignment_history.ksm_flag%type
+  , historical_lagm_name mv_assignment_history.staff_name%type
+  , historical_lagm_start_date mv_assignment_history.start_date%type
+  , historical_lagm_unit mv_assignment_history.assignment_business_unit%type
+  , historical_lagm_ksm_flag mv_assignment_history.ksm_flag%type
+  , designation_record_id mv_ksm_designation.designation_record_id%type
+  , designation_status mv_ksm_designation.designation_status%type
+  , legacy_allocation_code mv_ksm_designation.legacy_allocation_code%type
+  , designation_name mv_ksm_designation.designation_name%type
+  , fin_fund_id mv_ksm_designation.fin_fund_id%type
+  , fin_department_id mv_ksm_designation.fin_department_id%type
+  , fin_project_id mv_ksm_designation.fin_project_id%type
+  , fin_activity mv_ksm_designation.fin_activity_id%type
+  , campaign_code stg_alumni.campaign.ucinn_ascendv2__motivation_code__c%type
+  , campaign_name stg_alumni.campaign.name%type
+  , ksm_af_flag mv_ksm_designation.ksm_af_flag%type
+  , ksm_cru_flag mv_ksm_designation.ksm_cru_flag%type
+  , cash_category mv_ksm_designation.cash_category%type
+  , full_circle_campaign_priority mv_ksm_designation.full_circle_campaign_priority%type
+  , credit_date stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_date_formula__c%type
+  , fiscal_year integer
+  , entry_date dm_alumni.dim_opportunity.opportunity_entry_date%type
+  , credit_type stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_type__c%type
+  , credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
+  , hard_credit_amount stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
+  , recognition_credit stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_amount__c%type
+  , tender_type varchar2(128)
+  , min_etl_update_date mv_entity.etl_update_date%type
+  , max_etl_update_date mv_entity.etl_update_date%type
+  , historical_credit_user_id mv_assignment_history.staff_user_salesforce_id%type
+  , historical_credit_name mv_assignment_history.staff_name%type
+  , historical_credit_assignment_type mv_assignment_history.assignment_type%type
+  , historical_credit_unit mv_assignment_history.assignment_business_unit%type
+  , historical_credit_active_flag varchar2(1)
+  , hh_credited_donors integer
+  , hh_credit number -- not currency, do not round
+  , hh_recognition_credit number -- not currency, do not round
 );
 
 /*************************************************************************
@@ -257,6 +266,12 @@ Select Distinct
     , mve.household_id
 ;
 
+--------------------------------------
+-- Source donor:
+-- Exclude in honor of, in memory of
+-- Person trumps org
+-- Earlier KSM grad year trumps later grad year
+-- Matching gifts use MATCHED gift credited donor, not own
 Cursor c_source_donors Is
   
   With
@@ -271,10 +286,14 @@ Cursor c_source_donors Is
       , mvt.gypm_ind
       , mvt.opportunity_record_id
       , mvt.matched_gift_record_id
+      , match.original_gift_record_id
       , mvt.pledge_record_id
       , mvt.credit_type
       , mvt.max_etl_update_date
     From mv_transactions mvt
+    -- Matching gifts
+    Left Join mv_matches match
+      On match.matching_gift_record_id = mvt.opportunity_record_id
     -- Exclude in honor/memory of donors
     Left Join table(ksm_pkg_transactions.tbl_tributes) trib
       On trib.opportunity_salesforce_id = mvt.opportunity_salesforce_id
@@ -282,14 +301,25 @@ Cursor c_source_donors Is
   )
   
   Select
-    tx_id
-    , min(legacy_receipt_number)
+    trans.tx_id
+    , min(trans.legacy_receipt_number)
       As legacy_receipt_number
     , Case
-        -- Matching gift logic pending
-        When max(gypm_ind) = 'MatchTBD'
-          Then 'MatchTBD'
-        Else max(credited_donor_id)
+        -- Matching gift logic
+        -- IMPORTANT: same keep() order as below
+        When max(trans.gypm_ind) = 'M'
+          Then max(orig_match.credited_donor_id)
+          keep(dense_rank First Order By
+            -- 'P'erson before 'O'rg
+            om_mve.person_or_org Desc
+            -- Earlier grad year before later grad year
+            , om_deg.first_ksm_year Asc Nulls Last
+            -- Donor ID as tiebreak
+            , om_mve.donor_id Asc
+          )
+        -- All others
+        -- IMPORTANT: same keep() order as above
+        Else max(trans.credited_donor_id)
           keep(dense_rank First Order By
             -- 'P'erson before 'O'rg
             mve.person_or_org Desc
@@ -307,6 +337,13 @@ Cursor c_source_donors Is
     On mve.donor_id = trans.credited_donor_id
   Left Join mv_entity_ksm_degrees deg
     On deg.donor_id = trans.credited_donor_id
+  -- Matching gift logic
+  Left Join trans orig_match
+    On orig_match.opportunity_record_id = trans.matched_gift_record_id
+  Left Join mv_entity om_mve
+    On om_mve.donor_id = orig_match.credited_donor_id
+  Left Join mv_entity_ksm_degrees om_deg
+    On om_deg.donor_id = orig_match.credited_donor_id
   Group By trans.tx_id
 ;
 
@@ -335,18 +372,6 @@ Cursor c_ksm_transactions Is
       -- TBD funds (clean up as moved)
       Union All
       Select 'PN2480673', NULL, 'Faculty' From DUAL
-      Union All
-      Select 'PN2482912', NULL, 'Faculty' From DUAL
-      Union All
-      Select 'PN2481184', NULL, 'Students' From DUAL
-      Union All
-      Select 'GN2218698', NULL, 'Students' From DUAL
-      Union All
-      Select 'PN2484020', NULL, 'Students' From DUAL
-      Union All
-      Select 'GN2233453', NULL, 'Students' From DUAL
-      Union All
-      Select 'GN2217992', NULL, 'Students' From DUAL
     )
     
     , tribute As (
@@ -399,6 +424,8 @@ Cursor c_ksm_transactions Is
         On mvt.credited_donor_id = mve.donor_id
         And mvt.credit_date Between ah.start_date And nvl(ah.end_date, to_date('99990101', 'yyyymmdd'))
       Where ah.assignment_code In ('PRM', 'LAGM')
+        -- Ignore DAF
+        And donor_advised_fund_indicator Is Null
     )
     
     , ranked_managers As (
@@ -421,6 +448,15 @@ Cursor c_ksm_transactions Is
           As rank_lagm
       From historical_mgrs
       Where assignment_code In ('PRM', 'LAGM')
+    )
+    
+    -- Campaign appeal codes
+    , campaign_appeal As (
+      Select Distinct
+        campaign_salesforce_id
+        , campaign_code
+        , campaign_name
+      From table(dw_pkg_base.tbl_campaign_appeal)
     )
     
     -- Unified transactions
@@ -448,9 +484,17 @@ Cursor c_ksm_transactions Is
         , trans.source_type_detail
         , trans.gypm_ind
         , trans.adjusted_opportunity_ind
+        , trans.opportunity_adjustment_type
+        , trans.payment_adjustment_type
         , trans.hard_and_soft_credit_salesforce_id
         , trans.credit_receipt_number
+        -- Matching gifts
         , trans.matched_gift_record_id
+        , match.matching_gift_original_gift_receipt
+        , match.original_gift_credit_date
+        , match.original_gift_fy
+        , match.matching_gift_credit_date
+        , match.matching_gift_fy
         , trans.pledge_record_id
         , trans.linked_proposal_record_id
         , prop.historical_pm_user_id
@@ -483,6 +527,8 @@ Cursor c_ksm_transactions Is
         , trans.fin_department_id
         , trans.fin_project_id
         , trans.fin_activity_id
+        , ca.campaign_code
+        , ca.campaign_name
         , kdes.ksm_af_flag
         , kdes.ksm_cru_flag
         , Case
@@ -527,19 +573,28 @@ Cursor c_ksm_transactions Is
             -- Bequests always show discounted amount
             When bequests.bequest_flag = 'Y'
               Then bequests.bequest_amount_calc
+            -- Internal DAF checks 
+            When trans.opportunity_type Like '%NU Donor Advised Fund%'
+              And nullif(trans.daf_distribution_amount, 0) Is Not Null
+              Then trans.daf_distribution_amount
             Else trans.credit_amount
             End
           As credit_amount
         -- Hard credit
         , Case
             When trans.credit_type = 'Hard'
-              -- Keep same logic as soft credit, above
               Then Case
-                -- Bequests always show discounted amount
-                When bequests.bequest_flag = 'Y'
-                  Then bequests.bequest_amount_calc
-                Else trans.hard_credit_amount
-                End
+              -- Keep same logic as soft credit, above
+              -- Bequests always show discounted amount
+              When bequests.bequest_flag = 'Y'
+                Then bequests.bequest_amount_calc
+              -- Internal DAF checks 
+              When trans.opportunity_type Like '%NU Donor Advised Fund%'
+                And nullif(trans.daf_distribution_amount, 0) Is Not Null
+                Then trans.daf_distribution_amount
+              Else trans.credit_amount
+              End
+              -- Fallback is 0, do not edit
               Else 0
             End
           As hard_credit_amount
@@ -560,6 +615,9 @@ Cursor c_ksm_transactions Is
         On mve.donor_id = trans.credited_donor_id
       Inner Join mv_ksm_designation kdes
         On kdes.designation_record_id = trans.designation_record_id
+      -- Matching gift
+      Left Join mv_matches match
+        On match.matching_gift_record_id = trans.opportunity_record_id
       -- Discounted bequests
       Left Join table(ksm_pkg_gifts.tbl_discounted_transactions) bequests
         -- Pledge + designation should be a unique identifier
@@ -593,6 +651,9 @@ Cursor c_ksm_transactions Is
         On lagms.tx_id = trans.tx_id
         And lagms.rank_lagm = 1
         And lagms.assignment_code = 'LAGM'
+      -- Campaign data
+      Left Join campaign_appeal ca
+        On ca.campaign_salesforce_id = trans.campaign_salesforce_id
     )
     
     -- Final householded credit

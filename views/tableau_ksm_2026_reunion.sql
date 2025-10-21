@@ -437,14 +437,7 @@ GIFTINFO AS (
     ,MAX(DECODE(RW,4,OPPORTUNITY_TYPE)) OPPORTUNITY_TYPE4
     ,MAX(DECODE(RW,4,CAMPAIGN_CODE)) CAMPAIGN_MOTIVATION_CODE_4
 FROM ROWDATA
-GROUP BY CREDITED_DONOR_ID),
-
---- KSM faculty or staff 
-
-f as (SELECT
-    CONSTITUENT_DONOR_ID ,'Faculty/Staff' AS SHORT_DESC
-  FROM DM_ALUMNI.DIM_CONSTITUENT
-  WHERE CONSTITUENT_TYPE LIKE '%Faculty%')
+GROUP BY CREDITED_DONOR_ID)
 
  
 select distinct e.household_id,
@@ -487,7 +480,6 @@ select distinct e.household_id,
      klc.segment as KLC,
      case when g.ngc_fy_giving_first_yr is not null then g.ngc_fy_giving_first_yr else 0 end as ngc_fy_giving_first_yr,
      case when g.cash_fy_giving_first_yr is not null then g.cash_fy_giving_first_yr else 0 end as cash_fy_giving_first_yr,
-     case when g.expendable_cfy > 0 then 'CYD' end as CYD_Flag,
      --- Write down expendable, cash, ngc explanations for team
      --- edit 9/16/25 - add zeros if blanks 
      case when g.ngc_lifetime is not null then g.ngc_lifetime else 0 end as ngc_lifetime,
@@ -550,7 +542,6 @@ select distinct e.household_id,
      gi.CAMPAIGN_MOTIVATION_CODE_4,
      linked.linkedin_address,
      employ.primary_employ_ind,
-     f.SHORT_DESC as ksm_faculty_staff_ind,
      employ.primary_job_title,
      employ.primary_employer,
      assign.prospect_manager_name,
@@ -639,5 +630,3 @@ left join klc on klc.donor_id = e.donor_id
 left join rc16 on rc16.constituent_donor_id = e.donor_id
 --- last 4 gifts
 left join GIFTINFO gi on gi.CREDITED_DONOR_ID = e.donor_id
---- Faculty or Staff Flag
-left join f on f.CONSTITUENT_DONOR_ID = e.donor_id

@@ -25,6 +25,7 @@ Public type declarations
 
 Type rec_special_handling Is Record (
     household_id mv_entity.household_id%type
+    , household_id_ksm mv_entity.household_id_ksm%type
     , donor_id mv_entity.donor_id%type
     , spouse_donor_id mv_entity.spouse_donor_id%type
     , service_indicators_concat varchar2(1600)
@@ -297,8 +298,9 @@ Cursor c_special_handling Is
   )
   
   -- Main query
-  Select
+  Select Distinct
     mve.household_id
+    , mve.household_id_ksm
     , ids.donor_id
     , ids.spouse_donor_id
     , svc_ind.service_indicators_concat
