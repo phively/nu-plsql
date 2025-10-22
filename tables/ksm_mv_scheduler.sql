@@ -190,6 +190,22 @@ Select
 From table(ksm_pkg_proposals.tbl_proposals) prp
 ;
 
+--------------------------------------
+-- ksm_pkg_models
+-- tbl_ksm_models
+-- Drop Materialized View mv_ksm_models;
+Create Materialized View mv_ksm_models
+Refresh Complete
+Start With sysdate
+-- 7:30 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.5/24)
+As
+Select
+  km.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_models.tbl_ksm_models) km
+;
+
 /*************************************************************************
 Level 2 dependencies
 7:40 AM

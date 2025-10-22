@@ -35,6 +35,8 @@ committee_asia Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_as
 committee_mbai Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type := 'COM-MBAAC'; -- MBAi Advisory Council 
 committee_yab Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type := 'COM-KAYAB'; -- Kellogg Young Alumni Board
 committee_tech Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type := 'COM-KTC'; -- Kellogg Alumni Tech Council
+committee_kfc_campaign Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type := 'COM-KFCCC'; -- Kellogg Full Circle Campaign Committee
+committee_climate Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type := 'COM-ACAAC'; -- Abrams Climate Academy Advisory Council
 
 --------------------------------------
 -- Committee dues
@@ -190,6 +192,8 @@ Cursor c_committees_all Is
     Union Select ksm_pkg_committee.get_string_constant('committee_yab') From DUAL
     Union Select ksm_pkg_committee.get_string_constant('committee_tech') From DUAL
     Union Select ksm_pkg_committee.get_string_constant('committee_womensLeadership') From DUAL
+    Union Select ksm_pkg_committee.get_string_constant('committee_kfc_campaign') From DUAL
+    Union Select ksm_pkg_committee.get_string_constant('committee_climate') From DUAL
   )
 ;
 

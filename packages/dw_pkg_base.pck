@@ -224,6 +224,7 @@ Type rec_designation_detail Is Record (
   , designation_detail_name dm_alumni.dim_designation_detail.designation_detail_name%type
   , designation_amount dm_alumni.dim_designation_detail.designation_amount%type
   , countable_amount_bequest dm_alumni.dim_designation_detail.countable_amount_bequest%type
+  , bequest_adjustment_amount stg_alumni.ucinn_ascendv2__designation_detail__c.ap_bequest_anticipated_credit_adjusted__c%type
   , bequest_flag varchar2(1)
   , total_paid_amount dm_alumni.dim_designation_detail.total_payment_credit_to_date_amount%type
   , overpaid_flag varchar2(1)
@@ -974,24 +975,29 @@ Cursor c_designation Is
 --------------------------------------
 Cursor c_designation_detail Is
   Select 
-    pledge_or_gift_record_id
-    , pledge_or_gift_date
-    , pledge_or_gift_status
-    , designation_detail_record_id
-    , designation_record_id
-    , designation_detail_name
-    , designation_amount
-    , countable_amount_bequest
-    , Case When pledge_or_gift_type Like 'PGBEQ%' Then 'Y' End
+    nullif(dd.pledge_or_gift_record_id, '-')
+      As pledge_or_gift_record_id
+    , dd.pledge_or_gift_date
+    , dd.pledge_or_gift_status
+    , dd.designation_detail_record_id
+    , dd.designation_record_id
+    , dd.designation_detail_name
+    , dd.designation_amount
+    , dd.countable_amount_bequest
+    , dd_stg.ap_bequest_anticipated_credit_adjusted__c
+      As countable_amount_bequest_adjustment
+    , Case When dd.pledge_or_gift_type Like 'PGBEQ%' Then 'Y' End
       As bequest_flag
-    , total_payment_credit_to_date_amount
+    , dd.total_payment_credit_to_date_amount
       As total_paid_amount
     , Case
-        When nvl(total_payment_credit_to_date_amount, 0) > nvl(designation_amount, 0)
+        When nvl(dd.total_payment_credit_to_date_amount, 0) > nvl(dd.designation_amount, 0)
           Then 'Y'
         End
       As overpaid_flag
-  From dm_alumni.dim_designation_detail
+  From dm_alumni.dim_designation_detail dd
+  Inner Join stg_alumni.ucinn_ascendv2__designation_detail__c dd_stg
+    On dd_stg.id = dd.designation_detail_salesforce_id
 ;
 
 --------------------------------------
@@ -1366,7 +1372,8 @@ Cursor c_proposals Is
     , dpo.proposal_submitted_amount
     , dpo.proposal_anticipated_amount
     , dpo.proposal_funded_amount
-    , dpo.proposal_linked_gift_pledge_ids
+    , nullif(dpo.proposal_linked_gift_pledge_ids, '-')
+      As proposal_linked_gift_pledge_ids
     , dpo.proposal_created_date
     , dpo.proposal_submitted_date
     , dpo.proposal_close_date

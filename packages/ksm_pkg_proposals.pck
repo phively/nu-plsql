@@ -206,8 +206,10 @@ Cursor c_proposals Is
     On strat.strategy_record_id = prop.proposal_strategy_record_id
   Left Join ksm_mgrs gos_active
     On gos_active.user_id = prop.active_proposal_manager_salesforce_id
+    And prop.proposal_close_date Between gos_active.start_dt And gos_active.stop_dt
   Left Join ksm_mgrs gos_hist
     On gos_hist.user_id = prop.historical_pm_user_id
+    And prop.proposal_close_date Between gos_hist.start_dt And gos_hist.stop_dt
 ;
 
 /*************************************************************************
