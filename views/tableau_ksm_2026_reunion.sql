@@ -10,7 +10,16 @@ Select
 ),
 
 /* We will invite Full time, E&W, TMP (Part time),
-JDMBA, MMM, MBAi, Business Undergrad (old program)*/
+JDMBA, MMM, MBAi, Business Undergrad (old program)
+
+EDIT: KSM ARD Wants to invite ALL MiM, regardless of Reunion year this year 
+
+*/
+
+--- KSM ARD Wants to invite ALL MiM for this year - Got a Spreadsheet from Amanda
+
+MIM AS (SELECT *
+FROM TBL_KSM_MIM),
 
 KSM_Degrees as (Select d.donor_id,
 d.program,
@@ -44,12 +53,15 @@ KD.program_group,
 KD.first_ksm_year,
 KD.first_masters_year,
 KD.degrees_verbose,
-KD.class_section
+KD.class_section,
+case when MIM.id_number is not null then 'MIM' end as MIM_IND
 from stg_alumni.contact a
 CROSS JOIN manual_dates MD
 inner join d on d.ucinn_ascendv2__contact__c = a.id
 inner join KSM_Degrees KD on KD.donor_id = a.ucinn_ascendv2__donor_id__c
-where (TO_NUMBER(NVL(TRIM(d.ucinn_ascendv2__reunion_year__c),'1')) IN (MD.CFY-1, MD.CFY-5, MD.CFY-10, MD.CFY-15, MD.CFY-20, 
+--- Mim 
+left join MIM on MIM.id_number = a.ucinn_ascendv2__donor_id__c
+where ((TO_NUMBER(NVL(TRIM(d.ucinn_ascendv2__reunion_year__c),'1')) IN (MD.CFY-1, MD.CFY-5, MD.CFY-10, MD.CFY-15, MD.CFY-20, 
 MD.CFY-25, MD.CFY-30, MD.CFY-35, MD.CFY-40,
 MD.CFY-45, MD.CFY-50, MD.CFY-51, MD.CFY-52, 
 MD.CFY-53, MD.CFY-54, MD.CFY-55, MD.CFY-56, 
@@ -66,7 +78,13 @@ AND KD.PROGRAM IN (
 ---- The old Undergrad programs - should be 50+ milestone Now
  'FT-CB', 'FT-EB',
  --- Evening and Weekend 
- 'TMP', 'TMP-SAT','TMP-SATXCEL', 'TMP-XCEL')),
+ 'TMP', 'TMP-SAT','TMP-SATXCEL', 'TMP-XCEL'))
+ 
+--- ADD SPECIAL MIM CLASS 
+
+OR (MIM.ID_NUMBER IS NOT NULL)
+ 
+ ),
 
 --- listag reunion
 -- Some have more than 2 preferred KSM Reunions 
@@ -87,7 +105,8 @@ reunion_year.program,
 reunion_year.program_group,
 reunion_year.class_section,
 reunion_year.first_masters_year,
-reunion_year.degrees_verbose
+reunion_year.degrees_verbose,
+reunion_year.MIM_IND
 from l 
 inner join KSM_Degrees on KSM_Degrees.donor_id = l.ucinn_ascendv2__donor_id__c
 inner join reunion_year on reunion_year.ucinn_ascendv2__donor_id__c = l.ucinn_ascendv2__donor_id__c),
@@ -359,11 +378,12 @@ assign as (Select a.household_id,
 From mv_assignments a),
 
 --- Dean Salutation 
+--- update: 10/24/25 Zach's new Salutation code 
 
 Dean as (Select e.donor_id,
-       e.P_Dean_Salut,
-       e.P_Dean_Source
-From v_entity_salutations e),
+       e.dean_salut,
+       e.dean_source
+From V_ENTITY_SALUTATIONS_INDIVIDUAL e),
 
 --- Pull KLC
 
@@ -437,7 +457,22 @@ GIFTINFO AS (
     ,MAX(DECODE(RW,4,OPPORTUNITY_TYPE)) OPPORTUNITY_TYPE4
     ,MAX(DECODE(RW,4,CAMPAIGN_CODE)) CAMPAIGN_MOTIVATION_CODE_4
 FROM ROWDATA
-GROUP BY CREDITED_DONOR_ID)
+GROUP BY CREDITED_DONOR_ID),
+
+---Adding the 2026 Reunion Committee 
+
+rc26 as (select distinct i.constituent_donor_id,
+       i.involvement_name,
+       i.involvement_status,
+       i.involvement_type,
+       i.involvement_role,
+       i.involvement_business_unit,
+       i.involvement_start_date,
+       i.involvement_end_date
+from mv_involvement i
+where i.involvement_status = 'Current'
+and i.involvement_name = 'KSM Reunion Committee'
+and i.involvement_business_unit = 'Kellogg School of Management')
 
  
 select distinct e.household_id,
@@ -449,15 +484,17 @@ select distinct e.household_id,
      MN.preferred_mail_name,
      e.full_name,
      e.first_name,
-     dean.P_Dean_Salut,
+     dean.dean_salut,
      e.last_name,
      e.institutional_suffix,
+    --- case when MIM.id_number is not null then 'MiM' end as MiM_IND, 
      FR.reunion_year_concat,
-     FR.first_ksm_year,
-     FR.first_masters_year,
-     FR.program,
-     FR.program_group,
-     FR.class_section,
+     KSM_Degrees.first_ksm_year,
+     KSM_Degrees.first_masters_year,
+     KSM_Degrees.program,
+     KSM_Degrees.program_group,
+     FR.MIM_IND,
+     KSM_Degrees.class_section,
      e.spouse_donor_id,
      e.spouse_name,
      e.spouse_institutional_suffix,
@@ -580,12 +617,20 @@ select distinct e.household_id,
      s.constituent_last_contact_report_method,
      s.constituent_visit_count,
      s.constituent_visit_last_year_count,
-     s.constituent_last_visit_date     
+     s.constituent_last_visit_date,
+     rc26.involvement_name,
+     rc26.involvement_status,
+     rc26.involvement_type,
+     rc26.involvement_role,
+     rc26.involvement_business_unit,
+     rc26.involvement_start_date,
+     rc26.involvement_end_date
 from e 
+left join KSM_Degrees on KSM_Degrees.donor_id = e.donor_id
 --- Reunion eligible
 inner join FR on FR.ucinn_ascendv2__donor_id__c = e.donor_id 
 --- giving info
-left join give g on g.household_primary_donor_id = e.donor_id 
+left join give g on g.household_primary_donor_id = e.household_id
 --- linkedin
 left join linked on linked.ucinn_ascendv2__donor_id__c = e.donor_id 
 --- employment
@@ -630,3 +675,5 @@ left join klc on klc.donor_id = e.donor_id
 left join rc16 on rc16.constituent_donor_id = e.donor_id
 --- last 4 gifts
 left join GIFTINFO gi on gi.CREDITED_DONOR_ID = e.donor_id
+--- Adding Reunion Committee
+left join rc26 on rc26.constituent_donor_id =  e.donor_id
