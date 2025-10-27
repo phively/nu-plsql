@@ -125,3 +125,4 @@ LEFT JOIN mv_entity_ksm_degrees ds
   ON e.spouse_donor_id = ds.donor_id
 WHERE e.household_primary_ksm = 'Y'
 ;
+
