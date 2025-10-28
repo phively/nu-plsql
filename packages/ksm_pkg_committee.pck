@@ -57,8 +57,8 @@ Public type declarations
 
 --------------------------------------
 Type rec_committee_member Is Record (
-    constituent_donor_id dm_alumni.dim_involvement.constituent_donor_id%type
-    , constituent_name dm_alumni.dim_involvement.constituent_name%type
+    constituent_donor_id mv_involvement.constituent_donor_id%type
+    , constituent_name mv_involvement.constituent_name%type
     , involvement_record_id dm_alumni.dim_involvement.involvement_record_id%type
     , involvement_code stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type
     , involvement_name dm_alumni.dim_involvement.involvement_name%type
@@ -74,11 +74,9 @@ Type rec_committee_member Is Record (
     , etl_update_date dm_alumni.dim_involvement.etl_update_date%type
 );
 
-
-
 --------------------------------------
 Type rec_committees_concat Is Record (
-  donor_id dm_alumni.dim_involvement.constituent_donor_id%type
+  donor_id mv_involvement.constituent_donor_id%type
   , committees_and_roles varchar2(1600)
   , committee_start_dates varchar2(500)
 );

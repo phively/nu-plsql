@@ -197,23 +197,18 @@ From tbl_ksm_model_mg m),
 
 --- Kellogg Model Engagement Score
 
-kmes as (select ae.id_number,
-       ae.segment_code,
-       ae.segment_name,
+kmes as (select ae.donor_id,
        ae.segment_year,
        ae.segment_month,
-       ae.xcomment
-from tbl_ksm_model_ae ae),
+       ae.id_code,
+       ae.id_segment,
+       ae.id_score,
+       ae.pr_code,
+       ae.pr_segment,
+       ae.pr_score,
+       ae.est_probability
+from tbl_ksm_model_mg ae),
 
---- Kellogg Alumni Engagement Student Supporter Score
-
-kmss as (select s.id_number,
-       s.segment_code,
-       s.segment_name,
-       s.segment_year,
-       s.segment_month,
-       s.xcomment
-from tbl_ksm_model_ss s),
 
 event as (select  
 a.NU_DONOR_ID__C  ,
@@ -345,16 +340,13 @@ select  distinct
        K.segment_code as K_segment_code,
        K.description as K_segment_description,
        K.score as K_score,
-       kmes.segment_code as ksm_engagement_score_code,
-       kmes.segment_name as ksm_engagement_score_name,
-       kmes.segment_year as ksm_engagement_score_year,
-       kmes.segment_month as ksm_engagement_score_month,
-       kmes.xcomment as ksm_engagement_score_comment,
-       kmss.segment_code as ksm_engage_stu_score_code,
-       kmss.segment_name as ksm_engage_stu_score_name,
-       kmss.segment_year as ksm_engage_stu_score_year,
-       kmss.segment_month as ksm_engage_stu_score_month,
-       kmss.xcomment as ksm_enage_stu_score_comment,
+       kmes.id_code,
+       kmes.id_segment,
+       kmes.id_score,
+       kmes.pr_code,
+       kmes.pr_segment,
+       kmes.pr_score,
+       kmes.est_probability,
        event_count.count_events,
        ---- i think I should listagg this????       
        el.event_name,
@@ -382,9 +374,7 @@ left join K on K.donor_id = e.donor_id
 --- model
 left join mods on mods.donor_id = e.donor_id
 --- kellogg engagement score
-left join kmes on kmes.id_number = e.donor_id
---- kellog alumni student engagement score
-left join kmss on kmss.id_number = e.donor_id
+left join kmes on kmes.donor_id = e.donor_id
 --- event data
 left join el on el.NU_DONOR_ID__C = e.donor_id
 --- count of evnet

@@ -315,8 +315,8 @@ Type rec_gift_credit Is Record (
 
 --------------------------------------
 Type rec_involvement Is Record (
-  constituent_donor_id dm_alumni.dim_involvement.constituent_donor_id%type
-  , constituent_name dm_alumni.dim_involvement.constituent_name%type
+  constituent_donor_id dm_alumni.dim_involvement.donor_id%type
+  , constituent_name dm_alumni.dim_involvement.donor_name%type
   , involvement_record_id dm_alumni.dim_involvement.involvement_record_id%type
   , involvement_code stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type
   , involvement_name dm_alumni.dim_involvement.involvement_name%type
