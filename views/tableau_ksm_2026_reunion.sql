@@ -724,7 +724,7 @@ left join KSM_Degrees on KSM_Degrees.donor_id = e.donor_id
 --- Reunion eligible
 inner join FR on FR.ucinn_ascendv2__donor_id__c = e.donor_id 
 --- giving info
-left join give g on g.household_primary_donor_id = e.household_id
+left join give g on g.household_id = e.household_id
 --- linkedin
 left join linked on linked.ucinn_ascendv2__donor_id__c = e.donor_id 
 --- employment
