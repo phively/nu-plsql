@@ -289,6 +289,14 @@ Inner Join mv_entity ME
 ON ME.SALESFORCE_ID = INDNAMESAL.UCINN_ASCENDV2__CONTACT__C
 AND INDNAMESAL.ucinn_ascendv2__type__c = 'Full Name'),
 
+--- spouse preferred mail name 
+
+SMN as (select en.spouse_donor_id,
+MN.preferred_mail_name as spouse_pref_mail_name
+from mv_entity en
+inner join MN on MN.donor_ID = en.spouse_donor_id),
+
+
 --- Join Salutation for folks that have a spouse, who is NOT a primary member of the household, AND has a Reunion 2026 year
 
 Salutation as (Select
@@ -385,6 +393,18 @@ Dean as (Select e.donor_id,
        e.dean_source
 From V_ENTITY_SALUTATIONS_INDIVIDUAL e),
 
+--- household Dean Salutation 
+--- Use this for Joint Salutations and Spouse 
+
+hhdean as (select e.household_id_ksm,
+       e.Spouse_Dean_Salut,
+       e.spouse_full_name,
+       e.Spouse_Dean_Source,
+       e.joint_dean_salut,
+       e.joint_fullname
+  from V_ENTITY_SALUTATIONS_HOUSEHOLD e),
+
+
 --- Pull KLC
 
 klc as (Select k.DONOR_ID,
@@ -472,7 +492,51 @@ rc26 as (select distinct i.constituent_donor_id,
 from mv_involvement i
 where i.involvement_status = 'Current'
 and i.involvement_name = 'KSM Reunion Committee'
-and i.involvement_business_unit = 'Kellogg School of Management')
+and i.involvement_business_unit = 'Kellogg School of Management'),
+
+--- Bad data in address for international address 
+--- Amy suggests using presidental address
+--- will review data after 
+
+Pres as (SELECT DISTINCT
+    ME.DONOR_ID
+    ,AC.Ucinn_Ascendv2__Presidential_Preferred_Street__c AS PRES_PREF_STREET
+    ,AC.UCINN_ASCENDV2__PRESIDENTIAL_PREFERRED_CITY__C AS PRES_PREF_CITY
+    ,AC.UCINN_ASCENDV2__PRESIDENTIAL_PREFERRED_STATE__C AS PRES_PREF_STATE
+    ,AC.UCINN_ASCENDV2__PRESIDENTIAL_PREFERRED_POSTAL_CODE__C AS PRES_PREF_POSTAL_CODE
+    ,AC.UCINN_ASCENDV2__PRESIDENTIAL_PREFERRED_COUNTRY__C AS PRES_PREF_COUNTRY
+  FROM MV_ENTITY ME
+  INNER JOIN stg_alumni.contact AC
+  ON ME.SALESFORCE_ID = AC.ID),
+  
+  
+mod as (select m.donor_id,
+       m.household_id,
+       m.household_primary,
+       m.household_id_ksm,
+       m.household_primary_ksm,
+       m.sort_name,
+       m.primary_record_type,
+       m.institutional_suffix,
+       m.mg_id_code,
+       m.mg_id_description,
+       m.mg_id_score,
+       m.mg_pr_code,
+       m.mg_pr_description,
+       m.mg_pr_score,
+       m.mg_probability,
+       m.af_10k_code,
+       m.af_10k_description,
+       m.af_10k_score,
+       m.alumni_engagement_code,
+       m.alumni_engagement_description,
+       m.alumni_engagement_score,
+       m.student_supporter_code,
+       m.student_supporter_description,
+       m.student_supporter_score,
+       m.etl_update_date,
+       m.mv_last_refresh
+  From mv_ksm_models m)
 
  
 select distinct e.household_id,
@@ -483,21 +547,28 @@ select distinct e.household_id,
      s.gender_identity,
      MN.preferred_mail_name,
      e.full_name,
-     e.first_name,
      dean.dean_salut,
+     e.first_name,
      e.last_name,
      e.institutional_suffix,
-    --- case when MIM.id_number is not null then 'MiM' end as MiM_IND, 
+     --- case when MIM.id_number is not null then 'MiM' end as MiM_IND, 
      FR.reunion_year_concat,
      KSM_Degrees.first_ksm_year,
      KSM_Degrees.first_masters_year,
      KSM_Degrees.program,
      KSM_Degrees.program_group,
-     FR.MIM_IND,
      KSM_Degrees.class_section,
+     --- Mim IND - For KSM ARD 
+     FR.MIM_IND,
      e.spouse_donor_id,
      e.spouse_name,
-     e.spouse_institutional_suffix,
+     e.spouse_institutional_suffix,     
+     hhdean.Spouse_Dean_Salut,
+     hhdean.spouse_full_name,
+     SMN.spouse_pref_mail_name,
+     hhdean.spouse_Dean_Source,
+     hhdean.joint_dean_salut, 
+     hhdean.joint_fullname,    
      case when r16.id_number is not null then 'Reunion 2016 Attendee' end as Reunion_16_Attendee,
      case when r22.id_number is not null then 'Reunion 2022 Attendee' end as Reunion_22_Attendee,
      ---- need to create temp table for 2026
@@ -514,6 +585,11 @@ select distinct e.household_id,
      e.preferred_address_state,
      e.preferred_address_postal_code,
      e.preferred_address_country,
+     pres.PRES_PREF_STREET,
+     pres.PRES_PREF_CITY,
+     pres.PRES_PREF_STATE,
+     pres.PRES_PREF_POSTAL_CODE,
+     pres.PRES_PREF_COUNTRY,
      klc.segment as KLC,
      case when g.ngc_fy_giving_first_yr is not null then g.ngc_fy_giving_first_yr else 0 end as ngc_fy_giving_first_yr,
      case when g.cash_fy_giving_first_yr is not null then g.cash_fy_giving_first_yr else 0 end as cash_fy_giving_first_yr,
@@ -624,7 +700,25 @@ select distinct e.household_id,
      rc26.involvement_role,
      rc26.involvement_business_unit,
      rc26.involvement_start_date,
-     rc26.involvement_end_date
+     rc26.involvement_end_date,
+     mod.mg_id_code,
+     mod.mg_id_description,
+     mod.mg_id_score,
+     mod.mg_pr_code,
+     mod.mg_pr_description,
+     mod.mg_pr_score,
+     mod.mg_probability,
+     mod.af_10k_code,
+     mod.af_10k_description,
+     mod.af_10k_score,
+     mod.alumni_engagement_code,
+     mod.alumni_engagement_description,
+     mod.alumni_engagement_score,
+     mod.student_supporter_code,
+     mod.student_supporter_description,
+     mod.student_supporter_score,
+     mod.etl_update_date,
+     mod.mv_last_refresh
 from e 
 left join KSM_Degrees on KSM_Degrees.donor_id = e.donor_id
 --- Reunion eligible
@@ -667,8 +761,10 @@ left join Salutation on Salutation.donor_id = e.spouse_donor_id
 left join spr on spr.spouse_donor_id = e.spouse_donor_id
 --- Club Leaders
 left join club on club.constituent_donor_id = e.donor_id 
---- Dean Salutation
+--- Dean indiv Salutation
 left join Dean on Dean.donor_id = e.donor_id 
+--- Dean Joint Salutation 
+left join hhdean on hhdean.household_id_ksm = e.household_id 
 --- KLC 
 left join klc on klc.donor_id = e.donor_id 
 --- Reunion Committee 16 
@@ -677,3 +773,9 @@ left join rc16 on rc16.constituent_donor_id = e.donor_id
 left join GIFTINFO gi on gi.CREDITED_DONOR_ID = e.donor_id
 --- Adding Reunion Committee
 left join rc26 on rc26.constituent_donor_id =  e.donor_id
+--- Presidental Adddress
+left join Pres on Pres.donor_id = e.donor_id 
+--- spouse preferred name
+left join SMN on SMN.spouse_donor_id = e.donor_id 
+--- AR Mod
+left join mod on mod.donor_id = e.donor_id
