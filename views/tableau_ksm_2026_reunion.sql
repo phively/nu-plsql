@@ -536,7 +536,137 @@ mod as (select m.donor_id,
        m.student_supporter_score,
        m.etl_update_date,
        m.mv_last_refresh
-  From mv_ksm_models m)
+  From mv_ksm_models m),
+  
+  ---Amy's Pledge Code 
+  
+KSM_PAYMENTS AS (
+SELECT DISTINCT
+  --KT.CREDITED_DONOR_ID
+  KT.CREDIT_RECEIPT_NUMBER
+  ,KT.HARD_AND_SOFT_CREDIT_SALESFORCE_ID
+  ,KT.OPPORTUNITY_RECORD_ID
+  ,KT.DESIGNATION_NAME
+  ,KT.DESIGNATION_RECORD_ID
+  ,KT.CREDIT_DATE
+  ,KT.HARD_CREDIT_AMOUNT
+FROM MV_KSM_TRANSACTIONS KT
+WHERE KT.HARD_CREDIT_AMOUNT >0
+  AND KT.GYPM_IND = 'Y'
+),
+
+GIVING_TRANS as (select *
+from MV_KSM_TRANSACTIONS),
+
+ 
+KSM_PAID_AMT AS (
+SELECT
+  OPPORTUNITY_RECORD_ID
+  ,DESIGNATION_RECORD_ID
+  ,SUM(HARD_CREDIT_AMOUNT) AS TOTAL_PAID
+FROM KSM_PAYMENTS
+GROUP BY OPPORTUNITY_RECORD_ID, DESIGNATION_RECORD_ID
+),
+
+
+PLEDGEINFO AS (
+
+SELECT
+
+  DISTINCT
+
+    MKT.CREDITED_DONOR_ID
+
+    ,MKT.CREDIT_DATE
+
+    ,MKT.OPPORTUNITY_STAGE
+
+    ,MKT.OPPORTUNITY_RECORD_ID
+
+    ,MKT.DESIGNATION_RECORD_ID
+
+    ,MAX(DD.UCINN_ASCENDV2__AMOUNT__C) AS PLEDGE_TOTAL_KSM
+
+    ,MAX(DD.UCINN_ASCENDV2__REMAINING_AMOUNT_DUE_FORMULA__C) AS PLEDGE_BALANCE
+
+FROM GIVING_TRANS MKT
+
+INNER JOIN dm_alumni.dim_opportunity DO
+
+  ON MKT.OPPORTUNITY_RECORD_ID = DO.OPPORTUNITY_RECORD_ID
+
+    AND MKT.OPPORTUNITY_DONOR_ID = DO.OPPORTUNITY_DONOR_ID
+
+  INNER JOIN stg_alumni.ucinn_ascendv2__designation_detail__c DD
+
+    ON DO.OPPORTUNITY_DONOR_ID = DD.UCINN_ASCENDV2__DONOR_ID_FORMULA__C
+
+       AND DO.OPPORTUNITY_RECORD_ID = DD.UCINN_ASCENDV2__PLEDGE_ID_FORMULA__C
+
+       AND MKT.DESIGNATION_NAME = DD.UCINN_ASCENDV2__ACKNOWLEDGEMENT_DESCRIPTION_FORMULA__C
+
+  WHERE MKT.SOURCE_TYPE_DETAIL = 'Pledge'
+
+  Group By MKT.CREDITED_DONOR_ID,MKT.CREDIT_DATE,MKT.OPPORTUNITY_STAGE,MKT.OPPORTUNITY_RECORD_ID, MKT.DESIGNATION_RECORD_ID
+
+),
+ 
+NEW_PLEDGE_INFO AS (
+
+  SELECT
+
+    KT.CREDITED_DONOR_ID AS ID
+
+    ,ROW_NUMBER() OVER(PARTITION BY KT.CREDITED_DONOR_ID ORDER BY KT.CREDIT_DATE DESC)RW
+
+    ,KT.OPPORTUNITY_RECORD_ID AS PLG
+
+    ,KT.OPPORTUNITY_STAGE AS STAT
+
+    ,KT.CREDIT_DATE AS DT
+
+    ,KT.DESIGNATION_RECORD_ID AS ACCT
+
+    ,KT.PLEDGE_TOTAL_KSM AS AMT
+
+    ,NVL(KPA.TOTAL_PAID, 0) AS ALLOC_TOTAL_PAID
+
+    ,KT.PLEDGE_BALANCE AS BAL
+
+  FROM PLEDGEINFO KT
+
+  LEFT JOIN KSM_PAID_AMT KPA
+
+    ON KPA.OPPORTUNITY_RECORD_ID = KT.OPPORTUNITY_RECORD_ID
+
+      AND KPA.DESIGNATION_RECORD_ID = KT.DESIGNATION_RECORD_ID
+
+),
+ 
+
+
+amy_pledge_code as (select ID,
+
+      max(decode(rw,1,dt)) last_plg_dt,
+
+      max(decode(rw,1,stat)) status1,
+
+      max(decode(rw,1,plg)) plg1,
+
+      max(decode(rw,1,amt)) pamt1,
+
+      max(decode(rw,1,ALLOC_TOTAL_PAID)) paid1,
+
+      max(decode(rw,1,acct)) pacct1,
+
+      max(decode(rw,1,bal)) bal1
+      
+      from NEW_PLEDGE_INFO
+      
+      group by NEW_PLEDGE_INFO.id)
+      
+  
+  
 
  
 select distinct e.household_id,
@@ -622,6 +752,24 @@ select distinct e.household_id,
      g.last_pledge_designation_id,
      g.last_pledge_designation,
      case when  g.last_pledge_recognition_credit is not null then g.last_pledge_recognition_credit end as last_pledge_recognition_credit,
+     
+     ---- amy pledge code
+     
+      apc.last_plg_dt,
+
+      apc.status1,
+
+      apc.plg1,
+
+      apc.pamt1,
+
+      apc.paid1,
+
+      apc.pacct1,
+
+      apc.bal1,
+     
+     
      g.expendable_status,
      g.expendable_status_fy_start,
      g.expendable_status_pfy1_start,
@@ -779,3 +927,5 @@ left join Pres on Pres.donor_id = e.donor_id
 left join SMN on SMN.spouse_donor_id = e.donor_id 
 --- AR Mod
 left join mod on mod.donor_id = e.donor_id
+--- Amy Pledge Code
+left join amy_pledge_code apc on apc.id = e.donor_id
