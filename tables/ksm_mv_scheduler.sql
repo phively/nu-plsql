@@ -7,6 +7,7 @@ No dependencies
 --------------------------------------
 -- dw_pkg_base
 -- tbl_involvement
+-- Drop Materialized View mv_involvement;
 Create Materialized View mv_involvement
 Refresh Complete
 Start With sysdate
