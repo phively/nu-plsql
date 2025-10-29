@@ -10,7 +10,16 @@ Select
 ),
 
 /* We will invite Full time, E&W, TMP (Part time),
-JDMBA, MMM, MBAi, Business Undergrad (old program)*/
+JDMBA, MMM, MBAi, Business Undergrad (old program)
+
+EDIT: KSM ARD Wants to invite ALL MiM, regardless of Reunion year this year 
+
+*/
+
+--- KSM ARD Wants to invite ALL MiM for this year - Got a Spreadsheet from Amanda
+
+MIM AS (SELECT *
+FROM TBL_KSM_MIM),
 
 KSM_Degrees as (Select d.donor_id,
 d.program,
@@ -44,12 +53,15 @@ KD.program_group,
 KD.first_ksm_year,
 KD.first_masters_year,
 KD.degrees_verbose,
-KD.class_section
+KD.class_section,
+case when MIM.id_number is not null then 'MIM' end as MIM_IND
 from stg_alumni.contact a
 CROSS JOIN manual_dates MD
 inner join d on d.ucinn_ascendv2__contact__c = a.id
 inner join KSM_Degrees KD on KD.donor_id = a.ucinn_ascendv2__donor_id__c
-where (TO_NUMBER(NVL(TRIM(d.ucinn_ascendv2__reunion_year__c),'1')) IN (MD.CFY-1, MD.CFY-5, MD.CFY-10, MD.CFY-15, MD.CFY-20, 
+--- Mim 
+left join MIM on MIM.id_number = a.ucinn_ascendv2__donor_id__c
+where ((TO_NUMBER(NVL(TRIM(d.ucinn_ascendv2__reunion_year__c),'1')) IN (MD.CFY-1, MD.CFY-5, MD.CFY-10, MD.CFY-15, MD.CFY-20, 
 MD.CFY-25, MD.CFY-30, MD.CFY-35, MD.CFY-40,
 MD.CFY-45, MD.CFY-50, MD.CFY-51, MD.CFY-52, 
 MD.CFY-53, MD.CFY-54, MD.CFY-55, MD.CFY-56, 
@@ -66,7 +78,13 @@ AND KD.PROGRAM IN (
 ---- The old Undergrad programs - should be 50+ milestone Now
  'FT-CB', 'FT-EB',
  --- Evening and Weekend 
- 'TMP', 'TMP-SAT','TMP-SATXCEL', 'TMP-XCEL')),
+ 'TMP', 'TMP-SAT','TMP-SATXCEL', 'TMP-XCEL'))
+ 
+--- ADD SPECIAL MIM CLASS 
+
+OR (MIM.ID_NUMBER IS NOT NULL)
+ 
+ ),
 
 --- listag reunion
 -- Some have more than 2 preferred KSM Reunions 
@@ -87,7 +105,8 @@ reunion_year.program,
 reunion_year.program_group,
 reunion_year.class_section,
 reunion_year.first_masters_year,
-reunion_year.degrees_verbose
+reunion_year.degrees_verbose,
+reunion_year.MIM_IND
 from l 
 inner join KSM_Degrees on KSM_Degrees.donor_id = l.ucinn_ascendv2__donor_id__c
 inner join reunion_year on reunion_year.ucinn_ascendv2__donor_id__c = l.ucinn_ascendv2__donor_id__c),
@@ -270,6 +289,14 @@ Inner Join mv_entity ME
 ON ME.SALESFORCE_ID = INDNAMESAL.UCINN_ASCENDV2__CONTACT__C
 AND INDNAMESAL.ucinn_ascendv2__type__c = 'Full Name'),
 
+--- spouse preferred mail name 
+
+SMN as (select en.spouse_donor_id,
+MN.preferred_mail_name as spouse_pref_mail_name
+from mv_entity en
+inner join MN on MN.donor_ID = en.spouse_donor_id),
+
+
 --- Join Salutation for folks that have a spouse, who is NOT a primary member of the household, AND has a Reunion 2026 year
 
 Salutation as (Select
@@ -359,11 +386,24 @@ assign as (Select a.household_id,
 From mv_assignments a),
 
 --- Dean Salutation 
+--- update: 10/24/25 Zach's new Salutation code 
 
 Dean as (Select e.donor_id,
-       e.P_Dean_Salut,
-       e.P_Dean_Source
-From v_entity_salutations e),
+       e.dean_salut,
+       e.dean_source
+From V_ENTITY_SALUTATIONS_INDIVIDUAL e),
+
+--- household Dean Salutation 
+--- Use this for Joint Salutations and Spouse 
+
+hhdean as (select e.household_id_ksm,
+       e.Spouse_Dean_Salut,
+       e.spouse_full_name,
+       e.Spouse_Dean_Source,
+       e.joint_dean_salut,
+       e.joint_fullname
+  from V_ENTITY_SALUTATIONS_HOUSEHOLD e),
+
 
 --- Pull KLC
 
@@ -437,8 +477,147 @@ GIFTINFO AS (
     ,MAX(DECODE(RW,4,OPPORTUNITY_TYPE)) OPPORTUNITY_TYPE4
     ,MAX(DECODE(RW,4,CAMPAIGN_CODE)) CAMPAIGN_MOTIVATION_CODE_4
 FROM ROWDATA
-GROUP BY CREDITED_DONOR_ID)
+GROUP BY CREDITED_DONOR_ID),
 
+---Adding the 2026 Reunion Committee 
+
+rc26 as (select distinct i.constituent_donor_id,
+       i.involvement_name,
+       i.involvement_status,
+       i.involvement_type,
+       i.involvement_role,
+       i.involvement_business_unit,
+       i.involvement_start_date,
+       i.involvement_end_date
+from mv_involvement i
+where i.involvement_status = 'Current'
+and i.involvement_name = 'KSM Reunion Committee'
+and i.involvement_business_unit = 'Kellogg School of Management'),
+
+--- Bad data in address for international address 
+--- Amy suggests using presidental address
+--- will review data after 
+
+Pres as (SELECT DISTINCT
+    ME.DONOR_ID
+    ,AC.Ucinn_Ascendv2__Presidential_Preferred_Street__c AS PRES_PREF_STREET
+    ,AC.UCINN_ASCENDV2__PRESIDENTIAL_PREFERRED_CITY__C AS PRES_PREF_CITY
+    ,AC.UCINN_ASCENDV2__PRESIDENTIAL_PREFERRED_STATE__C AS PRES_PREF_STATE
+    ,AC.UCINN_ASCENDV2__PRESIDENTIAL_PREFERRED_POSTAL_CODE__C AS PRES_PREF_POSTAL_CODE
+    ,AC.UCINN_ASCENDV2__PRESIDENTIAL_PREFERRED_COUNTRY__C AS PRES_PREF_COUNTRY
+  FROM MV_ENTITY ME
+  INNER JOIN stg_alumni.contact AC
+  ON ME.SALESFORCE_ID = AC.ID),
+  
+  
+mod as (select m.donor_id,
+       m.household_id,
+       m.household_primary,
+       m.household_id_ksm,
+       m.household_primary_ksm,
+       m.sort_name,
+       m.primary_record_type,
+       m.institutional_suffix,
+       m.mg_id_code,
+       m.mg_id_description,
+       m.mg_id_score,
+       m.mg_pr_code,
+       m.mg_pr_description,
+       m.mg_pr_score,
+       m.mg_probability,
+       m.af_10k_code,
+       m.af_10k_description,
+       m.af_10k_score,
+       m.alumni_engagement_code,
+       m.alumni_engagement_description,
+       m.alumni_engagement_score,
+       m.student_supporter_code,
+       m.student_supporter_description,
+       m.student_supporter_score,
+       m.etl_update_date,
+       m.mv_last_refresh
+  From mv_ksm_models m),
+  
+---Amy's Pledge Code 
+  
+KSM_PAYMENTS AS (
+SELECT DISTINCT
+  --KT.CREDITED_DONOR_ID
+  KT.CREDIT_RECEIPT_NUMBER
+  ,KT.HARD_AND_SOFT_CREDIT_SALESFORCE_ID
+  ,KT.OPPORTUNITY_RECORD_ID
+  ,KT.DESIGNATION_NAME
+  ,KT.DESIGNATION_RECORD_ID
+  ,KT.CREDIT_DATE
+  ,KT.HARD_CREDIT_AMOUNT
+FROM MV_KSM_TRANSACTIONS KT
+WHERE KT.HARD_CREDIT_AMOUNT >0
+  AND KT.GYPM_IND = 'Y'
+),
+
+GIVING_TRANS as (select *
+from MV_KSM_TRANSACTIONS),
+
+ 
+KSM_PAID_AMT AS (
+SELECT
+  OPPORTUNITY_RECORD_ID
+  ,DESIGNATION_RECORD_ID
+  ,SUM(HARD_CREDIT_AMOUNT) AS TOTAL_PAID
+FROM KSM_PAYMENTS
+GROUP BY OPPORTUNITY_RECORD_ID, DESIGNATION_RECORD_ID
+),
+
+
+PLEDGEINFO AS (
+SELECT DISTINCT
+MKT.CREDITED_DONOR_ID
+,MKT.CREDIT_DATE
+,MKT.OPPORTUNITY_STAGE
+,MKT.OPPORTUNITY_RECORD_ID
+,MKT.DESIGNATION_RECORD_ID
+,MAX(DD.UCINN_ASCENDV2__AMOUNT__C) AS PLEDGE_TOTAL_KSM
+,MAX(DD.UCINN_ASCENDV2__REMAINING_AMOUNT_DUE_FORMULA__C) AS PLEDGE_BALANCE
+FROM GIVING_TRANS MKT
+INNER JOIN dm_alumni.dim_opportunity DO
+ON MKT.OPPORTUNITY_RECORD_ID = DO.OPPORTUNITY_RECORD_ID
+AND MKT.OPPORTUNITY_DONOR_ID = DO.OPPORTUNITY_DONOR_ID
+INNER JOIN stg_alumni.ucinn_ascendv2__designation_detail__c DD
+ON DO.OPPORTUNITY_DONOR_ID = DD.UCINN_ASCENDV2__DONOR_ID_FORMULA__C
+AND DO.OPPORTUNITY_RECORD_ID = DD.UCINN_ASCENDV2__PLEDGE_ID_FORMULA__C
+AND MKT.DESIGNATION_NAME = DD.UCINN_ASCENDV2__ACKNOWLEDGEMENT_DESCRIPTION_FORMULA__C
+WHERE MKT.SOURCE_TYPE_DETAIL = 'Pledge'
+Group By MKT.CREDITED_DONOR_ID,MKT.CREDIT_DATE,MKT.OPPORTUNITY_STAGE,MKT.OPPORTUNITY_RECORD_ID, MKT.DESIGNATION_RECORD_ID),
+ 
+NEW_PLEDGE_INFO AS (
+SELECT
+KT.CREDITED_DONOR_ID AS ID
+,ROW_NUMBER() OVER(PARTITION BY KT.CREDITED_DONOR_ID ORDER BY KT.CREDIT_DATE DESC)RW
+,KT.OPPORTUNITY_RECORD_ID AS PLG
+,KT.OPPORTUNITY_STAGE AS STAT
+,KT.CREDIT_DATE AS DT
+,KT.DESIGNATION_RECORD_ID AS ACCT
+,KT.PLEDGE_TOTAL_KSM AS AMT
+,NVL(KPA.TOTAL_PAID, 0) AS ALLOC_TOTAL_PAID
+,KT.PLEDGE_BALANCE AS BAL
+FROM PLEDGEINFO KT
+LEFT JOIN KSM_PAID_AMT KPA
+ON KPA.OPPORTUNITY_RECORD_ID = KT.OPPORTUNITY_RECORD_ID
+AND KPA.DESIGNATION_RECORD_ID = KT.DESIGNATION_RECORD_ID),
+
+--- Final Pledge Code 
+
+amy_pledge_code as (select ID,
+max(decode(rw,1,dt)) last_plg_dt,
+max(decode(rw,1,stat)) status1,
+max(decode(rw,1,plg)) plg1,
+max(decode(rw,1,amt)) pamt1,
+max(decode(rw,1,ALLOC_TOTAL_PAID)) paid1,
+max(decode(rw,1,acct)) pacct1,
+max(decode(rw,1,bal)) bal1
+from NEW_PLEDGE_INFO
+group by NEW_PLEDGE_INFO.id)
+      
  
 select distinct e.household_id,
      e.donor_id,
@@ -448,19 +627,28 @@ select distinct e.household_id,
      s.gender_identity,
      MN.preferred_mail_name,
      e.full_name,
+     dean.dean_salut,
      e.first_name,
-     dean.P_Dean_Salut,
      e.last_name,
      e.institutional_suffix,
+     --- case when MIM.id_number is not null then 'MiM' end as MiM_IND, 
      FR.reunion_year_concat,
-     FR.first_ksm_year,
-     FR.first_masters_year,
-     FR.program,
-     FR.program_group,
-     FR.class_section,
+     KSM_Degrees.first_ksm_year,
+     KSM_Degrees.first_masters_year,
+     KSM_Degrees.program,
+     KSM_Degrees.program_group,
+     KSM_Degrees.class_section,
+     --- Mim IND - For KSM ARD 
+     FR.MIM_IND,
      e.spouse_donor_id,
      e.spouse_name,
-     e.spouse_institutional_suffix,
+     e.spouse_institutional_suffix,     
+     hhdean.Spouse_Dean_Salut,
+     hhdean.spouse_full_name,
+     SMN.spouse_pref_mail_name,
+     hhdean.spouse_Dean_Source,
+     hhdean.joint_dean_salut, 
+     hhdean.joint_fullname,    
      case when r16.id_number is not null then 'Reunion 2016 Attendee' end as Reunion_16_Attendee,
      case when r22.id_number is not null then 'Reunion 2022 Attendee' end as Reunion_22_Attendee,
      ---- need to create temp table for 2026
@@ -477,6 +665,11 @@ select distinct e.household_id,
      e.preferred_address_state,
      e.preferred_address_postal_code,
      e.preferred_address_country,
+     pres.PRES_PREF_STREET,
+     pres.PRES_PREF_CITY,
+     pres.PRES_PREF_STATE,
+     pres.PRES_PREF_POSTAL_CODE,
+     pres.PRES_PREF_COUNTRY,
      klc.segment as KLC,
      case when g.ngc_fy_giving_first_yr is not null then g.ngc_fy_giving_first_yr else 0 end as ngc_fy_giving_first_yr,
      case when g.cash_fy_giving_first_yr is not null then g.cash_fy_giving_first_yr else 0 end as cash_fy_giving_first_yr,
@@ -509,6 +702,14 @@ select distinct e.household_id,
      g.last_pledge_designation_id,
      g.last_pledge_designation,
      case when  g.last_pledge_recognition_credit is not null then g.last_pledge_recognition_credit end as last_pledge_recognition_credit,
+     ---- amy pledge code
+     apc.last_plg_dt,
+     apc.status1,
+     apc.plg1,
+     apc.pamt1,
+     apc.paid1,
+     apc.pacct1,
+     apc.bal1,    
      g.expendable_status,
      g.expendable_status_fy_start,
      g.expendable_status_pfy1_start,
@@ -580,12 +781,38 @@ select distinct e.household_id,
      s.constituent_last_contact_report_method,
      s.constituent_visit_count,
      s.constituent_visit_last_year_count,
-     s.constituent_last_visit_date     
+     s.constituent_last_visit_date,
+     rc26.involvement_name,
+     rc26.involvement_status,
+     rc26.involvement_type,
+     rc26.involvement_role,
+     rc26.involvement_business_unit,
+     rc26.involvement_start_date,
+     rc26.involvement_end_date,
+     mod.mg_id_code,
+     mod.mg_id_description,
+     mod.mg_id_score,
+     mod.mg_pr_code,
+     mod.mg_pr_description,
+     mod.mg_pr_score,
+     mod.mg_probability,
+     mod.af_10k_code,
+     mod.af_10k_description,
+     mod.af_10k_score,
+     mod.alumni_engagement_code,
+     mod.alumni_engagement_description,
+     mod.alumni_engagement_score,
+     mod.student_supporter_code,
+     mod.student_supporter_description,
+     mod.student_supporter_score,
+     mod.etl_update_date,
+     mod.mv_last_refresh
 from e 
+left join KSM_Degrees on KSM_Degrees.donor_id = e.donor_id
 --- Reunion eligible
 inner join FR on FR.ucinn_ascendv2__donor_id__c = e.donor_id 
 --- giving info
-left join give g on g.household_primary_donor_id = e.donor_id 
+left join give g on g.household_id = e.household_id
 --- linkedin
 left join linked on linked.ucinn_ascendv2__donor_id__c = e.donor_id 
 --- employment
@@ -622,11 +849,23 @@ left join Salutation on Salutation.donor_id = e.spouse_donor_id
 left join spr on spr.spouse_donor_id = e.spouse_donor_id
 --- Club Leaders
 left join club on club.constituent_donor_id = e.donor_id 
---- Dean Salutation
+--- Dean indiv Salutation
 left join Dean on Dean.donor_id = e.donor_id 
+--- Dean Joint Salutation 
+left join hhdean on hhdean.household_id_ksm = e.household_id 
 --- KLC 
 left join klc on klc.donor_id = e.donor_id 
 --- Reunion Committee 16 
 left join rc16 on rc16.constituent_donor_id = e.donor_id
 --- last 4 gifts
 left join GIFTINFO gi on gi.CREDITED_DONOR_ID = e.donor_id
+--- Adding Reunion Committee
+left join rc26 on rc26.constituent_donor_id =  e.donor_id
+--- Presidental Adddress
+left join Pres on Pres.donor_id = e.donor_id 
+--- spouse preferred name
+left join SMN on SMN.spouse_donor_id = e.donor_id 
+--- AR Mod
+left join mod on mod.donor_id = e.donor_id
+--- Amy Pledge Code
+left join amy_pledge_code apc on apc.id = e.donor_id
