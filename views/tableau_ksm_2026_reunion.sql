@@ -146,7 +146,8 @@ inner join a on c.id = a.ucinn_ascendv2__contact__c),
 
 
 e as (select mv_entity.household_id,
-       mv_entity.donor_id,
+       mv_entity.household_id_ksm,
+       mv_entity.donor_id,       
        mv_entity.household_primary,
        mv_entity.full_name,
        mv_entity.first_name,
@@ -299,7 +300,9 @@ inner join MN on MN.donor_ID = en.spouse_donor_id),
 
 --- Join Salutation for folks that have a spouse, who is NOT a primary member of the household, AND has a Reunion 2026 year
 
-Salutation as (Select
+--- Using Zach's Dean Salutation Now 
+
+/*Salutation as (Select
         mv_entity.donor_id
       , stgc.UCINN_ASCENDV2__SALUTATION_TYPE__c As Salutation_Type
       , stgc.ucinn_ascendv2__salutation_record_type_formula__c As Ind_or_Joint
@@ -314,7 +317,7 @@ Where  stgc.isdeleted = 'false'
 And stgc.ucinn_ascendv2__salutation_record_type_formula__c = 'Joint'
 --- formal
 and stgc.UCINN_ASCENDV2__SALUTATION_TYPE__c = 'Formal'
-),
+),*/
 
 --- Pulling Involvement, which will pull club leaders
 
@@ -620,6 +623,7 @@ group by NEW_PLEDGE_INFO.id)
       
  
 select distinct e.household_id,
+     e.household_id_ksm,
      e.donor_id,
      e.household_primary,
      g.household_primary_donor_id,
@@ -653,9 +657,9 @@ select distinct e.household_id,
      case when r22.id_number is not null then 'Reunion 2022 Attendee' end as Reunion_22_Attendee,
      ---- need to create temp table for 2026
      spr.reunion_year_concat as spouse_ksm_reunion_year,
-     case when spr.reunion_year_concat is not null then salutation.salutation end as joint_salutation,
-     case when spr.reunion_year_concat is not null then salutation.Salutation_Type end as joint_salutation_type,
-     case when spr.reunion_year_concat is not null then salutation.Ind_or_Joint end as ind_joint,
+     case when spr.reunion_year_concat is not null then hhdean.joint_dean_salut end as joint_dean_salut,
+     case when spr.reunion_year_concat is not null then hhdean.Spouse_Dean_Source end as Spouse_Dean_Source,
+    --- case when spr.reunion_year_concat is not null then salutation.Ind_or_Joint end as ind_joint,
      e.preferred_address_type,
      e.preferred_address_line_1,
      e.preferred_address_line_2,
@@ -844,7 +848,7 @@ left join r22 on r22.id_number = e.donor_id
 --- preferred mail name
 left join MN on MN.DONOR_ID = e.donor_id 
 --- Salutation
-left join Salutation on Salutation.donor_id = e.spouse_donor_id
+---left join Salutation on Salutation.donor_id = e.spouse_donor_id
 --- spouse reunion year
 left join spr on spr.spouse_donor_id = e.spouse_donor_id
 --- Club Leaders
