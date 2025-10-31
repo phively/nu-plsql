@@ -54,12 +54,34 @@ Type rec_contact_reports_wide Is Record (
 );
 
 --------------------------------------
+Type rec_contact_reports Is Record (
+  contact_report_salesforce_id stg_alumni.ucinn_ascendv2__contact_report__c.id%type
+  , contact_report_record_id stg_alumni.ucinn_ascendv2__contact_report__c.name%type
+  , cr_credit_salesforce_id stg_alumni.ucinn_ascendv2__contact_report__c.ap_contact_report_author_user__c%type
+  , cr_credit_name stg_alumni.user_tbl.name%type
+  , cr_credit_title stg_alumni.user_tbl.title%type
+  , cr_credit_type stg_alumni.ucinn_ascendv2__fundraiser_contact_report_relation__c.ucinn_ascendv2__fundraiser_role__c%type
+  , cr_relation_record_id stg_alumni.ucinn_ascendv2__contact_report_relation__c.name%type
+  , cr_relation_salesforce_id stg_alumni.ucinn_ascendv2__contact_report_relation__c.id%type
+  , cr_relation_donor_id mv_entity.donor_id%type
+  , cr_relation_full_name mv_entity.full_name%type
+  , cr_relation_sort_name mv_entity.sort_name%type
+  , contact_role stg_alumni.ucinn_ascendv2__contact_report_relation__c.ucinn_ascendv2__contact_role__c%type
+  , contact_report_type stg_alumni.ucinn_ascendv2__contact_report__c.ucinn_ascendv2__contact_method__c%type
+  , contact_report_purpose stg_alumni.ucinn_ascendv2__contact_report__c.ap_purpose__c%type
+  , contact_report_visit_flag varchar2(1)
+  , contact_report_date stg_alumni.ucinn_ascendv2__contact_report__c.ucinn_ascendv2__date__c%type
+  , contact_report_description stg_alumni.ucinn_ascendv2__contact_report__c.ucinn_ascendv2__description__c%type
+  , contact_report_body stg_alumni.ucinn_ascendv2__contact_report__c.ucinn_ascendv2__contact_report_body__c%type
+  , etl_update_date stg_alumni.ucinn_ascendv2__contact_report__c.etl_update_date%type
+);
 
 /*************************************************************************
 Public table declarations
 *************************************************************************/
 
 Type contact_reports_wide Is Table Of rec_contact_reports_wide;
+Type contact_reports Is Table Of rec_contact_reports;
 
 
 /*************************************************************************
@@ -68,6 +90,9 @@ Public pipelined functions declarations
 
 Function tbl_contact_reports_wide
   Return contact_reports_wide Pipelined;
+
+Function tbl_contact_reports
+  Return contact_reports Pipelined;
 
 /*********************** About pipelined functions ***********************
 Q: What is a pipelined function?
@@ -153,9 +178,97 @@ Cursor c_contact_reports_wide Is
 ;
 
 Cursor c_contact_reports Is
-  -- Long (m by N) format contact reports
-  Select NULL
-  From DUAL
+  -- Long (m by N) format contact reports  
+  With
+  
+  crw As (
+    Select *
+    From table(ksm_pkg_contact_reports.tbl_contact_reports_wide)
+  )
+  
+  -- CR user author
+  Select
+    contact_report_salesforce_id
+    , contact_report_record_id
+    , cr_author_salesforce_id
+      As cr_credit_salesforce_id
+    , cr_author_name
+      As cr_credit_name
+    , cr_author_title
+      As cr_credit_title
+    , 'Author'
+      As cr_credit_type
+    , cr_relation_record_id
+    , cr_relation_salesforce_id
+    , cr_relation_donor_id
+    , cr_relation_full_name
+    , cr_relation_sort_name
+    , contact_role
+    , contact_report_type
+    , contact_report_purpose
+    , contact_report_visit_flag
+    , contact_report_date
+    , contact_report_description
+    , contact_report_body
+    , etl_update_date
+  From crw
+  Where cr_author_salesforce_id Is Not Null
+  -- CR constituent author
+  Union
+  Select
+    contact_report_salesforce_id
+    , contact_report_record_id
+    , cr_author_constituent_salesforce_id
+      As cr_credit_salesforce_id
+    , cr_author_constituent_name
+      As cr_credit_name
+    , NULL
+      As cr_credit_title
+    , 'Author'
+      As cr_credit_type
+    , cr_relation_record_id
+    , cr_relation_salesforce_id
+    , cr_relation_donor_id
+    , cr_relation_full_name
+    , cr_relation_sort_name
+    , contact_role
+    , contact_report_type
+    , contact_report_purpose
+    , contact_report_visit_flag
+    , contact_report_date
+    , contact_report_description
+    , contact_report_body
+    , etl_update_date
+  From crw
+  Where cr_author_constituent_salesforce_id Is Not Null
+  -- CR fundraiser credit
+  Union
+  Select
+    contact_report_salesforce_id
+    , contact_report_record_id
+    , fundraiser_salesforce_id
+      As cr_credit_salesforce_id
+    , fundraiser_name
+      As cr_credit_name
+    , fundraiser_title
+      As cr_credit_title
+    , fundraiser_role
+      As cr_credit_type
+    , cr_relation_record_id
+    , cr_relation_salesforce_id
+    , cr_relation_donor_id
+    , cr_relation_full_name
+    , cr_relation_sort_name
+    , contact_role
+    , contact_report_type
+    , contact_report_purpose
+    , contact_report_visit_flag
+    , contact_report_date
+    , contact_report_description
+    , contact_report_body
+    , etl_update_date
+  From crw
+  Where fundraiser_salesforce_id Is Not Null
 ;
 
 /*************************************************************************
@@ -172,6 +285,22 @@ Function tbl_contact_reports_wide
     Open c_contact_reports_wide;
       Fetch c_contact_reports_wide Bulk Collect Into cr;
     Close c_contact_reports_wide;
+    For i in 1..(cr.count) Loop
+      Pipe row(cr(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_contact_reports
+  Return contact_reports Pipelined As
+    -- Declarations
+    cr contact_reports;
+
+  Begin
+    Open c_contact_reports;
+      Fetch c_contact_reports Bulk Collect Into cr;
+    Close c_contact_reports;
     For i in 1..(cr.count) Loop
       Pipe row(cr(i));
     End Loop;
