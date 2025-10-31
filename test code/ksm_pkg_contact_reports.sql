@@ -3,6 +3,10 @@
 ---------------------------
 
 Select count(*)
+From table(ksm_pkg_contact_reports.tbl_contact_reports_wide)
+;
+
+Select count(*)
 From table(ksm_pkg_contact_reports.tbl_contact_reports)
 ;
 
@@ -15,7 +19,7 @@ test_cases As (
 )
 
 Select cr.*
-From table(ksm_pkg_contact_reports.tbl_contact_reports) cr
+From table(ksm_pkg_contact_reports.tbl_contact_reports_wide) cr
 Inner Join test_cases
   On test_cases.record_id = cr.contact_report_record_id
 ;

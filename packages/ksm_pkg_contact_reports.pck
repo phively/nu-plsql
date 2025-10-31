@@ -24,7 +24,7 @@ Public type declarations
 *************************************************************************/
 
 --------------------------------------
-Type rec_contact_reports Is Record (
+Type rec_contact_reports_wide Is Record (
   contact_report_salesforce_id stg_alumni.ucinn_ascendv2__contact_report__c.id%type
   , contact_report_record_id stg_alumni.ucinn_ascendv2__contact_report__c.name%type
   , cr_author_salesforce_id stg_alumni.ucinn_ascendv2__contact_report__c.ap_contact_report_author_user__c%type
@@ -53,22 +53,21 @@ Type rec_contact_reports Is Record (
   , etl_update_date stg_alumni.ucinn_ascendv2__contact_report__c.etl_update_date%type
 );
 
+--------------------------------------
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
 
-Type contact_reports Is Table Of rec_contact_reports;
+Type contact_reports_wide Is Table Of rec_contact_reports_wide;
 
-/*************************************************************************
-Public function declarations
-*************************************************************************/
 
 /*************************************************************************
 Public pipelined functions declarations
 *************************************************************************/
 
-Function tbl_contact_reports
-  Return contact_reports Pipelined;
+Function tbl_contact_reports_wide
+  Return contact_reports_wide Pipelined;
 
 /*********************** About pipelined functions ***********************
 Q: What is a pipelined function?
@@ -97,7 +96,8 @@ Create Or Replace Package Body ksm_pkg_contact_reports Is
 Private cursors -- data definitions
 *************************************************************************/
 
-Cursor c_contact_reports Is
+Cursor c_contact_reports_wide Is
+  -- Wide (M by n) format contact reports
   Select Distinct
     cr.contact_report_salesforce_id
     , cr.contact_report_record_id
@@ -152,24 +152,26 @@ Cursor c_contact_reports Is
     On user_fcr.user_salesforce_id = fcr.fundraiser_salesforce_id
 ;
 
-/*************************************************************************
-Private functions
-*************************************************************************/
+Cursor c_contact_reports Is
+  -- Long (m by N) format contact reports
+  Select NULL
+  From DUAL
+;
 
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
 
 --------------------------------------
-Function tbl_contact_reports
-  Return contact_reports Pipelined As
+Function tbl_contact_reports_wide
+  Return contact_reports_wide Pipelined As
     -- Declarations
-    cr contact_reports;
+    cr contact_reports_wide;
 
   Begin
-    Open c_contact_reports;
-      Fetch c_contact_reports Bulk Collect Into cr;
-    Close c_contact_reports;
+    Open c_contact_reports_wide;
+      Fetch c_contact_reports_wide Bulk Collect Into cr;
+    Close c_contact_reports_wide;
     For i in 1..(cr.count) Loop
       Pipe row(cr(i));
     End Loop;
