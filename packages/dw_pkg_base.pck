@@ -118,6 +118,18 @@ Type rec_mini_entity Is Record (
 );
 
 --------------------------------------
+Type rec_users Is Record (
+    user_salesforce_id stg_alumni.user_tbl.id%type
+    , user_username stg_alumni.user_tbl.username%type
+    , user_constituent_salesforce_id stg_alumni.user_tbl.contactid%type
+    , user_name stg_alumni.user_tbl.name%type
+    , user_title stg_alumni.user_tbl.title%type
+    , user_division stg_alumni.user_tbl.division%type
+    , user_is_active stg_alumni.user_tbl.isactive%type
+    , etl_update_date stg_alumni.user_tbl.etl_update_date%type
+);
+
+--------------------------------------
 Type rec_relationships Is Record (
   relationship_salesforce_id stg_alumni.ucinn_ascendv2__relationship__c.id%type
   , relationship_record_id stg_alumni.ucinn_ascendv2__relationship__c.name%type
@@ -406,7 +418,7 @@ Type rec_proposal Is Record (
 
 --------------------------------------
 Type rec_strategy Is Record (
-    strategy_salesforce_id dm_alumni.dim_strategy.strategy_salesforce_id%type
+  strategy_salesforce_id dm_alumni.dim_strategy.strategy_salesforce_id%type
   , strategy_record_id dm_alumni.dim_strategy.strategy_record_id%type
   , legacy_prospect_id dm_alumni.dim_strategy.strategy_legacy_prospect_id%type
   , prospect_name dm_alumni.dim_strategy.strategy_prospect_name%type
@@ -419,6 +431,42 @@ Type rec_strategy Is Record (
   , active_assignment_units dm_alumni.dim_strategy.active_unit_strategy_assignments_list%type
   , ksm_assignment_indicator varchar2(1)
   , active_assignment_units_count dm_alumni.dim_strategy.active_unit_strategy_assignment_count%type
+);
+
+--------------------------------------
+Type rec_contact_report Is Record (
+  contact_report_salesforce_id stg_alumni.ucinn_ascendv2__contact_report__c.id%type
+  , contact_report_record_id stg_alumni.ucinn_ascendv2__contact_report__c.name%type
+  , contact_report_author_salesforce_id stg_alumni.ucinn_ascendv2__contact_report__c.ap_contact_report_author_user__c%type
+  , contact_report_author_constituent_salesforce_id stg_alumni.ucinn_ascendv2__contact_report__c.ap_contact_report_author_constituent__c%type
+  , contact_report_contact_id stg_alumni.ucinn_ascendv2__contact_report__c.ucinn_ascendv2__contact__c%type
+  , contact_report_purpose stg_alumni.ucinn_ascendv2__contact_report__c.ap_purpose__c%type
+  , contact_report_type stg_alumni.ucinn_ascendv2__contact_report__c.ucinn_ascendv2__contact_method__c%type
+  , contact_report_visit_flag varchar2(1)
+  , contact_report_date stg_alumni.ucinn_ascendv2__contact_report__c.ucinn_ascendv2__date__c%type
+  , contact_report_description stg_alumni.ucinn_ascendv2__contact_report__c.ucinn_ascendv2__description__c%type
+  , contact_report_body stg_alumni.ucinn_ascendv2__contact_report__c.ucinn_ascendv2__contact_report_body__c%type
+  , etl_update_date stg_alumni.ucinn_ascendv2__contact_report__c.etl_update_date%type
+);
+
+--------------------------------------
+Type rec_contact_report_relation Is Record (
+  cr_relation_salesforce_id stg_alumni.ucinn_ascendv2__contact_report_relation__c.id%type
+  , cr_relation_record_id stg_alumni.ucinn_ascendv2__contact_report_relation__c.name%type
+  , contact_report_salesforce_id stg_alumni.ucinn_ascendv2__contact_report_relation__c.ucinn_ascendv2__contact_report__c%type
+  , contact_role stg_alumni.ucinn_ascendv2__contact_report_relation__c.ucinn_ascendv2__contact_role__c%type
+  , contact_salesforce_id stg_alumni.ucinn_ascendv2__contact_report_relation__c.ucinn_ascendv2__contact__c%type
+  , etl_update_date stg_alumni.ucinn_ascendv2__contact_report_relation__c.etl_update_date%type
+);
+
+--------------------------------------
+Type rec_fundraiser_contact_report_relation Is Record (
+  fundraiser_cr_salesforce_id stg_alumni.ucinn_ascendv2__fundraiser_contact_report_relation__c.id%type
+  , fundraiser_cr_record_id stg_alumni.ucinn_ascendv2__fundraiser_contact_report_relation__c.name%type
+  , contact_report_salesforce_id stg_alumni.ucinn_ascendv2__fundraiser_contact_report_relation__c.ucinn_ascendv2__contact_report__c%type
+  , fundraiser_salesforce_id stg_alumni.ucinn_ascendv2__fundraiser_contact_report_relation__c.ucinn_ascendv2__fundraiser__c%type
+  , fundraiser_role stg_alumni.ucinn_ascendv2__fundraiser_contact_report_relation__c.ucinn_ascendv2__fundraiser_role__c%type
+  , etl_update_date stg_alumni.ucinn_ascendv2__fundraiser_contact_report_relation__c.etl_update_date%type
 );
 
 --------------------------------------
@@ -480,6 +528,7 @@ Type constituent Is Table Of rec_constituent;
 Type organization Is Table Of rec_organization;
 Type contact Is Table Of rec_contact;
 Type mini_entity Is Table Of rec_mini_entity;
+Type users Is Table Of rec_users;
 Type relationships Is Table Of rec_relationships;
 Type degrees Is Table Of rec_degrees;
 Type designation Is Table Of rec_designation;
@@ -493,6 +542,9 @@ Type service_indicators Is Table Of rec_service_indicators;
 Type assignments Is Table Of rec_assignment;
 Type proposals Is Table Of rec_proposal;
 Type strategy Is Table Of rec_strategy;
+Type contact_report Is Table Of rec_contact_report;
+Type contact_report_relation Is Table Of rec_contact_report_relation;
+Type fundraiser_contact_report_relation Is Table Of rec_fundraiser_contact_report_relation;
 Type econtacts Is Table Of rec_econtact;
 Type address Is Table Of rec_address;
 
@@ -511,6 +563,9 @@ Function tbl_contact
 
 Function tbl_mini_entity
   Return mini_entity Pipelined;
+
+Function tbl_users
+  Return users Pipelined;
 
 Function tbl_relationships
   Return relationships Pipelined;
@@ -550,6 +605,15 @@ Function tbl_proposals
 
 Function tbl_strategy
   Return strategy Pipelined;
+
+Function tbl_contact_report
+  Return contact_report Pipelined;
+
+Function tbl_contact_report_relation
+  Return contact_report_relation Pipelined;
+
+Function tbl_fundraiser_contact_report_relation
+  Return fundraiser_contact_report_relation Pipelined;
 
 Function tbl_social_media
   Return econtacts Pipelined;
@@ -776,6 +840,27 @@ Cursor c_mini_entity Is
     , o.etl_update_date
   From table(dw_pkg_base.tbl_organization) o
   )
+;
+
+--------------------------------------
+Cursor c_users Is
+  Select
+    usr.id
+      As user_salesforce_id
+    , usr.username
+      As user_username
+    , usr.contactid
+      As user_constituent_salesforce_id
+    , usr.name
+      As user_name
+    , usr.title
+      As user_title
+    , usr.division
+      As user_division
+    , usr.isactive
+      As user_is_active
+    , usr.etl_update_date
+  From stg_alumni.user_tbl usr
 ;
 
 --------------------------------------
@@ -1196,8 +1281,8 @@ Cursor c_gift_credit Is
 --------------------------------------
 Cursor c_involvement Is
   Select
-    inv.constituent_donor_id
-    , inv.constituent_name
+    inv.donor_id
+    , inv.donor_name
     , inv.involvement_record_id
     , ival.ucinn_ascendv2__code__c
       As involvement_code
@@ -1253,15 +1338,15 @@ Cursor c_assignments Is
   Select
     assign.name
       As assignment_record_id
-    , staff.id
+    , staff.user_salesforce_id
       As staff_user_salesforce_id
-    , staff.username
+    , staff.user_username
       As staff_username
-    , staff.contactid
+    , staff.user_constituent_salesforce_id
       As staff_constituent_salesforce_id
-    , staff.name
+    , staff.user_name
       As staff_name
-    , staff.isactive
+    , staff.user_is_active
       As staff_is_active
     , assign.ucinn_ascendv2__assignment_type__c
       As assignment_type
@@ -1292,8 +1377,8 @@ Cursor c_assignments Is
       As end_date
     , assign.etl_update_date
   From stg_alumni.ucinn_ascendv2__assignment__c assign
-  Inner Join stg_alumni.user_tbl staff
-    On staff.id = assign.ucinn_ascendv2__assigned_relationship_manager_user__c
+  Inner Join table(dw_pkg_base.tbl_users) staff
+    On staff.user_salesforce_id = assign.ucinn_ascendv2__assigned_relationship_manager_user__c
 ;
 
 --------------------------------------
@@ -1317,13 +1402,13 @@ Cursor c_proposals Is
         As start_date
       , otm.ap_end_date__c
         As end_date
-      , staff.isactive
+      , staff.user_is_active
         As staff_is_active
       , otm.ap_business_unit__c
         As business_unit
     From stg_alumni.opportunityteammember otm
-    Left Join stg_alumni.user_tbl staff
-      On staff.id = otm.userid
+    Left Join table(dw_pkg_base.tbl_users) staff
+      On staff.user_salesforce_id = otm.userid
   )
   
   , last_pm As (
@@ -1435,6 +1520,49 @@ Cursor c_strategy Is
     , active_unit_strategy_assignment_count
       As active_assignment_units_count
   From dm_alumni.dim_strategy strat
+;
+
+--------------------------------------
+Cursor c_contact_report Is
+  Select
+    cr.id As contact_report_salesforce_id
+    , cr.name As contact_report_record_id
+    , cr.ap_contact_report_author_user__c As contact_report_author_salesforce_id
+    , cr.ap_contact_report_author_constituent__c As contact_report_author_constituent_salesforce_id
+    , cr.ucinn_ascendv2__contact__c As contact_report_contact_id
+    , cr.ap_purpose__c As contact_report_purpose
+    , cr.ucinn_ascendv2__contact_method__c As contact_report_type
+    , Case When cr.ucinn_ascendv2__is_visit_formula__c  = 'true' Then 'Y' End
+      As contact_report_visit_flag
+    , cr.ucinn_ascendv2__date__c As contact_report_date
+    , cr.ucinn_ascendv2__description__c As contact_report_description
+    , cr.ucinn_ascendv2__contact_report_body__c As contact_report_body
+    , cr.etl_update_date
+  From stg_alumni.ucinn_ascendv2__contact_report__c cr
+;
+
+--------------------------------------
+Cursor c_contact_report_relation Is
+  Select
+    crr.id As cr_relation_salesforce_id
+    , crr.name As cr_relation_record_id
+    , crr.ucinn_ascendv2__contact_report__c As contact_report_salesforce_id
+    , crr.ucinn_ascendv2__contact_role__c As contact_role
+    , crr.ucinn_ascendv2__contact__c As contact_salesforce_id
+    , crr.etl_update_date
+  From stg_alumni.ucinn_ascendv2__contact_report_relation__c crr
+;
+
+--------------------------------------
+Cursor c_fundraiser_contact_report_relation Is
+  Select
+    fcr.id As fundraiser_cr_salesforce_id
+    , fcr.name As fundraiser_cr_record_id
+    , fcr.ucinn_ascendv2__contact_report__c As contact_report_salesforce_id
+    , fcr.ucinn_ascendv2__fundraiser__c As fundraiser_salesforce_id
+    , fcr.ucinn_ascendv2__fundraiser_role__c As fundraiser_role
+    , fcr.etl_update_date
+  From stg_alumni.ucinn_ascendv2__fundraiser_contact_report_relation__c fcr
 ;
 
 --------------------------------------
@@ -1600,6 +1728,22 @@ Function tbl_mini_entity
     Return;
   End;
 
+--------------------------------------
+Function tbl_users
+  Return users Pipelined As
+    -- Declarations
+    usr users;
+
+  Begin
+    Open c_users;
+      Fetch c_users Bulk Collect Into usr;
+    Close c_users;
+    For i in 1..(usr.count) Loop
+      Pipe row(usr(i));
+    End Loop;
+    Return;
+  End;
+  
 --------------------------------------
 Function tbl_relationships
   Return relationships Pipelined As
@@ -1804,6 +1948,54 @@ Function tbl_strategy
     Close c_strategy;
     For i in 1..(st.count) Loop
       Pipe row(st(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_contact_report
+  Return contact_report Pipelined As
+    -- Declarations
+    cr contact_report;
+
+  Begin
+    Open c_contact_report;
+      Fetch c_contact_report Bulk Collect Into cr;
+    Close c_contact_report;
+    For i in 1..(cr.count) Loop
+      Pipe row(cr(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_contact_report_relation
+  Return contact_report_relation Pipelined As
+    -- Declarations
+    crr contact_report_relation;
+
+  Begin
+    Open c_contact_report_relation;
+      Fetch c_contact_report_relation Bulk Collect Into crr;
+    Close c_contact_report_relation;
+    For i in 1..(crr.count) Loop
+      Pipe row(crr(i));
+    End Loop;
+    Return;
+  End;
+  
+--------------------------------------
+Function tbl_fundraiser_contact_report_relation
+  Return fundraiser_contact_report_relation Pipelined As
+    -- Declarations
+    fcrr fundraiser_contact_report_relation;
+
+  Begin
+    Open c_fundraiser_contact_report_relation;
+      Fetch c_fundraiser_contact_report_relation Bulk Collect Into fcrr;
+    Close c_fundraiser_contact_report_relation;
+    For i in 1..(fcrr.count) Loop
+      Pipe row(fcrr(i));
     End Loop;
     Return;
   End;

@@ -20,6 +20,10 @@ From table(dw_pkg_base.tbl_mini_entity)
 ;
 
 Select *
+From table(dw_pkg_base.tbl_users)
+;
+
+Select *
 From table(dw_pkg_base.tbl_relationships)
 ;
 
@@ -65,6 +69,18 @@ From table(dw_pkg_base.tbl_proposals)
 
 Select *
 From table(dw_pkg_base.tbl_strategy)
+;
+
+Select *
+From table(dw_pkg_base.tbl_contact_report)
+;
+
+Select *
+From table(dw_pkg_base.tbl_contact_report_relation)
+;
+
+Select *
+From table(dw_pkg_base.tbl_fundraiser_contact_report_relation)
 ;
 
 Select *
