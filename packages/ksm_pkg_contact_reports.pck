@@ -64,14 +64,47 @@ Private cursors -- data definitions
 
 Cursor c_contact_reports Is
   Select
-    cr.*
-    , crr.*
-    , fcr.*
+    cr.contact_report_salesforce_id
+    , cr.contact_report_record_id
+    , cr.contact_report_author_salesforce_id
+      As cr_author_salesforce_id
+  --  , mve_author.donor_id
+  --    As cr_author_donor_id
+  --  , mve_author.full_name
+  --    As cr_author_full_name
+  --  , mve_author.sort_name
+  --    As cr_author_sort_name
+    , fcr.fundraiser_cr_record_id
+    , fcr.fundraiser_salesforce_id
+  --  , mve_fcr.donor_id
+  --    As fundraiser_donor_id
+  --  , mve_fcr.full_name
+  --    As fundraiser_full_name
+  --  , mve_fcr.sort_name
+  --    As fundraiser_sort_name
+    , fcr.fundraiser_role
+    , crr.cr_relation_record_id
+    , crr.cr_relation_salesforce_id
+    , mve_crr.donor_id
+      As cr_relation_donor_id
+    , mve_crr.full_name
+      As cr_relation_full_name
+    , mve_crr.sort_name
+      As cr_relation_sort_name
+    , crr.contact_role
+    , cr.contact_report_type
+    , cr.contact_report_purpose
+    , cr.contact_report_visit_flag
+    , cr.contact_report_date
+    , cr.contact_report_description
+    , cr.contact_report_body
   From table(dw_pkg_base.tbl_contact_report) cr
   Left Join table(dw_pkg_base.tbl_contact_report_relation) crr
     On crr.contact_report_salesforce_id = cr.contact_report_salesforce_id
   Left Join table(dw_pkg_base.tbl_fundraiser_contact_report_relation) fcr
     On fcr.contact_report_salesforce_id = cr.contact_report_salesforce_id
+  Left Join mv_entity mve_crr
+    On mve_crr.salesforce_id = crr.contact_salesforce_id
 ;
 
 /*************************************************************************

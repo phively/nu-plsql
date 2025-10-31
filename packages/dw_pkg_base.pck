@@ -118,6 +118,18 @@ Type rec_mini_entity Is Record (
 );
 
 --------------------------------------
+Type rec_users Is Record (
+    user_salesforce_id stg_alumni.user_tbl.id%type
+    , user_username stg_alumni.user_tbl.username%type
+    , user_constituent_salesforce_id stg_alumni.user_tbl.contactid%type
+    , user_name stg_alumni.user_tbl.name%type
+    , user_title stg_alumni.user_tbl.title%type
+    , user_division stg_alumni.user_tbl.division%type
+    , user_is_active stg_alumni.user_tbl.isactive%type
+    , etl_update_date stg_alumni.user_tbl.etl_update_date%type
+);
+
+--------------------------------------
 Type rec_relationships Is Record (
   relationship_salesforce_id stg_alumni.ucinn_ascendv2__relationship__c.id%type
   , relationship_record_id stg_alumni.ucinn_ascendv2__relationship__c.name%type
@@ -425,7 +437,7 @@ Type rec_strategy Is Record (
 Type rec_contact_report Is Record (
   contact_report_salesforce_id stg_alumni.ucinn_ascendv2__contact_report__c.id%type
   , contact_report_record_id stg_alumni.ucinn_ascendv2__contact_report__c.name%type
-  , contact_report_user_id stg_alumni.ucinn_ascendv2__contact_report__c.ap_contact_report_author_user__c%type
+  , contact_report_author_salesforce_id stg_alumni.ucinn_ascendv2__contact_report__c.ap_contact_report_author_user__c%type
   , contact_report_contact_id stg_alumni.ucinn_ascendv2__contact_report__c.ucinn_ascendv2__contact__c%type
   , contact_report_purpose stg_alumni.ucinn_ascendv2__contact_report__c.ap_purpose__c%type
   , contact_report_type stg_alumni.ucinn_ascendv2__contact_report__c.ucinn_ascendv2__contact_method__c%type
@@ -515,6 +527,7 @@ Type constituent Is Table Of rec_constituent;
 Type organization Is Table Of rec_organization;
 Type contact Is Table Of rec_contact;
 Type mini_entity Is Table Of rec_mini_entity;
+Type users Is Table Of rec_users;
 Type relationships Is Table Of rec_relationships;
 Type degrees Is Table Of rec_degrees;
 Type designation Is Table Of rec_designation;
@@ -549,6 +562,9 @@ Function tbl_contact
 
 Function tbl_mini_entity
   Return mini_entity Pipelined;
+
+Function tbl_users
+  Return users Pipelined;
 
 Function tbl_relationships
   Return relationships Pipelined;
@@ -823,6 +839,27 @@ Cursor c_mini_entity Is
     , o.etl_update_date
   From table(dw_pkg_base.tbl_organization) o
   )
+;
+
+--------------------------------------
+Cursor c_users Is
+  Select
+    usr.id
+      As user_salesforce_id
+    , usr.username
+      As user_username
+    , usr.contactid
+      As user_constituent_salesforce_id
+    , usr.name
+      As user_name
+    , usr.title
+      As user_title
+    , usr.division
+      As user_division
+    , usr.isactive
+      As user_is_active
+    , usr.etl_update_date
+  From stg_alumni.user_tbl usr
 ;
 
 --------------------------------------
@@ -1243,8 +1280,8 @@ Cursor c_gift_credit Is
 --------------------------------------
 Cursor c_involvement Is
   Select
-    inv.constituent_donor_id
-    , inv.constituent_name
+    inv.donor_id
+    , inv.donor_name
     , inv.involvement_record_id
     , ival.ucinn_ascendv2__code__c
       As involvement_code
@@ -1300,15 +1337,15 @@ Cursor c_assignments Is
   Select
     assign.name
       As assignment_record_id
-    , staff.id
+    , staff.user_salesforce_id
       As staff_user_salesforce_id
-    , staff.username
+    , staff.user_username
       As staff_username
-    , staff.contactid
+    , staff.user_constituent_salesforce_id
       As staff_constituent_salesforce_id
-    , staff.name
+    , staff.user_name
       As staff_name
-    , staff.isactive
+    , staff.user_is_active
       As staff_is_active
     , assign.ucinn_ascendv2__assignment_type__c
       As assignment_type
@@ -1339,8 +1376,8 @@ Cursor c_assignments Is
       As end_date
     , assign.etl_update_date
   From stg_alumni.ucinn_ascendv2__assignment__c assign
-  Inner Join stg_alumni.user_tbl staff
-    On staff.id = assign.ucinn_ascendv2__assigned_relationship_manager_user__c
+  Inner Join table(dw_pkg_base.tbl_users) staff
+    On staff.user_salesforce_id = assign.ucinn_ascendv2__assigned_relationship_manager_user__c
 ;
 
 --------------------------------------
@@ -1364,13 +1401,13 @@ Cursor c_proposals Is
         As start_date
       , otm.ap_end_date__c
         As end_date
-      , staff.isactive
+      , staff.user_is_active
         As staff_is_active
       , otm.ap_business_unit__c
         As business_unit
     From stg_alumni.opportunityteammember otm
-    Left Join stg_alumni.user_tbl staff
-      On staff.id = otm.userid
+    Left Join table(dw_pkg_base.tbl_users) staff
+      On staff.user_salesforce_id = otm.userid
   )
   
   , last_pm As (
@@ -1489,7 +1526,7 @@ Cursor c_contact_report Is
   Select
     cr.id As contact_report_salesforce_id
     , cr.name As contact_report_record_id
-    , cr.ap_contact_report_author_user__c As contact_report_user_id
+    , cr.ap_contact_report_author_user__c As contact_report_author_salesforce_id
     , cr.ucinn_ascendv2__contact__c As contact_report_contact_id
     , cr.ap_purpose__c As contact_report_purpose
     , cr.ucinn_ascendv2__contact_method__c As contact_report_type
@@ -1689,6 +1726,22 @@ Function tbl_mini_entity
     Return;
   End;
 
+--------------------------------------
+Function tbl_users
+  Return users Pipelined As
+    -- Declarations
+    usr users;
+
+  Begin
+    Open c_users;
+      Fetch c_users Bulk Collect Into usr;
+    Close c_users;
+    For i in 1..(usr.count) Loop
+      Pipe row(usr(i));
+    End Loop;
+    Return;
+  End;
+  
 --------------------------------------
 Function tbl_relationships
   Return relationships Pipelined As

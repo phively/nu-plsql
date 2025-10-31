@@ -20,6 +20,10 @@ From table(dw_pkg_base.tbl_mini_entity)
 ;
 
 Select *
+From table(dw_pkg_base.tbl_users)
+;
+
+Select *
 From table(dw_pkg_base.tbl_relationships)
 ;
 
