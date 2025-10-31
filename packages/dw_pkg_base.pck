@@ -438,6 +438,7 @@ Type rec_contact_report Is Record (
   contact_report_salesforce_id stg_alumni.ucinn_ascendv2__contact_report__c.id%type
   , contact_report_record_id stg_alumni.ucinn_ascendv2__contact_report__c.name%type
   , contact_report_author_salesforce_id stg_alumni.ucinn_ascendv2__contact_report__c.ap_contact_report_author_user__c%type
+  , contact_report_author_constituent_salesforce_id stg_alumni.ucinn_ascendv2__contact_report__c.ap_contact_report_author_constituent__c%type
   , contact_report_contact_id stg_alumni.ucinn_ascendv2__contact_report__c.ucinn_ascendv2__contact__c%type
   , contact_report_purpose stg_alumni.ucinn_ascendv2__contact_report__c.ap_purpose__c%type
   , contact_report_type stg_alumni.ucinn_ascendv2__contact_report__c.ucinn_ascendv2__contact_method__c%type
@@ -1527,6 +1528,7 @@ Cursor c_contact_report Is
     cr.id As contact_report_salesforce_id
     , cr.name As contact_report_record_id
     , cr.ap_contact_report_author_user__c As contact_report_author_salesforce_id
+    , cr.ap_contact_report_author_constituent__c As contact_report_author_constituent_salesforce_id
     , cr.ucinn_ascendv2__contact__c As contact_report_contact_id
     , cr.ap_purpose__c As contact_report_purpose
     , cr.ucinn_ascendv2__contact_method__c As contact_report_type
