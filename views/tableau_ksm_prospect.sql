@@ -36,6 +36,7 @@ give as (select g.household_id,
        g.last_ngc_designation_id,
        g.last_ngc_designation,
        g.last_ngc_recognition_credit
+       --- Add in last gift date 
 from mv_ksm_giving_summary g),
 
 --- Contact Report
@@ -64,7 +65,8 @@ assign as (Select a.household_id,
        a.prospect_manager_name,
        a.lagm_user_id,
        a.lagm_name,
-       a.ksm_manager_flag
+       a.ksm_manager_flag,
+       a.lagm_business_unit
 From mv_assignments a),
 
 --- employment 
@@ -77,6 +79,48 @@ max (c.UCINN_ASCENDV2__RELATED_ACCOUNT_NAME_FORMULA__C) keep (dense_rank first o
 from stg_alumni.ucinn_ascendv2__Affiliation__c c
 where c.ap_is_primary_employment__c = 'true'
 group by c.UCINN_ASCENDV2__RELATED_CONTACT_DONOR_ID_FORMULA__C),
+
+--- c-suite flag 
+
+csuite as (select
+employ.UCINN_ASCENDV2__RELATED_CONTACT_DONOR_ID_FORMULA__C as donor_id,
+employ.primary_job_title,
+employ.primary_employer
+from employ
+where   ((employ.primary_job_title like '%Vice President%'
+or employ.primary_job_title like '%VP%'
+or employ.primary_job_title like '%Owner%'
+or employ.primary_job_title like '%Founder%'
+or employ.primary_job_title like '%Managing Director%'
+or employ.primary_job_title like '%Executive%'
+or employ.primary_job_title like '%Partner%'
+or employ.primary_job_title like '%Principal%'
+or employ.primary_job_title like '%Head%'
+or employ.primary_job_title like '%Senior%'
+or employ.primary_job_title like '%Chief%'
+or employ.primary_job_title like '%Board%'
+---- Check Abbreviations too 
+or employ.primary_job_title like '%CEO%'
+--- Chief Finance Officer
+or employ.primary_job_title like '%CFO%'
+--- Chief Marketing Officer
+or employ.primary_job_title like '%CMO%'
+--- Chief Information Officer
+or employ.primary_job_title like '%CIO%'
+--- Chiefer Operating Office
+or employ.primary_job_title like '%COO%'
+--- Chief Tech Officer
+or employ.primary_job_title like '%CTO%'
+--- Chief Compliance officer
+or employ.primary_job_title like '%CCO%')
+
+--- take out assistants/associates/advisors, not actual senior titles
+
+and (primary_job_title not like '%Assistant%'
+and primary_job_title not like '%Asst%'
+and primary_job_title not like '%Associate%'
+and primary_job_title not like '%Assoc%'
+and primary_job_title not like '%Advisor%'))),
 
 --- Dean's Last Visit 
 
@@ -175,29 +219,47 @@ From mv_entity_contact_info c),
 --- KSM Model Scores and AF 10K- Temp Table from Paul 
 --- TBL_KSM_MG
 
-K as (Select a.donor_id,
+/*K as (Select a.donor_id,
        a.segment_year,
        a.segment_month,
        a.segment_code,
        a.description,
        a.score
-From tbl_ksm_model_af_10k a),
+From tbl_ksm_model_af_10k a),*/
 
-mods as (Select m.donor_id,
-       m.segment_year,
-       m.segment_month,
-       m.id_code,
-       m.id_segment,
-       m.id_score,
-       m.pr_code,
-       m.pr_segment,
-       m.pr_score,
-       m.est_probability
-From tbl_ksm_model_mg m),
+--- Use Paul's Model Score Now
+
+mods as (select m.donor_id,
+       m.household_id,
+       m.household_primary,
+       m.household_id_ksm,
+       m.household_primary_ksm,
+       m.sort_name,
+       m.primary_record_type,
+       m.institutional_suffix,
+       m.mg_id_code,
+       m.mg_id_description,
+       m.mg_id_score,
+       m.mg_pr_code,
+       m.mg_pr_description,
+       m.mg_pr_score,
+       m.mg_probability,
+       m.af_10k_code,
+       m.af_10k_description,
+       m.af_10k_score,
+       m.alumni_engagement_code,
+       m.alumni_engagement_description,
+       m.alumni_engagement_score,
+       m.student_supporter_code,
+       m.student_supporter_description,
+       m.student_supporter_score,
+       m.etl_update_date,
+       m.mv_last_refresh
+  From mv_ksm_models m ),
 
 --- Kellogg Model Engagement Score
 
-kmes as (select ae.donor_id,
+/* kmes as (select ae.donor_id,
        ae.segment_year,
        ae.segment_month,
        ae.id_code,
@@ -207,7 +269,7 @@ kmes as (select ae.donor_id,
        ae.pr_segment,
        ae.pr_score,
        ae.est_probability
-from tbl_ksm_model_mg ae),
+from tbl_ksm_model_mg ae),*/
 
 
 event as (select  
@@ -234,11 +296,76 @@ group by event.NU_DONOR_ID__C),
 event_count as (select event.NU_DONOR_ID__C,
 count (event.CONFERENCE360__EVENT_NAME__C) as count_events
 from event 
-group by event.NU_DONOR_ID__C)
+group by event.NU_DONOR_ID__C),
+
+prop as (select p.opportunity_salesforce_id,
+       p.proposal_record_id,
+       p.proposal_legacy_id,
+       p.proposal_strategy_record_id,
+       p.household_id,
+       p.household_primary,
+       p.household_id_ksm,
+       p.household_primary_ksm,
+       p.prospect_name,
+       p.donor_id,
+       p.full_name,
+       p.sort_name,
+       p.institutional_suffix,
+       p.is_deceased_indicator,
+       p.person_or_org,
+       p.primary_record_type,
+       p.proposal_active_indicator,
+       p.proposal_stage,
+       p.proposal_type,
+       p.proposal_name,
+       p.proposal_description,
+       p.proposal_funding_interests,
+       p.proposal_probability,
+       p.proposal_amount,
+       p.proposal_submitted_amount,
+       p.proposal_anticipated_amount,
+       p.proposal_funded_amount,
+       p.proposal_linked_gift_pledge_ids,
+       p.proposal_created_date,
+       p.proposal_submitted_date,
+       p.proposal_submitted_fy,
+       p.proposal_submitted_py,
+       p.proposal_close_date,
+       p.proposal_close_fy,
+       p.propsal_close_py,
+       p.proposal_stage_date,
+       p.proposal_days_in_current_stage,
+       p.proposal_payment_schedule,
+       p.proposal_designation_units,
+       p.ksm_flag,
+       p.active_proposal_manager_salesforce_id,
+       p.active_proposal_manager_donor_id,
+       p.active_proposal_manager_name,
+       p.active_proposal_manager_unit,
+       p.active_proposal_manager_team,
+       p.historical_pm_user_id,
+       p.historical_proposal_manager_donor_id,
+       p.historical_pm_name,
+       p.historical_pm_role,
+       p.historical_pm_business_unit,
+       p.historical_proposal_manager_team,
+       p.historical_pm_is_active,
+       p.etl_update_date,
+       p.mv_last_refresh
+from mv_proposals p),
+
+
+tka as (select t.DONOR_ID,
+       t.UOR,
+       t."UOR DATE" as uor_date,
+       t."EVALUATION RATING" as Evaluation_rating,
+       t."EVALUATION RATING DATE" as evaluation_rating_date
+from Tableau_KSM_Activity t )
 
 
 select  distinct 
        e.donor_id,
+       --- Use Paul's defintion 
        e.household_id,
        e.household_primary,
        e.full_name,
@@ -254,6 +381,8 @@ select  distinct
        e.spouse_donor_id,
        e.spouse_name,
        e.spouse_institutional_suffix,
+     /*    
+     --- Melanie does not need this in her report
        e.preferred_address_status,
        e.preferred_address_type,
        e.preferred_address_line_1,
@@ -263,58 +392,115 @@ select  distinct
        e.preferred_address_city,
        e.preferred_address_state,
        e.preferred_address_postal_code,
-       e.preferred_address_country,
+       e.preferred_address_country, 
        co.home_address_line_1,
        co.home_address_line_2,
        co.home_address_line_3,
-       co.home_address_line_4,
+       co.home_address_line_4,*/              
        co.home_address_city,
        co.home_address_state,
        co.home_address_postal_code,
        co.home_address_country,
+       /*       
+       --- Melanie does not need this in her report       
        co.business_address_line_1,
        co.business_address_line_2,
        co.business_address_line_3,
        co.business_address_line_4,
+       */ 
        co.business_address_city,
        co.business_address_state,
        co.business_address_postal_code,
-       co.business_address_country,
-       e.university_overall_rating,
-       e.research_evaluation,
-       e.research_evaluation_date,
-       d.degrees_verbose,
-       d.degrees_concat,
-       d.first_ksm_grad_date,
+       co.business_address_country,       
+       ---- ADD UOR DATE 
+       
+       
+       
+       --- Strategy ID AKA: Prospect ID, Prospect Name (Proposal View)
+       
+       prop.proposal_strategy_record_id,
+       prop.household_id_ksm,
+       prop.prospect_name,
+       prop.proposal_active_indicator,
+       prop.proposal_stage,
+       prop.proposal_type,
+       prop.proposal_name,
+       prop.proposal_description,
+       prop.proposal_funding_interests,
+       prop.proposal_probability,
+       prop.proposal_amount,
+       prop.proposal_submitted_amount,
+       prop.proposal_anticipated_amount,
+       prop.proposal_funded_amount,
+       prop.proposal_linked_gift_pledge_ids,
+       prop.proposal_created_date,
+       prop.proposal_submitted_date,
+       prop.proposal_submitted_fy,
+       prop.proposal_submitted_py,
+       prop.proposal_close_date,
+       prop.proposal_close_fy,
+       prop.propsal_close_py,
+       prop.proposal_stage_date,
+       prop.proposal_days_in_current_stage,
+       prop.proposal_payment_schedule,
+       
+       
+       --e.university_overall_rating,
+       --e.research_evaluation,
+       --e.research_evaluation_date,
+       
+       tka.UOR,
+       tka.uor_date,
+       tka.Evaluation_rating,
+       tka.evaluation_rating_date,
+       
+       
+       
+       --- Melanie does not need this in her report
+       --d.degrees_verbose,
+       --d.degrees_concat,
+       --d.first_ksm_grad_date,
        d.first_ksm_year,
-       d.first_masters_year,
-       d.last_masters_year,
+       --- Melanie does not need this in her report
+       --d.first_masters_year,
+       ---d.last_masters_year,
        d.program,
        d.program_group,
-       employ.primary_employ_ind,
+       ---employ.primary_employ_ind,
        employ.primary_job_title,
        employ.primary_employer,
+       case when csuite.donor_id is not null then 'Y' end as c_suite_flag,
+       /*
+        --- Melanie does not need this in her report
        g.household_id,
        g.household_account_name,
        g.household_primary_donor_id,
        g.household_primary_full_name,
        g.household_spouse_donor_id,
        g.household_spouse_full_name,
-       g.household_last_masters_year,
+       g.household_last_masters_year,*/
        g.ngc_lifetime,
+       /*
        g.ngc_lifetime_full_rec,
-       g.ngc_lifetime_nonanon_full_rec,
+       g.ngc_lifetime_nonanon_full_rec,*/
        g.last_ngc_opportunity_type,
-       g.last_ngc_designation_id,
+       ---g.last_ngc_designation_id,
        g.last_ngc_designation,
        g.last_ngc_recognition_credit,
-       a.prospect_manager_name,
-       a.lagm_user_id,
-       a.lagm_name,
-       a.ksm_manager_flag,
+       ---- The team for prospect manager and LAGM ("Business Unit") 
+       assign.prospect_manager_name,
+       assign.lagm_user_id,
+       assign.lagm_name,
+       assign.ksm_manager_flag,
+       --- Add Business Unit
+       assign.lagm_business_unit,
+      /* --- Melanie needs most recent, not concat - use a max function 
+      She would like the most recent, but a count of visits total for Francesca 
        crf.constituent_last_contact_report_record_id,
        l.author_name,
        l.contact_type,
+       */        
+       --- Renaming CR fields - "Dean Last Visit"        
        l.cr_date,
        l.ucinn_ascendv2__description__c,
        involve.involvement_name,
@@ -325,33 +511,42 @@ select  distinct
        crf.constituent_last_contact_report_method,
        crf.constituent_visit_count,
        crf.constituent_visit_last_year_count,
-       crf.constituent_last_visit_date,
-       mods.segment_year,
-       mods.segment_month,
-       mods.id_code,
-       mods.id_segment,
-       mods.id_score,
-       mods.pr_code,
-       mods.pr_segment,
-       mods.pr_score,
-       mods.est_probability,
-       K.segment_year as K_segment_year,
-       K.segment_month as K_segment_month,
-       K.segment_code as K_segment_code,
-       K.description as K_segment_description,
-       K.score as K_score,
-       kmes.id_code,
-       kmes.id_segment,
-       kmes.id_score,
-       kmes.pr_code,
-       kmes.pr_segment,
-       kmes.pr_score,
-       kmes.est_probability,
+       crf.constituent_last_visit_date,  
+       --- Melanie - Needs the ID segment, PR Segment, Est Probability 
+       mods.mg_id_code,
+       mods.mg_id_description,
+       mods.mg_id_score,
+       mods.mg_pr_code,
+       mods.mg_pr_description,
+       mods.mg_pr_score,
+       mods.mg_probability,
+       mods.af_10k_code,
+       mods.af_10k_description,
+       mods.af_10k_score,
+       mods.alumni_engagement_code,
+       mods.alumni_engagement_description,
+       mods.alumni_engagement_score,
+       mods.student_supporter_code,
+       mods.student_supporter_description,
+       mods.student_supporter_score,
+       mods.etl_update_date,
+       mods.mv_last_refresh,
        event_count.count_events,
-       ---- i think I should listagg this????       
+       ---- i think I should listagg this????   
+       --- Campaign Name is okay 
        el.event_name,
        el.event_start_date,
        el.event_attendance_status
+       --- Add in Case manager- Where we are saving the Gift Officer New Leads 
+       --- case owner, case number, Where the type is referral and status is new or in progress 
+       
+       --- C- Suite Flag
+       
+       --- AF Status - Tableau_KSM_Activity 
+       
+       --- Stage of Readiness - timeline - Does it work?????  ---- Check Strategy 
+       
+       --- Salesforce ID        
 from entity e 
 --- Inner join degrees 
 inner join d on d.donor_id = e.donor_id
@@ -360,7 +555,7 @@ left join give g on g.household_primary_donor_id = e.donor_id
 --- employment
 left join employ on employ.UCINN_ASCENDV2__RELATED_CONTACT_DONOR_ID_FORMULA__C = e.donor_id
 --- assingment
-left join assign a on a.donor_id = e.donor_id
+left join assign assign on assign.donor_id = e.donor_id
 --- last contact report
 left join crf on crf.constituent_donor_id = e.donor_id
 --- francesca's contact report 
@@ -370,12 +565,18 @@ left join involve on involve.constituent_donor_id = e.donor_id
 --- contacts
 left join co on co.donor_id = e.donor_id
 --- 10K 
-left join K on K.donor_id = e.donor_id
+--left join K on K.donor_id = e.donor_id
 --- model
 left join mods on mods.donor_id = e.donor_id
 --- kellogg engagement score
-left join kmes on kmes.donor_id = e.donor_id
+--- left join kmes on kmes.donor_id = e.donor_id
 --- event data
 left join el on el.NU_DONOR_ID__C = e.donor_id
 --- count of evnet
 left join event_count on event_count.NU_DONOR_ID__C = e.donor_id
+--- proposal
+left join prop on prop.donor_id = e.donor_id
+--- Activity 
+left join tka on tka.donor_id = e.donor_id
+--- c suite
+left join csuite on csuite.donor_id = e.donor_id
