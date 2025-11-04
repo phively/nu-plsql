@@ -513,7 +513,7 @@ Pres as (SELECT DISTINCT
   ON ME.SALESFORCE_ID = AC.ID),
   
   
-mod as (select m.donor_id,
+mods as (select m.donor_id,
        m.household_id,
        m.household_primary,
        m.household_id_ksm,
@@ -560,18 +560,8 @@ WHERE KT.HARD_CREDIT_AMOUNT >0
 
 GIVING_TRANS as (select *
 from MV_KSM_TRANSACTIONS),
-
  
-KSM_PAID_AMT AS (
-SELECT
-  OPPORTUNITY_RECORD_ID
-  ,DESIGNATION_RECORD_ID
-  ,SUM(HARD_CREDIT_AMOUNT) AS TOTAL_PAID
-FROM KSM_PAYMENTS
-GROUP BY OPPORTUNITY_RECORD_ID, DESIGNATION_RECORD_ID
-),
-
-
+ 
 PLEDGEINFO AS (
 SELECT DISTINCT
 MKT.CREDITED_DONOR_ID
@@ -579,6 +569,7 @@ MKT.CREDITED_DONOR_ID
 ,MKT.OPPORTUNITY_STAGE
 ,MKT.OPPORTUNITY_RECORD_ID
 ,MKT.DESIGNATION_RECORD_ID
+,MAX(DD.UCINN_ASCENDV2__AMOUNT_PAID_TO_DATE_ROLL_UP__C) AS PLEDGE_AMOUNT_PAID_TO_DATE
 ,MAX(DD.UCINN_ASCENDV2__AMOUNT__C) AS PLEDGE_TOTAL_KSM
 ,MAX(DD.UCINN_ASCENDV2__REMAINING_AMOUNT_DUE_FORMULA__C) AS PLEDGE_BALANCE
 FROM GIVING_TRANS MKT
@@ -590,9 +581,9 @@ ON DO.OPPORTUNITY_DONOR_ID = DD.UCINN_ASCENDV2__DONOR_ID_FORMULA__C
 AND DO.OPPORTUNITY_RECORD_ID = DD.UCINN_ASCENDV2__PLEDGE_ID_FORMULA__C
 AND MKT.DESIGNATION_NAME = DD.UCINN_ASCENDV2__ACKNOWLEDGEMENT_DESCRIPTION_FORMULA__C
 WHERE MKT.SOURCE_TYPE_DETAIL = 'Pledge'
-Group By MKT.CREDITED_DONOR_ID,MKT.CREDIT_DATE,MKT.OPPORTUNITY_STAGE,MKT.OPPORTUNITY_RECORD_ID, MKT.DESIGNATION_RECORD_ID),
+Group By MKT.CREDITED_DONOR_ID,MKT.CREDIT_DATE,MKT.OPPORTUNITY_STAGE,MKT.OPPORTUNITY_RECORD_ID, MKT.DESIGNATION_RECORD_ID)
  
-NEW_PLEDGE_INFO AS (
+,NEW_PLEDGE_INFO AS (
 SELECT
 KT.CREDITED_DONOR_ID AS ID
 ,ROW_NUMBER() OVER(PARTITION BY KT.CREDITED_DONOR_ID ORDER BY KT.CREDIT_DATE DESC)RW
@@ -601,21 +592,19 @@ KT.CREDITED_DONOR_ID AS ID
 ,KT.CREDIT_DATE AS DT
 ,KT.DESIGNATION_RECORD_ID AS ACCT
 ,KT.PLEDGE_TOTAL_KSM AS AMT
-,NVL(KPA.TOTAL_PAID, 0) AS ALLOC_TOTAL_PAID
+,KT.PLEDGE_AMOUNT_PAID_TO_DATE
 ,KT.PLEDGE_BALANCE AS BAL
 FROM PLEDGEINFO KT
-LEFT JOIN KSM_PAID_AMT KPA
-ON KPA.OPPORTUNITY_RECORD_ID = KT.OPPORTUNITY_RECORD_ID
-AND KPA.DESIGNATION_RECORD_ID = KT.DESIGNATION_RECORD_ID),
-
---- Final Pledge Code 
-
+),
+ 
+--- Final Pledge Code
+ 
 amy_pledge_code as (select ID,
 max(decode(rw,1,dt)) last_plg_dt,
 max(decode(rw,1,stat)) status1,
 max(decode(rw,1,plg)) plg1,
 max(decode(rw,1,amt)) pamt1,
-max(decode(rw,1,ALLOC_TOTAL_PAID)) paid1,
+max(decode(rw,1,PLEDGE_AMOUNT_PAID_TO_DATE)) paid1,
 max(decode(rw,1,acct)) pacct1,
 max(decode(rw,1,bal)) bal1
 from NEW_PLEDGE_INFO
@@ -657,8 +646,8 @@ select distinct e.household_id,
      case when r22.id_number is not null then 'Reunion 2022 Attendee' end as Reunion_22_Attendee,
      ---- need to create temp table for 2026
      spr.reunion_year_concat as spouse_ksm_reunion_year,
-     case when spr.reunion_year_concat is not null then hhdean.joint_dean_salut end as joint_dean_salut,
-     case when spr.reunion_year_concat is not null then hhdean.Spouse_Dean_Source end as Spouse_Dean_Source,
+     case when spr.reunion_year_concat is not null then hhdean.joint_dean_salut end as joint_dean_salut_reunion,
+     case when spr.reunion_year_concat is not null then hhdean.Spouse_Dean_Source end as Spouse_Dean_Source_reunion,
     --- case when spr.reunion_year_concat is not null then salutation.Ind_or_Joint end as ind_joint,
      e.preferred_address_type,
      e.preferred_address_line_1,
@@ -786,31 +775,31 @@ select distinct e.household_id,
      s.constituent_visit_count,
      s.constituent_visit_last_year_count,
      s.constituent_last_visit_date,
-     rc26.involvement_name,
-     rc26.involvement_status,
-     rc26.involvement_type,
-     rc26.involvement_role,
-     rc26.involvement_business_unit,
-     rc26.involvement_start_date,
-     rc26.involvement_end_date,
-     mod.mg_id_code,
-     mod.mg_id_description,
-     mod.mg_id_score,
-     mod.mg_pr_code,
-     mod.mg_pr_description,
-     mod.mg_pr_score,
-     mod.mg_probability,
-     mod.af_10k_code,
-     mod.af_10k_description,
-     mod.af_10k_score,
-     mod.alumni_engagement_code,
-     mod.alumni_engagement_description,
-     mod.alumni_engagement_score,
-     mod.student_supporter_code,
-     mod.student_supporter_description,
-     mod.student_supporter_score,
-     mod.etl_update_date,
-     mod.mv_last_refresh
+     rc26.involvement_name as reunion26_involvement_name,
+     rc26.involvement_status as reunion_involvement_status,
+     rc26.involvement_type as reunion26_involvement_type,
+     rc26.involvement_role as reunion26_involvement_role,
+     rc26.involvement_business_unit as reunion_involvement_bus_unit,
+     rc26.involvement_start_date as reunion26_start_date,
+     rc26.involvement_end_date as reunion_26_end_date,
+     mods.mg_id_code,
+     mods.mg_id_description,
+     mods.mg_id_score,
+     mods.mg_pr_code,
+     mods.mg_pr_description,
+     mods.mg_pr_score,
+     mods.mg_probability,
+     mods.af_10k_code,
+     mods.af_10k_description,
+     mods.af_10k_score,
+     mods.alumni_engagement_code,
+     mods.alumni_engagement_description,
+     mods.alumni_engagement_score,
+     mods.student_supporter_code,
+     mods.student_supporter_description,
+     mods.student_supporter_score,
+     mods.etl_update_date,
+     mods.mv_last_refresh
 from e 
 left join KSM_Degrees on KSM_Degrees.donor_id = e.donor_id
 --- Reunion eligible
@@ -870,6 +859,6 @@ left join Pres on Pres.donor_id = e.donor_id
 --- spouse preferred name
 left join SMN on SMN.spouse_donor_id = e.donor_id 
 --- AR Mod
-left join mod on mod.donor_id = e.donor_id
+left join mods on mods.donor_id = e.donor_id
 --- Amy Pledge Code
 left join amy_pledge_code apc on apc.id = e.donor_id
