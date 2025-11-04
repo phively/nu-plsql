@@ -57,6 +57,27 @@ crf as (select d.constituent_donor_id,
        d.constituent_last_visit_date
        from DM_ALUMNI.DIM_CONSTITUENT d),
        
+---- Dean Contact Last Report 
+
+dcrf as (select d.constituent_donor_id,
+       d.salutation,
+       d.gender_identity,
+       d.constituent_contact_report_count,
+       d.constituent_contact_report_last_year_count,
+       d.constituent_last_contact_report_record_id,
+       d.constituent_last_contact_report_date,
+       d.constituent_last_contact_primary_relationship_manager_date,
+       d.constituent_last_contact_report_author,
+       d.constituent_last_contact_report_purpose,
+       d.constituent_last_contact_report_method,
+       d.constituent_visit_count,
+       d.constituent_visit_last_year_count,
+       d.constituent_last_visit_date
+       from DM_ALUMNI.DIM_CONSTITUENT d
+       where d.constituent_last_contact_report_author like '%Francesca Cornelli%'),
+
+
+       
 --- assignment
 
 assign as (Select a.household_id,
@@ -357,9 +378,15 @@ from mv_proposals p),
 
 tka as (select t.DONOR_ID,
        t.UOR,
+       t.SALESFORCE_ID,
        t."UOR DATE" as uor_date,
        t."EVALUATION RATING" as Evaluation_rating,
-       t."EVALUATION RATING DATE" as evaluation_rating_date
+       t."EVALUATION RATING DATE" as evaluation_rating_date,
+       t."STAGE OF READINESS", 
+       t.TEAM,
+       t.PROPOSAL_MANAGER_KSM_STAFF,
+       t.MANAGER, 
+       t."MANAGER START DATE"
 from Tableau_KSM_Activity t )
 
 
@@ -367,6 +394,7 @@ select  distinct
        e.donor_id,
        --- Use Paul's defintion 
        e.household_id,
+       tka.SALESFORCE_ID,
        e.household_primary,
        e.full_name,
        e.sort_name,
@@ -401,23 +429,16 @@ select  distinct
        co.home_address_state,
        co.home_address_postal_code,
        co.home_address_country,
-       /*       
-       --- Melanie does not need this in her report       
+       /*  --- Melanie does not need this in her report       
        co.business_address_line_1,
        co.business_address_line_2,
        co.business_address_line_3,
-       co.business_address_line_4,
-       */ 
+       co.business_address_line_4, */ 
        co.business_address_city,
        co.business_address_state,
        co.business_address_postal_code,
        co.business_address_country,       
-       ---- ADD UOR DATE 
-       
-       
-       
        --- Strategy ID AKA: Prospect ID, Prospect Name (Proposal View)
-       
        prop.proposal_strategy_record_id,
        prop.household_id_ksm,
        prop.prospect_name,
@@ -443,19 +464,16 @@ select  distinct
        prop.proposal_stage_date,
        prop.proposal_days_in_current_stage,
        prop.proposal_payment_schedule,
-       
-       
-       --e.university_overall_rating,
-       --e.research_evaluation,
-       --e.research_evaluation_date,
-       
+--e.university_overall_rating, e.research_evaluation, e.research_evaluation_date,ADD UOR DATE        
        tka.UOR,
        tka.uor_date,
        tka.Evaluation_rating,
        tka.evaluation_rating_date,
-       
-       
-       
+       tka."STAGE OF READINESS", 
+       tka.TEAM,
+       tka.PROPOSAL_MANAGER_KSM_STAFF,
+       tka.MANAGER, 
+       tka."MANAGER START DATE",
        --- Melanie does not need this in her report
        --d.degrees_verbose,
        --d.degrees_concat,
@@ -469,6 +487,7 @@ select  distinct
        ---employ.primary_employ_ind,
        employ.primary_job_title,
        employ.primary_employer,
+       --- C Suite Flag
        case when csuite.donor_id is not null then 'Y' end as c_suite_flag,
        /*
         --- Melanie does not need this in her report
@@ -503,7 +522,7 @@ select  distinct
        --- Renaming CR fields - "Dean Last Visit"        
        l.cr_date,
        l.ucinn_ascendv2__description__c,
-       involve.involvement_name,
+       involve.involvement_name,       
        crf.constituent_last_contact_report_date,
        crf.constituent_last_contact_primary_relationship_manager_date,
        crf.constituent_last_contact_report_author,
@@ -512,6 +531,15 @@ select  distinct
        crf.constituent_visit_count,
        crf.constituent_visit_last_year_count,
        crf.constituent_last_visit_date,  
+       --- Dean Last Contact Report
+       dcrf.constituent_last_contact_report_record_id,
+       dcrf.constituent_last_contact_report_date,
+       dcrf.constituent_last_contact_report_author,
+       dcrf.constituent_last_contact_report_purpose,
+       dcrf.constituent_last_contact_report_method,
+       dcrf.constituent_visit_count,
+       dcrf.constituent_visit_last_year_count,
+       dcrf.constituent_last_visit_date,      
        --- Melanie - Needs the ID segment, PR Segment, Est Probability 
        mods.mg_id_code,
        mods.mg_id_description,
@@ -538,12 +566,8 @@ select  distinct
        el.event_start_date,
        el.event_attendance_status
        --- Add in Case manager- Where we are saving the Gift Officer New Leads 
-       --- case owner, case number, Where the type is referral and status is new or in progress 
-       
-       --- C- Suite Flag
-       
-       --- AF Status - Tableau_KSM_Activity 
-       
+       --- case owner, case number, Where the type is referral and status is new or in progress     
+       --- AF Status - Tableau_KSM_Activity       
        --- Stage of Readiness - timeline - Does it work?????  ---- Check Strategy 
        
        --- Salesforce ID        
@@ -580,3 +604,5 @@ left join prop on prop.donor_id = e.donor_id
 left join tka on tka.donor_id = e.donor_id
 --- c suite
 left join csuite on csuite.donor_id = e.donor_id
+--- Dean Contact Report 
+left join dcrf on dcrf.constituent_donor_id = e.donor_id 
