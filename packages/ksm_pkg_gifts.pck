@@ -297,10 +297,6 @@ Cursor c_source_donors Is
     -- Matching gifts
     Left Join mv_matches match
       On match.matching_gift_record_id = mvt.opportunity_record_id
-    -- Exclude in honor/memory of donors
-    Left Join table(ksm_pkg_transactions.tbl_tributes) trib
-      On trib.opportunity_salesforce_id = mvt.opportunity_salesforce_id
-    Where trib.opportunity_salesforce_id Is Null
   )
   
   Select

@@ -66,28 +66,31 @@ From mv_source_donor
 With
 
 test_cases As (
-  Select '0002371580' As legacy_tx, '0000073925' As expected_donor_id, 'NU' As explanation From DUAL
-  Union Select '0002371650', '0000437871', 'donor + spouse' From DUAL
-  Union Select '0002372038', '0000314967', 'KSM + spouse + DAF' From DUAL
-  Union Select '0002373070', '0000386715', 'Trst + KSM' From DUAL
-  Union Select '0002400638', '0000385764', 'MATCH: Fdn + KSM' From DUAL
-  Union Select '0002373286', '0000505616', 'NU + KSM spouse' From DUAL
-  Union Select '0002373551', '0000206322', 'Trst + nonalum donor + nonalum spouse' From DUAL
-  Union Select '0002374381', '0000579707', 'MATCH: Fdn + Fdn + KSM + KSM Spouse' From DUAL
-  Union Select '0002370746', '0000564106', 'KSM' From DUAL
-  Union Select '0002370763', '0000484652', 'KSM + spouse' From DUAL
-  Union Select '0002370765', '0000303126', 'KSM + KSM spouse' From DUAL
-  Union Select '0002422364', '0000285609', 'MATCH: Fdn + KSM + spouse' From DUAL
+  Select '0002371580' As legacy_tx, NULL As tx_id, '0000073925' As expected_donor_id, 'NU' As explanation From DUAL
+  Union Select '0002371650', NULL, '0000437871', 'donor + spouse' From DUAL
+  Union Select '0002372038', NULL, '0000314967', 'KSM + spouse + DAF' From DUAL
+  Union Select '0002373070', NULL, '0000386715', 'Trst + KSM' From DUAL
+  Union Select '0002400638', NULL, '0000385764', 'MATCH: Fdn + KSM' From DUAL
+  Union Select '0002373286', NULL, '0000505616', 'NU + KSM spouse' From DUAL
+  Union Select '0002373551', NULL, '0000206322', 'Trst + nonalum donor + nonalum spouse' From DUAL
+  Union Select '0002374381', NULL, '0000579707', 'MATCH: Fdn + Fdn + KSM + KSM Spouse' From DUAL
+  Union Select '0002370746', NULL, '0000564106', 'KSM' From DUAL
+  Union Select '0002370763', NULL, '0000484652', 'KSM + spouse' From DUAL
+  Union Select '0002370765', NULL, '0000303126', 'KSM + KSM spouse' From DUAL
+  Union Select '0002422364', NULL, '0000285609', 'MATCH: Fdn + KSM + spouse' From DUAL
+  Union Select NULL, 'T2959158', '0000328239', 'In memory/honor gift' From DUAL
 )
 
 Select
   mvs.tx_id
   , mvs.legacy_receipt_number
   , mvs.source_donor_id
-  , test_cases.expected_donor_id
-  , test_cases.explanation
+  , nvl(tc1.expected_donor_id, tc2.expected_donor_id)
+    As expected_donor_id
+  , nvl(tc1.explanation, tc2.explanation)
+    As explanation
   , Case
-      When test_cases.expected_donor_id = mvs.source_donor_id
+      When nvl(tc1.expected_donor_id, tc2.expected_donor_id) = mvs.source_donor_id
         Then 'Y'
       Else 'FALSE' End
     As pass
@@ -95,8 +98,12 @@ From mv_source_donor mvs
 Inner Join mv_transactions mvt
   On mvt.tx_id = mvs.tx_id
   And mvt.credit_type = 'Hard'
-Inner Join test_cases
-  On test_cases.legacy_tx = mvt.legacy_receipt_number
+Left Join test_cases tc1
+  On tc1.legacy_tx = mvt.legacy_receipt_number
+Left Join test_cases tc2
+  On tc2.tx_id = mvt.tx_id
+Where tc1.explanation Is Not Null
+  Or tc2.explanation Is Not Null
 ;
 
 ---------------------------
