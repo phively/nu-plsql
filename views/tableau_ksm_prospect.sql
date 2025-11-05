@@ -35,7 +35,10 @@ give as (select g.household_id,
        g.last_ngc_opportunity_type,
        g.last_ngc_designation_id,
        g.last_ngc_designation,
-       g.last_ngc_recognition_credit
+       g.last_ngc_recognition_credit,
+       g.expendable_status,
+       g.expendable_status_fy_start,
+       g.expendable_status_pfy1_start
        --- Add in last gift date 
 from mv_ksm_giving_summary g),
 
@@ -55,10 +58,10 @@ crf as (select d.constituent_donor_id,
        d.constituent_visit_count,
        d.constituent_visit_last_year_count,
        d.constituent_last_visit_date
-       from DM_ALUMNI.DIM_CONSTITUENT d
-       where d.constituent_last_contact_report_method = 'Visit'),
+       from DM_ALUMNI.DIM_CONSTITUENT d),
        
 ---- DEAN Contact LAST VISIT Report 
+--- Maybe Use Paul's CR 
 
 dcrf as (select d.constituent_donor_id,
        d.salutation,
@@ -75,8 +78,8 @@ dcrf as (select d.constituent_donor_id,
        d.constituent_visit_last_year_count,
        d.constituent_last_visit_date
        from DM_ALUMNI.DIM_CONSTITUENT d
-       where d.constituent_last_contact_report_author like '%Francesca Cornelli%'),
-
+       where d.constituent_last_contact_report_author like '%Francesca Cornelli%'
+       and  d.constituent_last_contact_report_method = 'Visit'),
        
 --- assignment
 
@@ -102,6 +105,7 @@ where c.ap_is_primary_employment__c = 'true'
 group by c.UCINN_ASCENDV2__RELATED_CONTACT_DONOR_ID_FORMULA__C),
 
 --- C-Suite Flag 
+--- Take a look at Paul's Senior Titles
 
 csuite as (select
 employ.UCINN_ASCENDV2__RELATED_CONTACT_DONOR_ID_FORMULA__C as donor_id,
@@ -131,7 +135,8 @@ or employ.primary_job_title like '%CIO%'
 --- Chiefer Operating Office
 or employ.primary_job_title like '%COO%'
 --- Chief Tech Officer
-or employ.primary_job_title like '%CTO%'
+or (employ.primary_job_title like '%CTO%'
+        AND employ.primary_job_title not like '%DOCTOR%')
 --- Chief Compliance officer
 or employ.primary_job_title like '%CCO%')
 --- take out assistants/associates/advisors, not actual senior titles
@@ -160,8 +165,7 @@ i as (select i.constituent_donor_id,
 from mv_involvement i
 where i.involvement_status = 'Current'
 and (i.involvement_name like '%KSM%'
-or i.involvement_name like '%Kellogg%')
-),
+or i.involvement_name like '%Kellogg%')),
 
 --- Listagg Involvements 
 
@@ -235,7 +239,7 @@ mods as (select m.donor_id,
        m.student_supporter_score,
        m.etl_update_date,
        m.mv_last_refresh
-  From mv_ksm_models m ),
+  From mv_ksm_models m),
 
 --- Event Data 
 --- Campaign Data Only! Asked Melanie and the naming convention will have "Campaign" 
@@ -255,8 +259,7 @@ and a.CONFERENCE360__EVENT_NAME__C like '%Campaign%'),
 
 --- Events Listagg
 
-el as (
-select event.NU_DONOR_ID__C,
+el as (select event.NU_DONOR_ID__C,
 Listagg (event.CONFERENCE360__EVENT_NAME__C, ';  ') Within Group (Order By event.CONFERENCE360__EVENT_START_DATE__C) As event_name,
 Listagg (event.CONFERENCE360__EVENT_START_DATE__C, ';  ') Within Group (Order By event.CONFERENCE360__EVENT_START_DATE__C) As event_start_date,
 Listagg (event.conference360__attendance_status__c, ';  ') Within Group (Order By event.CONFERENCE360__EVENT_START_DATE__C) As event_attendance_status
@@ -288,8 +291,22 @@ tka as (select t.DONOR_ID,
        t.PROPOSAL_MANAGER_KSM_STAFF,
        t.MANAGER, 
        t."MANAGER START DATE"
-from Tableau_KSM_Activity t)
+from Tableau_KSM_Activity t),
 
+--- Tableau Task Report
+
+ttr as (select 
+       t.DONOR_ID,
+       t.CASE_OWNER_ID,
+       t.CASE_OWNER,
+       t.STATUS,
+       t.SUBJECT,
+       t.DESCRIPTION,
+       t.NONVISIT_CONTACT_DURING_TASK,
+       t.TOTAL_VISITS,
+       t."Unresponsive",
+       t."Disqualified"
+from TABLEAU_TASK_REPORT t)
 
 select  distinct 
        e.donor_id,
@@ -383,7 +400,6 @@ select  distinct
        tka.PROPOSAL_MANAGER_KSM_STAFF,
        tka.MANAGER, 
        tka."MANAGER START DATE",  
-       
        --- Melanie does not need this in her report
        --d.degrees_verbose,
        --d.degrees_concat,
@@ -416,6 +432,10 @@ select  distinct
        ---g.last_ngc_designation_id,
        g.last_ngc_designation,
        g.last_ngc_recognition_credit,
+       --- AF Status - Tableau_KSM_Activity    ---- EXPENDABLE STATUS            
+       g.expendable_status,
+       g.expendable_status_fy_start,
+       g.expendable_status_pfy1_start,      
        ---- The team for prospect manager and LAGM ("Business Unit") 
        assign.prospect_manager_name,
        assign.lagm_user_id,
@@ -423,7 +443,7 @@ select  distinct
        assign.ksm_manager_flag,
        --- Add Business Unit
        assign.lagm_business_unit,             
---- Last Contact Report           
+       --- Last Contact Report           
        crf.constituent_last_contact_report_date,
        crf.constituent_last_contact_primary_relationship_manager_date,
        crf.constituent_last_contact_report_author,
@@ -433,11 +453,10 @@ select  distinct
        crf.constituent_visit_last_year_count,
        crf.constituent_last_visit_date,       
       /* --- Melanie needs most recent, not concat - use a max function 
-      She would like the most recent, but a count of visits total for Francesca 
+       She would like the most recent, but a count of visits total for Francesca 
        crf.constituent_last_contact_report_record_id,
        l.author_name,
-       l.contact_type,
-       */                  
+       l.contact_type, */                  
        --- Dean Last VIST Contact Report      
        dcrf.constituent_last_contact_report_record_id as dean_last_visit_id,
        dcrf.constituent_last_contact_report_date as dean_last_visit_report_dt,
@@ -472,11 +491,19 @@ select  distinct
        --- Campaign Name is okay 
        el.event_name as campaign_event_name_concat,
        el.event_start_date as campagin_event_start_date,
-       el.event_attendance_status as campaign_event_status
+       el.event_attendance_status as campaign_event_status,
        --- Add in Case manager- Where we are saving the Gift Officer New Leads 
-       --- case owner, case number, Where the type is referral and status is new or in progress     
-       --- AF Status - Tableau_KSM_Activity        
-            
+       --- case owner, case number, Where the type is referral and status is new or in progress 
+       --- Amy Has a Tableau Veiws for Case Manager, Case Owner, Case Date      
+       ttr.CASE_OWNER_ID,
+       ttr.CASE_OWNER,
+       ttr.STATUS,
+       ttr.SUBJECT,
+       ttr.DESCRIPTION,
+       ttr.NONVISIT_CONTACT_DURING_TASK,
+       ttr.TOTAL_VISITS,
+       ttr."Unresponsive",
+       ttr."Disqualified"
 from entity e 
 --- Inner join degrees 
 inner join d on d.donor_id = e.donor_id
@@ -506,3 +533,5 @@ left join event_count on event_count.NU_DONOR_ID__C = e.donor_id
 left join prop on prop.donor_id = e.donor_id
 --- activity 
 left join tka on tka.donor_id = e.donor_id
+--- tableau task report
+left join ttr on ttr.donor_id = e.donor_id
