@@ -3,9 +3,9 @@ create or replace view tableau_ksm_prospect as
 --- Entity 
 
 with entity as (select *
- From mv_entity e
- where e.is_deceased_indicator = 'N'
- ),
+From mv_entity e
+where e.is_deceased_indicator = 'N'
+),
  
 --- Degrees
  
@@ -39,7 +39,7 @@ give as (select g.household_id,
        --- Add in last gift date 
 from mv_ksm_giving_summary g),
 
---- Contact Report
+--- Last Contact Report
 
 crf as (select d.constituent_donor_id,
        d.salutation,
@@ -55,9 +55,10 @@ crf as (select d.constituent_donor_id,
        d.constituent_visit_count,
        d.constituent_visit_last_year_count,
        d.constituent_last_visit_date
-       from DM_ALUMNI.DIM_CONSTITUENT d),
+       from DM_ALUMNI.DIM_CONSTITUENT d
+       where d.constituent_last_contact_report_method = 'Visit'),
        
----- Dean Contact Last Report 
+---- DEAN Contact LAST VISIT Report 
 
 dcrf as (select d.constituent_donor_id,
        d.salutation,
@@ -75,7 +76,6 @@ dcrf as (select d.constituent_donor_id,
        d.constituent_last_visit_date
        from DM_ALUMNI.DIM_CONSTITUENT d
        where d.constituent_last_contact_report_author like '%Francesca Cornelli%'),
-
 
        
 --- assignment
@@ -101,7 +101,7 @@ from stg_alumni.ucinn_ascendv2__Affiliation__c c
 where c.ap_is_primary_employment__c = 'true'
 group by c.UCINN_ASCENDV2__RELATED_CONTACT_DONOR_ID_FORMULA__C),
 
---- c-suite flag 
+--- C-Suite Flag 
 
 csuite as (select
 employ.UCINN_ASCENDV2__RELATED_CONTACT_DONOR_ID_FORMULA__C as donor_id,
@@ -134,41 +134,12 @@ or employ.primary_job_title like '%COO%'
 or employ.primary_job_title like '%CTO%'
 --- Chief Compliance officer
 or employ.primary_job_title like '%CCO%')
-
 --- take out assistants/associates/advisors, not actual senior titles
-
 and (primary_job_title not like '%Assistant%'
 and primary_job_title not like '%Asst%'
 and primary_job_title not like '%Associate%'
 and primary_job_title not like '%Assoc%'
 and primary_job_title not like '%Advisor%'))),
-
---- Dean's Last Visit 
-
-a as (select
-distinct co.ucinn_ascendv2__donor_id__c,
-co.firstname,
-co.lastname,
-c.ap_contact_report_author_name_formula__c,
-c.ucinn_ascendv2__contact_method__c,
-c.ucinn_ascendv2__date__c,
-c.ucinn_ascendv2__description__c,
-c.ucinn_ascendv2__contact_report_body__c
-from stg_alumni.ucinn_ascendv2__contact_report__c c
-left join stg_alumni.contact co on co.id = c.ucinn_ascendv2__contact__c
-where c.ap_contact_report_author_name_formula__c = 'Francesca Cornelli'
-and c.ucinn_ascendv2__contact_method__c = 'Visit'
-order by c.ucinn_ascendv2__date__c ASC),
-
---- Listagg Dean's Contact Report
-
-l as (select a.ucinn_ascendv2__donor_id__c,
-Listagg (a.ap_contact_report_author_name_formula__c, ';  ') Within Group (Order By a.ucinn_ascendv2__date__c) As author_name,
-Listagg (a.ucinn_ascendv2__contact_method__c, ';  ') Within Group (Order By a.ucinn_ascendv2__date__c) As contact_type,
-Listagg (a.ucinn_ascendv2__date__c, ';  ') Within Group (Order By a.ucinn_ascendv2__date__c) As cr_date,
-Listagg (a.ucinn_ascendv2__description__c, ';  ') Within Group (Order By a.ucinn_ascendv2__date__c) As ucinn_ascendv2__description__c
-from a
-group by a.ucinn_ascendv2__donor_id__c),
 
 --- Involvements 
 
@@ -192,15 +163,14 @@ and (i.involvement_name like '%KSM%'
 or i.involvement_name like '%Kellogg%')
 ),
 
---- listagg involvements 
+--- Listagg Involvements 
 
 involve as (select i.constituent_donor_id,
 Listagg (i.involvement_name, ';  ') Within Group (Order By i.involvement_name) As involvement_name
 from i
 group by i.constituent_donor_id),
 
-
---- contact 
+--- Contact Data
 
 co as (Select c.donor_id,
        c.sort_name,
@@ -237,18 +207,7 @@ co as (Select c.donor_id,
        c.business_address_country
 From mv_entity_contact_info c),
 
---- KSM Model Scores and AF 10K- Temp Table from Paul 
---- TBL_KSM_MG
-
-/*K as (Select a.donor_id,
-       a.segment_year,
-       a.segment_month,
-       a.segment_code,
-       a.description,
-       a.score
-From tbl_ksm_model_af_10k a),*/
-
---- Use Paul's Model Score Now
+--- Use Paul's Model Score Now, Not Liam's Tables
 
 mods as (select m.donor_id,
        m.household_id,
@@ -278,20 +237,8 @@ mods as (select m.donor_id,
        m.mv_last_refresh
   From mv_ksm_models m ),
 
---- Kellogg Model Engagement Score
-
-/* kmes as (select ae.donor_id,
-       ae.segment_year,
-       ae.segment_month,
-       ae.id_code,
-       ae.id_segment,
-       ae.id_score,
-       ae.pr_code,
-       ae.pr_segment,
-       ae.pr_score,
-       ae.est_probability
-from tbl_ksm_model_mg ae),*/
-
+--- Event Data 
+--- Campaign Data Only! Asked Melanie and the naming convention will have "Campaign" 
 
 event as (select  
 a.NU_DONOR_ID__C  ,
@@ -302,9 +249,11 @@ a.conference360__attendance_status__c
 from stg_alumni.conference360__attendee__c a 
 where a.NU_DONOR_ID__C  is not null
 and a.conference360__attendance_status__c = 'Attended'
-and a.CONFERENCE360__EVENT_NAME__C is not null),
+and a.CONFERENCE360__EVENT_NAME__C is not null
+---- Campaign Asked Melanie if this was okay 
+and a.CONFERENCE360__EVENT_NAME__C like '%Campaign%'),
 
---- event listag
+--- Events Listagg
 
 el as (
 select event.NU_DONOR_ID__C,
@@ -314,67 +263,19 @@ Listagg (event.conference360__attendance_status__c, ';  ') Within Group (Order B
 from event
 group by event.NU_DONOR_ID__C),
 
+--- Event Counts 
+
 event_count as (select event.NU_DONOR_ID__C,
 count (event.CONFERENCE360__EVENT_NAME__C) as count_events
 from event 
 group by event.NU_DONOR_ID__C),
 
-prop as (select p.opportunity_salesforce_id,
-       p.proposal_record_id,
-       p.proposal_legacy_id,
-       p.proposal_strategy_record_id,
-       p.household_id,
-       p.household_primary,
-       p.household_id_ksm,
-       p.household_primary_ksm,
-       p.prospect_name,
-       p.donor_id,
-       p.full_name,
-       p.sort_name,
-       p.institutional_suffix,
-       p.is_deceased_indicator,
-       p.person_or_org,
-       p.primary_record_type,
-       p.proposal_active_indicator,
-       p.proposal_stage,
-       p.proposal_type,
-       p.proposal_name,
-       p.proposal_description,
-       p.proposal_funding_interests,
-       p.proposal_probability,
-       p.proposal_amount,
-       p.proposal_submitted_amount,
-       p.proposal_anticipated_amount,
-       p.proposal_funded_amount,
-       p.proposal_linked_gift_pledge_ids,
-       p.proposal_created_date,
-       p.proposal_submitted_date,
-       p.proposal_submitted_fy,
-       p.proposal_submitted_py,
-       p.proposal_close_date,
-       p.proposal_close_fy,
-       p.propsal_close_py,
-       p.proposal_stage_date,
-       p.proposal_days_in_current_stage,
-       p.proposal_payment_schedule,
-       p.proposal_designation_units,
-       p.ksm_flag,
-       p.active_proposal_manager_salesforce_id,
-       p.active_proposal_manager_donor_id,
-       p.active_proposal_manager_name,
-       p.active_proposal_manager_unit,
-       p.active_proposal_manager_team,
-       p.historical_pm_user_id,
-       p.historical_proposal_manager_donor_id,
-       p.historical_pm_name,
-       p.historical_pm_role,
-       p.historical_pm_business_unit,
-       p.historical_proposal_manager_team,
-       p.historical_pm_is_active,
-       p.etl_update_date,
-       p.mv_last_refresh
+--- Proposal View
+
+prop as (select *
 from mv_proposals p),
 
+--- Tableau Activity - Pulls Melanie's Requested Data Points
 
 tka as (select t.DONOR_ID,
        t.UOR,
@@ -387,13 +288,14 @@ tka as (select t.DONOR_ID,
        t.PROPOSAL_MANAGER_KSM_STAFF,
        t.MANAGER, 
        t."MANAGER START DATE"
-from Tableau_KSM_Activity t )
+from Tableau_KSM_Activity t)
 
 
 select  distinct 
        e.donor_id,
        --- Use Paul's defintion 
        e.household_id,
+       --- Salesforce ID   
        tka.SALESFORCE_ID,
        e.household_primary,
        e.full_name,
@@ -464,16 +366,24 @@ select  distinct
        prop.proposal_stage_date,
        prop.proposal_days_in_current_stage,
        prop.proposal_payment_schedule,
---e.university_overall_rating, e.research_evaluation, e.research_evaluation_date,ADD UOR DATE        
+       prop.ksm_flag,
+       prop.active_proposal_manager_salesforce_id,
+       prop.active_proposal_manager_donor_id,
+       prop.active_proposal_manager_name,
+       prop.active_proposal_manager_unit,
+       prop.active_proposal_manager_team,       
+--e.university_overall_rating, e.research_evaluation, e.research_evaluation_date, ADD UOR DATE        
        tka.UOR,
        tka.uor_date,
        tka.Evaluation_rating,
        tka.evaluation_rating_date,
+       --- Stage of Readiness - timeline - Does it work?????  ---- Check Strategy 
        tka."STAGE OF READINESS", 
        tka.TEAM,
        tka.PROPOSAL_MANAGER_KSM_STAFF,
        tka.MANAGER, 
-       tka."MANAGER START DATE",
+       tka."MANAGER START DATE",  
+       
        --- Melanie does not need this in her report
        --d.degrees_verbose,
        --d.degrees_concat,
@@ -512,17 +422,8 @@ select  distinct
        assign.lagm_name,
        assign.ksm_manager_flag,
        --- Add Business Unit
-       assign.lagm_business_unit,
-      /* --- Melanie needs most recent, not concat - use a max function 
-      She would like the most recent, but a count of visits total for Francesca 
-       crf.constituent_last_contact_report_record_id,
-       l.author_name,
-       l.contact_type,
-       */        
-       --- Renaming CR fields - "Dean Last Visit"        
-       l.cr_date,
-       l.ucinn_ascendv2__description__c,
-       involve.involvement_name,       
+       assign.lagm_business_unit,             
+--- Last Contact Report           
        crf.constituent_last_contact_report_date,
        crf.constituent_last_contact_primary_relationship_manager_date,
        crf.constituent_last_contact_report_author,
@@ -530,16 +431,23 @@ select  distinct
        crf.constituent_last_contact_report_method,
        crf.constituent_visit_count,
        crf.constituent_visit_last_year_count,
-       crf.constituent_last_visit_date,  
-       --- Dean Last Contact Report
-       dcrf.constituent_last_contact_report_record_id,
-       dcrf.constituent_last_contact_report_date,
-       dcrf.constituent_last_contact_report_author,
-       dcrf.constituent_last_contact_report_purpose,
-       dcrf.constituent_last_contact_report_method,
-       dcrf.constituent_visit_count,
-       dcrf.constituent_visit_last_year_count,
-       dcrf.constituent_last_visit_date,      
+       crf.constituent_last_visit_date,       
+      /* --- Melanie needs most recent, not concat - use a max function 
+      She would like the most recent, but a count of visits total for Francesca 
+       crf.constituent_last_contact_report_record_id,
+       l.author_name,
+       l.contact_type,
+       */                  
+       --- Dean Last VIST Contact Report      
+       dcrf.constituent_last_contact_report_record_id as dean_last_visit_id,
+       dcrf.constituent_last_contact_report_date as dean_last_visit_report_dt,
+       dcrf.constituent_last_contact_report_author as dean_last_visit_author,
+       dcrf.constituent_last_contact_report_purpose as dean_last_visit_purpose,
+       dcrf.constituent_last_contact_report_method as dean_last_visit_method,
+       --- Counts of Visits 
+       dcrf.constituent_visit_count as dean_visit_count,
+       dcrf.constituent_visit_last_year_count as dean_last_visit_year,
+       dcrf.constituent_last_visit_date as dean_last_visit_date,      
        --- Melanie - Needs the ID segment, PR Segment, Est Probability 
        mods.mg_id_code,
        mods.mg_id_description,
@@ -558,19 +466,17 @@ select  distinct
        mods.student_supporter_description,
        mods.student_supporter_score,
        mods.etl_update_date,
-       mods.mv_last_refresh,
-       event_count.count_events,
-       ---- i think I should listagg this????   
+       mods.mv_last_refresh,      
+       ---- Campaign Events! 
+       event_count.count_events as campaign_event_count,
        --- Campaign Name is okay 
-       el.event_name,
-       el.event_start_date,
-       el.event_attendance_status
+       el.event_name as campaign_event_name_concat,
+       el.event_start_date as campagin_event_start_date,
+       el.event_attendance_status as campaign_event_status
        --- Add in Case manager- Where we are saving the Gift Officer New Leads 
        --- case owner, case number, Where the type is referral and status is new or in progress     
-       --- AF Status - Tableau_KSM_Activity       
-       --- Stage of Readiness - timeline - Does it work?????  ---- Check Strategy 
-       
-       --- Salesforce ID        
+       --- AF Status - Tableau_KSM_Activity        
+            
 from entity e 
 --- Inner join degrees 
 inner join d on d.donor_id = e.donor_id
@@ -578,31 +484,25 @@ inner join d on d.donor_id = e.donor_id
 left join give g on g.household_primary_donor_id = e.donor_id 
 --- employment
 left join employ on employ.UCINN_ASCENDV2__RELATED_CONTACT_DONOR_ID_FORMULA__C = e.donor_id
+--- c suite flag
+left join csuite on csuite.donor_id = e.donor_id
 --- assingment
 left join assign assign on assign.donor_id = e.donor_id
 --- last contact report
 left join crf on crf.constituent_donor_id = e.donor_id
---- francesca's contact report 
-left join l on l.ucinn_ascendv2__donor_id__c = e.donor_id
+--- Francesca Last Visit 
+left join dcrf on dcrf.constituent_donor_id = e.donor_id 
 --- involvements
 left join involve on involve.constituent_donor_id = e.donor_id
 --- contacts
 left join co on co.donor_id = e.donor_id
---- 10K 
---left join K on K.donor_id = e.donor_id
---- model
+--- Model Scores
 left join mods on mods.donor_id = e.donor_id
---- kellogg engagement score
---- left join kmes on kmes.donor_id = e.donor_id
 --- event data
 left join el on el.NU_DONOR_ID__C = e.donor_id
 --- count of evnet
 left join event_count on event_count.NU_DONOR_ID__C = e.donor_id
 --- proposal
 left join prop on prop.donor_id = e.donor_id
---- Activity 
+--- activity 
 left join tka on tka.donor_id = e.donor_id
---- c suite
-left join csuite on csuite.donor_id = e.donor_id
---- Dean Contact Report 
-left join dcrf on dcrf.constituent_donor_id = e.donor_id 
