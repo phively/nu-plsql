@@ -86,15 +86,18 @@ test_cases As (
   Union Select '0000043879', 'FT-EB', 'BBA no deg code'  From DUAL
   Union Select '0000145897', 'FT-MMM', 'MMM no program'  From DUAL
   Union Select '0000047624', 'PHD', 'MBA and PHD'  From DUAL
+  Union Select '0000468293', '2002', 'NU conferred degree year' From DUAL
 )
 
 Select
-  deg.program
+  deg.first_ksm_year
+  , deg.program
   , test_cases.expected_result
   , test_cases.explanation
   , Case
       When test_cases.expected_result = deg.program
-        Then 'Y'
+        Or test_cases.expected_result = deg.first_ksm_year
+        Then 'Y'        
       Else 'FALSE' End
     As pass
   , deg.degree_level_ranked
