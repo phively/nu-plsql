@@ -11,6 +11,10 @@ From table(ksm_pkg_contact_info.tbl_email)
 ;
 
 Select *
+From table(ksm_pkg_contact_info.tbl_geocode)
+;
+
+Select *
 From table(ksm_pkg_contact_info.tbl_address)
 ;
 
