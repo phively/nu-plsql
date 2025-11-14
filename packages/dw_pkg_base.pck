@@ -486,7 +486,9 @@ Type rec_econtact Is Record (
 --------------------------------------
 Type rec_address Is Record (
   address_donor_id dm_alumni.dim_address.address_donor_id%type
+  , address_salesforce_id dm_alumni.dim_address.address_salesforce_id%type
   , address_record_id dm_alumni.dim_address.address_record_id%type
+  , address_relation_salesforce_id dm_alumni.dim_address.address_relation_salesforce_id%type
   , address_relation_record_id dm_alumni.dim_address.address_relation_record_id%type
   , address_type dm_alumni.dim_address.address_type%type
   , address_status dm_alumni.dim_address.address_status%type
@@ -1612,7 +1614,9 @@ Cursor c_econtacts Is
 Cursor c_address Is
   Select
     a.address_donor_id
+    , a.address_salesforce_id
     , a.address_record_id
+    , a.address_relation_salesforce_id
     , a.address_relation_record_id
     , nullif(a.address_type, '-')
       As address_type

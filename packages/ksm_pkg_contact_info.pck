@@ -67,6 +67,13 @@ Type rec_email Is Record (
 );
 
 --------------------------------------
+Type rec_geocode Is Record (
+  address_record_id dm_alumni.dim_address.address_record_id%type
+  , geocode_primary stg_alumni.ap_geocode__c.ap_geocode_value_description__c%type
+  , geocodes_concat varchar2(3000)
+);
+
+--------------------------------------
 Type rec_address Is Record (
   donor_id dm_alumni.dim_address.address_donor_id%type
   , address_record_id dm_alumni.dim_address.address_record_id%type
@@ -194,6 +201,7 @@ Public table declarations
 Type continents Is Table Of rec_continent;
 Type phone Is Table Of rec_phone;
 Type email Is Table Of rec_email;
+Type geocode Is Table Of rec_geocode;
 Type address Is Table Of rec_address;
 Type address_seasonal Is Table Of rec_address_seasonal;
 Type linkedin Is Table Of rec_linkedin;
@@ -215,6 +223,9 @@ Function tbl_phone
 
 Function tbl_email
   Return email Pipelined;
+
+Function tbl_geocode
+  Return geocode Pipelined;
 
 Function tbl_address
   Return address Pipelined;
@@ -259,12 +270,6 @@ Create Or Replace Package Body ksm_pkg_contact_info Is
 /*************************************************************************
 Private cursors -- data definitions
 *************************************************************************/
-
---------------------------------------
-Cursor c_geo_codes Is
-  Select NULL
-  From DUAL
-;
 
 --------------------------------------
 Cursor c_continents Is
@@ -710,6 +715,49 @@ Cursor c_email Is
     On dc.constituent_salesforce_id = e.ucinn_ascendv2__contact__c
   Left Join mv_entity mve
     On mve.salesforce_id = e.ucinn_ascendv2__account__c
+;
+
+--------------------------------------
+Cursor c_geocodes Is
+  
+  With
+  
+  gc As (
+    Select Distinct
+      gc.geocode_salesforce_id
+      , gc.geocode_record_id
+      , gc.address_relation_salesforce_id
+      , addr.address_relation_record_id
+      , addr.address_salesforce_id
+      , addr.address_record_id
+      , gc.geocode_type
+      , gc.geocode_description
+      , gc.etl_update_date
+    From table(dw_pkg_base.tbl_geocode) gc
+    Inner Join table(dw_pkg_base.tbl_address) addr
+      On gc.address_relation_salesforce_id = addr.address_relation_salesforce_id
+  )
+  
+  -- Geocodes are tied to address relation for each spouse, so need to be deduped
+  , geo_dedupe As (
+    Select Distinct
+      address_record_id
+      , geocode_type
+      , geocode_description
+    From gc
+  )
+  
+  -- Tier 1 before Club; otherwise, tiebreak is alpha
+  Select
+    address_record_id
+    , max(geocode_description)
+        keep(dense_rank First Order By geocode_type Desc, geocode_description Asc)
+      As geocode_primary
+    , Listagg(geocode_description || ' (' || geocode_type || ')', '; ')
+        Within Group (Order By geocode_type Desc, geocode_description Asc)
+      As geocodes_concat
+  From geo_dedupe
+  Group By address_record_id
 ;
 
 --------------------------------------
@@ -1319,6 +1367,22 @@ Function tbl_email
     Close c_email;
     For i in 1..(em.count) Loop
       Pipe row(em(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_geocode
+  Return geocode Pipelined As
+    -- Declarations
+    geo geocode;
+
+  Begin
+    Open c_geocodes;
+      Fetch c_geocodes Bulk Collect Into geo;
+    Close c_geocodes;
+    For i in 1..(geo.count) Loop
+      Pipe row(geo(i));
     End Loop;
     Return;
   End;
