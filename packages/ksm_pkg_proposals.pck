@@ -76,6 +76,8 @@ Type rec_proposal Is Record (
   , historical_pm_business_unit stg_alumni.opportunityteammember.ap_business_unit__c%type
   , historical_proposal_manager_team varchar2(10)
   , historical_pm_is_active stg_alumni.user_tbl.isactive%type
+  , active_proposal_assists dm_alumni.dim_proposal_opportunity.active_proposal_assists%type
+  , inactive_proposal_assists dm_alumni.dim_proposal_opportunity.inactive_proposal_assists%type
   , etl_update_date dm_alumni.dim_proposal_opportunity.etl_update_date%type
 );
 
@@ -198,6 +200,8 @@ Cursor c_proposals Is
     , gos_hist.team
       As historical_proposal_manager_team
     , prop.historical_pm_is_active
+    , prop.active_proposal_assists
+    , prop.inactive_proposal_assists
     , prop.etl_update_date
   From table(dw_pkg_base.tbl_proposals) prop
   Left Join mv_entity mve
