@@ -11,6 +11,10 @@ From table(ksm_pkg_contact_info.tbl_email)
 ;
 
 Select *
+From table(ksm_pkg_contact_info.tbl_geocode)
+;
+
+Select *
 From table(ksm_pkg_contact_info.tbl_address)
 ;
 
@@ -39,6 +43,18 @@ Select *
 From v_addr_continents
 Where continent = 'CHECK'
 Order By n_rows Desc
+;
+
+-- Check geocodes
+Select
+  address_record_id
+  , address_type
+  , address_city
+  , address_state
+  , geocode_primary
+  , geocodes_concat
+From mv_address
+Where geocodes_concat Is Not Null
 ;
 
 -- Check for duplicate rows

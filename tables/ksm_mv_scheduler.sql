@@ -192,6 +192,22 @@ From table(ksm_pkg_contact_reports.tbl_contact_reports) cr
 ;
 
 --------------------------------------
+-- ksm_pkg_contacts
+-- mv_entity_contact_info
+-- Drop Materialized View mv_address;
+Create Materialized View mv_address
+Refresh Complete
+Start With sysdate
+-- 7:30 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.5/24)
+As
+Select
+  addr.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_contact_info.tbl_address) addr
+;
+
+--------------------------------------
 -- ksm_pkg_proposals
 -- tbl_proposals
 -- Drop Materialized View mv_proposals;

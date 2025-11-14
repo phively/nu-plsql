@@ -6,8 +6,6 @@ Contains SQL and PL/SQL code for various Kellogg data definitions and best pract
 
 Concept: lower level tables should be defined based on SF objects, then joined/transformed into higher level definitions. Data packages should have clear hierarchical dependencies, and a single responsibility.
 
-WIP as of July 2025. Blue are available for testing in PRD.
-
 ![data_hierarchy.png](images/data_hierarchy.png "Proposed data hierarchy")
 
 # Naming conventions
@@ -36,7 +34,21 @@ Important: respect dependencies! For example, `mv_ksm_transactions` is scheduled
 
 # Important views
 
+## Universal
+
  * [mv_entity](packages/ksm_pkg_entity.pck) = merged constituent and org tables, with consistent household definition (org ultimate parent is the hh primary). See `c_entity`
  * [mv_entity_ksm_degrees](packages/ksm_pkg_degrees.pck) = KSM alumni definition, plus concatenated degrees. See `c_entity_degrees_concat`
+ * [mv_entity_contact_info](packages/ksm_pkg_contact_info.pck) = assorted contact information in wide format (one row per entity), respecting special handling. See `c_contact_info `
+
+ ## Giving
+
  * [mv_ksm_designation](packages/ksm_pkg_designation.pck) = KSM gift designations, including cash and campaign categories. See `c_ksm_designation`
  * [mv_ksm_transactions](packages/ksm_pkg_gifts.pck) = KSM hard and soft credit to all KSM designations. See `c_ksm_transactions`
+ * [v_ksm_gifts_cash](tables/v_ksm_gifts_cash.sql) = use instead of `mv_ksm_transactions` to pre-filter out pledges and for calculated cash_countable_amount field
+ * [v_ksm_gifts_ngc](tables/v_ksm_gifts_ngc.sql) = use instead of `mv_ksm_transactions` to pre-filter out pledge payments
+ 
+ ## Prospect
+ 
+ * [mv_assignments](packages/ksm_pkg_prospect.pck) = all active staff assignments in wide format (one row per entity). See `c_assignment_summary`
+ * [mv_contact_reports](packages/ksm_pkg_contact_reports.pck) = consolidated contact report views in long format, disaggregating staff credit across multiple rows. See `c_contact_reports`
+ * [mv_ksm_models](packages/ksm_pkg_models.pck) = KSM model scores in wide format (one row per entity)

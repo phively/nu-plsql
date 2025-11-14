@@ -486,7 +486,9 @@ Type rec_econtact Is Record (
 --------------------------------------
 Type rec_address Is Record (
   address_donor_id dm_alumni.dim_address.address_donor_id%type
+  , address_salesforce_id dm_alumni.dim_address.address_salesforce_id%type
   , address_record_id dm_alumni.dim_address.address_record_id%type
+  , address_relation_salesforce_id dm_alumni.dim_address.address_relation_salesforce_id%type
   , address_relation_record_id dm_alumni.dim_address.address_relation_record_id%type
   , address_type dm_alumni.dim_address.address_type%type
   , address_status dm_alumni.dim_address.address_status%type
@@ -520,6 +522,17 @@ Type rec_address Is Record (
   , etl_update_date dm_alumni.dim_address.etl_update_date%type
 );
 
+--------------------------------------
+Type rec_geocode Is Record (
+  geocode_salesforce_id stg_alumni.ap_geocode__c.id%type
+  , geocode_record_id stg_alumni.ap_geocode__c.name%type
+  , address_relation_salesforce_id stg_alumni.ap_geocode__c.ap_address_relation__c%type
+  , constituent_salesforce_id stg_alumni.ap_geocode__c.ap_constituent__c%type
+  , geocode_type stg_alumni.ap_geocode__c.ap_geocode_value_type__c%type
+  , geocode_description stg_alumni.ap_geocode__c.ap_geocode_value_description__c%type
+  , etl_update_date stg_alumni.ap_geocode__c.etl_update_date%type
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
@@ -547,6 +560,7 @@ Type contact_report_relation Is Table Of rec_contact_report_relation;
 Type fundraiser_contact_report_relation Is Table Of rec_fundraiser_contact_report_relation;
 Type econtacts Is Table Of rec_econtact;
 Type address Is Table Of rec_address;
+Type geocode Is Table Of rec_geocode;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -620,6 +634,9 @@ Function tbl_social_media
 
 Function tbl_address
   Return address Pipelined;
+
+Function tbl_geocode
+  Return geocode Pipelined;
 
 /*********************** About pipelined functions ***********************
 Q: What is a pipelined function?
@@ -1598,7 +1615,9 @@ Cursor c_econtacts Is
 Cursor c_address Is
   Select
     a.address_donor_id
+    , a.address_salesforce_id
     , a.address_record_id
+    , a.address_relation_salesforce_id
     , a.address_relation_record_id
     , nullif(a.address_type, '-')
       As address_type
@@ -1659,6 +1678,30 @@ Cursor c_address Is
     , trunc(etl_update_date)
       As etl_update_date
   From dm_alumni.dim_address a
+;
+
+--------------------------------------
+Cursor c_geocode Is
+  Select
+      g.id
+      As geocode_salesforce_id
+    , g.name
+      As geocode_record_id
+    , g.ap_address_relation__c
+      As address_relation_salesforce_id
+    , g.ap_constituent__c
+      As constituent_salesforce_id
+    , g.ap_geocode_value_type__c
+      As geocode_type
+    , g.ap_geocode_value_description__c
+      As geocode_description
+    , g.etl_update_date
+  From stg_alumni.ap_geocode__c g
+  Where g.ap_geocode_value_type__c In ('Club', 'Tier 1 Region')
+    -- Test values
+    And g.ap_geocode_value_description__c Not In (
+      'Mckenzie''s Club!', 'KM_IL_Test', 'TEST Lake Arc (Milw Kenosha Racine Chgo NWInd)'
+    )
 ;
 
 /*************************************************************************
@@ -2029,6 +2072,22 @@ Function tbl_address
     Close c_address;
     For i in 1..(addr.count) Loop
       Pipe row(addr(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_geocode
+  Return geocode Pipelined As
+    -- Declarations
+    gc geocode;
+
+  Begin
+    Open c_geocode;
+      Fetch c_geocode Bulk Collect Into gc;
+    Close c_geocode;
+    For i in 1..(gc.count) Loop
+      Pipe row(gc(i));
     End Loop;
     Return;
   End;

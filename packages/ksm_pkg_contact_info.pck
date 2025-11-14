@@ -67,6 +67,13 @@ Type rec_email Is Record (
 );
 
 --------------------------------------
+Type rec_geocode Is Record (
+  address_record_id dm_alumni.dim_address.address_record_id%type
+  , geocode_primary stg_alumni.ap_geocode__c.ap_geocode_value_description__c%type
+  , geocodes_concat varchar2(3000)
+);
+
+--------------------------------------
 Type rec_address Is Record (
   donor_id dm_alumni.dim_address.address_donor_id%type
   , address_record_id dm_alumni.dim_address.address_record_id%type
@@ -86,6 +93,8 @@ Type rec_address Is Record (
   , address_state dm_alumni.dim_address.address_state%type
   , address_postal_code dm_alumni.dim_address.address_postal_code%type
   , address_country dm_alumni.dim_address.address_country%type
+  , geocode_primary stg_alumni.ap_geocode__c.ap_geocode_value_description__c%type
+  , geocodes_concat varchar2(3000)
   , address_latitude dm_alumni.dim_address.address_location_latitude%type
   , address_longitude dm_alumni.dim_address.address_location_longitude%type
   , address_start_date dm_alumni.dim_address.address_start_date%type
@@ -101,26 +110,26 @@ Type rec_address Is Record (
 
 --------------------------------------
 Type rec_address_seasonal Is Record (
-    donor_id dm_alumni.dim_address.address_donor_id%type
-    , address_record_id dm_alumni.dim_address.address_record_id%type
-    , address_status dm_alumni.dim_address.address_status%type
-    , address_type dm_alumni.dim_address.address_type%type
-    , address_preferred_indicator dm_alumni.dim_address.address_prefered_indicator%type
-    , address_line_1 dm_alumni.dim_address.address_line_1%type
-    , address_line_2 dm_alumni.dim_address.address_line_2%type
-    , address_line_3 dm_alumni.dim_address.address_line_3%type
-    , address_line_4 dm_alumni.dim_address.address_line_4%type
-    , address_city dm_alumni.dim_address.address_city%type
-    , address_state dm_alumni.dim_address.address_state%type
-    , address_postal_code dm_alumni.dim_address.address_postal_code%type
-    , address_country dm_alumni.dim_address.address_country%type
-    , address_latitude dm_alumni.dim_address.address_location_latitude%type
-    , address_longitude dm_alumni.dim_address.address_location_longitude%type
-    , seasonal_start_date dm_alumni.dim_address.address_start_date%type
-    , seasonal_stop_date dm_alumni.dim_address.address_end_date%type
-    , address_seasonal_start varchar2(8)
-    , address_seasonal_end varchar2(8)
-    , address_seasonal_as_of date
+  donor_id dm_alumni.dim_address.address_donor_id%type
+  , address_record_id dm_alumni.dim_address.address_record_id%type
+  , address_status dm_alumni.dim_address.address_status%type
+  , address_type dm_alumni.dim_address.address_type%type
+  , address_preferred_indicator dm_alumni.dim_address.address_prefered_indicator%type
+  , address_line_1 dm_alumni.dim_address.address_line_1%type
+  , address_line_2 dm_alumni.dim_address.address_line_2%type
+  , address_line_3 dm_alumni.dim_address.address_line_3%type
+  , address_line_4 dm_alumni.dim_address.address_line_4%type
+  , address_city dm_alumni.dim_address.address_city%type
+  , address_state dm_alumni.dim_address.address_state%type
+  , address_postal_code dm_alumni.dim_address.address_postal_code%type
+  , address_country dm_alumni.dim_address.address_country%type
+  , address_latitude dm_alumni.dim_address.address_location_latitude%type
+  , address_longitude dm_alumni.dim_address.address_location_longitude%type
+  , seasonal_start_date dm_alumni.dim_address.address_start_date%type
+  , seasonal_stop_date dm_alumni.dim_address.address_end_date%type
+  , address_seasonal_start varchar2(8)
+  , address_seasonal_end varchar2(8)
+  , address_seasonal_as_of date
 );
 
 --------------------------------------
@@ -151,6 +160,8 @@ Type rec_contact_info Is Record (
   , preferred_address_state dm_alumni.dim_address.address_state%type
   , preferred_address_postal_code dm_alumni.dim_address.address_postal_code%type
   , preferred_address_country dm_alumni.dim_address.address_country%type
+  , preferred_geocode_primary stg_alumni.ap_geocode__c.ap_geocode_value_description__c%type
+  , preferred_geocodes_concat varchar2(3000)
   , preferred_address_latitude dm_alumni.dim_address.address_location_latitude%type
   , preferred_address_longitude dm_alumni.dim_address.address_location_longitude%type
   , home_address_line_1 dm_alumni.dim_address.address_line_1%type
@@ -161,6 +172,8 @@ Type rec_contact_info Is Record (
   , home_address_state dm_alumni.dim_address.address_state%type
   , home_address_postal_code dm_alumni.dim_address.address_postal_code%type
   , home_address_country dm_alumni.dim_address.address_country%type
+  , home_geocode_primary stg_alumni.ap_geocode__c.ap_geocode_value_description__c%type
+  , home_geocodes_concat varchar2(3000)
   , home_address_latitude dm_alumni.dim_address.address_location_latitude%type
   , home_address_longitude dm_alumni.dim_address.address_location_longitude%type
   , business_address_line_1 dm_alumni.dim_address.address_line_1%type
@@ -171,6 +184,8 @@ Type rec_contact_info Is Record (
   , business_address_state dm_alumni.dim_address.address_state%type
   , business_address_postal_code dm_alumni.dim_address.address_postal_code%type
   , business_address_country dm_alumni.dim_address.address_country%type
+  , business_geocode_primary stg_alumni.ap_geocode__c.ap_geocode_value_description__c%type
+  , business_geocodes_concat varchar2(3000)
   , business_address_latitude dm_alumni.dim_address.address_location_latitude%type
   , business_address_longitude dm_alumni.dim_address.address_location_longitude%type
   , email_preferred_type stg_alumni.ucinn_ascendv2__email__c.ucinn_ascendv2__type__c%type
@@ -194,6 +209,7 @@ Public table declarations
 Type continents Is Table Of rec_continent;
 Type phone Is Table Of rec_phone;
 Type email Is Table Of rec_email;
+Type geocode Is Table Of rec_geocode;
 Type address Is Table Of rec_address;
 Type address_seasonal Is Table Of rec_address_seasonal;
 Type linkedin Is Table Of rec_linkedin;
@@ -215,6 +231,9 @@ Function tbl_phone
 
 Function tbl_email
   Return email Pipelined;
+
+Function tbl_geocode
+  Return geocode Pipelined;
 
 Function tbl_address
   Return address Pipelined;
@@ -259,12 +278,6 @@ Create Or Replace Package Body ksm_pkg_contact_info Is
 /*************************************************************************
 Private cursors -- data definitions
 *************************************************************************/
-
---------------------------------------
-Cursor c_geo_codes Is
-  Select NULL
-  From DUAL
-;
 
 --------------------------------------
 Cursor c_continents Is
@@ -713,6 +726,49 @@ Cursor c_email Is
 ;
 
 --------------------------------------
+Cursor c_geocodes Is
+  
+  With
+  
+  gc As (
+    Select Distinct
+      gc.geocode_salesforce_id
+      , gc.geocode_record_id
+      , gc.address_relation_salesforce_id
+      , addr.address_relation_record_id
+      , addr.address_salesforce_id
+      , addr.address_record_id
+      , gc.geocode_type
+      , gc.geocode_description
+      , gc.etl_update_date
+    From table(dw_pkg_base.tbl_geocode) gc
+    Inner Join table(dw_pkg_base.tbl_address) addr
+      On gc.address_relation_salesforce_id = addr.address_relation_salesforce_id
+  )
+  
+  -- Geocodes are tied to address relation for each spouse, so need to be deduped
+  , geo_dedupe As (
+    Select Distinct
+      address_record_id
+      , geocode_type
+      , geocode_description
+    From gc
+  )
+  
+  -- Tier 1 before Club; otherwise, tiebreak is alpha
+  Select
+    address_record_id
+    , max(geocode_description)
+        keep(dense_rank First Order By geocode_type Desc, geocode_description Asc)
+      As geocode_primary
+    , Listagg(geocode_description || ' (' || geocode_type || ')', '; ')
+        Within Group (Order By geocode_type Desc, geocode_description Asc)
+      As geocodes_concat
+  From geo_dedupe
+  Group By address_record_id
+;
+
+--------------------------------------
 Cursor c_address_current Is
   Select
     address_donor_id As donor_id
@@ -733,6 +789,8 @@ Cursor c_address_current Is
     , a.address_state
     , a.address_postal_code
     , a.address_country
+    , gc.geocode_primary
+    , gc.geocodes_concat
     , a.address_location_latitude
     , a.address_location_longitude
     , a.address_start_date
@@ -749,6 +807,8 @@ Cursor c_address_current Is
     , a.etl_update_date
   From table(dw_pkg_base.tbl_address) a
   Cross Join table(ksm_pkg_calendar.tbl_current_calendar) cal
+  Left Join table(ksm_pkg_contact_info.tbl_geocode) gc
+    On gc.address_record_id = a.address_record_id
   Where a.address_status = 'Current'
 ;
 
@@ -959,6 +1019,8 @@ Cursor c_contact_info Is
       , address_state
       , address_postal_code
       , address_country
+      , geocode_primary
+      , geocodes_concat
       , address_latitude
       , address_longitude
       , row_number()
@@ -980,6 +1042,8 @@ Cursor c_contact_info Is
       , address_state
       , address_postal_code
       , address_country
+      , geocode_primary
+      , geocodes_concat
       , address_latitude
       , address_longitude
       , row_number()
@@ -1002,6 +1066,8 @@ Cursor c_contact_info Is
       , address_state
       , address_postal_code
       , address_country
+      , geocode_primary
+      , geocodes_concat
       , address_latitude
       , address_longitude
       , row_number()
@@ -1180,6 +1246,8 @@ Cursor c_contact_info Is
     , addr_preferred.address_state As preferred_address_state
     , addr_preferred.address_postal_code As preferred_address_postal_code
     , addr_preferred.address_country As preferred_address_country
+    , addr_preferred.geocode_primary As preferred_geocode_primary
+    , addr_preferred.geocodes_concat As preferred_geocodes_concat
     , addr_preferred.address_latitude As preferred_address_latitude
     , addr_preferred.address_longitude As preferred_address_longitude
     , addr_home.address_line_1 As home_address_line_1
@@ -1190,6 +1258,8 @@ Cursor c_contact_info Is
     , addr_home.address_state As home_address_state
     , addr_home.address_postal_code As home_address_postal_code
     , addr_home.address_country As home_address_country
+    , addr_home.geocode_primary As home_geocode_primary
+    , addr_home.geocodes_concat As home_geocodes_concat
     , addr_home.address_latitude As home_address_latitude
     , addr_home.address_longitude As home_address_longitude
     , addr_bus.address_line_1 As business_address_line_1
@@ -1200,6 +1270,8 @@ Cursor c_contact_info Is
     , addr_bus.address_state As business_address_state
     , addr_bus.address_postal_code As business_address_postal_code
     , addr_bus.address_country As business_address_country
+    , addr_bus.geocode_primary As business_geocode_primary
+    , addr_bus.geocodes_concat As business_geocodes_concat
     , addr_bus.address_latitude As business_address_latitude
     , addr_bus.address_longitude As business_address_longitude
     -- Preferred email handling
@@ -1319,6 +1391,22 @@ Function tbl_email
     Close c_email;
     For i in 1..(em.count) Loop
       Pipe row(em(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_geocode
+  Return geocode Pipelined As
+    -- Declarations
+    geo geocode;
+
+  Begin
+    Open c_geocodes;
+      Fetch c_geocodes Bulk Collect Into geo;
+    Close c_geocodes;
+    For i in 1..(geo.count) Loop
+      Pipe row(geo(i));
     End Loop;
     Return;
   End;
