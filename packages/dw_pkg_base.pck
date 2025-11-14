@@ -413,6 +413,8 @@ Type rec_proposal Is Record (
   , historical_pm_role stg_alumni.opportunityteammember.teammemberrole%type
   , historical_pm_business_unit stg_alumni.opportunityteammember.ap_business_unit__c%type
   , historical_pm_is_active stg_alumni.user_tbl.isactive%type
+  , active_proposal_assists dm_alumni.dim_proposal_opportunity.active_proposal_assists%type
+  , inactive_proposal_assists dm_alumni.dim_proposal_opportunity.inactive_proposal_assists%type
   , etl_update_date dm_alumni.dim_proposal_opportunity.etl_update_date%type
 );
 
@@ -1501,6 +1503,10 @@ Cursor c_proposals Is
       As historical_pm_business_unit
     , last_pm.historical_is_active
       As historical_pm_is_active
+    , nullif(dpo.active_proposal_assists, '-')
+      As active_proposal_assists
+    , nullif(dpo.inactive_proposal_assists, '-')
+      As inactive_proposal_assists
     , trunc(dpo.etl_update_date)
       As etl_update_date
   From dm_alumni.dim_proposal_opportunity dpo
