@@ -45,6 +45,18 @@ Where continent = 'CHECK'
 Order By n_rows Desc
 ;
 
+-- Check geocodes
+Select
+  address_record_id
+  , address_type
+  , address_city
+  , address_state
+  , geocode_primary
+  , geocodes_concat
+From mv_address
+Where geocodes_concat Is Not Null
+;
+
 -- Check for duplicate rows
 Select
   'No duplicates' As explanation
