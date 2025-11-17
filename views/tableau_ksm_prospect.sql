@@ -4,8 +4,7 @@ create or replace view tableau_ksm_prospect as
 
 with entity as (select *
 From mv_entity e
-where e.is_deceased_indicator = 'N'
-),
+where e.is_deceased_indicator = 'N'),
  
 --- Degrees
  
@@ -43,6 +42,7 @@ give as (select g.household_id,
 from mv_ksm_giving_summary g),
 
 --- Last Contact Report
+--- Edit: 11/13/25 This is good to use to get the visit counts too
 
 crf as (select d.constituent_donor_id,
        d.salutation,
@@ -55,42 +55,37 @@ crf as (select d.constituent_donor_id,
        d.constituent_last_contact_report_author,
        d.constituent_last_contact_report_purpose,
        d.constituent_last_contact_report_method,
+       ---- use counts later on
        d.constituent_visit_count,
        d.constituent_visit_last_year_count,
        d.constituent_last_visit_date
        from DM_ALUMNI.DIM_CONSTITUENT d),
        
----- DEAN Contact LAST VISIT Report 
---- Maybe Use Paul's CR 
+---- DEAN Visits - Using Paul's Views
 
-dcrf as (select d.constituent_donor_id,
-       d.salutation,
-       d.gender_identity,
-       d.constituent_contact_report_count,
-       d.constituent_contact_report_last_year_count,
-       d.constituent_last_contact_report_record_id,
-       d.constituent_last_contact_report_date,
-       d.constituent_last_contact_primary_relationship_manager_date,
-       d.constituent_last_contact_report_author,
-       d.constituent_last_contact_report_purpose,
-       d.constituent_last_contact_report_method,
-       d.constituent_visit_count,
-       d.constituent_visit_last_year_count,
-       d.constituent_last_visit_date
-       from DM_ALUMNI.DIM_CONSTITUENT d
-       where d.constituent_last_contact_report_author like '%Francesca Cornelli%'
-       and  d.constituent_last_contact_report_method = 'Visit'),
+de as (select c.cr_relation_donor_id,
+       c.cr_credit_name,
+       c.contact_report_type,
+       c.contact_report_visit_flag,
+       c.contact_report_date,
+       c.contact_report_description
+from mv_contact_reports c 
+where c.cr_credit_name like '%Francesca Cornelli%'
+and c.contact_report_type like '%Visit%'),
+
+--- Dean's Last Visit Using Paul's View
+
+dcrf as (select de.cr_relation_donor_id,
+max (de.cr_credit_name) keep (dense_rank First Order By de.contact_report_date DESC) as credited,
+max (de.contact_report_type) keep (dense_rank First Order By de.contact_report_date DESC) as contact_report_type,
+max (de.contact_report_date) keep (dense_rank First Order By de.contact_report_date DESC) as contact_date,
+max (de.contact_report_description) keep (dense_rank First Order By de.contact_report_date DESC) as descripton 
+from  de
+group by de.cr_relation_donor_id),
        
 --- assignment
 
-assign as (Select a.household_id,
-       a.donor_id,
-       a.sort_name,
-       a.prospect_manager_name,
-       a.lagm_user_id,
-       a.lagm_name,
-       a.ksm_manager_flag,
-       a.lagm_business_unit
+assign as (Select *
 From mv_assignments a),
 
 --- employment 
@@ -112,18 +107,21 @@ employ.UCINN_ASCENDV2__RELATED_CONTACT_DONOR_ID_FORMULA__C as donor_id,
 employ.primary_job_title,
 employ.primary_employer
 from employ
-where   ((employ.primary_job_title like '%Vice President%'
-or employ.primary_job_title like '%VP%'
+where   ((employ.primary_job_title like '%EVP%'
 or employ.primary_job_title like '%Owner%'
 or employ.primary_job_title like '%Founder%'
 or employ.primary_job_title like '%Managing Director%'
 or employ.primary_job_title like '%Executive%'
 or employ.primary_job_title like '%Partner%'
+or employ.primary_job_title like '%President%'
 or employ.primary_job_title like '%Principal%'
 or employ.primary_job_title like '%Head%'
 or employ.primary_job_title like '%Senior%'
 or employ.primary_job_title like '%Chief%'
 or employ.primary_job_title like '%Board%'
+or employ.primary_job_title like '%Chairman%'
+or employ.primary_job_title like '%Chairwoman%'
+or employ.primary_job_title like '%Chairperson%'
 ---- Check Abbreviations too 
 or employ.primary_job_title like '%CEO%'
 --- Chief Finance Officer
@@ -170,7 +168,9 @@ or i.involvement_name like '%Kellogg%')),
 --- Listagg Involvements 
 
 involve as (select i.constituent_donor_id,
-Listagg (i.involvement_name, ';  ') Within Group (Order By i.involvement_name) As involvement_name
+Listagg (i.involvement_name, ';  ') Within Group (Order By i.involvement_name) As involvement_name,
+Listagg (I.INVOLVEMENT_TYPE, ';  ') Within Group (Order By i.involvement_name) As INVOLVEMENT_TYPE,
+Listagg (I.INVOLVEMENT_BUSINESS_UNIT, ';  ') Within Group (Order By i.involvement_name) As  INVOLVEMENT_BUSINESS_UNIT
 from i
 group by i.constituent_donor_id),
 
@@ -306,15 +306,24 @@ ttr as (select
        t.TOTAL_VISITS,
        t."Unresponsive",
        t."Disqualified"
-from TABLEAU_TASK_REPORT t)
+from TABLEAU_TASK_REPORT t),
+
+--- Ratings from the Alumni Donor Table
+--- Need the Date for Eval and UOR
+
+rating as (Select d.donor_id,
+       d.research_evaluation,
+       d.research_evaluation_date,
+       d.university_overall_rating,
+       d.university_overall_rating_entry_date
+From DM_ALUMNI.DIM_DONOR d)
 
 select  distinct 
        e.donor_id,
-       --- Use Paul's defintion 
-       e.household_id,
-       --- Salesforce ID   
-       tka.SALESFORCE_ID,
-       e.household_primary,
+       --- Let's use Household KSM 
+       e.household_id_ksm,       
+       e.salesforce_id,
+       e.household_primary_ksm,
        e.full_name,
        e.sort_name,
        e.salutation,
@@ -327,117 +336,45 @@ select  distinct
        e.institutional_suffix,
        e.spouse_donor_id,
        e.spouse_name,
-       e.spouse_institutional_suffix,
-     /*    
-     --- Melanie does not need this in her report
-       e.preferred_address_status,
-       e.preferred_address_type,
-       e.preferred_address_line_1,
-       e.preferred_address_line_2,
-       e.preferred_address_line_3,
-       e.preferred_address_line_4,
-       e.preferred_address_city,
-       e.preferred_address_state,
-       e.preferred_address_postal_code,
-       e.preferred_address_country, 
-       co.home_address_line_1,
-       co.home_address_line_2,
-       co.home_address_line_3,
-       co.home_address_line_4,*/              
+       e.spouse_institutional_suffix,             
        co.home_address_city,
        co.home_address_state,
        co.home_address_postal_code,
        co.home_address_country,
-       /*  --- Melanie does not need this in her report       
-       co.business_address_line_1,
-       co.business_address_line_2,
-       co.business_address_line_3,
-       co.business_address_line_4, */ 
        co.business_address_city,
        co.business_address_state,
        co.business_address_postal_code,
        co.business_address_country,       
        --- Strategy ID AKA: Prospect ID, Prospect Name (Proposal View)
        prop.proposal_strategy_record_id,
-       prop.household_id_ksm,
-       prop.prospect_name,
-       prop.proposal_active_indicator,
-       prop.proposal_stage,
-       prop.proposal_type,
-       prop.proposal_name,
-       prop.proposal_description,
-       prop.proposal_funding_interests,
-       prop.proposal_probability,
-       prop.proposal_amount,
-       prop.proposal_submitted_amount,
-       prop.proposal_anticipated_amount,
-       prop.proposal_funded_amount,
-       prop.proposal_linked_gift_pledge_ids,
-       prop.proposal_created_date,
-       prop.proposal_submitted_date,
-       prop.proposal_submitted_fy,
-       prop.proposal_submitted_py,
-       prop.proposal_close_date,
-       prop.proposal_close_fy,
-       prop.propsal_close_py,
-       prop.proposal_stage_date,
-       prop.proposal_days_in_current_stage,
-       prop.proposal_payment_schedule,
-       prop.ksm_flag,
-       prop.active_proposal_manager_salesforce_id,
-       prop.active_proposal_manager_donor_id,
-       prop.active_proposal_manager_name,
-       prop.active_proposal_manager_unit,
-       prop.active_proposal_manager_team,       
---e.university_overall_rating, e.research_evaluation, e.research_evaluation_date, ADD UOR DATE        
-       tka.UOR,
-       tka.uor_date,
-       tka.Evaluation_rating,
-       tka.evaluation_rating_date,
-       --- Stage of Readiness - timeline - Does it work?????  ---- Check Strategy 
+       prop.prospect_name, 
+       rating.research_evaluation,
+       rating.research_evaluation_date,
+       rating.university_overall_rating,
+       rating.university_overall_rating_entry_date,
+       --- Stage of Readiness - timeline - Does it work?????  ---- Check Strategy      
        tka."STAGE OF READINESS", 
        tka.TEAM,
-       tka.PROPOSAL_MANAGER_KSM_STAFF,
        tka.MANAGER, 
        tka."MANAGER START DATE",  
-       --- Melanie does not need this in her report
-       --d.degrees_verbose,
-       --d.degrees_concat,
-       --d.first_ksm_grad_date,
        d.first_ksm_year,
-       --- Melanie does not need this in her report
-       --d.first_masters_year,
-       ---d.last_masters_year,
        d.program,
        d.program_group,
-       ---employ.primary_employ_ind,
        employ.primary_job_title,
        employ.primary_employer,
        --- C Suite Flag
        case when csuite.donor_id is not null then 'Y' end as c_suite_flag,
-       /*
-        --- Melanie does not need this in her report
-       g.household_id,
-       g.household_account_name,
-       g.household_primary_donor_id,
-       g.household_primary_full_name,
-       g.household_spouse_donor_id,
-       g.household_spouse_full_name,
-       g.household_last_masters_year,*/
-       g.ngc_lifetime,
-       /*
-       g.ngc_lifetime_full_rec,
-       g.ngc_lifetime_nonanon_full_rec,*/
+       g.ngc_lifetime,      
+       ---11/13 ksm lifetime recgoniton   
+       g.ngc_lifetime_full_rec,     
        g.last_ngc_opportunity_type,
-       ---g.last_ngc_designation_id,
        g.last_ngc_designation,
        g.last_ngc_recognition_credit,
-       --- AF Status - Tableau_KSM_Activity    ---- EXPENDABLE STATUS            
        g.expendable_status,
-       g.expendable_status_fy_start,
-       g.expendable_status_pfy1_start,      
        ---- The team for prospect manager and LAGM ("Business Unit") 
        assign.prospect_manager_name,
+       assign.prospect_manager_business_unit,      
+       ---- 11/13/25 prospect manager ID and Business unit     
        assign.lagm_user_id,
        assign.lagm_name,
        assign.ksm_manager_flag,
@@ -451,38 +388,25 @@ select  distinct
        crf.constituent_last_contact_report_method,
        crf.constituent_visit_count,
        crf.constituent_visit_last_year_count,
-       crf.constituent_last_visit_date,       
-      /* --- Melanie needs most recent, not concat - use a max function 
-       She would like the most recent, but a count of visits total for Francesca 
-       crf.constituent_last_contact_report_record_id,
-       l.author_name,
-       l.contact_type, */                  
-       --- Dean Last VIST Contact Report      
-       dcrf.constituent_last_contact_report_record_id as dean_last_visit_id,
-       dcrf.constituent_last_contact_report_date as dean_last_visit_report_dt,
-       dcrf.constituent_last_contact_report_author as dean_last_visit_author,
-       dcrf.constituent_last_contact_report_purpose as dean_last_visit_purpose,
-       dcrf.constituent_last_contact_report_method as dean_last_visit_method,
-       --- Counts of Visits 
-       dcrf.constituent_visit_count as dean_visit_count,
-       dcrf.constituent_visit_last_year_count as dean_last_visit_year,
-       dcrf.constituent_last_visit_date as dean_last_visit_date,      
-       --- Melanie - Needs the ID segment, PR Segment, Est Probability 
-       mods.mg_id_code,
+       crf.constituent_last_visit_date,                  
+---- Note 11.13.25
+--- Melanie wants last dean visit description, use Paul's new Mv Contact Report View as a solution         
+        dcrf.credited as dean_visit_credited,
+        dcrf.contact_report_type as dean_visit_cr_type,
+        dcrf.contact_date as dean_visit_contact_date,
+        dcrf.descripton as dean_visit_descripton,
+        --- Count of Dean Visits 
+        case when crf.constituent_last_contact_report_author like '%Francesca Cornelli%'
+        and crf.constituent_last_contact_report_method like '%Visit%' then crf.constituent_visit_count end as dean_visit_count,
+--- Melanie - Needs the ID segment, PR Segment, Est Probability 
        mods.mg_id_description,
        mods.mg_id_score,
-       mods.mg_pr_code,
        mods.mg_pr_description,
        mods.mg_pr_score,
        mods.mg_probability,
-       mods.af_10k_code,
        mods.af_10k_description,
        mods.af_10k_score,
-       mods.alumni_engagement_code,
-       mods.alumni_engagement_description,
        mods.alumni_engagement_score,
-       mods.student_supporter_code,
-       mods.student_supporter_description,
        mods.student_supporter_score,
        mods.etl_update_date,
        mods.mv_last_refresh,      
@@ -492,23 +416,17 @@ select  distinct
        el.event_name as campaign_event_name_concat,
        el.event_start_date as campagin_event_start_date,
        el.event_attendance_status as campaign_event_status,
-       --- Add in Case manager- Where we are saving the Gift Officer New Leads 
-       --- case owner, case number, Where the type is referral and status is new or in progress 
-       --- Amy Has a Tableau Veiws for Case Manager, Case Owner, Case Date      
+--- Add in Case manager- Where we are saving the Gift Officer New Leads. Amy Has a Tableau Veiws for Case Manager, Case Owner, Case Date      
        ttr.CASE_OWNER_ID,
        ttr.CASE_OWNER,
-       ttr.STATUS,
-       ttr.SUBJECT,
-       ttr.DESCRIPTION,
-       ttr.NONVISIT_CONTACT_DURING_TASK,
-       ttr.TOTAL_VISITS,
-       ttr."Unresponsive",
-       ttr."Disqualified"
+       involve.involvement_name,
+       involve.INVOLVEMENT_TYPE,
+       involve.INVOLVEMENT_BUSINESS_UNIT
 from entity e 
 --- Inner join degrees 
 inner join d on d.donor_id = e.donor_id
 --- giving info  
-left join give g on g.household_primary_donor_id = e.donor_id 
+left join give g on g.household_id = e.household_id_ksm
 --- employment
 left join employ on employ.UCINN_ASCENDV2__RELATED_CONTACT_DONOR_ID_FORMULA__C = e.donor_id
 --- c suite flag
@@ -518,7 +436,7 @@ left join assign assign on assign.donor_id = e.donor_id
 --- last contact report
 left join crf on crf.constituent_donor_id = e.donor_id
 --- Francesca Last Visit 
-left join dcrf on dcrf.constituent_donor_id = e.donor_id 
+left join dcrf on dcrf.cr_relation_donor_id = e.donor_id 
 --- involvements
 left join involve on involve.constituent_donor_id = e.donor_id
 --- contacts
@@ -535,3 +453,5 @@ left join prop on prop.donor_id = e.donor_id
 left join tka on tka.donor_id = e.donor_id
 --- tableau task report
 left join ttr on ttr.donor_id = e.donor_id
+--- ratings
+left join rating on rating.donor_id = e.donor_id
