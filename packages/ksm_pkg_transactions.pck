@@ -151,12 +151,14 @@ Cursor c_matches Is
 
   With
   
-  matches_union As
+  matches_preunion As
   ((
     -- First part adds opportunity gift receipt
     Select
         opp.name
         As matching_gift_record_id
+      , 'opportunity'
+        As data_source
       , des.designation_record_id
         As matching_gift_designation_id
       , des.designation_salesforce_id
@@ -172,6 +174,8 @@ Cursor c_matches Is
         As matching_gift_credit_date
       , opp.ucinn_ascendv2__matching_source__c
         As matching_gift_original_gift_receipt
+      , pay.id
+        As matching_payment_gift_receipt
       , opp.etl_update_date
     From stg_alumni.opportunity opp
     Inner Join table(dw_pkg_base.tbl_designation) des
@@ -187,6 +191,8 @@ Cursor c_matches Is
     Select
         opp.name
         As matching_gift_record_id
+      , 'mg origination'
+        As data_source
       , des.designation_record_id
         As matching_gift_designation_id
       , des.designation_salesforce_id
@@ -202,6 +208,8 @@ Cursor c_matches Is
         As matching_gift_credit_date
       , pay.ucinn_ascendv2__receipt_number__c
         As matching_gift_original_gift_receipt
+      , mgo.ucinn_ascendv2__payment__c
+        As matching_payment_gift_receipt
       , pay.etl_update_date
     From stg_alumni.opportunity opp
     Inner Join table(dw_pkg_base.tbl_designation) des
@@ -213,6 +221,17 @@ Cursor c_matches Is
     Where opp.ap_opp_record_type_developer_name__c = 'Matching_Gift'
       And opp.stagename Not In ('Potential Match', 'Adjusted')
   ))
+  
+  -- Preferentially keep MG origination row
+  , matches_union As (
+    Select
+      mpu.*
+      , row_number() Over(
+        Partition By mpu.matching_gift_record_id
+        Order By mpu.data_source Asc
+      ) As rn
+    From matches_preunion mpu
+  )
   
   -- Needed to dedupe records that have both an RN- and ThirdParty receipt
   , matches As (
@@ -226,22 +245,27 @@ Cursor c_matches Is
       , mu.matching_gift_credit_date
       , mu.matching_gift_original_gift_receipt
       -- Choose column from opportunity or payment as appropriate
+      , mu.data_source
+      , opp.name
+        As orig_gift_record_id_opp
+      , payc.name
+        As orig_gift_record_id_pay
       , Case
-          When opp.name Is Not Null
-            Then opp.name
-          Else payc.name
+          When payc.name Is Not Null
+            Then payc.name
+          Else opp.name
           End
         As original_gift_record_id
       , Case
-          When dwo.credit_date Is Not Null
-            Then dwo.credit_date
-          Else dwp.credit_date
+          When dwp.credit_date Is Not Null
+            Then dwp.credit_date
+          Else dwo.credit_date
           End
         As original_gift_credit_date
       , Case
-          When dwo.fiscal_year Is Not Null
-            Then to_number(dwo.fiscal_year)
-          Else to_number(dwp.fiscal_year)
+          When dwp.fiscal_year Is Not Null
+            Then to_number(dwp.fiscal_year)
+          Else to_number(dwo.fiscal_year)
           End
         As original_gift_fy
       , mu.etl_update_date
@@ -271,6 +295,7 @@ Cursor c_matches Is
       And payc.ucinn_ascendv2__opportunity__c Not In ('Potential Match', 'Adjusted')
     Left Join table(dw_pkg_base.tbl_payment) dwp
       On dwp.payment_record_id = payc.name
+    Where mu.rn = 1
   )
   
   Select Distinct
