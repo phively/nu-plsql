@@ -439,7 +439,7 @@ left join crf on crf.constituent_donor_id = e.donor_id
 left join dcrf on dcrf.cr_relation_donor_id = e.donor_id 
 --- involvements
 left join involve on involve.constituent_donor_id = e.donor_id
---- contacts
+--- Contacts
 left join co on co.donor_id = e.donor_id
 --- Model Scores
 left join mods on mods.donor_id = e.donor_id
