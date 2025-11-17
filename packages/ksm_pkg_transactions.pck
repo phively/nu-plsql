@@ -159,6 +159,8 @@ Cursor c_matches Is
         As matching_gift_record_id
       , des.designation_record_id
         As matching_gift_designation_id
+      , des.designation_salesforce_id
+        As matching_gift_designation_sf_id
       , des.designation_name
         As matching_gift_designation
       , opp.stagename
@@ -187,6 +189,8 @@ Cursor c_matches Is
         As matching_gift_record_id
       , des.designation_record_id
         As matching_gift_designation_id
+      , des.designation_salesforce_id
+        As matching_gift_designation_sf_id
       , des.designation_name
         As matching_gift_designation
       , opp.stagename
@@ -263,7 +267,7 @@ Cursor c_matches Is
     -- Joined to check payments table
     Left Join stg_alumni.ucinn_ascendv2__payment__c payc
       On payc.ap_legacy_receipt_number__c = mu.matching_gift_original_gift_receipt
-      And payc.ucinn_ascendv2__acknowledgement_description_formula__c = mu.matching_gift_designation
+      And payc.ucinn_ascendv2__designation__c = mu.matching_gift_designation_sf_id
       And payc.ucinn_ascendv2__opportunity__c Not In ('Potential Match', 'Adjusted')
     Left Join table(dw_pkg_base.tbl_payment) dwp
       On dwp.payment_record_id = payc.name
