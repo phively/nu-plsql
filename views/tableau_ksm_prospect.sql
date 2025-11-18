@@ -30,6 +30,12 @@ give as (select g.household_id,
        g.household_last_masters_year,
        g.ngc_lifetime,
        g.ngc_lifetime_full_rec,
+       g.expendable_cfy,
+       g.expendable_pfy1,
+       g.expendable_pfy2,
+       g.expendable_pfy3,
+       g.expendable_pfy4,
+       g.expendable_pfy5,
        g.ngc_lifetime_nonanon_full_rec,
        g.last_ngc_opportunity_type,
        g.last_ngc_designation_id,
@@ -37,7 +43,9 @@ give as (select g.household_id,
        g.last_ngc_recognition_credit,
        g.expendable_status,
        g.expendable_status_fy_start,
-       g.expendable_status_pfy1_start
+       g.expendable_status_pfy1_start,
+       g.last_ngc_date, 
+       g.last_cash_date
        --- Add in last gift date 
 from mv_ksm_giving_summary g),
 
@@ -278,6 +286,14 @@ group by event.NU_DONOR_ID__C),
 prop as (select *
 from mv_proposals p),
 
+--- Count of Active Proposals 
+
+cprop as (select p.donor_id, 
+count (p.proposal_active_indicator) as count_activie_proposals
+from mv_proposals p
+where  p.proposal_active_indicator = 'Y'
+group by p.donor_id),
+
 --- Tableau Activity - Pulls Melanie's Requested Data Points
 
 tka as (select t.DONOR_ID,
@@ -316,10 +332,48 @@ rating as (Select d.donor_id,
        d.research_evaluation_date,
        d.university_overall_rating,
        d.university_overall_rating_entry_date
-From DM_ALUMNI.DIM_DONOR d)
+From DM_ALUMNI.DIM_DONOR d),
+
+--- Stage of Readiness
+
+stage as (select 
+stg_alumni.contact.ucinn_ascendv2__donor_id__c,
+stg_alumni.contact.ucinn_ascendv2__stage_of_readiness_last_modified_date__c, 
+stg_alumni.contact.ucinn_ascendv2__stage_of_readiness__c
+from stg_alumni.contact),
+
+c as (select stg_alumni.contact.id, 
+stg_alumni.contact.ucinn_ascendv2__donor_id__c 
+from stg_alumni.contact),
+
+strategy as (select *
+from stg_alumni.ucinn_ascendv2__strategy__c s
+left join c on c.id = s.ucinn_ascendv2__contact__c
+--- Active Only
+where s.ap_is_active__c = 'true'
+),
+
+a as (Select
+a.donor_id,
+a.address_preferred_indicator,
+a.address_line_1,
+a.address_line_2,
+a.address_line_3,
+a.address_line_4,
+a.address_city,
+a.address_state,
+a.address_country,
+a.geocode_primary,
+a.geocodes_concat
+From mv_address a 
+Where geocodes_concat Is Not Null
+and a.address_preferred_indicator = 'Y')
+
 
 select  distinct 
        e.donor_id,
+       --- person or org added
+       e.person_or_org,
        --- Let's use Household KSM 
        e.household_id_ksm,       
        e.salesforce_id,
@@ -336,7 +390,17 @@ select  distinct
        e.institutional_suffix,
        e.spouse_donor_id,
        e.spouse_name,
-       e.spouse_institutional_suffix,             
+       e.spouse_institutional_suffix,      
+       a.address_preferred_indicator as preferred_address,
+       a.address_line_1 as preferred_address_line1,
+       a.address_line_2 as preferred_address_line2,
+       a.address_line_3 as preferred_address_line3,
+       a.address_line_4 as preferred_address_line4,
+       a.address_city as preferred_city,
+       a.address_state as preferred_state,
+       a.address_country as preferred_country,
+       a.geocode_primary,
+       a.geocodes_concat,                  
        co.home_address_city,
        co.home_address_state,
        co.home_address_postal_code,
@@ -348,6 +412,7 @@ select  distinct
        --- Strategy ID AKA: Prospect ID, Prospect Name (Proposal View)
        prop.proposal_strategy_record_id,
        prop.prospect_name, 
+       cprop.count_activie_proposals,
        rating.research_evaluation,
        rating.research_evaluation_date,
        rating.university_overall_rating,
@@ -371,6 +436,15 @@ select  distinct
        g.last_ngc_designation,
        g.last_ngc_recognition_credit,
        g.expendable_status,
+       --- Annual Fund 
+       g.expendable_cfy,
+       g.expendable_pfy1,
+       --- Last Gift 
+       g.last_ngc_date, 
+       g.last_cash_date,     
+       strategy.ap_prospect_id__c,
+       strategy.ap_prospect_name__c,
+       strategy.ap_is_active__c,      
        ---- The team for prospect manager and LAGM ("Business Unit") 
        assign.prospect_manager_name,
        assign.prospect_manager_business_unit,      
@@ -421,7 +495,25 @@ select  distinct
        ttr.CASE_OWNER,
        involve.involvement_name,
        involve.INVOLVEMENT_TYPE,
-       involve.INVOLVEMENT_BUSINESS_UNIT
+       involve.INVOLVEMENT_BUSINESS_UNIT,
+       --- Stage of Readiness
+       stage.ucinn_ascendv2__stage_of_readiness__c,
+       stage.ucinn_ascendv2__stage_of_readiness_last_modified_date__c      
+       /*strategy.ap_end_date__c,       
+       strategy.ap_is_major_prospect__c,
+       strategy.ap_is_planned_gift_candidate__c,
+       strategy.ap_primary_work_plan_unit__c,
+       strategy.ap_proposal__c,     
+       strategy.ap_stage__c,
+       strategy.ap_start_date__c,
+       strategy.ucinn_ascendv2__is_confidential__c,
+       strategy.ucinn_ascendv2__prospect_id_formula__c,
+       strategy.ucinn_ascendv2__responsible_fundraiser__c,
+       strategy.ucinn_ascendv2__status_to_date__c,
+       strategy.ucinn_ascendv2__strategy_date__c,
+       strategy.ucinn_ascendv2__strategy_detail__c,
+       strategy.ucinn_ascendv2__strategy_summary__c,
+       strategy.ucinn_ascendv2__unit__c     */
 from entity e 
 --- Inner join degrees 
 inner join d on d.donor_id = e.donor_id
@@ -455,3 +547,12 @@ left join tka on tka.donor_id = e.donor_id
 left join ttr on ttr.donor_id = e.donor_id
 --- ratings
 left join rating on rating.donor_id = e.donor_id
+--- Stage
+left join stage on stage.ucinn_ascendv2__donor_id__c = e.donor_id
+--- Strategy
+left join strategy on strategy.ucinn_ascendv2__donor_id__c = e.donor_id
+--- address
+left join a on a.donor_id = e.donor_id
+--- Count proposals
+left join cprop on cprop.donor_id = e.donor_id
+ 
