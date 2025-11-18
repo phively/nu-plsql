@@ -71,10 +71,12 @@ Inner Join test_cases
 With
 
 test_cases As (
-  Select 'MN2983900' As mg_opp_id, '20240715' As expected, 'FY25 match on FY24 gift' As explanation From DUAL
-  Union Select 'MN2982122', '20240706', 'Original gift date 7/7' From DUAL
+  Select 'MN2983900' As mg_opp_id, '20240716' As expected, 'FY25 match on FY24 gift' As explanation From DUAL
+  Union Select 'MN2982122', '20240707', 'Original gift date 7/7' From DUAL
   Union Select 'MN3005749', '20241224', 'Original gift date 12/24' From DUAL
   Union Select 'MN2986540', '20221223', 'Original gift date 12/23/22' From DUAL
+  Union Select 'MN2926284', '20140915', 'Pledge/payment date mismatch, should be 9/15/14' From DUAL
+  Union Select 'MN2984767', '20230828', 'Original gift date 8/28/23' From DUAL
 )
   
 Select
