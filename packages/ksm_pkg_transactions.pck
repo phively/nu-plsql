@@ -151,14 +151,36 @@ Cursor c_matches Is
 
   With
   
-  matches_union As
+  -- Add opportunity type flags to opportunity table, for ease of later logic
+  opp As (
+    Select
+      o.*
+    , Case
+        When o.ap_opp_record_type_developer_name__c In ('Pledge', 'Recurring_Gift')
+          Then 'Y'
+        End
+      As is_pledge
+    , Case
+        When o.ap_opp_record_type_developer_name__c = 'Matching_Gift'
+          Then 'Y'
+        End
+      As is_match
+    From stg_alumni.opportunity o
+  )
+  
+  -- Matching data can come from opportunities, or payments
+  , matches_preunion As
   ((
     -- First part adds opportunity gift receipt
     Select
         opp.name
         As matching_gift_record_id
+      , 'opportunity'
+        As data_source
       , des.designation_record_id
         As matching_gift_designation_id
+      , des.designation_salesforce_id
+        As matching_gift_designation_sf_id
       , des.designation_name
         As matching_gift_designation
       , opp.stagename
@@ -170,23 +192,29 @@ Cursor c_matches Is
         As matching_gift_credit_date
       , opp.ucinn_ascendv2__matching_source__c
         As matching_gift_original_gift_receipt
+      , pay.id
+        As matching_payment_gift_receipt
       , opp.etl_update_date
-    From stg_alumni.opportunity opp
+    From opp
     Inner Join table(dw_pkg_base.tbl_designation) des
       On opp.ucinn_ascendv2__designation__c = des.designation_salesforce_id
     Inner Join stg_alumni.ucinn_ascendv2__payment__c pay
       On pay.ucinn_ascendv2__opportunity__c = opp.id
     Inner Join stg_alumni.ucinn_ascendv2__payment__c pay
       On pay.ucinn_ascendv2__opportunity__c = opp.id
-    Where opp.ap_opp_record_type_developer_name__c = 'Matching_Gift'
+    Where opp.is_match = 'Y'
       And opp.stagename Not In ('Potential Match', 'Adjusted')
   ) Union (
     -- Second part adds payment schedule receipt
     Select
         opp.name
         As matching_gift_record_id
+      , 'mg origination'
+        As data_source
       , des.designation_record_id
         As matching_gift_designation_id
+      , des.designation_salesforce_id
+        As matching_gift_designation_sf_id
       , des.designation_name
         As matching_gift_designation
       , opp.stagename
@@ -198,17 +226,30 @@ Cursor c_matches Is
         As matching_gift_credit_date
       , pay.ucinn_ascendv2__receipt_number__c
         As matching_gift_original_gift_receipt
+      , mgo.ucinn_ascendv2__payment__c
+        As matching_payment_gift_receipt
       , pay.etl_update_date
-    From stg_alumni.opportunity opp
+    From opp
     Inner Join table(dw_pkg_base.tbl_designation) des
       On opp.ucinn_ascendv2__designation__c = des.designation_salesforce_id
     Inner Join stg_alumni.ucinn_ascendv2__matching_gift_origination__c mgo
       On opp.id = mgo.ucinn_ascendv2__opportunity__c
     Inner Join stg_alumni.ucinn_ascendv2__payment__c pay
       On pay.id = mgo.ucinn_ascendv2__payment__c
-    Where opp.ap_opp_record_type_developer_name__c = 'Matching_Gift'
+    Where opp.is_match = 'Y'
       And opp.stagename Not In ('Potential Match', 'Adjusted')
   ))
+  
+  -- Preferentially keep MG origination row
+  , matches_union As (
+    Select
+      mpu.*
+      , row_number() Over(
+        Partition By mpu.matching_gift_record_id
+        Order By mpu.data_source Asc
+      ) As rn
+    From matches_preunion mpu
+  )
   
   -- Needed to dedupe records that have both an RN- and ThirdParty receipt
   , matches As (
@@ -222,19 +263,35 @@ Cursor c_matches Is
       , mu.matching_gift_credit_date
       , mu.matching_gift_original_gift_receipt
       -- Choose column from opportunity or payment as appropriate
+      -- Original gift type P should always use payment
+      , mu.data_source
+      , opp_pay.is_pledge
+      , opp.name
+        As orig_gift_record_id_opp
+      , payc.name
+        As orig_gift_record_id_pay
       , Case
+          When opp_pay.is_pledge = 'Y'
+            And payc.name Is Not Null
+            Then payc.name
           When opp.name Is Not Null
             Then opp.name
           Else payc.name
           End
         As original_gift_record_id
       , Case
+          When opp_pay.is_pledge = 'Y'
+            And dwp.credit_date Is Not Null
+            Then dwp.credit_date
           When dwo.credit_date Is Not Null
             Then dwo.credit_date
           Else dwp.credit_date
           End
         As original_gift_credit_date
       , Case
+          When opp_pay.is_pledge = 'Y'
+            And dwp.fiscal_year Is Not Null
+            Then to_number(dwp.fiscal_year)
           When dwo.fiscal_year Is Not Null
             Then to_number(dwo.fiscal_year)
           Else to_number(dwp.fiscal_year)
@@ -255,7 +312,7 @@ Cursor c_matches Is
             , dwo.credit_date Asc
         ) As rn
     From matches_union mu
-    Left Join stg_alumni.opportunity opp
+    Left Join opp
       On opp.ucinn_ascendv2__receipt_number__c = mu.matching_gift_original_gift_receipt
       And opp.stagename Not In ('Potential Match', 'Adjusted')
     Left Join table(dw_pkg_base.tbl_opportunity) dwo
@@ -263,10 +320,14 @@ Cursor c_matches Is
     -- Joined to check payments table
     Left Join stg_alumni.ucinn_ascendv2__payment__c payc
       On payc.ap_legacy_receipt_number__c = mu.matching_gift_original_gift_receipt
-      And payc.ucinn_ascendv2__acknowledgement_description_formula__c = mu.matching_gift_designation
+      And payc.ucinn_ascendv2__designation__c = mu.matching_gift_designation_sf_id
       And payc.ucinn_ascendv2__opportunity__c Not In ('Potential Match', 'Adjusted')
     Left Join table(dw_pkg_base.tbl_payment) dwp
       On dwp.payment_record_id = payc.name
+    -- Is payment payc on a pledge trans type?
+    Left Join opp opp_pay
+      On opp_pay.id = payc.ucinn_ascendv2__opportunity__c
+    Where mu.rn = 1
   )
   
   Select Distinct
