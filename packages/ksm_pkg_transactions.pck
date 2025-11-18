@@ -265,24 +265,33 @@ Cursor c_matches Is
       -- Choose column from opportunity or payment as appropriate
       -- Original gift type P should always use payment
       , mu.data_source
-      , opp.is_pledge
+      , opp_pay.is_pledge
       , opp.name
         As orig_gift_record_id_opp
       , payc.name
         As orig_gift_record_id_pay
       , Case
+          When opp_pay.is_pledge = 'Y'
+            And payc.name Is Not Null
+            Then payc.name
           When opp.name Is Not Null
             Then opp.name
           Else payc.name
           End
         As original_gift_record_id
       , Case
+          When opp_pay.is_pledge = 'Y'
+            And dwp.credit_date Is Not Null
+            Then dwp.credit_date
           When dwo.credit_date Is Not Null
             Then dwo.credit_date
           Else dwp.credit_date
           End
         As original_gift_credit_date
       , Case
+          When opp_pay.is_pledge = 'Y'
+            And dwp.fiscal_year Is Not Null
+            Then to_number(dwp.fiscal_year)
           When dwo.fiscal_year Is Not Null
             Then to_number(dwo.fiscal_year)
           Else to_number(dwp.fiscal_year)
@@ -315,6 +324,9 @@ Cursor c_matches Is
       And payc.ucinn_ascendv2__opportunity__c Not In ('Potential Match', 'Adjusted')
     Left Join table(dw_pkg_base.tbl_payment) dwp
       On dwp.payment_record_id = payc.name
+    -- Is payment payc on a pledge trans type?
+    Left Join opp opp_pay
+      On opp_pay.id = payc.ucinn_ascendv2__opportunity__c
     Where mu.rn = 1
   )
   
