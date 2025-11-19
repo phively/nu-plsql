@@ -151,6 +151,7 @@ Type rec_contact_info Is Record (
   , sort_name mv_entity.sort_name%type
   , service_indicators_concat mv_special_handling.service_indicators_concat%type
   , linkedin_url stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__url__c%type
+  , primary_geocodes_concat varchar2(3000)
   , address_preferred_type dm_alumni.dim_address.address_type%type
   , preferred_address_line_1 dm_alumni.dim_address.address_line_1%type
   , preferred_address_line_2 dm_alumni.dim_address.address_line_2%type
@@ -1006,7 +1007,18 @@ Cursor c_contact_info Is
     Select *
     From table(ksm_pkg_contact_info.tbl_address) a
   )
-    
+  
+  -- All geocodes concat
+  , geo_all As (
+    Select
+      donor_id
+      , Listagg(Distinct geocode_primary, '; ') Within Group
+        (Order By address_preferred_indicator Desc, geocode_primary)
+        As primary_geocodes_concat
+    From addr
+    Group By donor_id
+  )
+  
   -- Home address; keep last primary added
   , addr_home As (
     Select
@@ -1216,6 +1228,7 @@ Cursor c_contact_info Is
     , mve.sort_name
     , sh.service_indicators_concat
     , linkedin.linkedin_url
+    , geo_all.primary_geocodes_concat
     -- Preferred address handling
     , addr_preferred.address_type As address_preferred_type
     , Case
@@ -1303,6 +1316,8 @@ Cursor c_contact_info Is
     On sh.donor_id = mve.donor_id
   Left Join linkedin
     On linkedin.donor_id = mve.donor_id
+  Left Join geo_all
+    On geo_all.donor_id = mve.donor_id
   Left Join addr_home
     On addr_home.donor_id = mve.donor_id
     And addr_home.addr_rank = 1
