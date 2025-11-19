@@ -279,6 +279,7 @@ Cursor c_designation_campaign_kfc Is
           , '4104007025901END', '3203007026801GFT', '3203003203701GFT')
           Then 'Faculty'
         When des.designation_record_id In ('N6038786', 'N3038579', 'N3039186', 'N4039131')
+          Or des.designation_record_id In ('N3037925', 'N3038819', 'N3039475', 'N3039544', 'N4031571', 'N6039429', 'N6039479', 'N6039540') -- Nov 2025
           Then 'Faculty'
         -- Building
         When des.legacy_allocation_code In ('3203006213301GFT')
@@ -296,6 +297,7 @@ Cursor c_designation_campaign_kfc Is
           , '3203000970801GFT', '3203005597901GFT', '3203005590301GFT', '3203006289601GFT', '3203003805101GFT', '3203003764501GFT', '3203003655501GFT', '3203005797501GFT')
           Then 'Students'
         When des.designation_record_id In ('N4039218', 'N3039008', 'N4039356')
+          Or des.designation_record_id In ('N3038821', 'N3039139', 'N3039370', 'N3039434', 'N3039474', 'N4014507', 'N4039130', 'N5004822') -- Nov 2025
           Then 'Students'
         -- Needs to be assigned
         Else 'TBD'
