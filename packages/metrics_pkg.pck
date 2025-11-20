@@ -3,11 +3,11 @@ Create Or Replace Package metrics_pkg Is
 /*************************************************************************
 Author  : PBH634
 Created : 2/13/2020 11:19:42 AM
+  Initial CatConnect update 11/20/2025
 Purpose : Consolidated gift officer metrics definitions to allow audit
-information to be easily pulled.
-
-Adapted from rpt_pbh634.v_mgo_activity_monthly and
-advance_nu.nu_gft_v_officer_metrics.
+  information to be easily pulled. Adapted from rpt_pbh634.v_mgo_activity_monthly
+  and advance_nu.nu_gft_v_officer_metrics.
+Dependencies: ksm_pkg_proposals (mv_proposals)
 *************************************************************************/
 
 /*************************************************************************
@@ -26,32 +26,33 @@ Public type declarations
 *************************************************************************/
 
 Type proposals_data Is Record (
-  proposal_id proposal.proposal_id%type
-  , assignment_id_number assignment.assignment_id_number%type
-  , assignment_type assignment.assignment_type%type
-  , assignment_active_ind assignment.active_ind%type
-  , proposal_active_ind proposal.active_ind%type
-  , proposal_type proposal.proposal_type%type
-  , outright_gift_proposal varchar2(1)
-  , ask_amt proposal.ask_amt%type
-  , granted_amt proposal.granted_amt%type
-  , proposal_status_code proposal.proposal_status_code%type
-  , initial_contribution_date proposal.initial_contribution_date%type
-  , proposal_stop_date proposal.stop_date%type
-  , assignment_stop_date assignment.stop_date%type
-  , proposalmanagercount number
-);
-
-Type proposal_dates Is Record (
-  proposal_id proposal.proposal_id%type
-  , date_of_record date
+  proposal_record_id mv_proposals.proposal_record_id%type
+  , historical_pm_user_id mv_proposals.historical_pm_user_id%type
+  , historical_pm_name mv_proposals.historical_pm_name%type
+  , historical_pm_role mv_proposals.historical_pm_role%type
+  , historical_pm_business_unit mv_proposals.historical_pm_business_unit%type
+  , ksm_flag mv_proposals.ksm_flag%type
+  , historical_pm_is_active mv_proposals.historical_pm_is_active%type
+  , proposal_active_indicator mv_proposals.proposal_active_indicator%type
+  , proposal_type mv_proposals.proposal_type%type
+  , standard_proposal_flag varchar2(1)
+  , proposal_submitted_amount mv_proposals.proposal_submitted_amount%type
+  , proposal_funded_amount mv_proposals.proposal_funded_amount%type
+  , proposal_stage mv_proposals.proposal_stage%type
+  , proposal_created_date mv_proposals.proposal_created_date%type
+  , proposal_submitted_date mv_proposals.proposal_submitted_date%type
+  , proposal_close_date mv_proposals.proposal_close_date%type
 );
 
 Type funded_credit Is Record (
-  proposal_id proposal.proposal_id%type
-  , assignment_id_number assignment.assignment_id_number%type
+  proposal_record_id mv_proposals.proposal_record_id%type
+  , historical_pm_user_id mv_proposals.historical_pm_user_id%type
+  , historical_pm_name mv_proposals.historical_pm_name%type
+  , historical_pm_role mv_proposals.historical_pm_role%type
+  , historical_pm_business_unit mv_proposals.historical_pm_business_unit%type
+  , ksm_flag mv_proposals.ksm_flag%type
 );
-
+/*
 Type funded_dollars Is Record (
   proposal_id proposal.proposal_id%type
   , assignment_id_number assignment.assignment_id_number%type
@@ -88,9 +89,8 @@ Public table declarations
 *************************************************************************/
 
 Type t_proposals_data Is Table Of proposals_data;
-Type t_proposal_dates Is Table Of proposal_dates;
 Type t_funded_credit Is Table Of funded_credit;
-Type t_funded_dollars Is Table Of funded_dollars;
+/*Type t_funded_dollars Is Table Of funded_dollars;
 Type t_contact_report Is Table Of contact_report;
 Type t_contact_count Is Table Of contact_count;
 Type t_ask_assist_credit Is Table Of ask_assist_credit;
@@ -133,16 +133,13 @@ From table(rpt_pbh634.ksm_pkg_tmp.tbl_current_calendar) cal;
 Function tbl_universal_proposals_data
   Return t_proposals_data Pipelined;
   
-Function tbl_proposal_dates
-  Return t_proposal_dates Pipelined;
-  
 -- Table functions for each of the MGO metrics
 Function tbl_funded_count(
     ask_amt number default metrics_pkg.mg_ask_amt
     , funded_count number default metrics_pkg.mg_funded_count
   )
   Return t_funded_credit Pipelined;
-
+/*
 Function tbl_funded_dollars(
     ask_amt number default metrics_pkg.mg_ask_amt
     , granted_amt number default metrics_pkg.mg_granted_amt
@@ -168,7 +165,7 @@ Function tbl_contact_count
 
 Function tbl_assist_count
   Return t_ask_assist_credit Pipelined;
-
+*/
 End metrics_pkg;
 /
 Create Or Replace Package Body metrics_pkg Is
@@ -177,127 +174,64 @@ Create Or Replace Package Body metrics_pkg Is
 Private cursor tables -- data definitions; update indicated sections as needed
 *************************************************************************/
 
--- N.B. all line numbers reference the March 2018 version of advance_nu.nu_gft_v_officer_metrics.
-
--- Universal proposals data, adapted from v_mgo_activity_monthly
+-- Universal proposals data, originally adapted from v_mgo_activity_monthly
 -- All fields needed to recreate proposals subqueries appearing throughout the original file
 Cursor c_universal_proposals_data Is
-  Select p.proposal_id
-    , a.assignment_id_number
-    , a.assignment_type
-    , a.active_ind As assignment_active_ind
-    , p.active_ind As proposal_active_ind
+  Select
+    p.proposal_record_id
+    , p.historical_pm_user_id
+    , p.historical_pm_name
+    , p.historical_pm_role
+    , p.historical_pm_business_unit
+    , p.ksm_flag
+    , p.historical_pm_is_active
+    , p.proposal_active_indicator
     , p.proposal_type
-    , Case When p.proposal_type = '01' Then 'Y' End
-      As outright_gift_proposal
-    , p.ask_amt
-    , p.granted_amt
-    , p.proposal_status_code
-    , p.initial_contribution_date
-    , p.stop_date As proposal_stop_date
-    , a.stop_date As assignment_stop_date
-    -- Count only proposal managers, not proposal assists
-    , count(Case When a.assignment_type = 'PA' Then a.assignment_id_number Else NULL End)
-        Over(Partition By a.proposal_id)
-      As proposalManagerCount
-  From proposal p
-  Inner Join assignment a
-    On a.proposal_id = p.proposal_id
-  Where a.assignment_type In ('PA', 'AS') -- Proposal Manager, Proposal Assist
-    And assignment_id_number != ' '
-    And p.proposal_status_code In ('C', '5', '7', '8') -- submitted/approved/declined/funded
-  ;
+    , Case When p.proposal_type = 'Standard' Then 'Y' End
+      As standard_proposal_flag
+    , p.proposal_submitted_amount
+    , p.proposal_funded_amount
+    , p.proposal_stage
+    , p.proposal_created_date
+    , p.proposal_submitted_date
+    , p.proposal_close_date
+  From mv_proposals p
+  Where p.historical_pm_name Is Not Null
+    And p.proposal_stage In (
+      'Submitted', 'Approved by Donor', 'Declined', 'Funded'
+    )
+;
 
--- Choose a proposal date based on date of record
--- Refactor all subqueries in lines 78-124
--- 7 clones, at 205-251, 332-378, 459-505, 855-901, 991-1037, 1127-1173, 1263-1309
-Cursor c_proposal_dates Is
-  With
-  proposal_dates_data As (
-    -- In determining which date to use, evaluate outright gifts and pledges first and then if necessary
-    -- use the date from a pledge payment.
-      Select proposal_id
-        , 1 As rank
-        , min(prim_gift_date_of_record) As date_of_record -- gifts
-      From primary_gift
-      Where proposal_id Is Not Null
-        And proposal_id != 0
-        And pledge_payment_ind = 'N'
-      Group By proposal_id
-    Union
-      Select proposal_id
-        , 2 As rank
-        , min(prim_gift_date_of_record) As date_of_record -- pledge payments
-      From primary_gift
-      Where proposal_id Is Not Null
-        And proposal_id != 0
-        And pledge_payment_ind = 'Y'
-      Group By proposal_id
-    Union
-      Select proposal_id
-          , 1 As rank
-          , min(prim_pledge_date_of_record) As date_of_record -- pledges
-        From primary_pledge
-        Where proposal_id Is Not Null
-          And proposal_id != 0
-        Group By proposal_id
-  )
-  Select proposal_id
-    , min(date_of_record) keep(dense_rank First Order By rank Asc)
-      As date_of_record
-  From proposal_dates_data
-  Group By proposal_id
-  ;
-
--- Refactor goal 1 subqueries in lines 11-77
--- 3 clones, at 138-204, 265-331, 392-458
 -- Credit for asked & funded proposals
 -- Count for funded proposal goal 1
 Cursor c_funded_count(
       ask_amt_in In number
       , funded_count_in In number
     ) Is
+    
   With
+  
   proposals_funded_count As (
     -- Must be proposal manager, funded status, and above the ask & funded credit thresholds
     Select *
-    From table(tbl_universal_proposals_data)
-    Where assignment_type = 'PA' -- Proposal Manager
-      And ask_amt >= ask_amt_in
-      And granted_amt >= funded_count_in
-      And proposal_status_code = '7' -- Only funded
+    From table(metrics_pkg.tbl_universal_proposals_data) upd
+    Where historical_pm_role = 'Proposal Manager'
+      And proposal_submitted_amount >= ask_amt_in
+      And proposal_funded_amount >= funded_count_in
+      And proposal_stage = 'Funded'
   )
-  , funded_count As (
-      -- 1st priority - Look across all proposal managers on a proposal (inactive OR active).
-      -- If there is ONE proposal manager only, credit that for that proposal ID.
-      Select proposal_id
-        , assignment_id_number
-        , 1 As info_rank
-      From proposals_funded_count
-      Where proposalManagerCount = 1 -- only one proposal manager/ credit that PA
-    Union
-      -- 2nd priority - For #2 if there is more than one active proposal managers on a proposal credit BOTH and exit the process.
-      Select proposal_id
-        , assignment_id_number
-        , 2 As info_rank
-      From proposals_funded_count
-      Where assignment_active_ind = 'Y'
-    Union
-      -- 3rd priority - For #3, Credit all inactive proposal managers where proposal stop date and assignment stop date within 24 hours
-      Select proposal_id
-        , assignment_id_number
-        , 3 As info_rank
-      From proposals_funded_count
-      Where proposal_active_ind = 'N' -- Inactives on the proposal.
-        And proposal_stop_date - assignment_stop_date <= 1
-    Order By info_rank
-  )
-  Select Distinct proposal_id
-    , assignment_id_number
-  From funded_count
-  ;
   
--- Refactor goal 3 subqueries in lines 848-982
+  Select Distinct
+    proposal_record_id
+    , historical_pm_user_id
+    , historical_pm_name
+    , historical_pm_role
+    , historical_pm_business_unit
+    , ksm_flag
+  From proposals_funded_count
+;
+  
+/*-- Refactor goal 3 subqueries in lines 848-982
 -- 3 clones, at 984-1170, 1120-1254, 1256-1390
 -- Gift credit for funded proposal goal 3
 Cursor c_funded_dollars(
@@ -609,23 +543,6 @@ Function tbl_universal_proposals_data
     End Loop;
     Return;
   End;
-  
--- Pipelined function determining proposal date
-Function tbl_proposal_dates
-  Return t_proposal_dates Pipelined As
-    -- Declarations
-    pd t_proposal_dates;
-
-  Begin
-    Open c_proposal_dates; -- Annual Fund allocations cursor
-      Fetch c_proposal_dates Bulk Collect Into pd;
-    Close c_proposal_dates;
-    -- Pipe out the data
-    For i in 1..(pd.count) Loop
-      Pipe row(pd(i));
-    End Loop;
-    Return;
-  End;
 
 -- Pipelined function returning proposal funded data
 Function tbl_funded_count(
@@ -650,7 +567,7 @@ Function tbl_funded_count(
     Return;
   End;
 
--- Pipelined function returning proposal funded amounts data
+/*-- Pipelined function returning proposal funded amounts data
 Function tbl_funded_dollars(
     ask_amt number default metrics_pkg.mg_ask_amt
     , granted_amt number default metrics_pkg.mg_granted_amt
@@ -672,7 +589,7 @@ Function tbl_funded_dollars(
     End Loop;
     Return;
   End;
-
+/*
 -- Pipelined function returning proposal asked data
 Function tbl_asked_count(
     ask_amt number default metrics_pkg.mg_ask_amt
@@ -766,6 +683,6 @@ Function tbl_assist_count
     End Loop;
     Return;
   End;
-
+*/
 End metrics_pkg;
 /
