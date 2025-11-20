@@ -66,20 +66,38 @@ crf as (select d.constituent_donor_id,
        ---- use counts later on
        d.constituent_visit_count,
        d.constituent_visit_last_year_count,
-       d.constituent_last_visit_date
-       from DM_ALUMNI.DIM_CONSTITUENT d),
-       
+       d.constituent_last_visit_date,
+       ---- last visit author
+       case when d.constituent_last_contact_report_method = 'Visit' then
+        d.constituent_last_contact_report_author end as last_visit_author
+       from DM_ALUMNI.DIM_CONSTITUENT d),       
+                  
 ---- DEAN Visits - Using Paul's Views
 
 de as (select c.cr_relation_donor_id,
        c.cr_credit_name,
        c.contact_report_type,
+       c.cr_credit_type,
        c.contact_report_visit_flag,
        c.contact_report_date,
-       c.contact_report_description
+       c.contact_report_description      
 from mv_contact_reports c 
-where c.cr_credit_name like '%Francesca Cornelli%'
-and c.contact_report_type like '%Visit%'),
+),
+
+--- last Author and Visit for Everyone Else (Not Dean Cornelli) 
+
+la as (select de.cr_relation_donor_id,
+max (de.cr_credit_name) keep (dense_rank First Order By de.contact_report_date DESC) as last_visit_credit_name,
+max (de.contact_report_type) keep (dense_rank First Order By de.contact_report_date DESC) as last_visit_report_type,
+max (de.contact_report_visit_flag) keep (dense_rank First Order By de.contact_report_date DESC) as last_visit_visit_flag,
+max (de.contact_report_date) keep (dense_rank First Order By de.contact_report_date DESC) as last_visit_report_date,
+max (de.contact_report_description) keep (dense_rank First Order By de.contact_report_date DESC) as last_visit_description
+from de
+where de.cr_credit_type = 'Author'
+and de.contact_report_type = 'Visit'
+group by de.cr_relation_donor_id
+),
+
 
 --- Dean's Last Visit Using Paul's View
 
@@ -89,6 +107,8 @@ max (de.contact_report_type) keep (dense_rank First Order By de.contact_report_d
 max (de.contact_report_date) keep (dense_rank First Order By de.contact_report_date DESC) as contact_date,
 max (de.contact_report_description) keep (dense_rank First Order By de.contact_report_date DESC) as descripton 
 from  de
+where de.cr_credit_name like '%Francesca Cornelli%'
+and de.contact_report_type like '%Visit%'
 group by de.cr_relation_donor_id),
        
 --- assignment
@@ -154,19 +174,11 @@ and primary_job_title not like '%Advisor%'))),
 
 --- Involvements 
 
-i as (select i.constituent_donor_id,
+i as (select distinct i.constituent_donor_id,
        i.constituent_name,
-       i.involvement_record_id,
-       i.involvement_code,
        i.involvement_name,
-       i.involvement_status,
        i.involvement_type,
-       i.involvement_role,
        i.involvement_business_unit,
-       i.involvement_start_date,
-       i.involvement_end_date,
-       i.involvement_comment,
-       i.etl_update_date,
        i.mv_last_refresh
 from mv_involvement i
 where i.involvement_status = 'Current'
@@ -184,10 +196,10 @@ group by i.constituent_donor_id),
 
 --- Contact Data
 
-co as (Select c.donor_id,
-       c.sort_name,
-       c.service_indicators_concat,
-       c.linkedin_url,
+---- 11/19/25 ---- use contact for geo e.g. home_geocode_primary and home_geocode_concat
+
+co as (select c.donor_id,
+       c.primary_geocodes_concat,
        c.address_preferred_type,
        c.preferred_address_line_1,
        c.preferred_address_line_2,
@@ -197,6 +209,8 @@ co as (Select c.donor_id,
        c.preferred_address_state,
        c.preferred_address_postal_code,
        c.preferred_address_country,
+       c.preferred_geocode_primary,
+       c.preferred_geocodes_concat,
        c.preferred_address_latitude,
        c.preferred_address_longitude,
        c.home_address_line_1,
@@ -207,6 +221,8 @@ co as (Select c.donor_id,
        c.home_address_state,
        c.home_address_postal_code,
        c.home_address_country,
+       c.home_geocode_primary,
+       c.home_geocodes_concat,
        c.home_address_latitude,
        c.home_address_longitude,
        c.business_address_line_1,
@@ -216,7 +232,9 @@ co as (Select c.donor_id,
        c.business_address_city,
        c.business_address_state,
        c.business_address_postal_code,
-       c.business_address_country
+       c.business_address_country,
+       c.business_geocode_primary,
+       c.business_geocodes_concat
 From mv_entity_contact_info c),
 
 --- Use Paul's Model Score Now, Not Liam's Tables
@@ -289,9 +307,8 @@ from mv_proposals p),
 --- Count of Active Proposals 
 
 cprop as (select p.donor_id, 
-count (p.proposal_active_indicator) as count_activie_proposals
-from mv_proposals p
-where  p.proposal_active_indicator = 'Y'
+count (p.proposal_active_indicator) as count_active_proposals
+from prop p
 group by p.donor_id),
 
 --- Tableau Activity - Pulls Melanie's Requested Data Points
@@ -353,21 +370,27 @@ left join c on c.id = s.ucinn_ascendv2__contact__c
 where s.ap_is_active__c = 'true'
 ),
 
-a as (Select
-a.donor_id,
-a.address_preferred_indicator,
-a.address_line_1,
-a.address_line_2,
-a.address_line_3,
-a.address_line_4,
-a.address_city,
-a.address_state,
-a.address_country,
-a.geocode_primary,
-a.geocodes_concat
-From mv_address a 
-Where geocodes_concat Is Not Null
-and a.address_preferred_indicator = 'Y')
+r as (select 
+
+e.donor_id,
+e.household_id_ksm,
+e.sort_name,
+a.ap_constituent__c,
+a.ap_is_active_formula__c,
+a.ap_is_primary_prospect_formula__c,
+a.ap_is_primary_strategy__c,
+a.name
+from stg_alumni.ap_strategy_relation__c a 
+left join  mv_entity e on e.salesforce_id = a.ap_constituent__c
+where e.household_id_ksm = '0001318929'),
+
+
+
+sr as (select r.household_id_ksm
+, Listagg (r.sort_name, ';  ') Within Group (Order By r.sort_name) As strategy_relation_name_concat 
+, Listagg (r.name, ';  ') Within Group (Order By r.name) As Strategy_Relation_concat
+from r 
+group by r.household_id_ksm)
 
 
 select  distinct 
@@ -390,29 +413,36 @@ select  distinct
        e.institutional_suffix,
        e.spouse_donor_id,
        e.spouse_name,
-       e.spouse_institutional_suffix,      
-       a.address_preferred_indicator as preferred_address,
-       a.address_line_1 as preferred_address_line1,
-       a.address_line_2 as preferred_address_line2,
-       a.address_line_3 as preferred_address_line3,
-       a.address_line_4 as preferred_address_line4,
-       a.address_city as preferred_city,
-       a.address_state as preferred_state,
-       a.address_country as preferred_country,
-       a.geocode_primary,
-       a.geocodes_concat,                  
+       e.spouse_institutional_suffix,         
+       co.preferred_address_line_1,
+       co.preferred_address_line_2,
+       co.preferred_address_line_3,
+       co.preferred_address_line_4,
+       co.preferred_address_city as preferred_city,
+       co.preferred_address_state as preferred_state,
+       co.preferred_address_postal_code,
+       co.preferred_address_country as preferred_country,
+       --- primary geocodes 
+       co.primary_geocodes_concat,
+       co.preferred_geocode_primary,             
        co.home_address_city,
        co.home_address_state,
        co.home_address_postal_code,
        co.home_address_country,
+       --- home geocodes 
+       co.home_geocode_primary,
+       co.home_geocodes_concat, 
        co.business_address_city,
        co.business_address_state,
        co.business_address_postal_code,
-       co.business_address_country,       
+       co.business_address_country,   
+       --- business geocodes 
+       co.business_geocode_primary,
+       co.business_geocodes_concat,
        --- Strategy ID AKA: Prospect ID, Prospect Name (Proposal View)
        prop.proposal_strategy_record_id,
        prop.prospect_name, 
-       cprop.count_activie_proposals,
+       cprop.count_active_proposals,
        rating.research_evaluation,
        rating.research_evaluation_date,
        rating.university_overall_rating,
@@ -431,7 +461,7 @@ select  distinct
        case when csuite.donor_id is not null then 'Y' end as c_suite_flag,
        g.ngc_lifetime,      
        ---11/13 ksm lifetime recgoniton   
-       g.ngc_lifetime_full_rec,     
+       ---g.ngc_lifetime_full_rec,     
        g.last_ngc_opportunity_type,
        g.last_ngc_designation,
        g.last_ngc_recognition_credit,
@@ -461,8 +491,12 @@ select  distinct
        crf.constituent_last_contact_report_purpose,
        crf.constituent_last_contact_report_method,
        crf.constituent_visit_count,
-       crf.constituent_visit_last_year_count,
-       crf.constituent_last_visit_date,                  
+       crf.constituent_visit_last_year_count,   
+        la.last_visit_credit_name,
+        la.last_visit_report_type,
+        la.last_visit_visit_flag,
+        la.last_visit_report_date,
+        la.last_visit_description,                     
 ---- Note 11.13.25
 --- Melanie wants last dean visit description, use Paul's new Mv Contact Report View as a solution         
         dcrf.credited as dean_visit_credited,
@@ -498,22 +532,9 @@ select  distinct
        involve.INVOLVEMENT_BUSINESS_UNIT,
        --- Stage of Readiness
        stage.ucinn_ascendv2__stage_of_readiness__c,
-       stage.ucinn_ascendv2__stage_of_readiness_last_modified_date__c      
-       /*strategy.ap_end_date__c,       
-       strategy.ap_is_major_prospect__c,
-       strategy.ap_is_planned_gift_candidate__c,
-       strategy.ap_primary_work_plan_unit__c,
-       strategy.ap_proposal__c,     
-       strategy.ap_stage__c,
-       strategy.ap_start_date__c,
-       strategy.ucinn_ascendv2__is_confidential__c,
-       strategy.ucinn_ascendv2__prospect_id_formula__c,
-       strategy.ucinn_ascendv2__responsible_fundraiser__c,
-       strategy.ucinn_ascendv2__status_to_date__c,
-       strategy.ucinn_ascendv2__strategy_date__c,
-       strategy.ucinn_ascendv2__strategy_detail__c,
-       strategy.ucinn_ascendv2__strategy_summary__c,
-       strategy.ucinn_ascendv2__unit__c     */
+       stage.ucinn_ascendv2__stage_of_readiness_last_modified_date__c,
+       sr.strategy_relation_name_concat,
+       sr.strategy_Relation_concat      
 from entity e 
 --- Inner join degrees 
 inner join d on d.donor_id = e.donor_id
@@ -527,6 +548,8 @@ left join csuite on csuite.donor_id = e.donor_id
 left join assign assign on assign.donor_id = e.donor_id
 --- last contact report
 left join crf on crf.constituent_donor_id = e.donor_id
+--- last visit
+left join la on la.cr_relation_donor_id = e.donor_id
 --- Francesca Last Visit 
 left join dcrf on dcrf.cr_relation_donor_id = e.donor_id 
 --- involvements
@@ -540,7 +563,7 @@ left join el on el.NU_DONOR_ID__C = e.donor_id
 --- count of evnet
 left join event_count on event_count.NU_DONOR_ID__C = e.donor_id
 --- proposal
-left join prop on prop.donor_id = e.donor_id
+left join prop on prop.household_id_ksm = e.household_id_ksm
 --- activity 
 left join tka on tka.donor_id = e.donor_id
 --- tableau task report
@@ -551,8 +574,8 @@ left join rating on rating.donor_id = e.donor_id
 left join stage on stage.ucinn_ascendv2__donor_id__c = e.donor_id
 --- Strategy
 left join strategy on strategy.ucinn_ascendv2__donor_id__c = e.donor_id
---- address
-left join a on a.donor_id = e.donor_id
 --- Count proposals
 left join cprop on cprop.donor_id = e.donor_id
+--- strategy relation
+left join sr on sr.household_id_ksm = e.household_id_ksm
  
