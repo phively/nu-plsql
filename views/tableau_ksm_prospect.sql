@@ -412,8 +412,7 @@ from stg_alumni.ucinn_ascendv2__funding_interest__c c
 left join mv_entity e on e.salesforce_id = c.ucinn_ascendv2__contact__c
 left join u on u.user_salesforce_id = c.createdbyid
 --- Interest Formula is Kelllogg 
-where (c.ucinn_ascendv2__foundation_funding_interest_name_formula__c like '%Kellogg School of Management%'
-and e.donor_id = '0000323611')
+where (c.ucinn_ascendv2__foundation_funding_interest_name_formula__c like '%Kellogg School of Management%')
 --- 9/1/21
 and  c.ucinn_ascendv2__start_date__c  = to_date ('09/01/2021', 'mm/dd/yyyy')),
 
