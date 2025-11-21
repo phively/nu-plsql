@@ -312,7 +312,7 @@ Level 2 dependencies
 *************************************************************************/
 
 --------------------------------------
--- v_ksm_giving_summary
+-- ksm_pkg_giving_summary
 -- Drop Materialized View mv_ksm_giving_summary;
 Create Materialized View mv_ksm_giving_summary
 Refresh Complete
@@ -323,7 +323,7 @@ As
 Select
   gs.*
   , sysdate as mv_last_refresh
-From v_ksm_giving_summary gs
+From table(ksm_pkg_giving_summary.tbl_ksm_giving_summary) gs
 ;
 
 --------------------------------------
