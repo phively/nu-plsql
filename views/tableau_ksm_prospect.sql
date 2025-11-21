@@ -330,6 +330,7 @@ from Tableau_KSM_Activity t),
 
 ttr as (select 
        t.DONOR_ID,
+       t.HOUSEHOLD_ID_KSM,
        t.CASE_OWNER_ID,
        t.CASE_OWNER,
        t.STATUS,
@@ -339,7 +340,9 @@ ttr as (select
        t.TOTAL_VISITS,
        t."Unresponsive",
        t."Disqualified"
-from TABLEAU_TASK_REPORT t),
+from TABLEAU_TASK_REPORT t
+where t.STATUS IN ('New','In Progress') 
+),
 
 --- Ratings from the Alumni Donor Table
 --- Need the Date for Eval and UOR
@@ -413,7 +416,8 @@ select  distinct
        e.institutional_suffix,
        e.spouse_donor_id,
        e.spouse_name,
-       e.spouse_institutional_suffix,         
+       e.spouse_institutional_suffix,
+       co.address_preferred_type,         
        co.preferred_address_line_1,
        co.preferred_address_line_2,
        co.preferred_address_line_3,
@@ -449,8 +453,8 @@ select  distinct
        rating.university_overall_rating_entry_date,
        --- Stage of Readiness - timeline - Does it work?????  ---- Check Strategy      
        tka."STAGE OF READINESS", 
-       tka.TEAM,
-       tka.MANAGER, 
+       --tka.TEAM,
+       --tka.MANAGER, 
        tka."MANAGER START DATE",  
        d.first_ksm_year,
        d.program,
@@ -567,7 +571,7 @@ left join prop on prop.household_id_ksm = e.household_id_ksm
 --- activity 
 left join tka on tka.donor_id = e.donor_id
 --- tableau task report
-left join ttr on ttr.donor_id = e.donor_id
+left join ttr on ttr.HOUSEHOLD_ID_KSM = e.HOUSEHOLD_ID_KSM
 --- ratings
 left join rating on rating.donor_id = e.donor_id
 --- Stage
