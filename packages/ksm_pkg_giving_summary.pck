@@ -25,6 +25,24 @@ Public type declarations
 *************************************************************************/
 
 --------------------------------------
+Type rec_lifetime_giving Is Record (
+    donor_id mv_households.donor_id%type
+    , sort_name mv_households.sort_name%type
+    , household_id mv_households.household_id%type
+    , household_primary mv_households.household_primary%type
+    , household_id_ksm mv_households.household_id_ksm%type
+    , household_primary_ksm mv_households.household_primary_ksm%type
+    , household_primary_donor_id mv_households.household_primary_donor_id%type
+    , household_primary_sort_name mv_households.household_primary_sort_name%type
+    , household_spouse_donor_id mv_households.household_spouse_donor_id%type
+    , household_spouse_sort_name mv_households.household_spouse_sort_name%type
+    , nu_lifetime_ngc dm_alumni.dim_donor_summary.lifetime_ngc%type
+    , nu_lifetime_ngc_individual dm_alumni.dim_donor_summary.lifetime_ngc%type
+    , nu_lifetime_ngc_with_spouse dm_alumni.dim_donor_summary.lifetime_ngc_with_spouse%type
+    , etl_update_date mv_households.etl_update_date%type
+);
+
+--------------------------------------
 Type rec_giving_summary Is Record (
     household_id mv_households.household_id%type
     , household_account_name mv_households.household_account_name%type
@@ -107,6 +125,7 @@ Type rec_giving_summary Is Record (
 Public table declarations
 *************************************************************************/
 
+Type lifetime_giving Is Table Of rec_lifetime_giving;
 Type giving_summary Is Table Of rec_giving_summary;
 
 /*************************************************************************
@@ -116,6 +135,9 @@ Public function declarations
 /*************************************************************************
 Public pipelined functions declarations
 *************************************************************************/
+
+Function tbl_lifetime_giving
+  Return lifetime_giving Pipelined;
 
 Function tbl_ksm_giving_summary
   Return giving_summary Pipelined;
@@ -147,6 +169,54 @@ Create Or Replace Package Body ksm_pkg_giving_summary Is
 Private cursors -- data definitions
 *************************************************************************/
 
+--------------------------------------
+-- NU lifetime giving, BI definition
+Cursor c_lifetime_giving Is
+
+  With
+
+  donorinfo As (
+    Select Distinct
+      dd.donor_id
+      , ds.lifetime_ngc
+        As nu_lifetime_ngc_individual
+      , ds.lifetime_ngc_with_spouse
+        As nu_lifetime_ngc_with_spouse
+      , trunc(
+          greatest(dd.etl_update_date, ds.etl_update_date)
+        ) As etl_update_date
+    From dm_alumni.dim_donor_summary ds
+    Inner Join dm_alumni.dim_donor dd
+      On dd.donor_sid = ds.donor_sid
+    Where ds.ap_academic_organization_sid = -999 -- Overall NU giving
+  )
+
+  Select
+    hh.donor_id
+    , hh.sort_name
+    , hh.household_id
+    , hh.household_primary
+    , hh.household_id_ksm
+    , hh.household_primary_ksm
+    , hh.household_primary_donor_id
+    , hh.household_primary_sort_name
+    , hh.household_spouse_donor_id
+    , hh.household_spouse_sort_name
+    , greatest(di.nu_lifetime_ngc_individual, di.nu_lifetime_ngc_with_spouse
+        , di_spouse.nu_lifetime_ngc_individual, di_spouse.nu_lifetime_ngc_with_spouse)
+      As nu_lifetime_ngc
+    , di.nu_lifetime_ngc_individual
+    , di.nu_lifetime_ngc_with_spouse
+    , greatest(hh.etl_update_date, di.etl_update_date, di_spouse.etl_update_date)
+      As etl_update_date
+  From mv_households hh
+  Left Join donorinfo di
+    On di.donor_id = hh.household_primary_donor_id
+  Left Join donorinfo di_spouse
+    On di_spouse.donor_id = hh.household_spouse_donor_id
+;
+
+--------------------------------------
 -- Implementing Kellogg gift credit, householded, with several common types
 Cursor c_ksm_giving_summary Is
 
@@ -453,6 +523,22 @@ Private functions
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
+
+--------------------------------------
+Function tbl_lifetime_giving
+  Return lifetime_giving Pipelined As
+    -- Declarations
+    lg lifetime_giving;
+
+  Begin
+    Open c_lifetime_giving;
+      Fetch c_lifetime_giving Bulk Collect Into lg;
+    Close c_lifetime_giving;
+    For i in 1..(lg.count) Loop
+      Pipe row(lg(i));
+    End Loop;
+    Return;
+  End;
 
 --------------------------------------
 Function tbl_ksm_giving_summary

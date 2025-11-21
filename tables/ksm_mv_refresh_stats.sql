@@ -72,6 +72,9 @@ Union
 Select 3, 'mv_ksm_giving_summary', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_ksm_giving_summary
 Union
+Select 3, 'mv_lifetime_giving', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+From mv_lifetime_giving
+Union
 Select 3, 'mv_entity_contact_info', count(*), min(mv_last_refresh), max(max_etl_update_date), min(max_etl_update_date)
 From mv_entity_contact_info
 ;
