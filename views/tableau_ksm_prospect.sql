@@ -373,25 +373,20 @@ left join c on c.id = s.ucinn_ascendv2__contact__c
 where s.ap_is_active__c = 'true'
 ),
 
-r as (select 
-
-e.donor_id,
+r as (select distinct 
 e.household_id_ksm,
 e.sort_name,
-a.ap_constituent__c,
-a.ap_is_active_formula__c,
-a.ap_is_primary_prospect_formula__c,
-a.ap_is_primary_strategy__c,
-a.name
+a.name,
+a.ap_is_active_formula__c
 from stg_alumni.ap_strategy_relation__c a 
 left join  mv_entity e on e.salesforce_id = a.ap_constituent__c
-where e.household_id_ksm = '0001318929'),
-
-
+where e.household_id_ksm is not null
+),
 
 sr as (select r.household_id_ksm
-, Listagg (r.sort_name, ';  ') Within Group (Order By r.sort_name) As strategy_relation_name_concat 
-, Listagg (r.name, ';  ') Within Group (Order By r.name) As Strategy_Relation_concat
+--- getting concat error. Using select distint in my listagg 
+, Listagg (distinct r.sort_name, ';  ') Within Group (Order By r.sort_name) As strategy_relation_name_concat 
+, Listagg (distinct r.name, ';  ') Within Group (Order By r.name) As Strategy_Relation_concat
 from r 
 group by r.household_id_ksm),
 
@@ -571,6 +566,7 @@ select  distinct
        --- Stage of Readiness
        stage.ucinn_ascendv2__stage_of_readiness__c,
        stage.ucinn_ascendv2__stage_of_readiness_last_modified_date__c,
+       strategy.name as strategy_id,
        sr.strategy_relation_name_concat,
        sr.strategy_Relation_concat,
        funding.created_by as funding_created_by,
@@ -579,7 +575,6 @@ select  distinct
        funding.start_date as funding_start_date,
        funding.end_date as funding_end_date,
        funding.funding_interest_name
-           
 from entity e 
 --- Inner join degrees 
 inner join d on d.donor_id = e.donor_id
