@@ -312,7 +312,22 @@ Level 2 dependencies
 *************************************************************************/
 
 --------------------------------------
--- v_ksm_giving_summary
+-- ksm_pkg_giving_summary
+-- mv_lifetime_giving
+-- Drop Materialized View mv_lifetime_giving;
+Create Materialized View mv_lifetime_giving
+Refresh Complete
+Start With sysdate
+-- 7:50 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.833/24)
+As
+Select
+  ltg.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_giving_summary.tbl_lifetime_giving) ltg
+;
+
+-- mv_ksm_giving_summary
 -- Drop Materialized View mv_ksm_giving_summary;
 Create Materialized View mv_ksm_giving_summary
 Refresh Complete
@@ -323,7 +338,7 @@ As
 Select
   gs.*
   , sysdate as mv_last_refresh
-From v_ksm_giving_summary gs
+From table(ksm_pkg_giving_summary.tbl_ksm_giving_summary) gs
 ;
 
 --------------------------------------

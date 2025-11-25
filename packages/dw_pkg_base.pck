@@ -268,7 +268,7 @@ Type rec_opportunity Is Record (
   , is_anonymous_indicator dm_alumni.dim_opportunity.is_anonymous_indicator%type
   , anonymous_type dm_alumni.dim_opportunity.anonymous_type%type
   , linked_proposal_record_id dm_alumni.dim_opportunity.linked_proposal_record_id%type
-  , linked_proposal_active_proposal_manager dm_alumni.dim_opportunity.linked_proposal_active_proposal_manager%type
+  , linked_proposal_active_proposal_manager dm_alumni.dim_opportunity.linked_proposal_proposal_manager%type
   , payment_schedule stg_alumni.opportunity.ap_payment_schedule__c%type
   , opp_amount_paid dm_alumni.dim_opportunity.pledge_amount_paid_to_date%type
   , next_scheduled_payment_date dm_alumni.dim_opportunity.next_scheduled_payment_date%type
@@ -405,9 +405,9 @@ Type rec_proposal Is Record (
   , proposal_payment_schedule dm_alumni.dim_proposal_opportunity.proposal_payment_schedule%type
   , proposal_designation_units dm_alumni.dim_proposal_opportunity.proposal_designation_work_plan_units%type
   , ksm_flag varchar2(1)
-  , active_proposal_manager_salesforce_id dm_alumni.dim_proposal_opportunity.active_proposal_manager_salesforce_id%type
-  , active_proposal_manager_name dm_alumni.dim_proposal_opportunity.active_proposal_manager_name%type
-  , active_proposal_manager_unit dm_alumni.dim_proposal_opportunity.active_proposal_manager_business_unit%type
+  , active_proposal_manager_salesforce_id dm_alumni.dim_proposal_opportunity.proposal_manager_salesforce_id%type
+  , active_proposal_manager_name dm_alumni.dim_proposal_opportunity.proposal_manager_name%type
+  , active_proposal_manager_unit dm_alumni.dim_proposal_opportunity.proposal_manager_business_unit%type
   , historical_pm_user_id stg_alumni.opportunityteammember.id%type
   , historical_pm_name stg_alumni.opportunityteammember.name%type
   , historical_pm_role stg_alumni.opportunityteammember.teammemberrole%type
@@ -1160,7 +1160,7 @@ Cursor c_opportunity Is
       As anonymous_type
     , nullif(linked_proposal_record_id, '-')
       As linked_proposal_record_id
-    , nullif(linked_proposal_active_proposal_manager, '-')
+    , nullif(linked_proposal_proposal_manager, '-')
       As linked_proposal_active_proposal_manager
     , opp_sch.payment_schedule
     , opp.pledge_amount_paid_to_date
@@ -1490,11 +1490,11 @@ Cursor c_proposals Is
       As proposal_designation_units
     , Case When dpo.proposal_designation_work_plan_units Like '%Kellogg%' Then 'Y' End
       As ksm_flag
-    , nullif(dpo.active_proposal_manager_salesforce_id, '-')
+    , nullif(dpo.proposal_manager_salesforce_id, '-')
       As active_proposal_manager_salesforce_id
-    , nullif(dpo.active_proposal_manager_name, '-')
+    , nullif(dpo.proposal_manager_name, '-')
       As active_proposal_manager_name
-    , nullif(dpo.active_proposal_manager_business_unit, '-')
+    , nullif(dpo.proposal_manager_business_unit, '-')
       As active_proposal_manager_unit
     , last_pm.historical_pm_user_id
     , last_pm.historical_pm_name
