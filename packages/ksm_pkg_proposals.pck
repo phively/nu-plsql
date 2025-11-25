@@ -64,10 +64,10 @@ Type rec_proposal Is Record (
   , proposal_payment_schedule dm_alumni.dim_proposal_opportunity.proposal_payment_schedule%type
   , proposal_designation_units dm_alumni.dim_proposal_opportunity.proposal_designation_work_plan_units%type
   , ksm_flag varchar2(1)
-  , active_proposal_manager_salesforce_id dm_alumni.dim_proposal_opportunity.active_proposal_manager_salesforce_id%type
+  , active_proposal_manager_salesforce_id dm_alumni.dim_proposal_opportunity.proposal_manager_salesforce_id%type
   , active_proposal_manager_donor_id mv_entity.donor_id%type
-  , active_proposal_manager_name dm_alumni.dim_proposal_opportunity.active_proposal_manager_name%type
-  , active_proposal_manager_unit dm_alumni.dim_proposal_opportunity.active_proposal_manager_business_unit%type
+  , active_proposal_manager_name dm_alumni.dim_proposal_opportunity.proposal_manager_name%type
+  , active_proposal_manager_unit dm_alumni.dim_proposal_opportunity.proposal_manager_business_unit%type
   , active_proposal_manager_team varchar2(10)
   , historical_pm_user_id stg_alumni.opportunityteammember.id%type
   , historical_proposal_manager_donor_id mv_entity.donor_id%type
