@@ -25,6 +25,7 @@ mg_funded_count Constant number := 98E3; -- As of 2018-03-23. Minimum $ to count
 Public type declarations
 *************************************************************************/
 
+--------------------------------------
 Type proposals_data Is Record (
   proposal_record_id mv_proposals.proposal_record_id%type
   , historical_pm_user_id mv_proposals.historical_pm_user_id%type
@@ -44,6 +45,7 @@ Type proposals_data Is Record (
   , proposal_close_date mv_proposals.proposal_close_date%type
 );
 
+--------------------------------------
 Type funded_credit Is Record (
   proposal_record_id mv_proposals.proposal_record_id%type
   , historical_pm_user_id mv_proposals.historical_pm_user_id%type
@@ -53,6 +55,7 @@ Type funded_credit Is Record (
   , ksm_flag mv_proposals.ksm_flag%type
 );
 
+--------------------------------------
 Type funded_dollars Is Record (
   proposal_record_id mv_proposals.proposal_record_id%type
   , historical_pm_user_id mv_proposals.historical_pm_user_id%type
@@ -63,7 +66,20 @@ Type funded_dollars Is Record (
   , funded_credit_flag varchar2(1)
   , proposal_funded_amount number
 );
-/*
+
+--------------------------------------
+Type ask_assist_credit Is Record (
+  proposal_record_id mv_proposals.proposal_record_id%type
+  , historical_pm_user_id mv_proposals.historical_pm_user_id%type
+  , historical_pm_name mv_proposals.historical_pm_name%type
+  , historical_pm_role mv_proposals.historical_pm_role%type
+  , historical_pm_business_unit mv_proposals.historical_pm_business_unit%type
+  , ksm_flag mv_proposals.ksm_flag%type
+  , proposal_submitted_date mv_proposals.proposal_submitted_date%type
+  , ask_or_close_date mv_proposals.proposal_submitted_date%type
+);
+
+/*--------------------------------------
 Type contact_report Is Record (
   author_id_number contact_rpt_credit.id_number%type
   , report_id contact_rpt_credit.report_id%type
@@ -76,16 +92,10 @@ Type contact_report Is Record (
   , perf_year number
 );
 
+--------------------------------------
 Type contact_count Is Record (
   id_number contact_rpt_credit.id_number%type
   , report_id contact_rpt_credit.report_id%type
-);
-
-Type ask_assist_credit Is Record (
-  proposal_id proposal.proposal_id%type
-  , assignment_id_number assignment.assignment_id_number%type
-  , initial_contribution_date date
-  , ask_or_stop_dt date
 );
 
 /*************************************************************************
@@ -95,9 +105,9 @@ Public table declarations
 Type t_proposals_data Is Table Of proposals_data;
 Type t_funded_credit Is Table Of funded_credit;
 Type t_funded_dollars Is Table Of funded_dollars;
-/*Type t_contact_report Is Table Of contact_report;
-Type t_contact_count Is Table Of contact_count;
 Type t_ask_assist_credit Is Table Of ask_assist_credit;
+--Type t_contact_report Is Table Of contact_report;
+--Type t_contact_count Is Table Of contact_count;
 
 /*************************************************************************
 Public function declarations
@@ -149,7 +159,7 @@ Function tbl_funded_dollars(
     , granted_amt number default metrics_pkg.mg_granted_amt
   )
   Return t_funded_dollars Pipelined;
-/*
+
 Function tbl_asked_count(
     ask_amt number default metrics_pkg.mg_ask_amt
   )
@@ -160,7 +170,7 @@ Function tbl_asked_count_ksm(
     , ask_amt_ksm_outright number default metrics_pkg.mg_ask_amt_ksm_outright
   )
   Return t_ask_assist_credit Pipelined;
-
+/*
 Function tbl_contact_reports
   Return t_contact_report Pipelined;
 
@@ -178,6 +188,7 @@ Create Or Replace Package Body metrics_pkg Is
 Private cursor tables -- data definitions; update indicated sections as needed
 *************************************************************************/
 
+--------------------------------------
 -- Universal proposals data, originally adapted from v_mgo_activity_monthly
 -- All fields needed to recreate proposals subqueries appearing throughout the original file
 Cursor c_universal_proposals_data Is
@@ -206,6 +217,7 @@ Cursor c_universal_proposals_data Is
     )
 ;
 
+--------------------------------------
 -- Credit for asked & funded proposals
 -- Count for funded proposal goal 1
 Cursor c_funded_count(
@@ -234,7 +246,8 @@ Cursor c_funded_count(
     , ksm_flag
   From proposals_funded_count
 ;
-  
+
+--------------------------------------
 -- Gift credit for funded proposal goal 3
 Cursor c_funded_dollars(
     ask_amt_in In number
@@ -271,129 +284,78 @@ Cursor c_funded_dollars(
     , proposal_funded_amount
   From proposals_funded_cr
 ;
-  
-/*-- Refactor goal 2 subqueries in lines 518-590
--- 3 clones, at 602-674, 686-758, 769-841
+
+--------------------------------------
 -- Count for asked proposal goal 2
 Cursor c_asked_count(
     ask_amt_in In number
   ) Is
+  
   -- Must be proposal manager and above the ask credit threshold
   With
+  
   proposals_asked_count As (
     Select *
-    From table(tbl_universal_proposals_data)
-    Where assignment_type = 'PA' -- Proposal Manager
-      And ask_amt >= ask_amt_in
+    From table(metrics_pkg.tbl_universal_proposals_data)
+    Where historical_pm_role = 'Proposal Manager'
+      And proposal_submitted_amount >= ask_amt_in
   )
-  , asked_count As (
-      -- 1st priority - Look across all proposal managers on a proposal (inactive OR active).
-      -- If there is ONE proposal manager only, credit that for that proposal ID.
-      Select proposal_id
-        , assignment_id_number
-        , initial_contribution_date
-        , proposal_stop_date
-        , 1 As info_rank
-      From proposals_asked_count
-      Where proposalManagerCount = 1 -- only one proposal manager/ credit that PA 
-    Union
-      -- 2nd priority - For #2 if there is more than one active proposal managers on a proposal credit BOTH and exit the process.
-      Select proposal_id
-        , assignment_id_number
-        , initial_contribution_date
-        , proposal_stop_date
-        , 2 As info_rank
-      From proposals_asked_count
-      Where assignment_active_ind = 'Y'
-    Union
-      -- 3rd priority - For #3, Credit all inactive proposal managers where proposal stop date and assignment stop date within 24 hours
-      Select proposal_id
-        , assignment_id_number
-        , initial_contribution_date
-        , proposal_stop_date
-        , 3 As info_rank
-      From proposals_asked_count
-      Where proposal_active_ind = 'N' -- Inactives on the proposal.
-        And proposal_stop_date - assignment_stop_date <= 1
-    Order By info_rank
-  )
-  Select proposal_id
-    , assignment_id_number
-    , min(initial_contribution_date) keep(dense_rank First Order By info_rank Asc)  -- initial_contribution_date is 'ask_date'
-      As initial_contribution_date
-    -- Replace null initial_contribution_date with proposal_stop_date
-    , min(nvl(initial_contribution_date, proposal_stop_date)) keep(dense_rank First Order By info_rank Asc)
-      As ask_or_stop_dt
-  From asked_count
-  Group By proposal_id
-    , assignment_id_number
-  ;
+  
+  Select
+    proposal_record_id
+    , historical_pm_user_id
+    , historical_pm_name
+    , historical_pm_role
+    , historical_pm_business_unit
+    , ksm_flag
+    , proposal_submitted_date
+    -- Replace null submitted date with close date
+    , nvl(proposal_submitted_date, proposal_close_date)
+      As ask_or_close_date
+  From proposals_asked_count
+;
 
+--------------------------------------
 -- KSM asked count: asks must be for an outright gift >= mg_ask_amt_ksm_outright
 -- or for a pledge >= mg_ask_amt_ksm_plg
 Cursor c_asked_count_ksm(
     ask_amt_ksm_plg_in In number
     , ask_amt_ksm_outright_in In number
   ) Is
+  
   -- Must be proposal manager and above the ask credit threshold
   With
+  
   proposals_asked_count As (
     Select *
-    From table(tbl_universal_proposals_data)
-    Where assignment_type = 'PA' -- Proposal Manager
+    From table(metrics_pkg.tbl_universal_proposals_data)
+    Where historical_pm_role = 'Proposal Manager'
       And (
         -- Any gift type above overall threshold
-        ask_amt >= ask_amt_ksm_plg_in
+        proposal_submitted_amount >= 250E3--ask_amt_ksm_plg_in
         -- Outright asks above outright threshold
         Or (
-          ask_amt >= ask_amt_ksm_outright_in
-          And outright_gift_proposal = 'Y'
+          proposal_submitted_amount >= 100E3--ask_amt_ksm_outright_in
+          And standard_proposal_flag = 'Y'
         )
       )
   )
-  , asked_count As (
-      -- 1st priority - Look across all proposal managers on a proposal (inactive OR active).
-      -- If there is ONE proposal manager only, credit that for that proposal ID.
-      Select proposal_id
-        , assignment_id_number
-        , initial_contribution_date
-        , proposal_stop_date
-        , 1 As info_rank
-      From proposals_asked_count
-      Where proposalManagerCount = 1 -- only one proposal manager/ credit that PA 
-    Union
-      -- 2nd priority - For #2 if there is more than one active proposal managers on a proposal credit BOTH and exit the process.
-      Select proposal_id
-        , assignment_id_number
-        , initial_contribution_date
-        , proposal_stop_date
-        , 2 As info_rank
-      From proposals_asked_count
-      Where assignment_active_ind = 'Y'
-    Union
-      -- 3rd priority - For #3, Credit all inactive proposal managers where proposal stop date and assignment stop date within 24 hours
-      Select proposal_id
-        , assignment_id_number
-        , initial_contribution_date
-        , proposal_stop_date
-        , 3 As info_rank
-      From proposals_asked_count
-      Where proposal_active_ind = 'N' -- Inactives on the proposal.
-        And proposal_stop_date - assignment_stop_date <= 1
-    Order By info_rank
-  )
-  Select proposal_id
-    , assignment_id_number
-    , min(initial_contribution_date) keep(dense_rank First Order By info_rank Asc)  -- initial_contribution_date is 'ask_date'
-      As initial_contribution_date
-    -- Replace null initial_contribution_date with proposal_stop_date
-    , min(nvl(initial_contribution_date, proposal_stop_date)) keep(dense_rank First Order By info_rank Asc)
-      As ask_or_stop_dt
-  From asked_count
-  Group By proposal_id
-    , assignment_id_number
-  ;
+  
+  Select
+    proposal_record_id
+    , historical_pm_user_id
+    , historical_pm_name
+    , historical_pm_role
+    , historical_pm_business_unit
+    , ksm_flag
+    , proposal_submitted_date
+    -- Replace null submitted date with close date
+    , nvl(proposal_submitted_date, proposal_close_date)
+      As ask_or_close_date
+  From proposals_asked_count
+;
 
+/*--------------------------------------
 -- Contact report data
 -- Fields to recreate contact report calculations used in goals 4 and 5
 -- Corresponds to subqueries in lines 1392-1448
@@ -416,7 +378,8 @@ Cursor c_contact_reports Is
   From contact_report
   Where contact_type = 'V' -- Only count visits
   ;
-  
+
+--------------------------------------  
 -- Deduped contact report credit and author IDs
 Cursor c_contact_count Is
     Select
@@ -431,6 +394,7 @@ Cursor c_contact_count Is
     From table(tbl_contact_reports)
   ;
 
+--------------------------------------
 -- Refactor goal 6 subqueries in lines 1456-1489
 -- 3 clones, at 1501-1534, 1546-1579, 1591-1624
 Cursor c_assist_count Is
@@ -502,6 +466,7 @@ Function get_numeric_constant(const_name In varchar2)
 Pipelined functions
 *************************************************************************/
 
+--------------------------------------
 -- Pipelined function returning consolidated proposals data
 Function tbl_universal_proposals_data
   Return t_proposals_data Pipelined As
@@ -518,6 +483,7 @@ Function tbl_universal_proposals_data
     Return;
   End;
 
+--------------------------------------
 -- Pipelined function returning proposal funded data
 Function tbl_funded_count(
     ask_amt number default metrics_pkg.mg_ask_amt
@@ -541,6 +507,7 @@ Function tbl_funded_count(
     Return;
   End;
 
+--------------------------------------
 -- Pipelined function returning proposal funded amounts data
 Function tbl_funded_dollars(
     ask_amt number default metrics_pkg.mg_ask_amt
@@ -563,20 +530,21 @@ Function tbl_funded_dollars(
     End Loop;
     Return;
   End;
-/*
+
+--------------------------------------
 -- Pipelined function returning proposal asked data
 Function tbl_asked_count(
     ask_amt number default metrics_pkg.mg_ask_amt
   )
   Return t_ask_assist_credit Pipelined As
-    -- Declarations
-    pd t_ask_assist_credit;
+  -- Declarations
+  pd t_ask_assist_credit;
 
   Begin
     Open c_asked_count(
       ask_amt_in => ask_amt
-    ); -- Annual Fund allocations cursor
-      Fetch c_asked_count Bulk Collect Into pd;
+    );
+    Fetch c_asked_count Bulk Collect Into pd;
     Close c_asked_count;
     -- Pipe out the data
     For i in 1..(pd.count) Loop
@@ -584,21 +552,22 @@ Function tbl_asked_count(
     End Loop;
     Return;
   End;
-  
+
+--------------------------------------
 Function tbl_asked_count_ksm(
     ask_amt_ksm_plg number default metrics_pkg.mg_ask_amt_ksm_plg
     , ask_amt_ksm_outright number default metrics_pkg.mg_ask_amt_ksm_outright
   )
   Return t_ask_assist_credit Pipelined As
-    -- Declarations
-    pd t_ask_assist_credit;
+  -- Declarations
+  pd t_ask_assist_credit;
 
   Begin
     Open c_asked_count_ksm(
       ask_amt_ksm_plg_in => ask_amt_ksm_plg
       , ask_amt_ksm_outright_in => ask_amt_ksm_outright
-    ); -- Annual Fund allocations cursor
-      Fetch c_asked_count_ksm Bulk Collect Into pd;
+    );
+    Fetch c_asked_count_ksm Bulk Collect Into pd;
     Close c_asked_count_ksm;
     -- Pipe out the data
     For i in 1..(pd.count) Loop
@@ -607,6 +576,7 @@ Function tbl_asked_count_ksm(
     Return;
   End;
 
+/*--------------------------------------
 -- Pipelined function returning visits data
 Function tbl_contact_reports
   Return t_contact_report Pipelined As
@@ -624,6 +594,7 @@ Function tbl_contact_reports
     Return;
   End;
 
+--------------------------------------
 -- Pipelined function returning visits data
 Function tbl_contact_count
   Return t_contact_count Pipelined As
@@ -641,6 +612,7 @@ Function tbl_contact_count
     Return;
   End;
 
+--------------------------------------
 -- Pipelined function returning proposal assists data
 Function tbl_assist_count
   Return t_ask_assist_credit Pipelined As

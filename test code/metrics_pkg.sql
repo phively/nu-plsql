@@ -29,3 +29,11 @@ From table(metrics_pkg.tbl_funded_count)
 Select *
 From table(metrics_pkg.tbl_funded_dollars)
 ;
+
+Select *
+From table(metrics_pkg.tbl_asked_count)
+;
+
+Select *
+From table(metrics_pkg.tbl_asked_count_ksm)
+;
