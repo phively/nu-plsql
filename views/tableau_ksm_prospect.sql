@@ -330,6 +330,7 @@ from Tableau_KSM_Activity t),
 
 ttr as (select 
        t.DONOR_ID,
+       t.HOUSEHOLD_ID_KSM,
        t.CASE_OWNER_ID,
        t.CASE_OWNER,
        t.STATUS,
@@ -339,7 +340,9 @@ ttr as (select
        t.TOTAL_VISITS,
        t."Unresponsive",
        t."Disqualified"
-from TABLEAU_TASK_REPORT t),
+from TABLEAU_TASK_REPORT t
+where t.STATUS IN ('New','In Progress') 
+),
 
 --- Ratings from the Alumni Donor Table
 --- Need the Date for Eval and UOR
@@ -370,27 +373,53 @@ left join c on c.id = s.ucinn_ascendv2__contact__c
 where s.ap_is_active__c = 'true'
 ),
 
-r as (select 
-
-e.donor_id,
+r as (select distinct 
 e.household_id_ksm,
 e.sort_name,
-a.ap_constituent__c,
-a.ap_is_active_formula__c,
-a.ap_is_primary_prospect_formula__c,
-a.ap_is_primary_strategy__c,
-a.name
+a.name,
+a.ap_is_active_formula__c
 from stg_alumni.ap_strategy_relation__c a 
 left join  mv_entity e on e.salesforce_id = a.ap_constituent__c
-where e.household_id_ksm = '0001318929'),
-
-
+where e.household_id_ksm is not null
+),
 
 sr as (select r.household_id_ksm
-, Listagg (r.sort_name, ';  ') Within Group (Order By r.sort_name) As strategy_relation_name_concat 
-, Listagg (r.name, ';  ') Within Group (Order By r.name) As Strategy_Relation_concat
+--- getting concat error. Using select distint in my listagg 
+, Listagg (distinct r.sort_name, ';  ') Within Group (Order By r.sort_name) As strategy_relation_name_concat 
+, Listagg (distinct r.name, ';  ') Within Group (Order By r.name) As Strategy_Relation_concat
 from r 
-group by r.household_id_ksm)
+group by r.household_id_ksm),
+
+u as (Select user_salesforce_id,
+user_name
+From table(dw_pkg_base.tbl_users)),
+
+funding as (select 
+e.donor_id,
+e.sort_name,
+u.user_name as created_by,
+c.createdbyid as created_id,
+c.ucinn_ascendv2__foundation_funding_interest_name_formula__c as funding_interest,
+c.ucinn_ascendv2__start_date__c as start_date,
+c.ucinn_ascendv2__end_date__c as end_date,
+c.name as funding_interest_name
+from stg_alumni.ucinn_ascendv2__funding_interest__c c
+left join mv_entity e on e.salesforce_id = c.ucinn_ascendv2__contact__c
+left join u on u.user_salesforce_id = c.createdbyid
+--- Interest Formula is Kelllogg 
+where (c.ucinn_ascendv2__foundation_funding_interest_name_formula__c like '%Kellogg School of Management%')
+--- 9/1/21
+and  c.ucinn_ascendv2__start_date__c  = to_date ('09/01/2021', 'mm/dd/yyyy')),
+
+--- Lifetime giving 
+
+lifetime as 
+(Select m.donor_id,
+                           m.household_id_ksm,
+                           m.nu_lifetime_ngc,
+                           m.nu_lifetime_ngc_individual,
+                           m.nu_lifetime_ngc_with_spouse
+From mv_lifetime_giving m)
 
 
 select  distinct 
@@ -413,7 +442,8 @@ select  distinct
        e.institutional_suffix,
        e.spouse_donor_id,
        e.spouse_name,
-       e.spouse_institutional_suffix,         
+       e.spouse_institutional_suffix,
+       co.address_preferred_type,         
        co.preferred_address_line_1,
        co.preferred_address_line_2,
        co.preferred_address_line_3,
@@ -449,8 +479,8 @@ select  distinct
        rating.university_overall_rating_entry_date,
        --- Stage of Readiness - timeline - Does it work?????  ---- Check Strategy      
        tka."STAGE OF READINESS", 
-       tka.TEAM,
-       tka.MANAGER, 
+       --tka.TEAM,
+       --tka.MANAGER, 
        tka."MANAGER START DATE",  
        d.first_ksm_year,
        d.program,
@@ -460,7 +490,10 @@ select  distinct
        --- C Suite Flag
        case when csuite.donor_id is not null then 'Y' end as c_suite_flag,
        g.ngc_lifetime,      
-       ---11/13 ksm lifetime recgoniton   
+       --- 11/21/25 NU Lifetime 
+       lifetime.nu_lifetime_ngc,
+       lifetime.nu_lifetime_ngc_individual,
+       lifetime.nu_lifetime_ngc_with_spouse,
        ---g.ngc_lifetime_full_rec,     
        g.last_ngc_opportunity_type,
        g.last_ngc_designation,
@@ -533,8 +566,15 @@ select  distinct
        --- Stage of Readiness
        stage.ucinn_ascendv2__stage_of_readiness__c,
        stage.ucinn_ascendv2__stage_of_readiness_last_modified_date__c,
+       strategy.name as strategy_id,
        sr.strategy_relation_name_concat,
-       sr.strategy_Relation_concat      
+       sr.strategy_Relation_concat,
+       funding.created_by as funding_created_by,
+       funding.created_id as funding_created_id,     
+       funding.funding_interest,
+       funding.start_date as funding_start_date,
+       funding.end_date as funding_end_date,
+       funding.funding_interest_name
 from entity e 
 --- Inner join degrees 
 inner join d on d.donor_id = e.donor_id
@@ -567,7 +607,7 @@ left join prop on prop.household_id_ksm = e.household_id_ksm
 --- activity 
 left join tka on tka.donor_id = e.donor_id
 --- tableau task report
-left join ttr on ttr.donor_id = e.donor_id
+left join ttr on ttr.HOUSEHOLD_ID_KSM = e.HOUSEHOLD_ID_KSM
 --- ratings
 left join rating on rating.donor_id = e.donor_id
 --- Stage
@@ -578,4 +618,8 @@ left join strategy on strategy.ucinn_ascendv2__donor_id__c = e.donor_id
 left join cprop on cprop.donor_id = e.donor_id
 --- strategy relation
 left join sr on sr.household_id_ksm = e.household_id_ksm
+--- Funding 
+left join funding on funding.donor_id = e.donor_id
+--- lifetime giving 
+left join lifetime on lifetime.donor_id = e.donor_id
  
