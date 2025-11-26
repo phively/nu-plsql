@@ -52,14 +52,18 @@ Type funded_credit Is Record (
   , historical_pm_business_unit mv_proposals.historical_pm_business_unit%type
   , ksm_flag mv_proposals.ksm_flag%type
 );
-/*
-Type funded_dollars Is Record (
-  proposal_id proposal.proposal_id%type
-  , assignment_id_number assignment.assignment_id_number%type
-  , funded_credit_flag varchar2(1)
-  , granted_amt number
-);
 
+Type funded_dollars Is Record (
+  proposal_record_id mv_proposals.proposal_record_id%type
+  , historical_pm_user_id mv_proposals.historical_pm_user_id%type
+  , historical_pm_name mv_proposals.historical_pm_name%type
+  , historical_pm_role mv_proposals.historical_pm_role%type
+  , historical_pm_business_unit mv_proposals.historical_pm_business_unit%type
+  , ksm_flag mv_proposals.ksm_flag%type
+  , funded_credit_flag varchar2(1)
+  , proposal_funded_amount number
+);
+/*
 Type contact_report Is Record (
   author_id_number contact_rpt_credit.id_number%type
   , report_id contact_rpt_credit.report_id%type
@@ -90,8 +94,8 @@ Public table declarations
 
 Type t_proposals_data Is Table Of proposals_data;
 Type t_funded_credit Is Table Of funded_credit;
-/*Type t_funded_dollars Is Table Of funded_dollars;
-Type t_contact_report Is Table Of contact_report;
+Type t_funded_dollars Is Table Of funded_dollars;
+/*Type t_contact_report Is Table Of contact_report;
 Type t_contact_count Is Table Of contact_count;
 Type t_ask_assist_credit Is Table Of ask_assist_credit;
 
@@ -99,8 +103,8 @@ Type t_ask_assist_credit Is Table Of ask_assist_credit;
 Public function declarations
 *************************************************************************/
 
-/* Function to return public/private constants */
-Function get_constant(
+-- Function to return public/private constants
+Function get_numeric_constant(
   const_name In varchar2 -- Name of constant to retrieve
 ) Return number Deterministic;
 
@@ -139,13 +143,13 @@ Function tbl_funded_count(
     , funded_count number default metrics_pkg.mg_funded_count
   )
   Return t_funded_credit Pipelined;
-/*
+
 Function tbl_funded_dollars(
     ask_amt number default metrics_pkg.mg_ask_amt
     , granted_amt number default metrics_pkg.mg_granted_amt
   )
   Return t_funded_dollars Pipelined;
-
+/*
 Function tbl_asked_count(
     ask_amt number default metrics_pkg.mg_ask_amt
   )
@@ -231,73 +235,44 @@ Cursor c_funded_count(
   From proposals_funded_count
 ;
   
-/*-- Refactor goal 3 subqueries in lines 848-982
--- 3 clones, at 984-1170, 1120-1254, 1256-1390
 -- Gift credit for funded proposal goal 3
 Cursor c_funded_dollars(
     ask_amt_in In number
     , granted_amt_in In number
   ) Is
+  
   With
+  
   proposals_funded_cr As (
     Select
       upd.*
       -- Must be proposal manager, funded status, and above the ask & granted amount thresholds
       , Case
-          When ask_amt >= ask_amt_in
-            And granted_amt >= granted_amt_in
+          When proposal_submitted_amount >= ask_amt_in
+            And proposal_funded_amount >= granted_amt_in
             Then 'Y'
           Else 'N'
         End
         As funded_credit_flag
-    From table(tbl_universal_proposals_data) upd
-    Where assignment_type = 'PA' -- Proposal Manager
-      And granted_amt >= 0
-      And proposal_status_code = '7' -- Only funded
+    From table(metrics_pkg.tbl_universal_proposals_data) upd
+    Where historical_pm_role = 'Proposal Manager'
+      And proposal_funded_amount > 0
+      And proposal_stage = 'Funded'
   )
-  , funded_credit As (
-      -- 1st priority - Look across all proposal managers on a proposal (inactive OR active).
-      -- If there is ONE proposal manager only, credit that for that proposal ID.
-      Select proposal_id
-        , assignment_id_number
-        , granted_amt
-        , funded_credit_flag
-        , 1 As info_rank
-      From proposals_funded_cr
-      Where proposalManagerCount = 1 -- only one proposal manager/ credit that PA
-    Union
-      -- 2nd priority - For #2 if there is more than one active proposal managers on a proposal credit BOTH and exit the process.
-      Select proposal_id
-         , assignment_id_number
-         , granted_amt
-         , funded_credit_flag
-         , 2 As info_rank
-      From proposals_funded_cr
-      Where assignment_active_ind = 'Y'
-    Union
-      -- 3rd priority - For #3, Credit all inactive proposal managers where proposal stop date and assignment stop date within 24 hours
-      Select proposal_id
-         , assignment_id_number
-         , granted_amt
-         , funded_credit_flag
-         , 3 As info_rank
-      From proposals_funded_cr
-      Where proposal_active_ind = 'N' -- Inactives on the proposal.
-        And proposal_stop_date - assignment_stop_date <= 1
-    Order By info_rank
-  )
-  Select proposal_id
-    , assignment_id_number
-    , max(funded_credit_flag)
-      As funded_credit_flag
-    , max(granted_amt) keep(dense_rank First Order By info_rank Asc)
-      As granted_amt
-  From funded_credit
-  Group By proposal_id
-    , assignment_id_number
-  ;
   
--- Refactor goal 2 subqueries in lines 518-590
+  Select Distinct
+    proposal_record_id
+    , historical_pm_user_id
+    , historical_pm_name
+    , historical_pm_role
+    , historical_pm_business_unit
+    , ksm_flag
+    , funded_credit_flag
+    , proposal_funded_amount
+  From proposals_funded_cr
+;
+  
+/*-- Refactor goal 2 subqueries in lines 518-590
 -- 3 clones, at 602-674, 686-758, 769-841
 -- Count for asked proposal goal 2
 Cursor c_asked_count(
@@ -503,7 +478,7 @@ Cursor c_assist_count Is
 Functions
 *************************************************************************/
 
-Function get_constant(const_name In varchar2)
+Function get_numeric_constant(const_name In varchar2)
   Return number Deterministic Is
   -- Declarations
   val number;
@@ -530,14 +505,13 @@ Pipelined functions
 -- Pipelined function returning consolidated proposals data
 Function tbl_universal_proposals_data
   Return t_proposals_data Pipelined As
-    -- Declarations
-    pd t_proposals_data;
+  -- Declarations
+  pd t_proposals_data;
 
   Begin
-    Open c_universal_proposals_data; -- Annual Fund allocations cursor
+    Open c_universal_proposals_data;
       Fetch c_universal_proposals_data Bulk Collect Into pd;
     Close c_universal_proposals_data;
-    -- Pipe out the data
     For i in 1..(pd.count) Loop
       Pipe row(pd(i));
     End Loop;
@@ -550,15 +524,15 @@ Function tbl_funded_count(
     , funded_count number default metrics_pkg.mg_funded_count
   )
   Return t_funded_credit Pipelined As
-    -- Declarations
-    pd t_funded_credit;
+  -- Declarations
+  pd t_funded_credit;
 
   Begin
     Open c_funded_count(
       ask_amt_in => ask_amt
       , funded_count_in => funded_count
-    ); -- Annual Fund allocations cursor
-      Fetch c_funded_count Bulk Collect Into pd;
+    );
+    Fetch c_funded_count Bulk Collect Into pd;
     Close c_funded_count;
     -- Pipe out the data
     For i in 1..(pd.count) Loop
@@ -567,21 +541,21 @@ Function tbl_funded_count(
     Return;
   End;
 
-/*-- Pipelined function returning proposal funded amounts data
+-- Pipelined function returning proposal funded amounts data
 Function tbl_funded_dollars(
     ask_amt number default metrics_pkg.mg_ask_amt
     , granted_amt number default metrics_pkg.mg_granted_amt
   )
   Return t_funded_dollars Pipelined As
-    -- Declarations
-    pd t_funded_dollars;
+  -- Declarations
+  pd t_funded_dollars;
 
   Begin
     Open c_funded_dollars(
-    ask_amt_in => ask_amt
-    , granted_amt_in => granted_amt
-  ); -- Annual Fund allocations cursor
-      Fetch c_funded_dollars Bulk Collect Into pd;
+      ask_amt_in => ask_amt
+      , granted_amt_in => granted_amt
+    );
+    Fetch c_funded_dollars Bulk Collect Into pd;
     Close c_funded_dollars;
     -- Pipe out the data
     For i in 1..(pd.count) Loop
