@@ -162,6 +162,12 @@ Cursor c_entity_degrees_concat Is
         As degree_school_name
       , deg.department_code
       , Case
+          When deg.department_code In ('KGS2Y', '01KGS') -- New 2Y
+            And deg.department_Desc Like '%2-Year MBA%'
+            Then 'FT-2Y'
+          When deg.department_code In ('KGS1Y', '011YR')  -- New 1Y
+            And deg.department_desc Like '%1-Year MBA%'
+            Then 'FT-1Y'
           When deg.department_code = '01MDB' -- Joint Feinberg
             Then 'MDMBA'
           When deg.department_code Like '01%' -- Full-time, joint full-time
@@ -315,8 +321,8 @@ Cursor c_entity_degrees_concat Is
             Then 'PHD'
           When degree_level_ranked = '02 MBA'
             Then Case
-              When completed_degrees_concat Like '%KGS2Y%' Then 'FT-2Y'
-              When completed_degrees_concat Like '%KGS1Y%' Then 'FT-1Y'
+              When completed_degrees_concat Like '%FT-2Y%' Then 'FT-2Y'
+              When completed_degrees_concat Like '%FT-1Y%' Then 'FT-1Y'
               When completed_degrees_concat Like '%JDMBA%' Then 'FT-JDMBA'
               When completed_degrees_concat Like '%MMM%' Then 'FT-MMM'
               When completed_degrees_concat Like '%MDMBA%' Then 'FT-MDMBA'

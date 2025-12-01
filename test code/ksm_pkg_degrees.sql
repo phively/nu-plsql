@@ -87,6 +87,10 @@ test_cases As (
   Union Select '0000145897', 'FT-MMM', 'MMM no program'  From DUAL
   Union Select '0000047624', 'PHD', 'MBA and PHD'  From DUAL
   Union Select '0000468293', '2002', 'NU conferred degree year' From DUAL
+  Union Select '0000532693', 'FT-2Y', 'New 2Y degree code' From DUAL
+  Union Select '0000291027', 'FT-1Y', 'New 1Y degree code' From DUAL
+  Union Select '0000334071', 'FT-2Y', 'New 2Y degree code' From DUAL
+  Union Select '0000356565', 'FT-2Y', 'New 2Y degree code' From DUAL
 )
 
 Select
