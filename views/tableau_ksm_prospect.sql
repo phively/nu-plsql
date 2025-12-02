@@ -302,7 +302,8 @@ group by event.NU_DONOR_ID__C),
 --- Proposal View
 
 prop as (select *
-from mv_proposals p),
+from mv_proposals p
+where p.proposal_active_indicator = 'Y'),
 
 --- Count of Active Proposals 
 
