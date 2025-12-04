@@ -85,24 +85,23 @@ group by i.constituent_donor_id),
 
 ---Campaign Committee Members: • Campaign Committee Members – involvement = ‘Kellogg Full Circle Campaign Committee”, start date = ‘9/1/2025’, end date is null
 
-ccm as (select distinct i.constituent_donor_id,
-                i.constituent_name,
-                i.involvement_record_id,
-                i.involvement_code,
-                i.involvement_name,
-                i.involvement_status,
-                i.involvement_type,
-                i.involvement_role,
-                i.involvement_business_unit,
-                i.involvement_start_date,
-                i.involvement_end_date,
-                i.involvement_comment,
-                i.etl_update_date,
-                i.mv_last_refresh
-from mv_involvement i
-where i.involvement_status = 'Current'
-and i.involvement_name = 'Kellogg Full Circle Campaign Committee'
-and i.involvement_start_date = to_date ('09/01/2025', 'mm/dd/yyyy')),
+ccm as (Select distinct i.CONSTITUENT_DONOR_ID,
+       i.CONSTITUENT_NAME,
+       i.INVOLVEMENT_RECORD_ID,
+       i.INVOLVEMENT_CODE,
+       i.INVOLVEMENT_NAME,
+       i.INVOLVEMENT_STATUS,
+       i.INVOLVEMENT_TYPE,
+       i.INVOLVEMENT_ROLE,
+       i.INVOLVEMENT_BUSINESS_UNIT,
+       i.INVOLVEMENT_START_FY,
+       i.INVOLVEMENT_END_FY,
+       i.INVOLVEMENT_START_DATE,
+       i.INVOLVEMENT_END_DATE,
+       i.INVOLVEMENT_COMMENT,
+       i.ETL_UPDATE_DATE
+From v_committee_kfc_campaign i
+where i.INVOLVEMENT_STATUS = 'Current'),
 
 --- Trustee 
 
@@ -419,6 +418,15 @@ prop as (select *
 from mv_proposals p
 where p.proposal_active_indicator = 'Y'),
 
+--- Count of KSM Proposals 
+
+kprop as (select p.donor_id,
+       count (p.proposal_active_indicator) as ksm_active_proposal_count
+from mv_proposals p
+where p.proposal_active_indicator = 'Y'
+and p.ksm_flag = 'Y'
+group by p.donor_id ),
+
 --- Count of Active Proposals 
 
 cprop as (select p.donor_id, 
@@ -578,7 +586,7 @@ select  distinct
        --- Strategy ID AKA: Prospect ID, Prospect Name (Proposal View)
        prop.proposal_strategy_record_id,
        prop.prospect_name, 
-       cprop.count_active_proposals,
+       ---cprop.count_active_proposals,
        rating.research_evaluation,
        rating.research_evaluation_date,
        rating.university_overall_rating,
@@ -679,12 +687,13 @@ select  distinct
        funding.funding_interest,
        funding.start_date as funding_start_date,
        funding.end_date as funding_end_date,
-       funding.funding_interest_name
+       funding.funding_interest_name,
+       kprop.ksm_active_proposal_count
 from entity e 
 --- inner join prospect 
 inner join prospect on prospect.donor_id = e.donor_id
 --- Inner join degrees 
-inner join d on d.donor_id = e.donor_id
+left join d on d.donor_id = e.donor_id
 --- giving info  
 left join give g on g.household_id = e.household_id_ksm
 --- employment
@@ -731,4 +740,6 @@ left join funding on funding.donor_id = e.donor_id
 left join lifetime on lifetime.donor_id = e.donor_id
 --- count of dean visits
 left join dvc on dvc.cr_relation_donor_id = e.donor_id 
+--- count of KSM active proposals
+left join kprop on kprop.donor_id = e.donor_id
  
