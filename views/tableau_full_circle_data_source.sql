@@ -52,6 +52,7 @@ Select
   , NULL As ask_amount
   , ngc.hard_credit_amount As hard_credit_or_anticipated_amt
   , ngc.designation_name As designation_or_proposal
+  , ngc.designation_name As designation_or_proposal_desc
   , ngc.person_or_org
   , ngc.full_circle_campaign_priority
 From v_ksm_gifts_ngc ngc
@@ -80,6 +81,7 @@ Select
       End
     As legal_or_anticipated_amt
   , prp.proposal_name As designation_or_proposal
+  , prp.proposal_description As designation_or_proposal_desc
   , prp.person_or_org
   , NULL As full_circle_campaign_priority
 From mv_proposals prp
@@ -105,6 +107,7 @@ Select
   , NULL
   , NULL
   , amount As legal_or_anticipated_amt
+  , NULL
   , NULL
   , NULL
   , NULL
