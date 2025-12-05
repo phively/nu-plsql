@@ -292,7 +292,7 @@ AND INDNAMESAL.ucinn_ascendv2__type__c = 'Full Name'),
 
 --- spouse preferred mail name 
 
-SMN as (select en.spouse_donor_id,
+SMN as (select en.donor_id,
 MN.preferred_mail_name as spouse_pref_mail_name
 from mv_entity en
 inner join MN on MN.donor_ID = en.spouse_donor_id),
@@ -686,13 +686,13 @@ select distinct e.household_id,
      g.last_cash_tx_id,
      g.last_cash_date,
      g.last_cash_opportunity_type,
-     g.last_cash_designation_id,
+     ---g.last_cash_designation_id,
      g.last_cash_designation,
      case when g.last_cash_recognition_credit is not null then g.last_cash_recognition_credit else 0 end as last_cash_recognition_credit,
      g.last_pledge_tx_id,
      g.last_pledge_date,
      g.last_pledge_opportunity_type,
-     g.last_pledge_designation_id,
+     ---g.last_pledge_designation_id,
      g.last_pledge_designation,
      case when  g.last_pledge_recognition_credit is not null then g.last_pledge_recognition_credit end as last_pledge_recognition_credit,
      ---- amy pledge code
@@ -857,7 +857,7 @@ left join rc26 on rc26.constituent_donor_id =  e.donor_id
 --- Presidental Adddress
 left join Pres on Pres.donor_id = e.donor_id 
 --- spouse preferred name
-left join SMN on SMN.spouse_donor_id = e.donor_id 
+left join SMN on SMN.donor_id = e.donor_id 
 --- AR Mod
 left join mods on mods.donor_id = e.donor_id
 --- Amy Pledge Code

@@ -49,6 +49,109 @@ give as (select g.household_id,
        --- Add in last gift date 
 from mv_ksm_giving_summary g),
 
+c as (select stg_alumni.contact.id, 
+stg_alumni.contact.ucinn_ascendv2__donor_id__c 
+from stg_alumni.contact),
+
+strategy as (select *
+from stg_alumni.ucinn_ascendv2__strategy__c s
+left join c on c.id = s.ucinn_ascendv2__contact__c
+--- Active Only
+where s.ap_is_active__c = 'true'
+),
+
+
+--- Involvements 
+
+i as (select distinct i.constituent_donor_id,
+       i.constituent_name,
+       i.involvement_name,
+       i.involvement_type,
+       i.involvement_business_unit,
+       i.mv_last_refresh
+from mv_involvement i
+where i.involvement_status = 'Current'
+and (i.involvement_name like '%KSM%'
+or i.involvement_name like '%Kellogg%')),
+
+--- Listagg Involvements 
+
+involve as (select i.constituent_donor_id,
+Listagg (i.involvement_name, ';  ') Within Group (Order By i.involvement_name) As involvement_name,
+Listagg (I.INVOLVEMENT_TYPE, ';  ') Within Group (Order By i.involvement_name) As INVOLVEMENT_TYPE,
+Listagg (I.INVOLVEMENT_BUSINESS_UNIT, ';  ') Within Group (Order By i.involvement_name) As  INVOLVEMENT_BUSINESS_UNIT
+from i
+group by i.constituent_donor_id),
+
+---Campaign Committee Members: • Campaign Committee Members – involvement = ‘Kellogg Full Circle Campaign Committee”, start date = ‘9/1/2025’, end date is null
+
+ccm as (Select distinct i.CONSTITUENT_DONOR_ID,
+       i.CONSTITUENT_NAME,
+       i.INVOLVEMENT_RECORD_ID,
+       i.INVOLVEMENT_CODE,
+       i.INVOLVEMENT_NAME,
+       i.INVOLVEMENT_STATUS,
+       i.INVOLVEMENT_TYPE,
+       i.INVOLVEMENT_ROLE,
+       i.INVOLVEMENT_BUSINESS_UNIT,
+       i.INVOLVEMENT_START_FY,
+       i.INVOLVEMENT_END_FY,
+       i.INVOLVEMENT_START_DATE,
+       i.INVOLVEMENT_END_DATE,
+       i.INVOLVEMENT_COMMENT,
+       i.ETL_UPDATE_DATE
+From v_committee_kfc_campaign i
+where i.INVOLVEMENT_STATUS = 'Current'),
+
+--- Trustee 
+
+trustee as (select  s.donor_id,
+s.trustee
+from mv_special_handling s
+where s.trustee is not null),
+
+
+
+/* KSM Prospect
+
+Defintion 
+
+is a KSM alum (Any ID on Degrees)
+
+OR 
+
+Has made a lifetime gift to Kellogg (any ID on Giving Summary) 
+
+OR Strategy is active 
+
+OR Campaign Committee Members – involvement = ‘Kellogg Full Circle Campaign Committee”, start date = ‘9/1/2025’, end date is null
+
+OR •	NU trustees and spouses
+
+
+*/
+
+prospect as (select entity.donor_id
+from entity 
+left join d on d.donor_id = entity.donor_id
+left join give on give.household_primary_donor_id = entity.donor_id
+left join strategy on strategy.ucinn_ascendv2__donor_id__c = entity.donor_id
+left join ccm on ccm.constituent_donor_id = entity.donor_id 
+left join trustee on trustee.donor_id = entity.donor_id
+
+where 
+
+d.donor_id is not null or 
+give.household_primary_donor_id is not null or 
+strategy.ucinn_ascendv2__donor_id__c is not null or 
+ccm.constituent_donor_id is not null or 
+trustee.donor_id is not null   
+
+
+
+),
+
+
 --- Last Contact Report
 --- Edit: 11/13/25 This is good to use to get the visit counts too
 
@@ -74,15 +177,42 @@ crf as (select d.constituent_donor_id,
                   
 ---- DEAN Visits - Using Paul's Views
 
-de as (select c.cr_relation_donor_id,
+de as (select c.contact_report_salesforce_id,
+       c.contact_report_record_id,
+       c.cr_credit_salesforce_id,
        c.cr_credit_name,
-       c.contact_report_type,
+       c.cr_credit_title,
        c.cr_credit_type,
+       c.cr_relation_record_id,
+       c.cr_relation_salesforce_id,
+       c.cr_relation_donor_id,
+       c.cr_relation_full_name,
+       c.cr_relation_sort_name,
+       c.contact_role,
+       c.contact_report_type,
+       c.contact_report_purpose,
        c.contact_report_visit_flag,
        c.contact_report_date,
-       c.contact_report_description      
+       c.contact_report_description,
+       c.contact_report_body,
+       c.etl_update_date,
+       c.mv_last_refresh     
 from mv_contact_reports c 
 ),
+
+--- Count of Dean Visits 
+
+dvc as (select 
+       c.cr_relation_donor_id,
+       count (c.contact_report_type) as dean_visit_count     
+from mv_contact_reports c 
+where c.cr_credit_name like '%Francesca Cornelli%'
+and c.contact_report_type = 'Visit'
+Group BY c.cr_relation_donor_id),
+
+
+
+
 
 --- last Author and Visit for Everyone Else (Not Dean Cornelli) 
 
@@ -110,6 +240,9 @@ from  de
 where de.cr_credit_name like '%Francesca Cornelli%'
 and de.contact_report_type like '%Visit%'
 group by de.cr_relation_donor_id),
+
+
+
        
 --- assignment
 
@@ -172,27 +305,7 @@ and primary_job_title not like '%Associate%'
 and primary_job_title not like '%Assoc%'
 and primary_job_title not like '%Advisor%'))),
 
---- Involvements 
 
-i as (select distinct i.constituent_donor_id,
-       i.constituent_name,
-       i.involvement_name,
-       i.involvement_type,
-       i.involvement_business_unit,
-       i.mv_last_refresh
-from mv_involvement i
-where i.involvement_status = 'Current'
-and (i.involvement_name like '%KSM%'
-or i.involvement_name like '%Kellogg%')),
-
---- Listagg Involvements 
-
-involve as (select i.constituent_donor_id,
-Listagg (i.involvement_name, ';  ') Within Group (Order By i.involvement_name) As involvement_name,
-Listagg (I.INVOLVEMENT_TYPE, ';  ') Within Group (Order By i.involvement_name) As INVOLVEMENT_TYPE,
-Listagg (I.INVOLVEMENT_BUSINESS_UNIT, ';  ') Within Group (Order By i.involvement_name) As  INVOLVEMENT_BUSINESS_UNIT
-from i
-group by i.constituent_donor_id),
 
 --- Contact Data
 
@@ -302,7 +415,17 @@ group by event.NU_DONOR_ID__C),
 --- Proposal View
 
 prop as (select *
-from mv_proposals p),
+from mv_proposals p
+where p.proposal_active_indicator = 'Y'),
+
+--- Count of KSM Proposals 
+
+kprop as (select p.donor_id,
+       count (p.proposal_active_indicator) as ksm_active_proposal_count
+from mv_proposals p
+where p.proposal_active_indicator = 'Y'
+and p.ksm_flag = 'Y'
+group by p.donor_id ),
 
 --- Count of Active Proposals 
 
@@ -330,6 +453,7 @@ from Tableau_KSM_Activity t),
 
 ttr as (select 
        t.DONOR_ID,
+       t.HOUSEHOLD_ID_KSM,
        t.CASE_OWNER_ID,
        t.CASE_OWNER,
        t.STATUS,
@@ -339,7 +463,9 @@ ttr as (select
        t.TOTAL_VISITS,
        t."Unresponsive",
        t."Disqualified"
-from TABLEAU_TASK_REPORT t),
+from TABLEAU_TASK_REPORT t
+where t.STATUS IN ('New','In Progress') 
+),
 
 --- Ratings from the Alumni Donor Table
 --- Need the Date for Eval and UOR
@@ -359,38 +485,55 @@ stg_alumni.contact.ucinn_ascendv2__stage_of_readiness_last_modified_date__c,
 stg_alumni.contact.ucinn_ascendv2__stage_of_readiness__c
 from stg_alumni.contact),
 
-c as (select stg_alumni.contact.id, 
-stg_alumni.contact.ucinn_ascendv2__donor_id__c 
-from stg_alumni.contact),
 
-strategy as (select *
-from stg_alumni.ucinn_ascendv2__strategy__c s
-left join c on c.id = s.ucinn_ascendv2__contact__c
---- Active Only
-where s.ap_is_active__c = 'true'
-),
 
-r as (select 
-
-e.donor_id,
+r as (select distinct 
 e.household_id_ksm,
 e.sort_name,
-a.ap_constituent__c,
-a.ap_is_active_formula__c,
-a.ap_is_primary_prospect_formula__c,
-a.ap_is_primary_strategy__c,
-a.name
+a.name,
+a.ap_is_active_formula__c
 from stg_alumni.ap_strategy_relation__c a 
 left join  mv_entity e on e.salesforce_id = a.ap_constituent__c
-where e.household_id_ksm = '0001318929'),
-
-
+where e.household_id_ksm is not null
+),
 
 sr as (select r.household_id_ksm
-, Listagg (r.sort_name, ';  ') Within Group (Order By r.sort_name) As strategy_relation_name_concat 
-, Listagg (r.name, ';  ') Within Group (Order By r.name) As Strategy_Relation_concat
+--- getting concat error. Using select distint in my listagg 
+, Listagg (distinct r.sort_name, ';  ') Within Group (Order By r.sort_name) As strategy_relation_name_concat 
+, Listagg (distinct r.name, ';  ') Within Group (Order By r.name) As Strategy_Relation_concat
 from r 
-group by r.household_id_ksm)
+group by r.household_id_ksm),
+
+u as (Select user_salesforce_id,
+user_name
+From table(dw_pkg_base.tbl_users)),
+
+funding as (select 
+e.donor_id,
+e.sort_name,
+u.user_name as created_by,
+c.createdbyid as created_id,
+c.ucinn_ascendv2__foundation_funding_interest_name_formula__c as funding_interest,
+c.ucinn_ascendv2__start_date__c as start_date,
+c.ucinn_ascendv2__end_date__c as end_date,
+c.name as funding_interest_name
+from stg_alumni.ucinn_ascendv2__funding_interest__c c
+left join mv_entity e on e.salesforce_id = c.ucinn_ascendv2__contact__c
+left join u on u.user_salesforce_id = c.createdbyid
+--- Interest Formula is Kelllogg 
+where (c.ucinn_ascendv2__foundation_funding_interest_name_formula__c like '%Kellogg School of Management%')
+--- 9/1/21
+and  c.ucinn_ascendv2__start_date__c  = to_date ('09/01/2021', 'mm/dd/yyyy')),
+
+--- Lifetime giving 
+
+lifetime as 
+(Select m.donor_id,
+                           m.household_id_ksm,
+                           m.nu_lifetime_ngc,
+                           m.nu_lifetime_ngc_individual,
+                           m.nu_lifetime_ngc_with_spouse
+From mv_lifetime_giving m)
 
 
 select  distinct 
@@ -413,7 +556,8 @@ select  distinct
        e.institutional_suffix,
        e.spouse_donor_id,
        e.spouse_name,
-       e.spouse_institutional_suffix,         
+       e.spouse_institutional_suffix,
+       co.address_preferred_type,         
        co.preferred_address_line_1,
        co.preferred_address_line_2,
        co.preferred_address_line_3,
@@ -442,15 +586,15 @@ select  distinct
        --- Strategy ID AKA: Prospect ID, Prospect Name (Proposal View)
        prop.proposal_strategy_record_id,
        prop.prospect_name, 
-       cprop.count_active_proposals,
+       ---cprop.count_active_proposals,
        rating.research_evaluation,
        rating.research_evaluation_date,
        rating.university_overall_rating,
        rating.university_overall_rating_entry_date,
        --- Stage of Readiness - timeline - Does it work?????  ---- Check Strategy      
        tka."STAGE OF READINESS", 
-       tka.TEAM,
-       tka.MANAGER, 
+       --tka.TEAM,
+       --tka.MANAGER, 
        tka."MANAGER START DATE",  
        d.first_ksm_year,
        d.program,
@@ -460,7 +604,10 @@ select  distinct
        --- C Suite Flag
        case when csuite.donor_id is not null then 'Y' end as c_suite_flag,
        g.ngc_lifetime,      
-       ---11/13 ksm lifetime recgoniton   
+       --- 11/21/25 NU Lifetime 
+       lifetime.nu_lifetime_ngc,
+       lifetime.nu_lifetime_ngc_individual,
+       lifetime.nu_lifetime_ngc_with_spouse,
        ---g.ngc_lifetime_full_rec,     
        g.last_ngc_opportunity_type,
        g.last_ngc_designation,
@@ -503,9 +650,8 @@ select  distinct
         dcrf.contact_report_type as dean_visit_cr_type,
         dcrf.contact_date as dean_visit_contact_date,
         dcrf.descripton as dean_visit_descripton,
-        --- Count of Dean Visits 
-        case when crf.constituent_last_contact_report_author like '%Francesca Cornelli%'
-        and crf.constituent_last_contact_report_method like '%Visit%' then crf.constituent_visit_count end as dean_visit_count,
+                --- Count of Dean Visits 
+        dvc.dean_visit_count, 
 --- Melanie - Needs the ID segment, PR Segment, Est Probability 
        mods.mg_id_description,
        mods.mg_id_score,
@@ -533,11 +679,21 @@ select  distinct
        --- Stage of Readiness
        stage.ucinn_ascendv2__stage_of_readiness__c,
        stage.ucinn_ascendv2__stage_of_readiness_last_modified_date__c,
+       strategy.name as strategy_id,
        sr.strategy_relation_name_concat,
-       sr.strategy_Relation_concat      
+       sr.strategy_Relation_concat,
+       funding.created_by as funding_created_by,
+       funding.created_id as funding_created_id,     
+       funding.funding_interest,
+       funding.start_date as funding_start_date,
+       funding.end_date as funding_end_date,
+       funding.funding_interest_name,
+       kprop.ksm_active_proposal_count
 from entity e 
+--- inner join prospect 
+inner join prospect on prospect.donor_id = e.donor_id
 --- Inner join degrees 
-inner join d on d.donor_id = e.donor_id
+left join d on d.donor_id = e.donor_id
 --- giving info  
 left join give g on g.household_id = e.household_id_ksm
 --- employment
@@ -567,7 +723,7 @@ left join prop on prop.household_id_ksm = e.household_id_ksm
 --- activity 
 left join tka on tka.donor_id = e.donor_id
 --- tableau task report
-left join ttr on ttr.donor_id = e.donor_id
+left join ttr on ttr.HOUSEHOLD_ID_KSM = e.HOUSEHOLD_ID_KSM
 --- ratings
 left join rating on rating.donor_id = e.donor_id
 --- Stage
@@ -578,4 +734,12 @@ left join strategy on strategy.ucinn_ascendv2__donor_id__c = e.donor_id
 left join cprop on cprop.donor_id = e.donor_id
 --- strategy relation
 left join sr on sr.household_id_ksm = e.household_id_ksm
+--- Funding 
+left join funding on funding.donor_id = e.donor_id
+--- lifetime giving 
+left join lifetime on lifetime.donor_id = e.donor_id
+--- count of dean visits
+left join dvc on dvc.cr_relation_donor_id = e.donor_id 
+--- count of KSM active proposals
+left join kprop on kprop.donor_id = e.donor_id
  
