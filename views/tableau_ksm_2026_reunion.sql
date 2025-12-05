@@ -292,7 +292,7 @@ AND INDNAMESAL.ucinn_ascendv2__type__c = 'Full Name'),
 
 --- spouse preferred mail name 
 
-SMN as (select en.spouse_donor_id,
+SMN as (select en.donor_id,
 MN.preferred_mail_name as spouse_pref_mail_name
 from mv_entity en
 inner join MN on MN.donor_ID = en.spouse_donor_id),
@@ -857,7 +857,7 @@ left join rc26 on rc26.constituent_donor_id =  e.donor_id
 --- Presidental Adddress
 left join Pres on Pres.donor_id = e.donor_id 
 --- spouse preferred name
-left join SMN on SMN.spouse_donor_id = e.donor_id 
+left join SMN on SMN.donor_id = e.donor_id 
 --- AR Mod
 left join mods on mods.donor_id = e.donor_id
 --- Amy Pledge Code
