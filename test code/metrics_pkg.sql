@@ -37,3 +37,11 @@ From table(metrics_pkg.tbl_asked_count)
 Select *
 From table(metrics_pkg.tbl_asked_count_ksm)
 ;
+
+Select *
+From table(metrics_pkg.tbl_contact_reports)
+;
+
+Select *
+From table(metrics_pkg.tbl_contact_count)
+;

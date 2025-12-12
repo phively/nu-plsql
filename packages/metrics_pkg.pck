@@ -7,7 +7,7 @@ Created : 2/13/2020 11:19:42 AM
 Purpose : Consolidated gift officer metrics definitions to allow audit
   information to be easily pulled. Adapted from rpt_pbh634.v_mgo_activity_monthly
   and advance_nu.nu_gft_v_officer_metrics.
-Dependencies: ksm_pkg_proposals (mv_proposals)
+Dependencies: ksm_pkg_proposals (mv_proposals), ksm_pkg_contact_reports (mv_contact_reports)
 *************************************************************************/
 
 /*************************************************************************
@@ -26,7 +26,7 @@ Public type declarations
 *************************************************************************/
 
 --------------------------------------
-Type proposals_data Is Record (
+Type rec_proposals_data Is Record (
   proposal_record_id mv_proposals.proposal_record_id%type
   , historical_pm_user_id mv_proposals.historical_pm_user_id%type
   , historical_pm_name mv_proposals.historical_pm_name%type
@@ -46,7 +46,7 @@ Type proposals_data Is Record (
 );
 
 --------------------------------------
-Type funded_credit Is Record (
+Type rec_funded_credit Is Record (
   proposal_record_id mv_proposals.proposal_record_id%type
   , historical_pm_user_id mv_proposals.historical_pm_user_id%type
   , historical_pm_name mv_proposals.historical_pm_name%type
@@ -56,19 +56,19 @@ Type funded_credit Is Record (
 );
 
 --------------------------------------
-Type funded_dollars Is Record (
+Type rec_funded_dollars Is Record (
   proposal_record_id mv_proposals.proposal_record_id%type
   , historical_pm_user_id mv_proposals.historical_pm_user_id%type
   , historical_pm_name mv_proposals.historical_pm_name%type
   , historical_pm_role mv_proposals.historical_pm_role%type
   , historical_pm_business_unit mv_proposals.historical_pm_business_unit%type
   , ksm_flag mv_proposals.ksm_flag%type
-  , funded_credit_flag varchar2(1)
+  , rec_funded_credit_flag varchar2(1)
   , proposal_funded_amount number
 );
 
 --------------------------------------
-Type ask_assist_credit Is Record (
+Type rec_ask_assist_credit Is Record (
   proposal_record_id mv_proposals.proposal_record_id%type
   , historical_pm_user_id mv_proposals.historical_pm_user_id%type
   , historical_pm_name mv_proposals.historical_pm_name%type
@@ -79,35 +79,41 @@ Type ask_assist_credit Is Record (
   , ask_or_close_date mv_proposals.proposal_submitted_date%type
 );
 
-/*--------------------------------------
-Type contact_report Is Record (
-  author_id_number contact_rpt_credit.id_number%type
-  , report_id contact_rpt_credit.report_id%type
-  , contact_purpose_code char(1)
-  , cal_year number
-  , fiscal_year number
-  , cal_month number
-  , fiscal_qtr number
-  , perf_quarter number
-  , perf_year number
+--------------------------------------
+Type rec_contact_report Is Record (
+  contact_report_salesforce_id mv_contact_reports.contact_report_salesforce_id%type
+  , contact_report_record_id mv_contact_reports.contact_report_record_id%type
+  , cr_credit_salesforce_id mv_contact_reports.cr_credit_salesforce_id%type
+  , cr_credit_name mv_contact_reports.cr_credit_name%type
+  , cr_relation_salesforce_id mv_contact_reports.cr_relation_salesforce_id%type
+  , cr_relation_donor_id mv_contact_reports.cr_relation_donor_id%type
+  , cr_relation_sort_name mv_contact_reports.cr_relation_sort_name%type
+  , contact_report_purpose mv_contact_reports.contact_report_purpose%type
+  , cal_year integer
+  , fiscal_year integer
+  , cal_month integer
+  , fiscal_qtr integer
+  , perf_quarter integer
+  , perf_year integer
 );
 
 --------------------------------------
-Type contact_count Is Record (
-  id_number contact_rpt_credit.id_number%type
-  , report_id contact_rpt_credit.report_id%type
+Type rec_contact_count Is Record (
+  cr_credit_salesforce_id mv_contact_reports.cr_credit_salesforce_id%type
+  , cr_credit_name mv_contact_reports.cr_credit_name%type
+  , contact_report_record_id mv_contact_reports.contact_report_record_id%type
 );
 
 /*************************************************************************
 Public table declarations
 *************************************************************************/
 
-Type t_proposals_data Is Table Of proposals_data;
-Type t_funded_credit Is Table Of funded_credit;
-Type t_funded_dollars Is Table Of funded_dollars;
-Type t_ask_assist_credit Is Table Of ask_assist_credit;
---Type t_contact_report Is Table Of contact_report;
---Type t_contact_count Is Table Of contact_count;
+Type proposals_data Is Table Of rec_proposals_data;
+Type funded_credit Is Table Of rec_funded_credit;
+Type funded_dollars Is Table Of rec_funded_dollars;
+Type ask_assist_credit Is Table Of rec_ask_assist_credit;
+Type contact_report Is Table Of rec_contact_report;
+Type contact_count Is Table Of rec_contact_count;
 
 /*************************************************************************
 Public function declarations
@@ -145,40 +151,40 @@ From table(rpt_pbh634.ksm_pkg_tmp.tbl_current_calendar) cal;
 
 -- Standardized proposal data table function
 Function tbl_universal_proposals_data
-  Return t_proposals_data Pipelined;
+  Return proposals_data Pipelined;
   
 -- Table functions for each of the MGO metrics
 Function tbl_funded_count(
     ask_amt number default metrics_pkg.mg_ask_amt
     , funded_count number default metrics_pkg.mg_funded_count
   )
-  Return t_funded_credit Pipelined;
+  Return funded_credit Pipelined;
 
 Function tbl_funded_dollars(
     ask_amt number default metrics_pkg.mg_ask_amt
     , granted_amt number default metrics_pkg.mg_granted_amt
   )
-  Return t_funded_dollars Pipelined;
+  Return funded_dollars Pipelined;
 
 Function tbl_asked_count(
     ask_amt number default metrics_pkg.mg_ask_amt
   )
-  Return t_ask_assist_credit Pipelined;
+  Return ask_assist_credit Pipelined;
 
 Function tbl_asked_count_ksm(
     ask_amt_ksm_plg number default metrics_pkg.mg_ask_amt_ksm_plg
     , ask_amt_ksm_outright number default metrics_pkg.mg_ask_amt_ksm_outright
   )
-  Return t_ask_assist_credit Pipelined;
-/*
+  Return ask_assist_credit Pipelined;
+
 Function tbl_contact_reports
-  Return t_contact_report Pipelined;
+  Return contact_report Pipelined;
 
 Function tbl_contact_count
-  Return t_contact_count Pipelined;
-
+  Return contact_count Pipelined;
+/*
 Function tbl_assist_count
-  Return t_ask_assist_credit Pipelined;
+  Return ask_assist_credit Pipelined;
 */
 End metrics_pkg;
 /
@@ -221,9 +227,9 @@ Cursor c_universal_proposals_data Is
 -- Credit for asked & funded proposals
 -- Count for funded proposal goal 1
 Cursor c_funded_count(
-      ask_amt_in In number
-      , funded_count_in In number
-    ) Is
+    ask_amt_in In number
+    , funded_count_in In number
+  ) Is
     
   With
   
@@ -249,7 +255,7 @@ Cursor c_funded_count(
 
 --------------------------------------
 -- Gift credit for funded proposal goal 3
-Cursor c_funded_dollars(
+Cursor c_rec_funded_dollars(
     ask_amt_in In number
     , granted_amt_in In number
   ) Is
@@ -266,7 +272,7 @@ Cursor c_funded_dollars(
             Then 'Y'
           Else 'N'
         End
-        As funded_credit_flag
+        As rec_funded_credit_flag
     From table(metrics_pkg.tbl_universal_proposals_data) upd
     Where historical_pm_role = 'Proposal Manager'
       And proposal_funded_amount > 0
@@ -280,7 +286,7 @@ Cursor c_funded_dollars(
     , historical_pm_role
     , historical_pm_business_unit
     , ksm_flag
-    , funded_credit_flag
+    , rec_funded_credit_flag
     , proposal_funded_amount
   From proposals_funded_cr
 ;
@@ -355,49 +361,50 @@ Cursor c_asked_count_ksm(
   From proposals_asked_count
 ;
 
-/*--------------------------------------
+--------------------------------------
 -- Contact report data
 -- Fields to recreate contact report calculations used in goals 4 and 5
 -- Corresponds to subqueries in lines 1392-1448
 Cursor c_contact_reports Is
-  Select Distinct author_id_number
-    , report_id
-    , contact_purpose_code
-    , extract(year From contact_date)
+  Select Distinct
+    contact_report_salesforce_id
+    , contact_report_record_id
+    , cr_credit_salesforce_id
+    , cr_credit_name
+    , cr_relation_salesforce_id
+    , cr_relation_donor_id
+    , cr_relation_sort_name
+    , contact_report_purpose
+    , extract(year From contact_report_date)
       As cal_year
-    , rpt_pbh634.ksm_pkg_calendar.get_fiscal_year(contact_date)
+    , ksm_pkg_calendar.get_fiscal_year(contact_report_date)
       As fiscal_year
-    , extract(month From contact_date)
+    , extract(month From contact_report_date)
       As cal_month
-    , rpt_pbh634.ksm_pkg_calendar.get_quarter(contact_date, 'fisc')
+    , ksm_pkg_calendar.get_quarter(contact_report_date, 'fisc')
       As fiscal_qtr
-    , rpt_pbh634.ksm_pkg_calendar.get_quarter(contact_date, 'perf')
+    , ksm_pkg_calendar.get_quarter(contact_report_date, 'perf')
       As perf_quarter
-    , rpt_pbh634.ksm_pkg_calendar.get_performance_year(contact_date)
+    , ksm_pkg_calendar.get_performance_year(contact_report_date)
       As perf_year -- performance year
-  From contact_report
-  Where contact_type = 'V' -- Only count visits
-  ;
+  From mv_contact_reports cr
+  Where contact_report_visit_flag = 'Y' -- Only count visits
+    And cr_credit_type = 'Staff Credit'
+;
 
 --------------------------------------  
 -- Deduped contact report credit and author IDs
 Cursor c_contact_count Is
-    Select
-      id_number
-      , report_id
-    From contact_rpt_credit
-    Where contact_credit_type = '1' -- Primary credit only
-  Union
-    Select
-      author_id_number
-      , report_id
-    From table(tbl_contact_reports)
-  ;
+  Select Distinct
+    cr_credit_salesforce_id
+    , cr_credit_name
+    , contact_report_record_id
+  From table(metrics_pkg.tbl_contact_reports)
+;
 
---------------------------------------
+/*--------------------------------------
 -- Refactor goal 6 subqueries in lines 1456-1489
--- 3 clones, at 1501-1534, 1546-1579, 1591-1624
-Cursor c_assist_count Is
+-- 3 clones, at 1501-1534, 1546-1579, 1591-1624Cursor c_assist_count Is
   With
   -- Count for proposal assists goal 6
   proposal_assists_count As (
@@ -469,9 +476,9 @@ Pipelined functions
 --------------------------------------
 -- Pipelined function returning consolidated proposals data
 Function tbl_universal_proposals_data
-  Return t_proposals_data Pipelined As
+  Return proposals_data Pipelined As
   -- Declarations
-  pd t_proposals_data;
+  pd proposals_data;
 
   Begin
     Open c_universal_proposals_data;
@@ -489,9 +496,9 @@ Function tbl_funded_count(
     ask_amt number default metrics_pkg.mg_ask_amt
     , funded_count number default metrics_pkg.mg_funded_count
   )
-  Return t_funded_credit Pipelined As
+  Return funded_credit Pipelined As
   -- Declarations
-  pd t_funded_credit;
+  pd funded_credit;
 
   Begin
     Open c_funded_count(
@@ -513,17 +520,17 @@ Function tbl_funded_dollars(
     ask_amt number default metrics_pkg.mg_ask_amt
     , granted_amt number default metrics_pkg.mg_granted_amt
   )
-  Return t_funded_dollars Pipelined As
+  Return funded_dollars Pipelined As
   -- Declarations
-  pd t_funded_dollars;
+  pd funded_dollars;
 
   Begin
-    Open c_funded_dollars(
+    Open c_rec_funded_dollars(
       ask_amt_in => ask_amt
       , granted_amt_in => granted_amt
     );
-    Fetch c_funded_dollars Bulk Collect Into pd;
-    Close c_funded_dollars;
+    Fetch c_rec_funded_dollars Bulk Collect Into pd;
+    Close c_rec_funded_dollars;
     -- Pipe out the data
     For i in 1..(pd.count) Loop
       Pipe row(pd(i));
@@ -536,9 +543,9 @@ Function tbl_funded_dollars(
 Function tbl_asked_count(
     ask_amt number default metrics_pkg.mg_ask_amt
   )
-  Return t_ask_assist_credit Pipelined As
+  Return ask_assist_credit Pipelined As
   -- Declarations
-  pd t_ask_assist_credit;
+  pd ask_assist_credit;
 
   Begin
     Open c_asked_count(
@@ -558,9 +565,9 @@ Function tbl_asked_count_ksm(
     ask_amt_ksm_plg number default metrics_pkg.mg_ask_amt_ksm_plg
     , ask_amt_ksm_outright number default metrics_pkg.mg_ask_amt_ksm_outright
   )
-  Return t_ask_assist_credit Pipelined As
+  Return ask_assist_credit Pipelined As
   -- Declarations
-  pd t_ask_assist_credit;
+  pd ask_assist_credit;
 
   Begin
     Open c_asked_count_ksm(
@@ -576,12 +583,12 @@ Function tbl_asked_count_ksm(
     Return;
   End;
 
-/*--------------------------------------
+--------------------------------------
 -- Pipelined function returning visits data
 Function tbl_contact_reports
-  Return t_contact_report Pipelined As
+  Return contact_report Pipelined As
     -- Declarations
-    cd t_contact_report;
+    cd contact_report;
 
   Begin
     Open c_contact_reports; -- Annual Fund allocations cursor
@@ -597,9 +604,9 @@ Function tbl_contact_reports
 --------------------------------------
 -- Pipelined function returning visits data
 Function tbl_contact_count
-  Return t_contact_count Pipelined As
+  Return contact_count Pipelined As
     -- Declarations
-    cd t_contact_count;
+    cd contact_count;
 
   Begin
     Open c_contact_count; -- Annual Fund allocations cursor
@@ -612,12 +619,12 @@ Function tbl_contact_count
     Return;
   End;
 
---------------------------------------
+/*--------------------------------------
 -- Pipelined function returning proposal assists data
 Function tbl_assist_count
-  Return t_ask_assist_credit Pipelined As
+  Return ask_assist_credit Pipelined As
     -- Declarations
-    pd t_ask_assist_credit;
+    pd ask_assist_credit;
 
   Begin
     Open c_assist_count; -- Annual Fund allocations cursor
