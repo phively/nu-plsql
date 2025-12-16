@@ -60,6 +60,57 @@ left join c on c.id = s.ucinn_ascendv2__contact__c
 where s.ap_is_active__c = 'true'
 ),
 
+/* Edit 12.10.25
+
+Melanie was the household the strategy ID */
+
+
+c as (select stg_alumni.contact.id, 
+stg_alumni.contact.ucinn_ascendv2__donor_id__c 
+from stg_alumni.contact),
+ 
+/* 
+
+Edit: Don't need to HH Strategy per Melanie. 
+
+sids as (select c.ucinn_ascendv2__donor_id__c , 
+s.name,
+s.ap_is_active__c,
+mv_entity.household_id,
+mv_entity.household_id_ksm,
+mv_entity.household_primary_ksm
+from stg_alumni.ucinn_ascendv2__strategy__c s
+left join c on c.id = s.ucinn_ascendv2__contact__c
+inner join mv_entity on mv_entity.donor_id = c.ucinn_ascendv2__donor_id__c
+--- Active Only
+where s.ap_is_active__c = 'true'),
+ 
+sids_final as (select
+sids.household_id_ksm,
+Listagg (sids.name, ';  ') Within Group (Order By sids.ap_is_active__c) As Alt
+from sids 
+group by sids.household_id_ksm),
+ 
+strategy_id_concat as (select mv_entity.donor_id,
+sids_final.alt as strategy_id_household_contact
+from sids_final 
+left join mv_entity on mv_entity.household_id_ksm = sids_final.household_id_ksm),*/
+
+
+a as (SELECT
+    C.ucinn_ascendv2__donor_id__c
+    , STRATR.NAME as ST_NAME
+    , STRAT.NAME as STR_NAME
+FROM  stg_alumni.ucinn_ascendv2__strategy__c STRAT
+INNER JOIN stg_alumni.ap_strategy_relation__c  STRATR ON STRATR.AP_STRATEGY__C = STRAT.ID
+left join c on c.id = STRATR.ap_constituent__c
+WHERE STRAT.AP_IS_ACTIVE__C = 'true'),
+
+final_strategy_id as (select mv_entity.donor_id,
+a.STR_NAME as Strategy_ID
+from mv_entity
+left join a on a.ucinn_ascendv2__donor_id__c = mv_entity.donor_id),
+
 
 --- Involvements 
 
@@ -122,7 +173,6 @@ OR
 
 Has made a lifetime gift to Kellogg (any ID on Giving Summary) 
 
-OR Strategy is active 
 
 OR Campaign Committee Members – involvement = ‘Kellogg Full Circle Campaign Committee”, start date = ‘9/1/2025’, end date is null
 
@@ -135,7 +185,8 @@ prospect as (select entity.donor_id
 from entity 
 left join d on d.donor_id = entity.donor_id
 left join give on give.household_primary_donor_id = entity.donor_id
-left join strategy on strategy.ucinn_ascendv2__donor_id__c = entity.donor_id
+--- Edit 12.10.25 take out active strategy members ONLY...... for the prospect parameter. 
+---left join strategy on strategy.ucinn_ascendv2__donor_id__c = entity.donor_id
 left join ccm on ccm.constituent_donor_id = entity.donor_id 
 left join trustee on trustee.donor_id = entity.donor_id
 
@@ -143,7 +194,7 @@ where
 
 d.donor_id is not null or 
 give.household_primary_donor_id is not null or 
-strategy.ucinn_ascendv2__donor_id__c is not null or 
+---strategy.ucinn_ascendv2__donor_id__c is not null or 
 ccm.constituent_donor_id is not null or 
 trustee.donor_id is not null   
 
@@ -533,7 +584,16 @@ lifetime as
                            m.nu_lifetime_ngc,
                            m.nu_lifetime_ngc_individual,
                            m.nu_lifetime_ngc_with_spouse
-From mv_lifetime_giving m)
+From mv_lifetime_giving m),
+
+--- strategy Relation 
+
+strat_relation as (select distinct 
+c.ucinn_ascendv2__donor_id__c,
+s.*
+from stg_alumni.ap_strategy_relation__c s
+left join c on c.id = s.ap_constituent__c
+where s.ap_is_active_formula__c = 'true' )
 
 
 select  distinct 
@@ -679,7 +739,10 @@ select  distinct
        --- Stage of Readiness
        stage.ucinn_ascendv2__stage_of_readiness__c,
        stage.ucinn_ascendv2__stage_of_readiness_last_modified_date__c,
-       strategy.name as strategy_id,
+       ---strategy.name as strategy_id,
+       final_strategy_id.strategy_id,
+       str.name as strategy_relation_id,
+       ---strategy_id_concat.strategy_id_household_contact,
        sr.strategy_relation_name_concat,
        sr.strategy_Relation_concat,
        funding.created_by as funding_created_by,
@@ -742,4 +805,9 @@ left join lifetime on lifetime.donor_id = e.donor_id
 left join dvc on dvc.cr_relation_donor_id = e.donor_id 
 --- count of KSM active proposals
 left join kprop on kprop.donor_id = e.donor_id
+--- strategy relation
+left join strat_relation str on str.ucinn_ascendv2__donor_id__c = e.donor_id
+--- householding strategy ID
+---left join strategy_id_concat on strategy_id_concat.donor_id = e.donor_id
+left join final_strategy_id on final_strategy_id.donor_id = e.donor_id
  
