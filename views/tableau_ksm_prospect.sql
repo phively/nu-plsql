@@ -49,6 +49,8 @@ give as (select g.household_id,
        --- Add in last gift date 
 from mv_ksm_giving_summary g),
 
+--- Subquery to pull IDS from stg tables
+
 c as (select stg_alumni.contact.id, 
 stg_alumni.contact.ucinn_ascendv2__donor_id__c 
 from stg_alumni.contact),
@@ -60,59 +62,12 @@ left join c on c.id = s.ucinn_ascendv2__contact__c
 where s.ap_is_active__c = 'true'
 ),
 
-/* Edit 12.10.25
+final_strategy_id as (Select psr.donor_id,
+psr.strategy_record_id,
+psr.strategy_relation_record_id
+From table(dw_pkg_base.tbl_strategy_relation) psr),
 
-Melanie was the household the strategy ID */
-
-
-c as (select stg_alumni.contact.id, 
-stg_alumni.contact.ucinn_ascendv2__donor_id__c 
-from stg_alumni.contact),
- 
-/* 
-
-Edit: Don't need to HH Strategy per Melanie. 
-
-sids as (select c.ucinn_ascendv2__donor_id__c , 
-s.name,
-s.ap_is_active__c,
-mv_entity.household_id,
-mv_entity.household_id_ksm,
-mv_entity.household_primary_ksm
-from stg_alumni.ucinn_ascendv2__strategy__c s
-left join c on c.id = s.ucinn_ascendv2__contact__c
-inner join mv_entity on mv_entity.donor_id = c.ucinn_ascendv2__donor_id__c
---- Active Only
-where s.ap_is_active__c = 'true'),
- 
-sids_final as (select
-sids.household_id_ksm,
-Listagg (sids.name, ';  ') Within Group (Order By sids.ap_is_active__c) As Alt
-from sids 
-group by sids.household_id_ksm),
- 
-strategy_id_concat as (select mv_entity.donor_id,
-sids_final.alt as strategy_id_household_contact
-from sids_final 
-left join mv_entity on mv_entity.household_id_ksm = sids_final.household_id_ksm),*/
-
-
-a as (SELECT
-    C.ucinn_ascendv2__donor_id__c
-    , STRATR.NAME as ST_NAME
-    , STRAT.NAME as STR_NAME
-FROM  stg_alumni.ucinn_ascendv2__strategy__c STRAT
-INNER JOIN stg_alumni.ap_strategy_relation__c  STRATR ON STRATR.AP_STRATEGY__C = STRAT.ID
-left join c on c.id = STRATR.ap_constituent__c
-WHERE STRAT.AP_IS_ACTIVE__C = 'true'),
-
-final_strategy_id as (select mv_entity.donor_id,
-a.STR_NAME as Strategy_ID
-from mv_entity
-left join a on a.ucinn_ascendv2__donor_id__c = mv_entity.donor_id),
-
-
---- Involvements 
+--- Involvements - KSM, Kellogg
 
 i as (select distinct i.constituent_donor_id,
        i.constituent_name,
@@ -136,21 +91,7 @@ group by i.constituent_donor_id),
 
 ---Campaign Committee Members: • Campaign Committee Members – involvement = ‘Kellogg Full Circle Campaign Committee”, start date = ‘9/1/2025’, end date is null
 
-ccm as (Select distinct i.CONSTITUENT_DONOR_ID,
-       i.CONSTITUENT_NAME,
-       i.INVOLVEMENT_RECORD_ID,
-       i.INVOLVEMENT_CODE,
-       i.INVOLVEMENT_NAME,
-       i.INVOLVEMENT_STATUS,
-       i.INVOLVEMENT_TYPE,
-       i.INVOLVEMENT_ROLE,
-       i.INVOLVEMENT_BUSINESS_UNIT,
-       i.INVOLVEMENT_START_FY,
-       i.INVOLVEMENT_END_FY,
-       i.INVOLVEMENT_START_DATE,
-       i.INVOLVEMENT_END_DATE,
-       i.INVOLVEMENT_COMMENT,
-       i.ETL_UPDATE_DATE
+ccm as (Select distinct i.CONSTITUENT_DONOR_ID
 From v_committee_kfc_campaign i
 where i.INVOLVEMENT_STATUS = 'Current'),
 
@@ -160,8 +101,6 @@ trustee as (select  s.donor_id,
 s.trustee
 from mv_special_handling s
 where s.trustee is not null),
-
-
 
 /* KSM Prospect
 
@@ -178,30 +117,23 @@ OR Campaign Committee Members – involvement = ‘Kellogg Full Circle Campaign Comm
 
 OR •	NU trustees and spouses
 
-
 */
 
 prospect as (select entity.donor_id
 from entity 
+--- KSM Degree Alumni 
 left join d on d.donor_id = entity.donor_id
+--- Made any gift to Kellogg
 left join give on give.household_primary_donor_id = entity.donor_id
---- Edit 12.10.25 take out active strategy members ONLY...... for the prospect parameter. 
----left join strategy on strategy.ucinn_ascendv2__donor_id__c = entity.donor_id
+--- Campaign Committee Members
 left join ccm on ccm.constituent_donor_id = entity.donor_id 
+--- Trustee
 left join trustee on trustee.donor_id = entity.donor_id
-
 where 
-
 d.donor_id is not null or 
 give.household_primary_donor_id is not null or 
----strategy.ucinn_ascendv2__donor_id__c is not null or 
 ccm.constituent_donor_id is not null or 
-trustee.donor_id is not null   
-
-
-
-),
-
+trustee.donor_id is not null),
 
 --- Last Contact Report
 --- Edit: 11/13/25 This is good to use to get the visit counts too
@@ -262,9 +194,6 @@ and c.contact_report_type = 'Visit'
 Group BY c.cr_relation_donor_id),
 
 
-
-
-
 --- last Author and Visit for Everyone Else (Not Dean Cornelli) 
 
 la as (select de.cr_relation_donor_id,
@@ -279,7 +208,6 @@ and de.contact_report_type = 'Visit'
 group by de.cr_relation_donor_id
 ),
 
-
 --- Dean's Last Visit Using Paul's View
 
 dcrf as (select de.cr_relation_donor_id,
@@ -291,9 +219,6 @@ from  de
 where de.cr_credit_name like '%Francesca Cornelli%'
 and de.contact_report_type like '%Visit%'
 group by de.cr_relation_donor_id),
-
-
-
        
 --- assignment
 
@@ -355,7 +280,6 @@ and primary_job_title not like '%Asst%'
 and primary_job_title not like '%Associate%'
 and primary_job_title not like '%Assoc%'
 and primary_job_title not like '%Advisor%'))),
-
 
 
 --- Contact Data
@@ -740,7 +664,7 @@ select  distinct
        stage.ucinn_ascendv2__stage_of_readiness__c,
        stage.ucinn_ascendv2__stage_of_readiness_last_modified_date__c,
        ---strategy.name as strategy_id,
-       final_strategy_id.strategy_id,
+       final_strategy_id.strategy_record_id as strategy_id,
        str.name as strategy_relation_id,
        ---strategy_id_concat.strategy_id_household_contact,
        sr.strategy_relation_name_concat,
