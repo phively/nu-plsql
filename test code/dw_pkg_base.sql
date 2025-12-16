@@ -72,6 +72,10 @@ From table(dw_pkg_base.tbl_strategy)
 ;
 
 Select *
+From table(dw_pkg_base.tbl_strategy_relation)
+;
+
+Select *
 From table(dw_pkg_base.tbl_contact_report)
 ;
 

@@ -436,6 +436,19 @@ Type rec_strategy Is Record (
 );
 
 --------------------------------------
+Type rec_strategy_relation Is Record (
+  strategy_relation_salesforce_id dm_alumni.fact_strategy_relation.strategy_relation_salesforce_id%type
+  , strategy_relation_record_id dm_alumni.fact_strategy_relation.strategy_relation_record_id%type
+  , strategy_record_id dm_alumni.fact_strategy_relation.strategy_record_id%type
+  , sr_active_ind dm_alumni.fact_strategy_relation.strategy_relation_active_indicator%type
+  , primary_prospect_ind dm_alumni.fact_strategy_relation.strategy_relation_is_primary_prospect%type
+  , donor_id dm_alumni.fact_strategy_relation.constituent_donor_id%type
+  , strategy_relation_start_date dm_alumni.fact_strategy_relation.strategy_relation_start_date%type
+  , strategy_relation_end_date dm_alumni.fact_strategy_relation.strategy_relation_end_date%type
+  , etl_update_date dm_alumni.fact_strategy_relation.etl_update_date%type
+);
+
+--------------------------------------
 Type rec_contact_report Is Record (
   contact_report_salesforce_id stg_alumni.ucinn_ascendv2__contact_report__c.id%type
   , contact_report_record_id stg_alumni.ucinn_ascendv2__contact_report__c.name%type
@@ -557,6 +570,7 @@ Type service_indicators Is Table Of rec_service_indicators;
 Type assignments Is Table Of rec_assignment;
 Type proposals Is Table Of rec_proposal;
 Type strategy Is Table Of rec_strategy;
+Type strategy_relation Is Table Of rec_strategy_relation;
 Type contact_report Is Table Of rec_contact_report;
 Type contact_report_relation Is Table Of rec_contact_report_relation;
 Type fundraiser_contact_report_relation Is Table Of rec_fundraiser_contact_report_relation;
@@ -621,6 +635,9 @@ Function tbl_proposals
 
 Function tbl_strategy
   Return strategy Pipelined;
+
+Function tbl_strategy_relation
+  Return strategy_relation Pipelined;
 
 Function tbl_contact_report
   Return contact_report Pipelined;
@@ -1547,6 +1564,28 @@ Cursor c_strategy Is
 ;
 
 --------------------------------------
+Cursor c_strategy_relation Is
+  Select
+    fsr.strategy_relation_salesforce_id
+    , fsr.strategy_relation_record_id
+    , fsr.strategy_record_id
+    , fsr.strategy_relation_active_indicator
+    , fsr.strategy_relation_is_primary_prospect
+    , Case
+        When fsr.constituent_donor_id <> '-'
+          Then fsr.constituent_donor_id
+        When fsr.organization_donor_id <> '-'
+          Then fsr.organization_donor_id
+        Else NULL
+        End
+      As donor_id
+    , fsr.strategy_relation_start_date
+    , fsr.strategy_relation_end_date
+    , fsr.etl_update_date
+  From dm_alumni.fact_strategy_relation fsr
+;
+
+--------------------------------------
 Cursor c_contact_report Is
   Select
     cr.id As contact_report_salesforce_id
@@ -1998,6 +2037,22 @@ Function tbl_strategy
     Close c_strategy;
     For i in 1..(st.count) Loop
       Pipe row(st(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_strategy_relation
+  Return strategy_relation Pipelined As
+    -- Declarations
+    sr strategy_relation;
+
+  Begin
+    Open c_strategy_relation;
+      Fetch c_strategy_relation Bulk Collect Into sr;
+    Close c_strategy_relation;
+    For i in 1..(sr.count) Loop
+      Pipe row(sr(i));
     End Loop;
     Return;
   End;
