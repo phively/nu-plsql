@@ -125,6 +125,8 @@ from entity
 left join d on d.donor_id = entity.donor_id
 --- Made any gift to Kellogg
 left join give on give.household_primary_donor_id = entity.donor_id
+---- spouses
+left join give give2 on give2.household_spouse_donor_id = entity.donor_id
 --- Campaign Committee Members
 left join ccm on ccm.constituent_donor_id = entity.donor_id 
 --- Trustee
@@ -132,6 +134,7 @@ left join trustee on trustee.donor_id = entity.donor_id
 where 
 d.donor_id is not null or 
 give.household_primary_donor_id is not null or 
+give2.household_spouse_donor_id is not null or  
 ccm.constituent_donor_id is not null or 
 trustee.donor_id is not null),
 
@@ -504,10 +507,10 @@ and  c.ucinn_ascendv2__start_date__c  = to_date ('09/01/2021', 'mm/dd/yyyy')),
 
 lifetime as 
 (Select m.donor_id,
-                           m.household_id_ksm,
-                           m.nu_lifetime_ngc,
-                           m.nu_lifetime_ngc_individual,
-                           m.nu_lifetime_ngc_with_spouse
+m.household_id_ksm,
+m.nu_lifetime_ngc,
+m.nu_lifetime_ngc_individual,
+m.nu_lifetime_ngc_with_spouse
 From mv_lifetime_giving m),
 
 --- strategy Relation 
@@ -731,7 +734,6 @@ left join dvc on dvc.cr_relation_donor_id = e.donor_id
 left join kprop on kprop.donor_id = e.donor_id
 --- strategy relation
 left join strat_relation str on str.ucinn_ascendv2__donor_id__c = e.donor_id
---- householding strategy ID
 ---left join strategy_id_concat on strategy_id_concat.donor_id = e.donor_id
 left join final_strategy_id on final_strategy_id.donor_id = e.donor_id
  
