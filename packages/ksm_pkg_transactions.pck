@@ -196,7 +196,7 @@ Cursor c_matches Is
         As matching_payment_gift_receipt
       , opp.etl_update_date
     From opp
-    Inner Join table(dw_pkg_base.tbl_designation) des
+    Left Join table(dw_pkg_base.tbl_designation) des
       On opp.ucinn_ascendv2__designation__c = des.designation_salesforce_id
     Inner Join stg_alumni.ucinn_ascendv2__payment__c pay
       On pay.ucinn_ascendv2__opportunity__c = opp.id
@@ -230,7 +230,7 @@ Cursor c_matches Is
         As matching_payment_gift_receipt
       , pay.etl_update_date
     From opp
-    Inner Join table(dw_pkg_base.tbl_designation) des
+    Left Join table(dw_pkg_base.tbl_designation) des
       On opp.ucinn_ascendv2__designation__c = des.designation_salesforce_id
     Inner Join stg_alumni.ucinn_ascendv2__matching_gift_origination__c mgo
       On opp.id = mgo.ucinn_ascendv2__opportunity__c
