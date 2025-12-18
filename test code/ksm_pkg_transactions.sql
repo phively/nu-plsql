@@ -57,6 +57,7 @@ With
 test_cases As (
   Select 'MN3037385' As mg_opp_id, 'Check no ThirdParty' As explanation From DUAL
   Union Select 'MN3000513', 'Is legacy receipt no RN' From DUAL
+  Union Select 'MN3043110', 'Check row populates' From DUAL
 )
 
 Select
