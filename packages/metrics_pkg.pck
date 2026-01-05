@@ -3,11 +3,11 @@ Create Or Replace Package metrics_pkg Is
 /*************************************************************************
 Author  : PBH634
 Created : 2/13/2020 11:19:42 AM
+  Initial CatConnect update 11/20/2025
 Purpose : Consolidated gift officer metrics definitions to allow audit
-information to be easily pulled.
-
-Adapted from rpt_pbh634.v_mgo_activity_monthly and
-advance_nu.nu_gft_v_officer_metrics.
+  information to be easily pulled. Adapted from rpt_pbh634.v_mgo_activity_monthly
+  and advance_nu.nu_gft_v_officer_metrics.
+Dependencies: ksm_pkg_proposals (mv_proposals), ksm_pkg_contact_reports (mv_contact_reports)
 *************************************************************************/
 
 /*************************************************************************
@@ -25,82 +25,130 @@ mg_funded_count Constant number := 98E3; -- As of 2018-03-23. Minimum $ to count
 Public type declarations
 *************************************************************************/
 
-Type proposals_data Is Record (
-  proposal_id proposal.proposal_id%type
-  , assignment_id_number assignment.assignment_id_number%type
-  , assignment_type assignment.assignment_type%type
-  , assignment_active_ind assignment.active_ind%type
-  , proposal_active_ind proposal.active_ind%type
-  , proposal_type proposal.proposal_type%type
-  , outright_gift_proposal varchar2(1)
-  , ask_amt proposal.ask_amt%type
-  , granted_amt proposal.granted_amt%type
-  , proposal_status_code proposal.proposal_status_code%type
-  , initial_contribution_date proposal.initial_contribution_date%type
-  , proposal_stop_date proposal.stop_date%type
-  , assignment_stop_date assignment.stop_date%type
-  , proposalmanagercount number
+--------------------------------------
+Type rec_proposals_data Is Record (
+  proposal_record_id mv_proposals.proposal_record_id%type
+  , historical_pm_user_id mv_proposals.historical_pm_user_id%type
+  , historical_pm_name mv_proposals.historical_pm_name%type
+  , historical_pm_role mv_proposals.historical_pm_role%type
+  , historical_pm_business_unit mv_proposals.historical_pm_business_unit%type
+  , ksm_flag mv_proposals.ksm_flag%type
+  , historical_pm_is_active mv_proposals.historical_pm_is_active%type
+  , proposal_active_indicator mv_proposals.proposal_active_indicator%type
+  , proposal_type mv_proposals.proposal_type%type
+  , standard_proposal_flag varchar2(1)
+  , proposal_submitted_amount mv_proposals.proposal_submitted_amount%type
+  , proposal_funded_amount mv_proposals.proposal_funded_amount%type
+  , proposal_stage mv_proposals.proposal_stage%type
+  , proposal_created_date mv_proposals.proposal_created_date%type
+  , proposal_submitted_date mv_proposals.proposal_submitted_date%type
+  , proposal_close_date mv_proposals.proposal_close_date%type
+  , cal_year integer
+  , cal_month integer
+  , fiscal_year integer
+  , fiscal_quarter integer
+  , perf_year integer
+  , perf_quarter integer
 );
 
-Type proposal_dates Is Record (
-  proposal_id proposal.proposal_id%type
-  , date_of_record date
+--------------------------------------
+Type rec_goals_data Is Record (
+  work_plan_salesforce_id stg_alumni.ucinn_ascendv2__work_plan__c.id%type
+  , work_plan_name stg_alumni.ucinn_ascendv2__work_plan__c.name%type
+  , gift_officer_user_salesforce_id stg_alumni.ucinn_ascendv2__work_plan__c.ap_reporting_manager__c%type
+  , gift_officer_user_name stg_alumni.user_tbl.name%type
+  , gift_officer_type stg_alumni.ucinn_ascendv2__work_plan__c.ap_gift_officer_type__c%type
+  , gift_officer_role stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__role__c%type
+  , gift_officer_status stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__status__c%type
+  , metric_performance_year stg_alumni.ucinn_ascendv2__work_plan__c.ap_metric_year__c%type
+  , metric_effective_date stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__effective_date__c%type
+  , mg_commitments_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_major_gifts_commitments__c%type
+  , mg_dollars_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_major_gifts_dollars_raised__c%type
+  , visits_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_visits__c%type
+  , qualifications_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_total_qualification_visits__c%type
+  , contacts_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_non_visit_contacts__c%type
+  , proposal_assist_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_proposal_assist_of_commitments__c%type
+  , proposal_assist_dollars_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_proposal_assist_raised__c%type
+  , etl_update_date stg_alumni.ucinn_ascendv2__work_plan__c.etl_update_date%type
 );
 
-Type funded_credit Is Record (
-  proposal_id proposal.proposal_id%type
-  , assignment_id_number assignment.assignment_id_number%type
+--------------------------------------
+Type rec_funded_credit Is Record (
+  proposal_record_id mv_proposals.proposal_record_id%type
+  , historical_pm_user_id mv_proposals.historical_pm_user_id%type
+  , historical_pm_name mv_proposals.historical_pm_name%type
+  , historical_pm_role mv_proposals.historical_pm_role%type
+  , historical_pm_business_unit mv_proposals.historical_pm_business_unit%type
+  , ksm_flag mv_proposals.ksm_flag%type
 );
 
-Type funded_dollars Is Record (
-  proposal_id proposal.proposal_id%type
-  , assignment_id_number assignment.assignment_id_number%type
-  , funded_credit_flag varchar2(1)
-  , granted_amt number
+--------------------------------------
+Type rec_funded_dollars Is Record (
+  proposal_record_id mv_proposals.proposal_record_id%type
+  , historical_pm_user_id mv_proposals.historical_pm_user_id%type
+  , historical_pm_name mv_proposals.historical_pm_name%type
+  , historical_pm_role mv_proposals.historical_pm_role%type
+  , historical_pm_business_unit mv_proposals.historical_pm_business_unit%type
+  , ksm_flag mv_proposals.ksm_flag%type
+  , rec_funded_credit_flag varchar2(1)
+  , proposal_funded_amount number
 );
 
-Type contact_report Is Record (
-  author_id_number contact_rpt_credit.id_number%type
-  , report_id contact_rpt_credit.report_id%type
-  , contact_purpose_code char(1)
-  , cal_year number
-  , fiscal_year number
-  , cal_month number
-  , fiscal_qtr number
-  , perf_quarter number
-  , perf_year number
+--------------------------------------
+Type rec_ask_assist_credit Is Record (
+  proposal_record_id mv_proposals.proposal_record_id%type
+  , historical_pm_user_id mv_proposals.historical_pm_user_id%type
+  , historical_pm_name mv_proposals.historical_pm_name%type
+  , historical_pm_role mv_proposals.historical_pm_role%type
+  , historical_pm_business_unit mv_proposals.historical_pm_business_unit%type
+  , ksm_flag mv_proposals.ksm_flag%type
+  , proposal_submitted_date mv_proposals.proposal_submitted_date%type
+  , ask_or_close_date mv_proposals.proposal_submitted_date%type
 );
 
-Type contact_count Is Record (
-  id_number contact_rpt_credit.id_number%type
-  , report_id contact_rpt_credit.report_id%type
+--------------------------------------
+Type rec_contact_report Is Record (
+  contact_report_salesforce_id mv_contact_reports.contact_report_salesforce_id%type
+  , contact_report_record_id mv_contact_reports.contact_report_record_id%type
+  , cr_credit_salesforce_id mv_contact_reports.cr_credit_salesforce_id%type
+  , cr_credit_name mv_contact_reports.cr_credit_name%type
+  , cr_relation_salesforce_id mv_contact_reports.cr_relation_salesforce_id%type
+  , cr_relation_donor_id mv_contact_reports.cr_relation_donor_id%type
+  , cr_relation_sort_name mv_contact_reports.cr_relation_sort_name%type
+  , contact_report_purpose mv_contact_reports.contact_report_purpose%type
+  , cal_year integer
+  , cal_month integer
+  , fiscal_year integer
+  , fiscal_qtr integer
+  , perf_quarter integer
+  , perf_year integer
 );
 
-Type ask_assist_credit Is Record (
-  proposal_id proposal.proposal_id%type
-  , assignment_id_number assignment.assignment_id_number%type
-  , initial_contribution_date date
-  , ask_or_stop_dt date
+--------------------------------------
+Type rec_contact_count Is Record (
+  cr_credit_salesforce_id mv_contact_reports.cr_credit_salesforce_id%type
+  , cr_credit_name mv_contact_reports.cr_credit_name%type
+  , contact_report_record_id mv_contact_reports.contact_report_record_id%type
 );
 
 /*************************************************************************
 Public table declarations
 *************************************************************************/
 
-Type t_proposals_data Is Table Of proposals_data;
-Type t_proposal_dates Is Table Of proposal_dates;
-Type t_funded_credit Is Table Of funded_credit;
-Type t_funded_dollars Is Table Of funded_dollars;
-Type t_contact_report Is Table Of contact_report;
-Type t_contact_count Is Table Of contact_count;
-Type t_ask_assist_credit Is Table Of ask_assist_credit;
+Type proposals_data Is Table Of rec_proposals_data;
+Type goals_data Is Table Of rec_goals_data;
+Type funded_credit Is Table Of rec_funded_credit;
+Type funded_dollars Is Table Of rec_funded_dollars;
+Type ask_assist_credit Is Table Of rec_ask_assist_credit;
+Type contact_report Is Table Of rec_contact_report;
+Type contact_count Is Table Of rec_contact_count;
 
 /*************************************************************************
 Public function declarations
 *************************************************************************/
 
-/* Function to return public/private constants */
-Function get_constant(
+-- Function to return public/private constants
+Function get_numeric_constant(
   const_name In varchar2 -- Name of constant to retrieve
 ) Return number Deterministic;
 
@@ -131,44 +179,45 @@ From table(rpt_pbh634.ksm_pkg_tmp.tbl_current_calendar) cal;
 
 -- Standardized proposal data table function
 Function tbl_universal_proposals_data
-  Return t_proposals_data Pipelined;
-  
-Function tbl_proposal_dates
-  Return t_proposal_dates Pipelined;
+  Return proposals_data Pipelined;
+
+-- Standardized goals data table function
+Function tbl_goals_data
+  Return goals_data Pipelined;
   
 -- Table functions for each of the MGO metrics
 Function tbl_funded_count(
     ask_amt number default metrics_pkg.mg_ask_amt
     , funded_count number default metrics_pkg.mg_funded_count
   )
-  Return t_funded_credit Pipelined;
+  Return funded_credit Pipelined;
 
 Function tbl_funded_dollars(
     ask_amt number default metrics_pkg.mg_ask_amt
     , granted_amt number default metrics_pkg.mg_granted_amt
   )
-  Return t_funded_dollars Pipelined;
+  Return funded_dollars Pipelined;
 
 Function tbl_asked_count(
     ask_amt number default metrics_pkg.mg_ask_amt
   )
-  Return t_ask_assist_credit Pipelined;
+  Return ask_assist_credit Pipelined;
 
 Function tbl_asked_count_ksm(
     ask_amt_ksm_plg number default metrics_pkg.mg_ask_amt_ksm_plg
     , ask_amt_ksm_outright number default metrics_pkg.mg_ask_amt_ksm_outright
   )
-  Return t_ask_assist_credit Pipelined;
+  Return ask_assist_credit Pipelined;
 
 Function tbl_contact_reports
-  Return t_contact_report Pipelined;
+  Return contact_report Pipelined;
 
 Function tbl_contact_count
-  Return t_contact_count Pipelined;
-
+  Return contact_count Pipelined;
+/*
 Function tbl_assist_count
-  Return t_ask_assist_credit Pipelined;
-
+  Return ask_assist_credit Pipelined;
+*/
 End metrics_pkg;
 /
 Create Or Replace Package Body metrics_pkg Is
@@ -177,354 +226,255 @@ Create Or Replace Package Body metrics_pkg Is
 Private cursor tables -- data definitions; update indicated sections as needed
 *************************************************************************/
 
--- N.B. all line numbers reference the March 2018 version of advance_nu.nu_gft_v_officer_metrics.
-
--- Universal proposals data, adapted from v_mgo_activity_monthly
+--------------------------------------
+-- Universal proposals data, originally adapted from v_mgo_activity_monthly
 -- All fields needed to recreate proposals subqueries appearing throughout the original file
 Cursor c_universal_proposals_data Is
-  Select p.proposal_id
-    , a.assignment_id_number
-    , a.assignment_type
-    , a.active_ind As assignment_active_ind
-    , p.active_ind As proposal_active_ind
+  Select
+    p.proposal_record_id
+    , p.historical_pm_user_id
+    , p.historical_pm_name
+    , p.historical_pm_role
+    , p.historical_pm_business_unit
+    , p.ksm_flag
+    , p.historical_pm_is_active
+    , p.proposal_active_indicator
     , p.proposal_type
-    , Case When p.proposal_type = '01' Then 'Y' End
-      As outright_gift_proposal
-    , p.ask_amt
-    , p.granted_amt
-    , p.proposal_status_code
-    , p.initial_contribution_date
-    , p.stop_date As proposal_stop_date
-    , a.stop_date As assignment_stop_date
-    -- Count only proposal managers, not proposal assists
-    , count(Case When a.assignment_type = 'PA' Then a.assignment_id_number Else NULL End)
-        Over(Partition By a.proposal_id)
-      As proposalManagerCount
-  From proposal p
-  Inner Join assignment a
-    On a.proposal_id = p.proposal_id
-  Where a.assignment_type In ('PA', 'AS') -- Proposal Manager, Proposal Assist
-    And assignment_id_number != ' '
-    And p.proposal_status_code In ('C', '5', '7', '8') -- submitted/approved/declined/funded
-  ;
+    , Case When p.proposal_type = 'Standard' Then 'Y' End
+      As standard_proposal_flag
+    , p.proposal_submitted_amount
+    , p.proposal_funded_amount
+    , p.proposal_stage
+    , p.proposal_created_date
+    , p.proposal_submitted_date
+    , p.proposal_close_date
+    , extract(year From p.proposal_close_date) As cal_year
+    , extract(month From p.proposal_close_date) As cal_month
+    , ksm_pkg_calendar.get_fiscal_year(p.proposal_close_date) As fiscal_year
+    , ksm_pkg_calendar.get_quarter(p.proposal_close_date, 'fisc') As fiscal_quarter
+    , ksm_pkg_calendar.get_performance_year(p.proposal_close_date) As perf_year
+    , ksm_pkg_calendar.get_quarter(p.proposal_close_date, 'perf') As perf_quarter
+  From mv_proposals p
+  Where p.historical_pm_name Is Not Null
+    And p.proposal_stage In (
+      'Submitted', 'Approved by Donor', 'Declined', 'Funded'
+    )
+;
 
--- Choose a proposal date based on date of record
--- Refactor all subqueries in lines 78-124
--- 7 clones, at 205-251, 332-378, 459-505, 855-901, 991-1037, 1127-1173, 1263-1309
-Cursor c_proposal_dates Is
-  With
-  proposal_dates_data As (
-    -- In determining which date to use, evaluate outright gifts and pledges first and then if necessary
-    -- use the date from a pledge payment.
-      Select proposal_id
-        , 1 As rank
-        , min(prim_gift_date_of_record) As date_of_record -- gifts
-      From primary_gift
-      Where proposal_id Is Not Null
-        And proposal_id != 0
-        And pledge_payment_ind = 'N'
-      Group By proposal_id
-    Union
-      Select proposal_id
-        , 2 As rank
-        , min(prim_gift_date_of_record) As date_of_record -- pledge payments
-      From primary_gift
-      Where proposal_id Is Not Null
-        And proposal_id != 0
-        And pledge_payment_ind = 'Y'
-      Group By proposal_id
-    Union
-      Select proposal_id
-          , 1 As rank
-          , min(prim_pledge_date_of_record) As date_of_record -- pledges
-        From primary_pledge
-        Where proposal_id Is Not Null
-          And proposal_id != 0
-        Group By proposal_id
-  )
-  Select proposal_id
-    , min(date_of_record) keep(dense_rank First Order By rank Asc)
-      As date_of_record
-  From proposal_dates_data
-  Group By proposal_id
-  ;
+--------------------------------------
+-- Combined goals data
+Cursor c_goals_data Is
+  Select
+    wp.work_plan_salesforce_id
+    , wp.work_plan_name
+    , wp.gift_officer_user_salesforce_id
+    , usr.user_name
+      As gift_officer_user_name
+    , wp.gift_officer_type
+    , Case
+        When wp.gift_officer_role Is Not Null
+          Then wp.gift_officer_role
+        Else usr.user_title
+        End
+      As gift_officer_role
+    , wp.gift_officer_status
+    , wp.metric_performance_year
+    , wp.metric_effective_date
+    , wp.mg_commitments_goal
+    , wp.mg_dollars_goal
+    , wp.visits_goal
+    , wp.qualifications_goal
+    , wp.contacts_goal
+    , wp.proposal_assist_goal
+    , wp.proposal_assist_dollars_goal
+    , wp.etl_update_date
+  From table(dw_pkg_base.tbl_work_plan) wp
+  Inner Join table(dw_pkg_base.tbl_users) usr
+    On usr.user_salesforce_id = wp.gift_officer_user_salesforce_id
+;
 
--- Refactor goal 1 subqueries in lines 11-77
--- 3 clones, at 138-204, 265-331, 392-458
+--------------------------------------
 -- Credit for asked & funded proposals
 -- Count for funded proposal goal 1
 Cursor c_funded_count(
-      ask_amt_in In number
-      , funded_count_in In number
-    ) Is
+    ask_amt_in In number
+    , funded_count_in In number
+  ) Is
+    
   With
+  
   proposals_funded_count As (
     -- Must be proposal manager, funded status, and above the ask & funded credit thresholds
     Select *
-    From table(tbl_universal_proposals_data)
-    Where assignment_type = 'PA' -- Proposal Manager
-      And ask_amt >= ask_amt_in
-      And granted_amt >= funded_count_in
-      And proposal_status_code = '7' -- Only funded
+    From table(metrics_pkg.tbl_universal_proposals_data) upd
+    Where historical_pm_role = 'Proposal Manager'
+      And proposal_submitted_amount >= ask_amt_in
+      And proposal_funded_amount >= funded_count_in
+      And proposal_stage = 'Funded'
   )
-  , funded_count As (
-      -- 1st priority - Look across all proposal managers on a proposal (inactive OR active).
-      -- If there is ONE proposal manager only, credit that for that proposal ID.
-      Select proposal_id
-        , assignment_id_number
-        , 1 As info_rank
-      From proposals_funded_count
-      Where proposalManagerCount = 1 -- only one proposal manager/ credit that PA
-    Union
-      -- 2nd priority - For #2 if there is more than one active proposal managers on a proposal credit BOTH and exit the process.
-      Select proposal_id
-        , assignment_id_number
-        , 2 As info_rank
-      From proposals_funded_count
-      Where assignment_active_ind = 'Y'
-    Union
-      -- 3rd priority - For #3, Credit all inactive proposal managers where proposal stop date and assignment stop date within 24 hours
-      Select proposal_id
-        , assignment_id_number
-        , 3 As info_rank
-      From proposals_funded_count
-      Where proposal_active_ind = 'N' -- Inactives on the proposal.
-        And proposal_stop_date - assignment_stop_date <= 1
-    Order By info_rank
-  )
-  Select Distinct proposal_id
-    , assignment_id_number
-  From funded_count
-  ;
   
--- Refactor goal 3 subqueries in lines 848-982
--- 3 clones, at 984-1170, 1120-1254, 1256-1390
+  Select Distinct
+    proposal_record_id
+    , historical_pm_user_id
+    , historical_pm_name
+    , historical_pm_role
+    , historical_pm_business_unit
+    , ksm_flag
+  From proposals_funded_count
+;
+
+--------------------------------------
 -- Gift credit for funded proposal goal 3
-Cursor c_funded_dollars(
+Cursor c_rec_funded_dollars(
     ask_amt_in In number
     , granted_amt_in In number
   ) Is
+  
   With
+  
   proposals_funded_cr As (
     Select
       upd.*
       -- Must be proposal manager, funded status, and above the ask & granted amount thresholds
       , Case
-          When ask_amt >= ask_amt_in
-            And granted_amt >= granted_amt_in
+          When proposal_submitted_amount >= ask_amt_in
+            And proposal_funded_amount >= granted_amt_in
             Then 'Y'
           Else 'N'
         End
-        As funded_credit_flag
-    From table(tbl_universal_proposals_data) upd
-    Where assignment_type = 'PA' -- Proposal Manager
-      And granted_amt >= 0
-      And proposal_status_code = '7' -- Only funded
+        As rec_funded_credit_flag
+    From table(metrics_pkg.tbl_universal_proposals_data) upd
+    Where historical_pm_role = 'Proposal Manager'
+      And proposal_funded_amount > 0
+      And proposal_stage = 'Funded'
   )
-  , funded_credit As (
-      -- 1st priority - Look across all proposal managers on a proposal (inactive OR active).
-      -- If there is ONE proposal manager only, credit that for that proposal ID.
-      Select proposal_id
-        , assignment_id_number
-        , granted_amt
-        , funded_credit_flag
-        , 1 As info_rank
-      From proposals_funded_cr
-      Where proposalManagerCount = 1 -- only one proposal manager/ credit that PA
-    Union
-      -- 2nd priority - For #2 if there is more than one active proposal managers on a proposal credit BOTH and exit the process.
-      Select proposal_id
-         , assignment_id_number
-         , granted_amt
-         , funded_credit_flag
-         , 2 As info_rank
-      From proposals_funded_cr
-      Where assignment_active_ind = 'Y'
-    Union
-      -- 3rd priority - For #3, Credit all inactive proposal managers where proposal stop date and assignment stop date within 24 hours
-      Select proposal_id
-         , assignment_id_number
-         , granted_amt
-         , funded_credit_flag
-         , 3 As info_rank
-      From proposals_funded_cr
-      Where proposal_active_ind = 'N' -- Inactives on the proposal.
-        And proposal_stop_date - assignment_stop_date <= 1
-    Order By info_rank
-  )
-  Select proposal_id
-    , assignment_id_number
-    , max(funded_credit_flag)
-      As funded_credit_flag
-    , max(granted_amt) keep(dense_rank First Order By info_rank Asc)
-      As granted_amt
-  From funded_credit
-  Group By proposal_id
-    , assignment_id_number
-  ;
   
--- Refactor goal 2 subqueries in lines 518-590
--- 3 clones, at 602-674, 686-758, 769-841
+  Select Distinct
+    proposal_record_id
+    , historical_pm_user_id
+    , historical_pm_name
+    , historical_pm_role
+    , historical_pm_business_unit
+    , ksm_flag
+    , rec_funded_credit_flag
+    , proposal_funded_amount
+  From proposals_funded_cr
+;
+
+--------------------------------------
 -- Count for asked proposal goal 2
 Cursor c_asked_count(
     ask_amt_in In number
   ) Is
+  
   -- Must be proposal manager and above the ask credit threshold
   With
+  
   proposals_asked_count As (
     Select *
-    From table(tbl_universal_proposals_data)
-    Where assignment_type = 'PA' -- Proposal Manager
-      And ask_amt >= ask_amt_in
+    From table(metrics_pkg.tbl_universal_proposals_data)
+    Where historical_pm_role = 'Proposal Manager'
+      And proposal_submitted_amount >= ask_amt_in
   )
-  , asked_count As (
-      -- 1st priority - Look across all proposal managers on a proposal (inactive OR active).
-      -- If there is ONE proposal manager only, credit that for that proposal ID.
-      Select proposal_id
-        , assignment_id_number
-        , initial_contribution_date
-        , proposal_stop_date
-        , 1 As info_rank
-      From proposals_asked_count
-      Where proposalManagerCount = 1 -- only one proposal manager/ credit that PA 
-    Union
-      -- 2nd priority - For #2 if there is more than one active proposal managers on a proposal credit BOTH and exit the process.
-      Select proposal_id
-        , assignment_id_number
-        , initial_contribution_date
-        , proposal_stop_date
-        , 2 As info_rank
-      From proposals_asked_count
-      Where assignment_active_ind = 'Y'
-    Union
-      -- 3rd priority - For #3, Credit all inactive proposal managers where proposal stop date and assignment stop date within 24 hours
-      Select proposal_id
-        , assignment_id_number
-        , initial_contribution_date
-        , proposal_stop_date
-        , 3 As info_rank
-      From proposals_asked_count
-      Where proposal_active_ind = 'N' -- Inactives on the proposal.
-        And proposal_stop_date - assignment_stop_date <= 1
-    Order By info_rank
-  )
-  Select proposal_id
-    , assignment_id_number
-    , min(initial_contribution_date) keep(dense_rank First Order By info_rank Asc)  -- initial_contribution_date is 'ask_date'
-      As initial_contribution_date
-    -- Replace null initial_contribution_date with proposal_stop_date
-    , min(nvl(initial_contribution_date, proposal_stop_date)) keep(dense_rank First Order By info_rank Asc)
-      As ask_or_stop_dt
-  From asked_count
-  Group By proposal_id
-    , assignment_id_number
-  ;
+  
+  Select
+    proposal_record_id
+    , historical_pm_user_id
+    , historical_pm_name
+    , historical_pm_role
+    , historical_pm_business_unit
+    , ksm_flag
+    , proposal_submitted_date
+    -- Replace null submitted date with close date
+    , nvl(proposal_submitted_date, proposal_close_date)
+      As ask_or_close_date
+  From proposals_asked_count
+;
 
+--------------------------------------
 -- KSM asked count: asks must be for an outright gift >= mg_ask_amt_ksm_outright
 -- or for a pledge >= mg_ask_amt_ksm_plg
 Cursor c_asked_count_ksm(
     ask_amt_ksm_plg_in In number
     , ask_amt_ksm_outright_in In number
   ) Is
+  
   -- Must be proposal manager and above the ask credit threshold
   With
+  
   proposals_asked_count As (
     Select *
-    From table(tbl_universal_proposals_data)
-    Where assignment_type = 'PA' -- Proposal Manager
+    From table(metrics_pkg.tbl_universal_proposals_data)
+    Where historical_pm_role = 'Proposal Manager'
       And (
         -- Any gift type above overall threshold
-        ask_amt >= ask_amt_ksm_plg_in
+        proposal_submitted_amount >= 250E3--ask_amt_ksm_plg_in
         -- Outright asks above outright threshold
         Or (
-          ask_amt >= ask_amt_ksm_outright_in
-          And outright_gift_proposal = 'Y'
+          proposal_submitted_amount >= 100E3--ask_amt_ksm_outright_in
+          And standard_proposal_flag = 'Y'
         )
       )
   )
-  , asked_count As (
-      -- 1st priority - Look across all proposal managers on a proposal (inactive OR active).
-      -- If there is ONE proposal manager only, credit that for that proposal ID.
-      Select proposal_id
-        , assignment_id_number
-        , initial_contribution_date
-        , proposal_stop_date
-        , 1 As info_rank
-      From proposals_asked_count
-      Where proposalManagerCount = 1 -- only one proposal manager/ credit that PA 
-    Union
-      -- 2nd priority - For #2 if there is more than one active proposal managers on a proposal credit BOTH and exit the process.
-      Select proposal_id
-        , assignment_id_number
-        , initial_contribution_date
-        , proposal_stop_date
-        , 2 As info_rank
-      From proposals_asked_count
-      Where assignment_active_ind = 'Y'
-    Union
-      -- 3rd priority - For #3, Credit all inactive proposal managers where proposal stop date and assignment stop date within 24 hours
-      Select proposal_id
-        , assignment_id_number
-        , initial_contribution_date
-        , proposal_stop_date
-        , 3 As info_rank
-      From proposals_asked_count
-      Where proposal_active_ind = 'N' -- Inactives on the proposal.
-        And proposal_stop_date - assignment_stop_date <= 1
-    Order By info_rank
-  )
-  Select proposal_id
-    , assignment_id_number
-    , min(initial_contribution_date) keep(dense_rank First Order By info_rank Asc)  -- initial_contribution_date is 'ask_date'
-      As initial_contribution_date
-    -- Replace null initial_contribution_date with proposal_stop_date
-    , min(nvl(initial_contribution_date, proposal_stop_date)) keep(dense_rank First Order By info_rank Asc)
-      As ask_or_stop_dt
-  From asked_count
-  Group By proposal_id
-    , assignment_id_number
-  ;
+  
+  Select
+    proposal_record_id
+    , historical_pm_user_id
+    , historical_pm_name
+    , historical_pm_role
+    , historical_pm_business_unit
+    , ksm_flag
+    , proposal_submitted_date
+    -- Replace null submitted date with close date
+    , nvl(proposal_submitted_date, proposal_close_date)
+      As ask_or_close_date
+  From proposals_asked_count
+;
 
+--------------------------------------
 -- Contact report data
 -- Fields to recreate contact report calculations used in goals 4 and 5
 -- Corresponds to subqueries in lines 1392-1448
 Cursor c_contact_reports Is
-  Select Distinct author_id_number
-    , report_id
-    , contact_purpose_code
-    , extract(year From contact_date)
+  Select Distinct
+    contact_report_salesforce_id
+    , contact_report_record_id
+    , cr_credit_salesforce_id
+    , cr_credit_name
+    , cr_relation_salesforce_id
+    , cr_relation_donor_id
+    , cr_relation_sort_name
+    , contact_report_purpose
+    , extract(year From contact_report_date)
       As cal_year
-    , rpt_pbh634.ksm_pkg_calendar.get_fiscal_year(contact_date)
-      As fiscal_year
-    , extract(month From contact_date)
+    , extract(month From contact_report_date)
       As cal_month
-    , rpt_pbh634.ksm_pkg_calendar.get_quarter(contact_date, 'fisc')
+    , ksm_pkg_calendar.get_fiscal_year(contact_report_date)
+      As fiscal_year
+    , ksm_pkg_calendar.get_quarter(contact_report_date, 'fisc')
       As fiscal_qtr
-    , rpt_pbh634.ksm_pkg_calendar.get_quarter(contact_date, 'perf')
+    , ksm_pkg_calendar.get_quarter(contact_report_date, 'perf')
       As perf_quarter
-    , rpt_pbh634.ksm_pkg_calendar.get_performance_year(contact_date)
+    , ksm_pkg_calendar.get_performance_year(contact_report_date)
       As perf_year -- performance year
-  From contact_report
-  Where contact_type = 'V' -- Only count visits
-  ;
-  
+  From mv_contact_reports cr
+  Where contact_report_visit_flag = 'Y' -- Only count visits
+    And cr_credit_type = 'Staff Credit'
+;
+
+--------------------------------------  
 -- Deduped contact report credit and author IDs
 Cursor c_contact_count Is
-    Select
-      id_number
-      , report_id
-    From contact_rpt_credit
-    Where contact_credit_type = '1' -- Primary credit only
-  Union
-    Select
-      author_id_number
-      , report_id
-    From table(tbl_contact_reports)
-  ;
+  Select Distinct
+    cr_credit_salesforce_id
+    , cr_credit_name
+    , contact_report_record_id
+  From table(metrics_pkg.tbl_contact_reports)
+;
 
+/*--------------------------------------
 -- Refactor goal 6 subqueries in lines 1456-1489
--- 3 clones, at 1501-1534, 1546-1579, 1591-1624
-Cursor c_assist_count Is
+-- 3 clones, at 1501-1534, 1546-1579, 1591-1624Cursor c_assist_count Is
   With
   -- Count for proposal assists goal 6
   proposal_assists_count As (
@@ -563,13 +513,369 @@ Cursor c_assist_count Is
   From assist_count
   Group By proposal_id
     , assignment_id_number
-  ;
+;
+*/
+
+--------------------------------------
+-- Gift officer activity aggregated by month
+Cursor c_mgo_activity_monthly Is
+
+  With
+
+  proposal_dates As (
+    Select
+      proposal_record_id
+      , proposal_close_date
+      , cal_year
+      , cal_month
+      , fiscal_year
+      , fiscal_quarter
+      , perf_year
+      , perf_quarter
+    From table(metrics_pkg.tbl_universal_proposals_data)
+  )
+
+  , ksm_cash As (
+    Select
+      gos.donor_id
+      , gos.sort_name
+      , 'KGC' As goal_type
+      , 'KSM Cash' As goal_desc
+      , extract(year From c.credit_date) As cal_year
+      , extract(month From c.credit_date) As cal_month
+      , c.fiscal_year
+      , ksm_pkg_calendar.get_quarter(c.credit_date, 'fisc') As fiscal_quarter
+      , ksm_pkg_calendar.get_performance_year(c.credit_date) As perf_year
+      , ksm_pkg_calendar.get_quarter(c.credit_date, 'perf') As perf_quarter
+      , 0 As fy_goal
+      , 0 As py_goal
+      , c.hard_credit_amount
+    From v_ksm_gifts_cash c
+    Inner Join tbl_ksm_gos gos
+      On gos.user_id = c.historical_credit_user_id
+    Where
+      -- Expendable only
+      c.cash_category = 'Expendable'
+      -- Exclude pledge payments
+      And c.gypm_ind <> 'Y'
+  )
+
+  ----- Main query goal 1, equivalent to lines 4-511 in nu_gft_v_officer_metrics -----
+  Select fcd.historical_pm_user_id
+    , fcd.historical_pm_name
+    , 'MGC' As goal_type
+    , 'MG Closes' As goal_desc
+    , pd.cal_year
+    , pd.cal_month
+    , pd.fiscal_year
+    , pd.fiscal_quarter
+    , pd.perf_year
+    , pd.perf_quarter
+--    , g.goal_1 As fy_goal
+--    , pyg.goal_1 As py_goal
+    , Count(Distinct fcd.proposal_record_id) As progress
+    , Count(Distinct fcd.proposal_record_id) As adjusted_progress
+    , NULL As addl_progress_detail
+  From table(metrics_pkg.tbl_funded_count) fcd
+  Inner Join proposal_dates pd
+    On pd.proposal_record_id = fcd.proposal_record_id
+  -- Fiscal year goals
+--  Left Join goal g
+--    On fcd.assignment_id_number = g.id_number
+--      And g.year = pd.fiscal_year
+  -- Performance year goals
+--  Left Join goal pyg
+--    On fcd.assignment_id_number = pyg.id_number
+--      And pyg.year = pd.perf_year
+  Group By
+    fcd.historical_pm_user_id
+    , fcd.historical_pm_name
+    , pd.cal_year
+    , pd.cal_month
+    , pd.fiscal_year
+    , pd.fiscal_quarter
+    , pd.perf_year
+    , pd.perf_quarter
+--    , g.goal_1
+--    , pyg.goal_1
+  /*Union
+  ----- Main query goal 2, equivalent to lines 512-847 in nu_gft_v_officer_metrics -----
+  Select acr.assignment_id_number As id_number
+    , e.report_name
+    , 'MGS' As goal_type
+    , 'MG Sols' As goal_desc
+    , extract(year From acr.ask_or_stop_dt) As cal_year
+    , extract(month From acr.ask_or_stop_dt) As cal_month
+    , rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(acr.ask_or_stop_dt) As fiscal_year
+    , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'fisc') As fiscal_quarter
+    , rpt_pbh634.ksm_pkg_tmp.get_performance_year(acr.ask_or_stop_dt) As perf_year
+    , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'perf') As perf_quarter
+    , g.goal_2 As fy_goal
+    , pyg.goal_2 As py_goal
+    -- Original definition: count only if ask date is filled in
+    , Count(Distinct Case When acr.initial_contribution_date Is Not Null Then acr.proposal_id End)
+      As progress
+    -- Alternate definition: count if either ask date or stop date is filled in
+    , Count(Distinct acr.proposal_id) As adjusted_progress
+    , NULL As addl_progress_detail
+  From table(rpt_pbh634.metrics_pkg.tbl_asked_count) acr
+  Inner Join entity e On e.id_number = acr.assignment_id_number
+  -- Fiscal year goals
+  Left Join goal g
+    On acr.assignment_id_number = g.id_number
+      And g.year = rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(acr.ask_or_stop_dt)
+  -- Performance year goals
+  Left Join goal pyg
+    On acr.assignment_id_number = pyg.id_number
+      And pyg.year = rpt_pbh634.ksm_pkg_tmp.get_performance_year(acr.ask_or_stop_dt)
+  Group By rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(acr.ask_or_stop_dt)
+    , acr.assignment_id_number
+    , e.report_name
+    , extract(year From acr.ask_or_stop_dt)
+    , extract(month From acr.ask_or_stop_dt)
+    , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'fisc')
+    , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'perf')
+    , rpt_pbh634.ksm_pkg_tmp.get_performance_year(acr.ask_or_stop_dt)
+    , g.goal_2
+    , pyg.goal_2
+  Union
+  ----- KSM supplement - Kellogg asks
+  Select ack.assignment_id_number As id_number
+    , e.report_name
+    , 'KGS' As goal_type
+    , 'KSM Sols' As goal_desc
+    , extract(year From ack.ask_or_stop_dt) As cal_year
+    , extract(month From ack.ask_or_stop_dt) As cal_month
+    , rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(ack.ask_or_stop_dt) As fiscal_year
+    , rpt_pbh634.ksm_pkg_tmp.get_quarter(ack.ask_or_stop_dt, 'fisc') As fiscal_quarter
+    , rpt_pbh634.ksm_pkg_tmp.get_performance_year(ack.ask_or_stop_dt) As perf_year
+    , rpt_pbh634.ksm_pkg_tmp.get_quarter(ack.ask_or_stop_dt, 'perf') As perf_quarter
+    , g.goal_2 As fy_goal
+    , pyg.goal_2 As py_goal
+    -- Original definition: count only if ask date is filled in
+    , Count(Distinct Case When ack.initial_contribution_date Is Not Null Then ack.proposal_id End)
+      As progress
+    -- Alternate definition: count if either ask date or stop date is filled in
+    , Count(Distinct ack.proposal_id) As adjusted_progress
+    , NULL As addl_progress_detail
+  From table(rpt_pbh634.metrics_pkg.tbl_asked_count_ksm) ack
+  Inner Join entity e On e.id_number = ack.assignment_id_number
+  -- Fiscal year goals
+  Left Join goal g
+    On ack.assignment_id_number = g.id_number
+      And g.year = rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(ack.ask_or_stop_dt)
+  -- Performance year goals
+  Left Join goal pyg
+    On ack.assignment_id_number = pyg.id_number
+      And pyg.year = rpt_pbh634.ksm_pkg_tmp.get_performance_year(ack.ask_or_stop_dt)
+  Group By rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(ack.ask_or_stop_dt)
+    , ack.assignment_id_number
+    , e.report_name
+    , extract(year From ack.ask_or_stop_dt)
+    , extract(month From ack.ask_or_stop_dt)
+    , rpt_pbh634.ksm_pkg_tmp.get_quarter(ack.ask_or_stop_dt, 'fisc')
+    , rpt_pbh634.ksm_pkg_tmp.get_quarter(ack.ask_or_stop_dt, 'perf')
+    , rpt_pbh634.ksm_pkg_tmp.get_performance_year(ack.ask_or_stop_dt)
+    , g.goal_2
+    , pyg.goal_2
+  Union
+  ----- KSM supplement - expendable cash from non-pledge payments
+  Select
+    ksm_cash.id_number
+    , ksm_cash.report_name
+    , ksm_cash.goal_type
+    , ksm_cash.goal_desc
+    , ksm_cash.cal_year
+    , ksm_cash.cal_month
+    , ksm_cash.fiscal_year
+    , ksm_cash.fiscal_quarter
+    , ksm_cash.perf_year
+    , ksm_cash.perf_quarter
+    , ksm_cash.fy_goal
+    , ksm_cash.py_goal
+    , trunc(sum(legal_amount), 2) As progress
+    , trunc(sum(legal_amount), 2) As adjusted_progress
+    , trunc(sum(legal_amount), 2) As addl_progress_detail
+  From ksm_cash
+  Group By
+    ksm_cash.id_number
+    , ksm_cash.report_name
+    , ksm_cash.goal_type
+    , ksm_cash.goal_desc
+    , ksm_cash.cal_year
+    , ksm_cash.cal_month
+    , ksm_cash.fiscal_year
+    , ksm_cash.fiscal_quarter
+    , ksm_cash.perf_year
+    , ksm_cash.perf_quarter
+    , ksm_cash.fy_goal
+    , ksm_cash.py_goal
+  Union
+  ----- Main query goal 3, equivalent to lines 848-1391 in nu_gft_v_officer_metrics -----
+  Select fr.assignment_id_number As id_number
+    , e.report_name
+    , 'MGDR' As goal_type
+    , 'MG Dollars Raised' As goal_desc
+    , extract(year From pd.date_of_record) As cal_year
+    , extract(month From pd.date_of_record) As cal_month
+    , rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(pd.date_of_record) As fiscal_year
+    , rpt_pbh634.ksm_pkg_tmp.get_quarter(pd.date_of_record, 'fisc') As fiscal_quarter
+    , rpt_pbh634.ksm_pkg_tmp.get_performance_year(pd.date_of_record) As perf_year
+    , rpt_pbh634.ksm_pkg_tmp.get_quarter(pd.date_of_record, 'perf') As perf_quarter
+    , g.goal_3 As fy_goal
+    , pyg.goal_3 As py_goal
+    , sum(Case When funded_credit_flag = 'Y' Then fr.granted_amt End) As progress
+    , sum(Case When funded_credit_flag = 'Y' Then fr.granted_amt End) As adjusted_progress
+    , sum(fr.granted_amt) As addl_progress_detail
+  From table(rpt_pbh634.metrics_pkg.tbl_funded_dollars) fr
+  Inner Join entity e On e.id_number = fr.assignment_id_number
+  Inner Join proposal_dates pd
+    On pd.proposal_id = fr.proposal_id
+  -- Fiscal year goals
+  Left Join goal g
+    On fr.assignment_id_number = g.id_number
+      And g.year = rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(pd.date_of_record)
+  -- Performance year goals
+  Left Join goal pyg
+    On fr.assignment_id_number = pyg.id_number
+      And pyg.year = rpt_pbh634.ksm_pkg_tmp.get_performance_year(pd.date_of_record)
+  Group By rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(pd.date_of_record)
+    , fr.assignment_id_number
+    , e.report_name
+    , extract(year From pd.date_of_record)
+    , extract(month From pd.date_of_record)
+    , rpt_pbh634.ksm_pkg_tmp.get_quarter(pd.date_of_record, 'fisc')
+    , rpt_pbh634.ksm_pkg_tmp.get_quarter(pd.date_of_record, 'perf')
+    , rpt_pbh634.ksm_pkg_tmp.get_performance_year(pd.date_of_record)
+    , g.goal_3
+    , pyg.goal_3
+  Union
+  ----- Main query goal 4, equivalent to lines 1392-1419 in nu_gft_v_officer_metrics -----
+  Select Distinct cr.id_number As id_number
+    , e.report_name
+    , 'NOV' as goal_type
+    , 'Visits' As goal_desc
+    , c.cal_year
+    , c.cal_month
+    , c.fiscal_year
+    , c.fiscal_qtr As fiscal_quarter
+    , c.perf_year
+    , c.perf_quarter
+    , g.goal_4 As fy_goal
+    , pyg.goal_4 As py_goal
+    , count(Distinct c.report_id) As progress
+    , count(Distinct c.report_id) As adjusted_progress
+    , NULL As addl_progress_detail
+  From table(rpt_pbh634.metrics_pkg.tbl_contact_count) cr
+  Inner Join entity e On e.id_number = cr.id_number
+  Inner Join table(rpt_pbh634.metrics_pkg.tbl_contact_reports) c
+    On cr.report_id = c.report_id
+  -- Fiscal year goals
+  Left Join goal g
+    On g.id_number = cr.id_number
+      And g.year = c.fiscal_year
+  -- Performance year goals
+  Left Join goal pyg
+    On pyg.id_number = cr.id_number
+      And pyg.year = c.perf_year
+  Group By c.fiscal_year
+    , cr.id_number
+    , e.report_name
+    , c.cal_year
+    , c.cal_month
+    , c.fiscal_qtr
+    , c.perf_quarter
+    , c.perf_year
+    , g.goal_4
+    , pyg.goal_4
+  Union
+  ----- Main query goal 5, equivalent to lines 1420-1448 in nu_gft_v_officer_metrics -----
+  Select Distinct cr.id_number As id_number
+    , e.report_name
+    , 'NOQV' As goal_type
+    , 'Qual Visits' As goal_desc
+    , c.cal_year
+    , c.cal_month
+    , c.fiscal_year
+    , c.fiscal_qtr As fiscal_quarter
+    , c.perf_year
+    , c.perf_quarter
+    , g.goal_5 As fy_goal
+    , pyg.goal_5 As py_goal
+    , count(Distinct c.report_id) As progress
+    , count(Distinct c.report_id) As adjusted_progress
+    , NULL As addl_progress_detail
+  From table(rpt_pbh634.metrics_pkg.tbl_contact_count) cr
+  Inner Join entity e On e.id_number = cr.id_number
+  Inner Join table(rpt_pbh634.metrics_pkg.tbl_contact_reports) c
+    On cr.report_id = c.report_id
+  -- Fiscal year goals
+  Left Join goal g
+    On g.id_number = cr.id_number
+      And g.year = c.fiscal_year
+  -- Performance year goals
+  Left Join goal pyg
+    On pyg.id_number = cr.id_number
+      And pyg.year = c.perf_year
+  Where c.contact_purpose_code = '1' -- Only count qualification visits
+  Group By c.fiscal_year
+    , cr.id_number
+    , e.report_name
+    , c.cal_year
+    , c.cal_month
+    , c.fiscal_qtr
+    , c.perf_quarter
+    , c.perf_year
+    , g.goal_5
+    , pyg.goal_5
+  Union
+  ----- Main query goal 6, equivalent to lines 1449-1627 in nu_gft_v_officer_metrics -----
+  Select acr.assignment_id_number As id_number
+    , e.report_name
+    , 'PA' As goal_type
+    , 'Proposal Assists' As goal_desc
+    , extract(year From acr.ask_or_stop_dt) As cal_year
+    , extract(month From acr.ask_or_stop_dt) As cal_month
+    , rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(acr.ask_or_stop_dt) As fiscal_year
+    , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'fisc') As fiscal_quarter
+    , rpt_pbh634.ksm_pkg_tmp.get_performance_year(acr.ask_or_stop_dt) As perf_year
+    , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'perf') As perf_quarter
+    , g.goal_6 As fy_goal
+    , pyg.goal_6 As py_goal
+    -- Original definition: count only if ask date is filled in
+    , Count(Distinct Case When acr.initial_contribution_date Is Not Null Then acr.proposal_id End)
+      As progress
+    -- Alternate definition: count if either ask date or stop date is filled in
+    , Count(Distinct acr.proposal_id) As adjusted_progress
+    , NULL As addl_progress_detail
+  From table(rpt_pbh634.metrics_pkg.tbl_assist_count) acr
+  Inner Join entity e On e.id_number = acr.assignment_id_number
+  -- Fiscal year goals
+  Left Join goal g
+    On acr.assignment_id_number = g.id_number
+      And g.year = rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(acr.ask_or_stop_dt) -- initial_contribution_date is 'ask_date'
+  -- Performance year goals
+  Left Join goal pyg
+    On acr.assignment_id_number = pyg.id_number
+      And pyg.year = rpt_pbh634.ksm_pkg_tmp.get_performance_year(acr.ask_or_stop_dt)
+  Group By rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(acr.ask_or_stop_dt)
+    , acr.assignment_id_number
+    , e.report_name
+    , extract(year From acr.ask_or_stop_dt)
+    , extract(month From acr.ask_or_stop_dt)
+    , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'fisc')
+    , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'perf')
+    , rpt_pbh634.ksm_pkg_tmp.get_performance_year(acr.ask_or_stop_dt)
+    , g.goal_6
+    , pyg.goal_6
+*/
+;
 
 /*************************************************************************
 Functions
 *************************************************************************/
 
-Function get_constant(const_name In varchar2)
+Function get_numeric_constant(const_name In varchar2)
   Return number Deterministic Is
   -- Declarations
   val number;
@@ -593,55 +899,56 @@ Function get_constant(const_name In varchar2)
 Pipelined functions
 *************************************************************************/
 
+--------------------------------------
 -- Pipelined function returning consolidated proposals data
 Function tbl_universal_proposals_data
-  Return t_proposals_data Pipelined As
-    -- Declarations
-    pd t_proposals_data;
+  Return proposals_data Pipelined As
+  -- Declarations
+  pd proposals_data;
 
   Begin
-    Open c_universal_proposals_data; -- Annual Fund allocations cursor
+    Open c_universal_proposals_data;
       Fetch c_universal_proposals_data Bulk Collect Into pd;
     Close c_universal_proposals_data;
-    -- Pipe out the data
     For i in 1..(pd.count) Loop
       Pipe row(pd(i));
     End Loop;
     Return;
   End;
-  
--- Pipelined function determining proposal date
-Function tbl_proposal_dates
-  Return t_proposal_dates Pipelined As
-    -- Declarations
-    pd t_proposal_dates;
+
+--------------------------------------
+-- Pipelined function returning goals
+Function tbl_goals_data
+  Return goals_data Pipelined As
+  -- Declarations
+  gd goals_data;
 
   Begin
-    Open c_proposal_dates; -- Annual Fund allocations cursor
-      Fetch c_proposal_dates Bulk Collect Into pd;
-    Close c_proposal_dates;
-    -- Pipe out the data
-    For i in 1..(pd.count) Loop
-      Pipe row(pd(i));
+    Open c_goals_data;
+      Fetch c_goals_data Bulk Collect Into gd;
+    Close c_goals_data;
+    For i in 1..(gd.count) Loop
+      Pipe row(gd(i));
     End Loop;
     Return;
   End;
 
+--------------------------------------
 -- Pipelined function returning proposal funded data
 Function tbl_funded_count(
     ask_amt number default metrics_pkg.mg_ask_amt
     , funded_count number default metrics_pkg.mg_funded_count
   )
-  Return t_funded_credit Pipelined As
-    -- Declarations
-    pd t_funded_credit;
+  Return funded_credit Pipelined As
+  -- Declarations
+  pd funded_credit;
 
   Begin
     Open c_funded_count(
       ask_amt_in => ask_amt
       , funded_count_in => funded_count
-    ); -- Annual Fund allocations cursor
-      Fetch c_funded_count Bulk Collect Into pd;
+    );
+    Fetch c_funded_count Bulk Collect Into pd;
     Close c_funded_count;
     -- Pipe out the data
     For i in 1..(pd.count) Loop
@@ -650,22 +957,23 @@ Function tbl_funded_count(
     Return;
   End;
 
+--------------------------------------
 -- Pipelined function returning proposal funded amounts data
 Function tbl_funded_dollars(
     ask_amt number default metrics_pkg.mg_ask_amt
     , granted_amt number default metrics_pkg.mg_granted_amt
   )
-  Return t_funded_dollars Pipelined As
-    -- Declarations
-    pd t_funded_dollars;
+  Return funded_dollars Pipelined As
+  -- Declarations
+  pd funded_dollars;
 
   Begin
-    Open c_funded_dollars(
-    ask_amt_in => ask_amt
-    , granted_amt_in => granted_amt
-  ); -- Annual Fund allocations cursor
-      Fetch c_funded_dollars Bulk Collect Into pd;
-    Close c_funded_dollars;
+    Open c_rec_funded_dollars(
+      ask_amt_in => ask_amt
+      , granted_amt_in => granted_amt
+    );
+    Fetch c_rec_funded_dollars Bulk Collect Into pd;
+    Close c_rec_funded_dollars;
     -- Pipe out the data
     For i in 1..(pd.count) Loop
       Pipe row(pd(i));
@@ -673,19 +981,20 @@ Function tbl_funded_dollars(
     Return;
   End;
 
+--------------------------------------
 -- Pipelined function returning proposal asked data
 Function tbl_asked_count(
     ask_amt number default metrics_pkg.mg_ask_amt
   )
-  Return t_ask_assist_credit Pipelined As
-    -- Declarations
-    pd t_ask_assist_credit;
+  Return ask_assist_credit Pipelined As
+  -- Declarations
+  pd ask_assist_credit;
 
   Begin
     Open c_asked_count(
       ask_amt_in => ask_amt
-    ); -- Annual Fund allocations cursor
-      Fetch c_asked_count Bulk Collect Into pd;
+    );
+    Fetch c_asked_count Bulk Collect Into pd;
     Close c_asked_count;
     -- Pipe out the data
     For i in 1..(pd.count) Loop
@@ -693,21 +1002,22 @@ Function tbl_asked_count(
     End Loop;
     Return;
   End;
-  
+
+--------------------------------------
 Function tbl_asked_count_ksm(
     ask_amt_ksm_plg number default metrics_pkg.mg_ask_amt_ksm_plg
     , ask_amt_ksm_outright number default metrics_pkg.mg_ask_amt_ksm_outright
   )
-  Return t_ask_assist_credit Pipelined As
-    -- Declarations
-    pd t_ask_assist_credit;
+  Return ask_assist_credit Pipelined As
+  -- Declarations
+  pd ask_assist_credit;
 
   Begin
     Open c_asked_count_ksm(
       ask_amt_ksm_plg_in => ask_amt_ksm_plg
       , ask_amt_ksm_outright_in => ask_amt_ksm_outright
-    ); -- Annual Fund allocations cursor
-      Fetch c_asked_count_ksm Bulk Collect Into pd;
+    );
+    Fetch c_asked_count_ksm Bulk Collect Into pd;
     Close c_asked_count_ksm;
     -- Pipe out the data
     For i in 1..(pd.count) Loop
@@ -716,11 +1026,12 @@ Function tbl_asked_count_ksm(
     Return;
   End;
 
+--------------------------------------
 -- Pipelined function returning visits data
 Function tbl_contact_reports
-  Return t_contact_report Pipelined As
+  Return contact_report Pipelined As
     -- Declarations
-    cd t_contact_report;
+    cd contact_report;
 
   Begin
     Open c_contact_reports; -- Annual Fund allocations cursor
@@ -733,11 +1044,12 @@ Function tbl_contact_reports
     Return;
   End;
 
+--------------------------------------
 -- Pipelined function returning visits data
 Function tbl_contact_count
-  Return t_contact_count Pipelined As
+  Return contact_count Pipelined As
     -- Declarations
-    cd t_contact_count;
+    cd contact_count;
 
   Begin
     Open c_contact_count; -- Annual Fund allocations cursor
@@ -750,11 +1062,12 @@ Function tbl_contact_count
     Return;
   End;
 
+/*--------------------------------------
 -- Pipelined function returning proposal assists data
 Function tbl_assist_count
-  Return t_ask_assist_credit Pipelined As
+  Return ask_assist_credit Pipelined As
     -- Declarations
-    pd t_ask_assist_credit;
+    pd ask_assist_credit;
 
   Begin
     Open c_assist_count; -- Annual Fund allocations cursor
@@ -766,6 +1079,6 @@ Function tbl_assist_count
     End Loop;
     Return;
   End;
-
+*/
 End metrics_pkg;
 /

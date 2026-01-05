@@ -88,6 +88,10 @@ From table(dw_pkg_base.tbl_fundraiser_contact_report_relation)
 ;
 
 Select *
+From table(dw_pkg_base.tbl_work_plan)
+;
+
+Select *
 From table(dw_pkg_base.tbl_social_media)
 ;
 
