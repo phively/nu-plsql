@@ -23,6 +23,10 @@ From table(metrics_pkg.tbl_universal_proposals_data)
 ;
 
 Select *
+From table(metrics_pkg.tbl_goals_data)
+;
+
+Select *
 From table(metrics_pkg.tbl_funded_count)
 ;
 

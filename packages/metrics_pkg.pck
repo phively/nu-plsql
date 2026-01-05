@@ -52,6 +52,27 @@ Type rec_proposals_data Is Record (
 );
 
 --------------------------------------
+Type rec_goals_data Is Record (
+  work_plan_salesforce_id stg_alumni.ucinn_ascendv2__work_plan__c.id%type
+  , work_plan_name stg_alumni.ucinn_ascendv2__work_plan__c.name%type
+  , gift_officer_user_salesforce_id stg_alumni.ucinn_ascendv2__work_plan__c.ap_reporting_manager__c%type
+  , gift_officer_user_name stg_alumni.user_tbl.name%type
+  , gift_officer_type stg_alumni.ucinn_ascendv2__work_plan__c.ap_gift_officer_type__c%type
+  , gift_officer_role stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__role__c%type
+  , gift_officer_status stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__status__c%type
+  , metric_performance_year stg_alumni.ucinn_ascendv2__work_plan__c.ap_metric_year__c%type
+  , metric_effective_date stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__effective_date__c%type
+  , mg_commitments_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_major_gifts_commitments__c%type
+  , mg_dollars_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_major_gifts_dollars_raised__c%type
+  , visits_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_visits__c%type
+  , qualifications_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_total_qualification_visits__c%type
+  , contacts_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_non_visit_contacts__c%type
+  , proposal_assist_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_proposal_assist_of_commitments__c%type
+  , proposal_assist_dollars_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_proposal_assist_raised__c%type
+  , etl_update_date stg_alumni.ucinn_ascendv2__work_plan__c.etl_update_date%type
+);
+
+--------------------------------------
 Type rec_funded_credit Is Record (
   proposal_record_id mv_proposals.proposal_record_id%type
   , historical_pm_user_id mv_proposals.historical_pm_user_id%type
@@ -115,6 +136,7 @@ Public table declarations
 *************************************************************************/
 
 Type proposals_data Is Table Of rec_proposals_data;
+Type goals_data Is Table Of rec_goals_data;
 Type funded_credit Is Table Of rec_funded_credit;
 Type funded_dollars Is Table Of rec_funded_dollars;
 Type ask_assist_credit Is Table Of rec_ask_assist_credit;
@@ -158,6 +180,10 @@ From table(rpt_pbh634.ksm_pkg_tmp.tbl_current_calendar) cal;
 -- Standardized proposal data table function
 Function tbl_universal_proposals_data
   Return proposals_data Pipelined;
+
+-- Standardized goals data table function
+Function tbl_goals_data
+  Return goals_data Pipelined;
   
 -- Table functions for each of the MGO metrics
 Function tbl_funded_count(
@@ -233,6 +259,38 @@ Cursor c_universal_proposals_data Is
     And p.proposal_stage In (
       'Submitted', 'Approved by Donor', 'Declined', 'Funded'
     )
+;
+
+--------------------------------------
+-- Combined goals data
+Cursor c_goals_data Is
+  Select
+    wp.work_plan_salesforce_id
+    , wp.work_plan_name
+    , wp.gift_officer_user_salesforce_id
+    , usr.user_name
+      As gift_officer_user_name
+    , wp.gift_officer_type
+    , Case
+        When wp.gift_officer_role Is Not Null
+          Then wp.gift_officer_role
+        Else usr.user_title
+        End
+      As gift_officer_role
+    , wp.gift_officer_status
+    , wp.metric_performance_year
+    , wp.metric_effective_date
+    , wp.mg_commitments_goal
+    , wp.mg_dollars_goal
+    , wp.visits_goal
+    , wp.qualifications_goal
+    , wp.contacts_goal
+    , wp.proposal_assist_goal
+    , wp.proposal_assist_dollars_goal
+    , wp.etl_update_date
+  From table(dw_pkg_base.tbl_work_plan) wp
+  Inner Join table(dw_pkg_base.tbl_users) usr
+    On usr.user_salesforce_id = wp.gift_officer_user_salesforce_id
 ;
 
 --------------------------------------
@@ -854,6 +912,23 @@ Function tbl_universal_proposals_data
     Close c_universal_proposals_data;
     For i in 1..(pd.count) Loop
       Pipe row(pd(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+-- Pipelined function returning goals
+Function tbl_goals_data
+  Return goals_data Pipelined As
+  -- Declarations
+  gd goals_data;
+
+  Begin
+    Open c_goals_data;
+      Fetch c_goals_data Bulk Collect Into gd;
+    Close c_goals_data;
+    For i in 1..(gd.count) Loop
+      Pipe row(gd(i));
     End Loop;
     Return;
   End;

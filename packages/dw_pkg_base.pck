@@ -472,6 +472,27 @@ Type rec_fundraiser_contact_report_relation Is Record (
 );
 
 --------------------------------------
+Type rec_work_plan Is Record (
+  work_plan_salesforce_id stg_alumni.ucinn_ascendv2__work_plan__c.id%type
+  , work_plan_name stg_alumni.ucinn_ascendv2__work_plan__c.name%type
+  , gift_officer_user_salesforce_id stg_alumni.ucinn_ascendv2__work_plan__c.ap_reporting_manager__c%type
+  , gift_officer_type stg_alumni.ucinn_ascendv2__work_plan__c.ap_gift_officer_type__c%type
+  , gift_officer_role stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__role__c%type
+  , gift_officer_status stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__status__c%type
+  , gift_officer_unit_salesforce_id stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__work_plan_unit__c%type
+  , metric_performance_year stg_alumni.ucinn_ascendv2__work_plan__c.ap_metric_year__c%type
+  , metric_effective_date stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__effective_date__c%type
+  , mg_commitments_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_major_gifts_commitments__c%type
+  , mg_dollars_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_major_gifts_dollars_raised__c%type
+  , visits_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_visits__c%type
+  , qualifications_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_total_qualification_visits__c%type
+  , contacts_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_non_visit_contacts__c%type
+  , proposal_assist_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_proposal_assist_of_commitments__c%type
+  , proposal_assist_dollars_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_proposal_assist_raised__c%type
+  , etl_update_date stg_alumni.ucinn_ascendv2__work_plan__c.etl_update_date%type
+);
+
+--------------------------------------
 Type rec_econtact Is Record (
   contact_salesforce_id stg_alumni.ucinn_ascendv2__social_media__c.ucinn_ascendv2__contact__c%type
   , donor_id stg_alumni.contact.ucinn_ascendv2__donor_id__c%type
@@ -560,6 +581,7 @@ Type strategy Is Table Of rec_strategy;
 Type contact_report Is Table Of rec_contact_report;
 Type contact_report_relation Is Table Of rec_contact_report_relation;
 Type fundraiser_contact_report_relation Is Table Of rec_fundraiser_contact_report_relation;
+Type work_plan Is Table Of rec_work_plan;
 Type econtacts Is Table Of rec_econtact;
 Type address Is Table Of rec_address;
 Type geocode Is Table Of rec_geocode;
@@ -630,6 +652,9 @@ Function tbl_contact_report_relation
 
 Function tbl_fundraiser_contact_report_relation
   Return fundraiser_contact_report_relation Pipelined;
+
+Function tbl_work_plan
+  Return work_plan Pipelined;
 
 Function tbl_social_media
   Return econtacts Pipelined;
@@ -1590,6 +1615,45 @@ Cursor c_fundraiser_contact_report_relation Is
 ;
 
 --------------------------------------
+Cursor c_work_plan Is
+  Select
+      wp.id
+      As work_plan_salesforce_id
+    , wp.name
+      As work_plan_name
+    , wp.ap_reporting_manager__c
+      As gift_officer_user_salesforce_id
+    , wp.ap_gift_officer_type__c
+      As gift_officer_type
+    , wp.ucinn_ascendv2__role__c
+      As gift_officer_role
+    , wp.ucinn_ascendv2__status__c
+      As gift_officer_status
+    , wp.ucinn_ascendv2__work_plan_unit__c
+      As gift_officer_unit_salesforce_id
+    , wp.ap_metric_year__c
+      As metric_performance_year
+    , wp.ucinn_ascendv2__effective_date__c
+      As metric_effective_date
+    , wp.ap_major_gifts_commitments__c
+      As mg_commitments_goal
+    , wp.ap_major_gifts_dollars_raised__c
+      As mg_dollars_goal
+    , wp.ap_visits__c
+      As visits_goal
+    , wp.ap_total_qualification_visits__c
+      As qualifications_goal
+    , wp.ap_non_visit_contacts__c
+      As contacts_goal
+    , wp.ap_proposal_assist_of_commitments__c
+      As proposal_assist_goal
+    , wp.ap_proposal_assist_raised__c
+      As proposal_assist_dollars_goal
+    , wp.etl_update_date
+  From stg_alumni.ucinn_ascendv2__work_plan__c wp
+;
+
+--------------------------------------
 Cursor c_econtacts Is
   Select
     sm.ucinn_ascendv2__contact__c
@@ -2046,6 +2110,22 @@ Function tbl_fundraiser_contact_report_relation
     Close c_fundraiser_contact_report_relation;
     For i in 1..(fcrr.count) Loop
       Pipe row(fcrr(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_work_plan
+  Return work_plan Pipelined As
+    -- Declarations
+    wp work_plan;
+
+  Begin
+    Open c_work_plan;
+      Fetch c_work_plan Bulk Collect Into wp;
+    Close c_work_plan;
+    For i in 1..(wp.count) Loop
+      Pipe row(wp(i));
     End Loop;
     Return;
   End;
