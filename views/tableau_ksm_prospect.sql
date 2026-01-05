@@ -49,6 +49,8 @@ give as (select g.household_id,
        --- Add in last gift date 
 from mv_ksm_giving_summary g),
 
+--- Subquery to pull IDS from stg tables
+
 c as (select stg_alumni.contact.id, 
 stg_alumni.contact.ucinn_ascendv2__donor_id__c 
 from stg_alumni.contact),
@@ -60,8 +62,12 @@ left join c on c.id = s.ucinn_ascendv2__contact__c
 where s.ap_is_active__c = 'true'
 ),
 
+final_strategy_id as (Select psr.donor_id,
+psr.strategy_record_id,
+psr.strategy_relation_record_id
+From table(dw_pkg_base.tbl_strategy_relation) psr),
 
---- Involvements 
+--- Involvements - KSM, Kellogg
 
 i as (select distinct i.constituent_donor_id,
        i.constituent_name,
@@ -85,21 +91,7 @@ group by i.constituent_donor_id),
 
 ---Campaign Committee Members: • Campaign Committee Members – involvement = ‘Kellogg Full Circle Campaign Committee”, start date = ‘9/1/2025’, end date is null
 
-ccm as (Select distinct i.CONSTITUENT_DONOR_ID,
-       i.CONSTITUENT_NAME,
-       i.INVOLVEMENT_RECORD_ID,
-       i.INVOLVEMENT_CODE,
-       i.INVOLVEMENT_NAME,
-       i.INVOLVEMENT_STATUS,
-       i.INVOLVEMENT_TYPE,
-       i.INVOLVEMENT_ROLE,
-       i.INVOLVEMENT_BUSINESS_UNIT,
-       i.INVOLVEMENT_START_FY,
-       i.INVOLVEMENT_END_FY,
-       i.INVOLVEMENT_START_DATE,
-       i.INVOLVEMENT_END_DATE,
-       i.INVOLVEMENT_COMMENT,
-       i.ETL_UPDATE_DATE
+ccm as (Select distinct i.CONSTITUENT_DONOR_ID
 From v_committee_kfc_campaign i
 where i.INVOLVEMENT_STATUS = 'Current'),
 
@@ -109,8 +101,6 @@ trustee as (select  s.donor_id,
 s.trustee
 from mv_special_handling s
 where s.trustee is not null),
-
-
 
 /* KSM Prospect
 
@@ -122,35 +112,31 @@ OR
 
 Has made a lifetime gift to Kellogg (any ID on Giving Summary) 
 
-OR Strategy is active 
 
 OR Campaign Committee Members – involvement = ‘Kellogg Full Circle Campaign Committee”, start date = ‘9/1/2025’, end date is null
 
 OR •	NU trustees and spouses
 
-
 */
 
 prospect as (select entity.donor_id
 from entity 
+--- KSM Degree Alumni 
 left join d on d.donor_id = entity.donor_id
+--- Made any gift to Kellogg
 left join give on give.household_primary_donor_id = entity.donor_id
-left join strategy on strategy.ucinn_ascendv2__donor_id__c = entity.donor_id
+---- spouses
+left join give give2 on give2.household_spouse_donor_id = entity.donor_id
+--- Campaign Committee Members
 left join ccm on ccm.constituent_donor_id = entity.donor_id 
+--- Trustee
 left join trustee on trustee.donor_id = entity.donor_id
-
 where 
-
 d.donor_id is not null or 
 give.household_primary_donor_id is not null or 
-strategy.ucinn_ascendv2__donor_id__c is not null or 
+give2.household_spouse_donor_id is not null or  
 ccm.constituent_donor_id is not null or 
-trustee.donor_id is not null   
-
-
-
-),
-
+trustee.donor_id is not null),
 
 --- Last Contact Report
 --- Edit: 11/13/25 This is good to use to get the visit counts too
@@ -211,9 +197,6 @@ and c.contact_report_type = 'Visit'
 Group BY c.cr_relation_donor_id),
 
 
-
-
-
 --- last Author and Visit for Everyone Else (Not Dean Cornelli) 
 
 la as (select de.cr_relation_donor_id,
@@ -228,7 +211,6 @@ and de.contact_report_type = 'Visit'
 group by de.cr_relation_donor_id
 ),
 
-
 --- Dean's Last Visit Using Paul's View
 
 dcrf as (select de.cr_relation_donor_id,
@@ -240,9 +222,6 @@ from  de
 where de.cr_credit_name like '%Francesca Cornelli%'
 and de.contact_report_type like '%Visit%'
 group by de.cr_relation_donor_id),
-
-
-
        
 --- assignment
 
@@ -304,7 +283,6 @@ and primary_job_title not like '%Asst%'
 and primary_job_title not like '%Associate%'
 and primary_job_title not like '%Assoc%'
 and primary_job_title not like '%Advisor%'))),
-
 
 
 --- Contact Data
@@ -529,11 +507,20 @@ and  c.ucinn_ascendv2__start_date__c  = to_date ('09/01/2021', 'mm/dd/yyyy')),
 
 lifetime as 
 (Select m.donor_id,
-                           m.household_id_ksm,
-                           m.nu_lifetime_ngc,
-                           m.nu_lifetime_ngc_individual,
-                           m.nu_lifetime_ngc_with_spouse
-From mv_lifetime_giving m)
+m.household_id_ksm,
+m.nu_lifetime_ngc,
+m.nu_lifetime_ngc_individual,
+m.nu_lifetime_ngc_with_spouse
+From mv_lifetime_giving m),
+
+--- strategy Relation 
+
+strat_relation as (select distinct 
+c.ucinn_ascendv2__donor_id__c,
+s.*
+from stg_alumni.ap_strategy_relation__c s
+left join c on c.id = s.ap_constituent__c
+where s.ap_is_active_formula__c = 'true' )
 
 
 select  distinct 
@@ -679,7 +666,10 @@ select  distinct
        --- Stage of Readiness
        stage.ucinn_ascendv2__stage_of_readiness__c,
        stage.ucinn_ascendv2__stage_of_readiness_last_modified_date__c,
-       strategy.name as strategy_id,
+       ---strategy.name as strategy_id,
+       final_strategy_id.strategy_record_id as strategy_id,
+       str.name as strategy_relation_id,
+       ---strategy_id_concat.strategy_id_household_contact,
        sr.strategy_relation_name_concat,
        sr.strategy_Relation_concat,
        funding.created_by as funding_created_by,
@@ -742,4 +732,8 @@ left join lifetime on lifetime.donor_id = e.donor_id
 left join dvc on dvc.cr_relation_donor_id = e.donor_id 
 --- count of KSM active proposals
 left join kprop on kprop.donor_id = e.donor_id
+--- strategy relation
+left join strat_relation str on str.ucinn_ascendv2__donor_id__c = e.donor_id
+---left join strategy_id_concat on strategy_id_concat.donor_id = e.donor_id
+left join final_strategy_id on final_strategy_id.donor_id = e.donor_id
  
