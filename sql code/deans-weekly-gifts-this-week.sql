@@ -3,8 +3,8 @@ With
 -- ** Update dates before running **
 dts As (
   Select
-      to_date('20251215', 'yyyymmdd') As start_dt
-    , to_date('20260106', 'yyyymmdd') As stop_dt
+      to_date('20260106', 'yyyymmdd') As start_dt
+    , to_date('20260112', 'yyyymmdd') As stop_dt
     , 2026 As fiscal_year
   From DUAL
 )
@@ -46,6 +46,32 @@ dts As (
   From final_names
   Group By tx_id
 )
+
+, all_gift_officers as (
+  select 
+    v_ksm_gifts_ngc.tx_id,
+    trim(chr(13) from 
+      listagg(distinct prospect_manager_name, chr(13)) 
+        within group (order by prospect_manager_name) ||
+      chr(13) ||
+      listagg(distinct case when lagm_name != prospect_manager_name then lagm_name end, chr(13)) 
+        within group (order by lagm_name)
+    ) as all_gift_officers
+  from v_ksm_gifts_ngc
+  cross join dts
+  left join mv_assignments 
+    on mv_assignments.donor_id = v_ksm_gifts_ngc.donor_id
+  where
+    (
+      (v_ksm_gifts_ngc.credit_date between dts.start_dt and dts.stop_dt)
+      or (v_ksm_gifts_ngc.entry_date between dts.start_dt and dts.stop_dt)
+    )
+    and v_ksm_gifts_ngc.fiscal_year = dts.fiscal_year
+    and v_ksm_gifts_ngc.hard_credit_amount >= 10000
+    and v_ksm_gifts_ngc.gypm_ind in ('P', 'G')
+  group by v_ksm_gifts_ngc.tx_id
+)
+
 -- Base Table
 Select
   gt.tx_id
@@ -63,16 +89,17 @@ Select
   , NULL As empty_column
   , gt.hard_credit_amount
   , Case When gt.gypm_ind = 'P' Then payment_schedule End As payment_schedule
-  , mv_proposals.active_proposal_manager_name
+  , Case When mv_proposals.active_proposal_manager_name is not null 
+         then mv_proposals.active_proposal_manager_name else all_gift_officers end as manager
 From v_ksm_gifts_ngc gt
 Cross Join dts
 left join mv_proposals 
   on mv_proposals.proposal_record_id = gt.linked_proposal_record_id
+left join all_gift_officers
+  on all_gift_officers.tx_id = gt.tx_id
 Inner Join ad
   On ad.tx_id = gt.tx_id
-/*Left Join tbl_ksm_gos
-  On gt.credited_donor_id = tbl_ksm_gos.donor_id
-*/Where
+Where
   -- Only in the date range
  (
         (gt.credit_date Between dts.start_dt And dts.stop_dt)
