@@ -50,6 +50,7 @@ dts As (
 , all_gift_officers as (
   select 
     v_ksm_gifts_ngc.tx_id,
+    -- Aggregate all unique gift officer names (prospect managers first, then LAGMs if different)
     trim(chr(13) from 
       listagg(distinct prospect_manager_name, chr(13)) 
         within group (order by prospect_manager_name) ||
@@ -59,9 +60,11 @@ dts As (
     ) as all_gift_officers
   from v_ksm_gifts_ngc
   cross join dts
+  -- Join to assignments to get gift officer names
   left join mv_assignments 
     on mv_assignments.donor_id = v_ksm_gifts_ngc.donor_id
   where
+    -- Filter to gifts within the date range
     (
       (v_ksm_gifts_ngc.credit_date between dts.start_dt and dts.stop_dt)
       or (v_ksm_gifts_ngc.entry_date between dts.start_dt and dts.stop_dt)
