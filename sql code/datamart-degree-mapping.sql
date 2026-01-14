@@ -1,6 +1,6 @@
 With
 
--- Ensure alumni_base can be used to filter degrees recipe
+-- Ensure alumni_base view can be used to filter degrees recipe
 alumni_base As (
   Select
     dc.constituent_salesforce_id
@@ -41,8 +41,6 @@ alumni_base As (
       As department_desc
     , prog.ap_program_code__c
       As degree_program_code
---    , prog.name
---      As degree_program
   -- Degree information detail
   From stg_alumni.ucinn_ascendv2__degree_information__c deginf
   -- Use alumni base recipe stand-in to filter
