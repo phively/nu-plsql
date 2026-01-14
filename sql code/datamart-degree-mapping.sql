@@ -1,5 +1,6 @@
 With
 
+-- Ensure alumni_base can be used to filter degrees recipe
 alumni_base As (
   Select
     dc.constituent_salesforce_id
@@ -10,6 +11,7 @@ alumni_base As (
     On kd.donor_id = dc.constituent_donor_id
 )
 
+-- Ensure these fields are available in degrees recipe
 , c_degrees As (
   Select
     alumni_base.constituent_salesforce_id
@@ -25,86 +27,44 @@ alumni_base As (
           Else 'N'
         End
       As nu_indicator
-    , dorg.organization_name
-      As degree_organization_name
     , deginf.ap_school_name_formula__c
       As degree_school_name
     , deginf.ap_degree_type_from_degreecode__c
       As degree_level
-/*    , Case
-        -- NU conferred year is first fallback
-        -- Reunion year is second fallback
-        When deginf.ucinn_ascendv2__conferred_degree_year__c Is Null
-          Then nvl(deginf.ap_conferred_degree_year__c, deginf.ucinn_ascendv2__reunion_year__c)
-        Else deginf.ucinn_ascendv2__conferred_degree_year__c
-        End
-      As degree_year
-    , deginf.ucinn_ascendv2__reunion_year__c
-      As degree_reunion_year
-    , deginf.ucinn_ascendv2__degree_date__c
-      As degree_grad_date
-*/    , degcd.ucinn_ascendv2__degree_code__c
+    , degcd.ucinn_ascendv2__degree_code__c
       As degree_code
-    , degcd.ucinn_ascendv2__description__c
-      As degree_name
+--    , degcd.ucinn_ascendv2__description__c
+--      As degree_name
     , acaorg.ucinn_ascendv2__code__c
       As department_code
     , acaorg.ucinn_ascendv2__description_short__c
       As department_desc
-    , acaorg.ucinn_ascendv2__description_long__c
-      As department_desc_full
-    , deginf.ap_campus__c
-      As degree_campus
+--    , acaorg.ucinn_ascendv2__description_long__c
+--      As department_desc_full
+--    , deginf.ap_campus__c
+--      As degree_campus
     , prog.ap_program_code__c
       As degree_program_code
-    , prog.name
-      As degree_program
-/*    , spec.name
-      As degree_concentration_desc
-    , postcd.ap_major_code__c
-      As degree_major_code_1
-    , postcd2.ap_major_code__c
-      As degree_major_code_2
-    , postcd3.ap_major_code__c
-      As degree_major_code_3
-    , postcd.name
-      As degree_major_1
-    , postcd2.name
-      As degree_major_2
-    , postcd3.name
-      As degree_major_3
-    , deginf.ap_notes__c
-      As degree_notes
-    , trunc(deginf.etl_update_date) -- data refresh timestamp
-      As etl_update_date*/
+--    , prog.name
+--      As degree_program
   -- Degree information detail
   From stg_alumni.ucinn_ascendv2__degree_information__c deginf
   -- Use alumni base recipe stand-in to filter
   Inner Join alumni_base
     On alumni_base.constituent_salesforce_id = deginf.ucinn_ascendv2__contact__c
-  Left Join dm_alumni.dim_organization dorg
-    On dorg.organization_salesforce_id = deginf.ucinn_ascendv2__degree_institution__c
   -- Degree code
   Left Join stg_alumni.ucinn_ascendv2__degree_code__c degcd
     On degcd.id = deginf.ucinn_ascendv2__degree_code__c
-  -- Major codes
-  Left Join stg_alumni.ucinn_ascendv2__post_code__c postcd
-    On postcd.id = deginf.ucinn_ascendv2__post_code__c
-  Left Join stg_alumni.ucinn_ascendv2__post_code__c postcd2
-    On postcd2.id = deginf.ucinn_ascendv2__second_major_post_code__c
-  Left Join stg_alumni.ucinn_ascendv2__post_code__c postcd3
-    On postcd3.id = deginf.ap_third_major_post_code__c
   -- Program/cohort
   Left Join stg_alumni.ap_program__c prog
     On prog.id = deginf.ap_program_class_section__c
   -- Specialty code
-  Left Join stg_alumni.ucinn_ascendv2__specialty__c spec
-    On spec.id = deginf.ucinn_ascendv2__concentration_specialty__c
   -- Academic orgs, aka department
   Left Join stg_alumni.ucinn_ascendv2__academic_organization__c acaorg
     On acaorg.id = deginf.ap_department__c
 )
 
+-- New datamart-side transformations; see the two case-whens
 , prg As (
 Select
   deg.donor_id
@@ -182,6 +142,7 @@ From c_degrees deg
     )
 )
 
+-- New datamart-side transformation; depends on prg above
 Select
   prg.*
   , Case
