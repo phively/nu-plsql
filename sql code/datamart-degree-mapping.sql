@@ -33,20 +33,16 @@ alumni_base As (
       As degree_level
     , degcd.ucinn_ascendv2__degree_code__c
       As degree_code
---    , degcd.ucinn_ascendv2__description__c
---      As degree_name
+    , degcd.ucinn_ascendv2__description__c
+      As degree_name
     , acaorg.ucinn_ascendv2__code__c
       As department_code
     , acaorg.ucinn_ascendv2__description_short__c
       As department_desc
---    , acaorg.ucinn_ascendv2__description_long__c
---      As department_desc_full
---    , deginf.ap_campus__c
---      As degree_campus
     , prog.ap_program_code__c
       As degree_program_code
---    , prog.name
---      As degree_program
+    , prog.name
+      As degree_program
   -- Degree information detail
   From stg_alumni.ucinn_ascendv2__degree_information__c deginf
   -- Use alumni base recipe stand-in to filter
@@ -72,6 +68,7 @@ Select
   , deg.degree_record_id
   , deg.degree_level
   , deg.degree_status
+  , deg.degree_code
   , Case
       When deg.degree_status In ('Inactive', 'Discontinued', 'Dismissed or Revoked')
         Then '50 NON'
@@ -123,7 +120,7 @@ Select
         Then 'BEV'
       When deg.department_code In ('AMP', 'AMPI', 'EDP', 'KSMEE')  -- KSM certificates
         Then deg.department_code
-      When deg.department_code = '01MBI' -- Joint McCormick
+      When deg.department_code = 'MBI' -- Joint McCormick
         Then 'MBAI'
       When deg.department_code = '0000000' -- None
         Then ''
@@ -156,7 +153,7 @@ Select
           When department_desc_short Like '%MMM%' Then 'FT-MMM'
           When department_desc_short Like '%MDMBA%' Then 'FT-MDMBA'
           When department_desc_short Like '%MBAI%' Then 'FT-MBAi'
-          When department_desc_short Like '%Kellogg KEN%' Then 'FT-KENNEDY'
+          When department_desc_short Like '%KEN%' Then 'FT-KENNEDY'
           When department_desc_short Like '%TMP%' Then 'TMP'
           When department_desc_short Like '%PTS%' Then 'TMP-SAT'
           When department_desc_short Like '%PSA%' Then 'TMP-SATXCEL'
@@ -169,11 +166,11 @@ Select
           When department_desc_short Like '%JNA%' Then 'EMP-JAN'
           When department_desc_short Like '%RU%' Then 'EMP-ISR'
           When department_desc_short Like '%PKU%' Then 'EMP-CHI'
-          When department_desc_short Like '% EMP%' Then 'EMP'
-          When department_desc_short Like '%MIM%' Or department_desc_short Like '%MSMS%'
+          When department_desc_short Like '%EMP%' Then 'EMP'
+          When department_desc_short Like '%MMS%'
             Then 'FT-MIM'
           When department_desc_short Like '%MS %' Then 'FT-MS'
-          When department_desc_short Like '%MMGT%' Then 'FT-MMGT'
+          When degree_code Like '%MMGT%' Then 'FT-MMGT'
           Else 'FT-UNK-MBA'
           End
       When degree_level_rank = '03 BBA'
