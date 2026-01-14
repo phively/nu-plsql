@@ -157,10 +157,10 @@ Select
           When department_desc_short Like '%MDMBA%' Then 'FT-MDMBA'
           When department_desc_short Like '%MBAI%' Then 'FT-MBAi'
           When department_desc_short Like '%Kellogg KEN%' Then 'FT-KENNEDY'
-          When department_desc_short Like '%Kellogg TMP%' Then 'TMP'
-          When department_desc_short Like '%Kellogg PTS%' Then 'TMP-SAT'
-          When department_desc_short Like '%Kellogg PSA%' Then 'TMP-SATXCEL'
-          When department_desc_short Like '%Kellogg PTA%' Then 'TMP-XCEL'
+          When department_desc_short Like '%TMP%' Then 'TMP'
+          When department_desc_short Like '%PTS%' Then 'TMP-SAT'
+          When department_desc_short Like '%PSA%' Then 'TMP-SATXCEL'
+          When department_desc_short Like '%PTA%' Then 'TMP-XCEL'
           When department_desc_short Like '%Kellogg NAP%' Then 'EMP-IL'
           When department_desc_short Like '%Kellogg WHU%' Then 'EMP-GER'
           When department_desc_short Like '%Kellogg SCH%' Then 'EMP-CAN'
@@ -184,7 +184,7 @@ Select
           End
       When degree_level_rank In ('04 OTH', '05 CER')
         Then Case
-          When department_desc_short Like '%Kellogg AEP%' Then 'CERT-AEP'
+          When department_desc_short Like '%AEP%' Then 'CERT-AEP'
           When department_desc_short Like '%KSMEE%' Then 'EXECED'
           When department_desc_short Like '%CERT%' Then 'EXECED'
           When department_desc_short Like '%Institute for Mgmt%' Then 'EXECED'
@@ -200,3 +200,18 @@ Select
     End
     As program
 From prg
+;
+
+-- Comparison group
+Select
+  kd.degree_level_ranked
+  , kd.program_group
+  , kd.program
+  , count(*) As n
+From mv_entity_ksm_degrees kd
+Group By
+  kd.degree_level_ranked
+  , kd.program_group
+  , kd.program
+Order By degree_level_ranked Asc
+;
