@@ -41,8 +41,8 @@ alumni_base As (
       As department_desc
     , prog.ap_program_code__c
       As degree_program_code
-    , prog.name
-      As degree_program
+--    , prog.name
+--      As degree_program
   -- Degree information detail
   From stg_alumni.ucinn_ascendv2__degree_information__c deginf
   -- Use alumni base recipe stand-in to filter
@@ -99,7 +99,7 @@ Select
   , deg.department_code
   , Case
       When deg.department_code In ('KGS2Y', '01KGS') -- New 2Y
-        And deg.department_Desc Like '%2-Year MBA%'
+        And deg.department_desc Like '%2-Year MBA%'
         Then 'FT-2Y'
       When deg.department_code In ('KGS1Y', '011YR')  -- New 1Y
         And deg.department_desc Like '%1-Year MBA%'
@@ -132,7 +132,7 @@ From c_degrees deg
       deg.degree_school_name Like ('%Kellogg%')
       Or deg.degree_school_name Like ('%Undergraduate Business%')
       Or deg.degree_code = 'MBAI' -- MBAI
-      Or deg.degree_program_code In (
+      Or deg.department_code In (
         '95BCH', '96BEV' -- College of Commerce
         , 'AMP', 'AMPI', 'EDP', 'KSMEE' -- KSMEE certificate
       )
@@ -152,7 +152,7 @@ Select
           When department_desc_short Like '%JDMBA%' Then 'FT-JDMBA'
           When department_desc_short Like '%MMM%' Then 'FT-MMM'
           When department_desc_short Like '%MDMBA%' Then 'FT-MDMBA'
-          When department_desc_short Like '%MBAI%' Then 'FT-MBAi'
+          When department_desc_short Like '%MBI%' Then 'FT-MBAi'
           When department_desc_short Like '%KEN%' Then 'FT-KENNEDY'
           When department_desc_short Like '%TMP%' Then 'TMP'
           When department_desc_short Like '%PTS%' Then 'TMP-SAT'
@@ -167,9 +167,8 @@ Select
           When department_desc_short Like '%RU%' Then 'EMP-ISR'
           When department_desc_short Like '%PKU%' Then 'EMP-CHI'
           When department_desc_short Like '%EMP%' Then 'EMP'
-          When department_desc_short Like '%MMS%'
-            Then 'FT-MIM'
-          When department_desc_short Like '%MS %' Then 'FT-MS'
+          When department_desc_short Like '%MMS%' Then 'FT-MIM'
+          When degree_code = 'MS' Then 'FT-MS'
           When degree_code Like '%MMGT%' Then 'FT-MMGT'
           Else 'FT-UNK-MBA'
           End
@@ -182,11 +181,10 @@ Select
       When degree_level_rank In ('04 OTH', '05 CER')
         Then Case
           When department_desc_short Like '%AEP%' Then 'CERT-AEP'
-          When department_desc_short Like '%KSMEE%' Then 'EXECED'
-          When department_desc_short Like '%CERT%' Then 'EXECED'
+          When department_desc_short In ('KSMEE', 'CERT', 'EDP', 'AMP', 'AMPI') Then 'EXECED'
           When department_desc_short Like '%Institute for Mgmt%' Then 'EXECED'
           When department_desc_short Like '%LLM%' Then 'CERT-LLM'
-          When department_desc_short Like '%Certificate%' Then 'CERT'
+          When degree_level Like '%Certificate%' Then 'CERT'
           Else 'CERT-UNK'
           End
       When degree_level_rank = '10 STU'
