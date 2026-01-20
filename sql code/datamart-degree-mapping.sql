@@ -1,3 +1,6 @@
+--Drop Table tmp_dm_degree_mapping;
+--Create Table tmp_dm_degree_mapping As
+
 With
 
 -- Ensure alumni_base view can be used to filter degrees recipe
