@@ -83,10 +83,27 @@ k As (
   Group By
     constituent_donor_id
     , degree_year
-)
+),
+
+-- Family - Finding if they are a Grandparent, Parent or Both! 
+
+co as (select distinct 
+        c.ucinn_ascendv2__donor_id__c,
+        Listagg (c.ucinn_ascendv2__Contact_Type__c, ';  ') Within Group (Order By c.ucinn_ascendv2__Contact_Type__c) As Contact_type 
+        from stg_alumni.contact c
+        group by c.ucinn_ascendv2__donor_id__c),
+        
+family as (select 
+        co.ucinn_ascendv2__donor_id__c as donor_id,
+        co.contact_type,
+        case when co.contact_type like '%Grandparent%' and co.contact_type like '%Parent%' then 'GP,P' 
+        when co.contact_type like '%Grandparent%' then 'GP'
+        when co.contact_type like '%Parent%' then 'P' end as Family 
+        from co),
+
 
 -- Final concat
-, degrees_concat As (
+degrees_concat As (
   Select
     constituent_donor_id
   , Listagg(Distinct trim(year_abbr || ' ' || degree_strings), ', ')
@@ -98,6 +115,8 @@ k As (
   From degrees_group_by_year
   Group By constituent_donor_id
 )
+
+
 
 Select Distinct
   k.constituent_donor_id
@@ -121,6 +140,7 @@ Select Distinct
   , d.class_section
   , dc.degree_levels
   , dc.nu_degrees_string
+  , family.Family
 From k
 Inner Join degrees_concat dc
   On dc.constituent_donor_id = k.constituent_donor_id
@@ -133,4 +153,6 @@ Left Join mv_entity_ksm_degrees d
 -- Check Joint Degree Programs - Test Case 
 Left Join V_ENTITY_SALUTATIONS_INDIVIDUAL dean
   On dean.donor_id = k.constituent_donor_id
+Left Join family 
+on family.donor_id = k.constituent_donor_id
 ;
