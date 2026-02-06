@@ -627,7 +627,23 @@ d.first_ksm_year,
 d.program,
 d.program_group
 from mv_entity e 
-inner join mv_entity_ksm_degrees d on d.donor_id = e.spouse_donor_id)
+inner join mv_entity_ksm_degrees d on d.donor_id = e.spouse_donor_id),
+
+--- Honor Roll 
+
+HR as (select c.id,
+       stg_alumni.contact.ucinn_ascendv2__donor_id__c as donor_id,
+       c.ucinn_ascendv2__first_name__c,
+       c.ucinn_ascendv2__last_name__c,
+       c.ucinn_ascendv2__type__c,
+       c.ucinn_ascendv2__constructed_name_formula__c,
+       c.ucinn_ascendv2__Data_Source__c,
+       c.etl_create_date,
+       c.etl_update_date
+from STG_ALUMNI.UCINN_ASCENDV2__CONTACT_NAME__C c 
+inner join stg_alumni.contact on stg_alumni.contact.id = c.ucinn_ascendv2__contact__c
+where c.ucinn_ascendv2__type__c = 'Honor Roll Name'
+and  c.ucinn_ascendv2__Data_Source__c like '%Annual Giving%')
       
  
 select distinct e.household_id,
@@ -822,7 +838,12 @@ select distinct e.household_id,
      mods.student_supporter_description,
      mods.student_supporter_score,
      mods.etl_update_date,
-     mods.mv_last_refresh
+     mods.mv_last_refresh,
+     HR.ucinn_ascendv2__first_name__c as Honor_Roll_First_Name,
+     HR.ucinn_ascendv2__last_name__c as Honor_Roll_Last_Name,
+     HR.ucinn_ascendv2__type__c as Honor_Roll_Type,
+     HR.ucinn_ascendv2__constructed_name_formula__c as Honor_Roll_Name_Formula,
+     HR.ucinn_ascendv2__Data_Source__c as Honor_Roll_Data_Source     
 from e 
 left join KSM_Degrees on KSM_Degrees.donor_id = e.donor_id
 --- Reunion eligible
@@ -889,3 +910,5 @@ left join amy_pledge_code apc on apc.id = e.donor_id
 left join f on f.CONSTITUENT_DONOR_ID = e.donor_id
 --- spouse program
 left join sp on sp.spouse_donor_id = e.spouse_donor_id
+--- Honor Roll 
+left join HR on HR.donor_id = e.donor_id
