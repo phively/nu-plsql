@@ -41,6 +41,7 @@ Type rec_contact_reports_wide Is Record (
   , cr_relation_record_id stg_alumni.ucinn_ascendv2__contact_report_relation__c.name%type
   , cr_relation_salesforce_id stg_alumni.ucinn_ascendv2__contact_report_relation__c.id%type
   , cr_relation_donor_id mv_entity.donor_id%type
+  , cr_relation_household_id_ksm mv_entity.household_id_ksm%type
   , cr_relation_full_name mv_entity.full_name%type
   , cr_relation_sort_name mv_entity.sort_name%type
   , contact_role stg_alumni.ucinn_ascendv2__contact_report_relation__c.ucinn_ascendv2__contact_role__c%type
@@ -64,6 +65,7 @@ Type rec_contact_reports Is Record (
   , cr_relation_record_id stg_alumni.ucinn_ascendv2__contact_report_relation__c.name%type
   , cr_relation_salesforce_id stg_alumni.ucinn_ascendv2__contact_report_relation__c.id%type
   , cr_relation_donor_id mv_entity.donor_id%type
+  , cr_relation_household_id_ksm mv_entity.household_id_ksm%type
   , cr_relation_full_name mv_entity.full_name%type
   , cr_relation_sort_name mv_entity.sort_name%type
   , contact_role stg_alumni.ucinn_ascendv2__contact_report_relation__c.ucinn_ascendv2__contact_role__c%type
@@ -149,6 +151,8 @@ Cursor c_contact_reports_wide Is
     , crr.cr_relation_salesforce_id
     , mve_crr.donor_id
       As cr_relation_donor_id
+    , mve_crr.household_id_ksm
+      As cr_relation_household_id_ksm
     , mve_crr.full_name
       As cr_relation_full_name
     , mve_crr.sort_name
@@ -201,6 +205,7 @@ Cursor c_contact_reports Is
     , cr_relation_record_id
     , cr_relation_salesforce_id
     , cr_relation_donor_id
+    , cr_relation_household_id_ksm
     , cr_relation_full_name
     , cr_relation_sort_name
     , contact_role
@@ -229,6 +234,7 @@ Cursor c_contact_reports Is
     , cr_relation_record_id
     , cr_relation_salesforce_id
     , cr_relation_donor_id
+    , cr_relation_household_id_ksm
     , cr_relation_full_name
     , cr_relation_sort_name
     , contact_role
@@ -257,6 +263,7 @@ Cursor c_contact_reports Is
     , cr_relation_record_id
     , cr_relation_salesforce_id
     , cr_relation_donor_id
+    , cr_relation_household_id_ksm
     , cr_relation_full_name
     , cr_relation_sort_name
     , contact_role
