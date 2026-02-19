@@ -55,7 +55,7 @@ cal As (
         When gft.cash_category = 'Expendable'
           Then 'A-Expendable'
         When gft.cash_category = 'KEC'
-          Then 'B-KEC'
+          Then 'B-Ann Drake Center'
         When gft.cash_category = 'Hub Campaign Cash'
           Then 'C-Hub Campaign Cash'
         Else gft.cash_category
