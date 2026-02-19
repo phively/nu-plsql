@@ -547,6 +547,7 @@ Cursor c_mgo_activity_monthly Is
   proposal_dates As (
     Select
       proposal_record_id
+      , proposal_submitted_date
       , proposal_close_date
       , cal_year
       , cal_month
@@ -554,9 +555,21 @@ Cursor c_mgo_activity_monthly Is
       , fiscal_quarter
       , perf_year
       , perf_quarter
+      , extract(year From proposal_submitted_date)
+        As ask_cal_year
+      , extract(month From proposal_submitted_date)
+        As ask_cal_month
+      , ksm_pkg_calendar.get_fiscal_year(proposal_submitted_date)
+        As ask_fiscal_year
+      , ksm_pkg_calendar.get_quarter(proposal_submitted_date, 'fisc')
+        As ask_fiscal_quarter
+      , ksm_pkg_calendar.get_performance_year(proposal_submitted_date)
+        As ask_perf_year
+      , ksm_pkg_calendar.get_quarter(proposal_submitted_date, 'perf')
+        As ask_perf_quarter
     From table(metrics_pkg.tbl_universal_proposals_data)
   )
-
+  
   , ksm_cash As (
     Select
       gos.donor_id
@@ -628,16 +641,16 @@ Cursor c_mgo_activity_monthly Is
     , acr.historical_pm_name
     , 'MGS' As goal_type
     , 'MG Sols' As goal_desc
-    , pd.cal_year
-    , pd.cal_month
-    , pd.fiscal_year
-    , pd.fiscal_quarter
-    , pd.perf_year
-    , pd.perf_quarter
+    , pd.ask_cal_year
+    , pd.ask_cal_month
+    , pd.ask_fiscal_year
+    , pd.ask_fiscal_quarter
+    , pd.ask_perf_year
+    , pd.ask_perf_quarter
 --    , g.goal_2 As fy_goal
 --    , pyg.goal_2 As py_goal
     -- Original definition: count only if ask date is filled in
-    , Count(Distinct Case When acr.proposal_submitted_date Is Not Null Then acr.proposal_record_id End)
+    , Count(Distinct Case When acr.ask_or_close_date Is Not Null Then acr.proposal_record_id End)
       As progress
     -- Alternate definition: count if either ask date or stop date is filled in
     , Count(Distinct acr.proposal_record_id) As adjusted_progress
@@ -656,12 +669,12 @@ Cursor c_mgo_activity_monthly Is
 */  Group By
     acr.historical_pm_user_id
     , acr.historical_pm_name
-    , pd.cal_year
-    , pd.cal_month
-    , pd.fiscal_year
-    , pd.fiscal_quarter
-    , pd.perf_year
-    , pd.perf_quarter
+    , pd.ask_cal_year
+    , pd.ask_cal_month
+    , pd.ask_fiscal_year
+    , pd.ask_fiscal_quarter
+    , pd.ask_perf_year
+    , pd.ask_perf_quarter
 --    , g.goal_2
 --    , pyg.goal_2
   Union
@@ -671,16 +684,16 @@ Cursor c_mgo_activity_monthly Is
     , ack.historical_pm_name
     , 'KGS' As goal_type
     , 'KSM Sols' As goal_desc
-    , pd.cal_year
-    , pd.cal_month
-    , pd.fiscal_year
-    , pd.fiscal_quarter
-    , pd.perf_year
-    , pd.perf_quarter
+    , pd.ask_cal_year
+    , pd.ask_cal_month
+    , pd.ask_fiscal_year
+    , pd.ask_fiscal_quarter
+    , pd.ask_perf_year
+    , pd.ask_perf_quarter
 --    , g.goal_2 As fy_goal
 --    , pyg.goal_2 As py_goal
     -- Original definition: count only if ask date is filled in
-    , Count(Distinct Case When ack.proposal_submitted_date Is Not Null Then ack.proposal_record_id End)
+    , Count(Distinct Case When ack.ask_or_close_date Is Not Null Then ack.proposal_record_id End)
       As progress
     -- Alternate definition: count if either ask date or stop date is filled in
     , Count(Distinct ack.proposal_record_id) As adjusted_progress
@@ -699,12 +712,12 @@ Cursor c_mgo_activity_monthly Is
 */  Group By
     ack.historical_pm_user_id
     , ack.historical_pm_name
-    , pd.cal_year
-    , pd.cal_month
-    , pd.fiscal_year
-    , pd.fiscal_quarter
-    , pd.perf_year
-    , pd.perf_quarter
+    , pd.ask_cal_year
+    , pd.ask_cal_month
+    , pd.ask_fiscal_year
+    , pd.ask_fiscal_quarter
+    , pd.ask_perf_year
+    , pd.ask_perf_quarter
 --    , g.goal_2
 --    , pyg.goal_2
   Union
