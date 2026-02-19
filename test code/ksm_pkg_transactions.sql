@@ -79,7 +79,6 @@ test_cases As (
   Union Select 'MN2926284', '20140915', 'Pledge/payment date mismatch, should be 9/15/14' From DUAL
   Union Select 'MN2984767', '20230828', 'Original gift date 8/28/23' From DUAL
   Union Select 'MN2986653', '20221219', 'Pledge payment date 12/19/22' From DUAL
-  Union Select 'MN3018161', '20250514', 'Adjusted opportunity' From DUAL
 )
   
 Select

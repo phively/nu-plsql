@@ -168,22 +168,6 @@ Cursor c_matches Is
     From stg_alumni.opportunity o
   )
   
-  -- Adjustments only
-  , adj As (
-    Select
-      opp.name
-      , opp.stagename
-      , min(opp.ucinn_ascendv2__credit_date__c)
-        As credit_date
-      , ksm_pkg_calendar.get_fiscal_year(min(opp.ucinn_ascendv2__credit_date__c))
-        As fiscal_year
-    From opp
-    Where opp.stagename = 'Adjusted'
-    Group By
-      opp.name
-      , opp.stagename
-  )
-  
   -- Matching data can come from opportunities, or payments
   , matches_preunion As
   ((
@@ -292,10 +276,7 @@ Cursor c_matches Is
             Then payc.name
           When opp.name Is Not Null
             Then opp.name
-          When payc.name Is Not Null
-            Then payc.name
-          When adj.name Is Not Null
-            Then adj.name
+          Else payc.name
           End
         As original_gift_record_id
       , Case
@@ -304,10 +285,7 @@ Cursor c_matches Is
             Then dwp.credit_date
           When dwo.credit_date Is Not Null
             Then dwo.credit_date
-          When dwp.credit_date Is Not Null
-            Then dwp.credit_date
-          When adj.credit_date is Not Null
-            Then adj.credit_date
+          Else dwp.credit_date
           End
         As original_gift_credit_date
       , Case
@@ -316,10 +294,7 @@ Cursor c_matches Is
             Then to_number(dwp.fiscal_year)
           When dwo.fiscal_year Is Not Null
             Then to_number(dwo.fiscal_year)
-          When dwp.fiscal_year Is Not Null
-            Then to_number(dwp.fiscal_year)
-          When adj.fiscal_year Is Not Null
-            Then adj.fiscal_year
+          Else to_number(dwp.fiscal_year)
           End
         As original_gift_fy
       , mu.etl_update_date
@@ -339,12 +314,9 @@ Cursor c_matches Is
     From matches_union mu
     Left Join opp
       On opp.ucinn_ascendv2__receipt_number__c = mu.matching_gift_original_gift_receipt
-      And opp.stagename Not In ('Potential Match')
+      And opp.stagename Not In ('Potential Match', 'Adjusted')
     Left Join table(dw_pkg_base.tbl_opportunity) dwo
       On dwo.opportunity_record_id = opp.name
-    -- Join adjustments, as fallback
-    Left Join adj
-      On adj.name = opp.name
     -- Joined to check payments table
     Left Join stg_alumni.ucinn_ascendv2__payment__c payc
       On payc.ap_legacy_receipt_number__c = mu.matching_gift_original_gift_receipt
