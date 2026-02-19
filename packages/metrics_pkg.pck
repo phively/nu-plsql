@@ -571,7 +571,7 @@ Cursor c_mgo_activity_monthly Is
       , ksm_pkg_calendar.get_quarter(c.credit_date, 'perf') As perf_quarter
       , 0 As fy_goal
       , 0 As py_goal
-      , c.hard_credit_amount
+      , c.cash_countable_amount
     From v_ksm_gifts_cash c
     Inner Join tbl_ksm_gos gos
       On gos.user_id = c.historical_credit_user_id
@@ -722,9 +722,9 @@ Cursor c_mgo_activity_monthly Is
     , ksm_cash.perf_quarter
 --    , ksm_cash.fy_goal
 --    , ksm_cash.py_goal
-    , trunc(sum(hard_credit_amount), 2) As progress
-    , trunc(sum(hard_credit_amount), 2) As adjusted_progress
-    , trunc(sum(hard_credit_amount), 2) As addl_progress_detail
+    , trunc(sum(cash_countable_amount), 2) As progress
+    , trunc(sum(cash_countable_amount), 2) As adjusted_progress
+    , trunc(sum(cash_countable_amount), 2) As addl_progress_detail
   From ksm_cash
   Group By
     ksm_cash.donor_id
