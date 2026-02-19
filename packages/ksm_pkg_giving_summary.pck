@@ -183,7 +183,10 @@ Cursor c_lifetime_giving Is
       , ds.lifetime_ngc_with_spouse
         As nu_lifetime_ngc_with_spouse
       , trunc(
-          greatest(dd.etl_update_date, ds.etl_update_date)
+          greatest(
+            nvl(dd.etl_update_date, to_date('20250505', 'yyyymmdd'))
+            , nvl(ds.etl_update_date, to_date('20250505', 'yyyymmdd'))
+          )
         ) As etl_update_date
     From dm_alumni.dim_donor_summary ds
     Inner Join dm_alumni.dim_donor dd
@@ -202,13 +205,19 @@ Cursor c_lifetime_giving Is
     , hh.household_primary_sort_name
     , hh.household_spouse_donor_id
     , hh.household_spouse_sort_name
-    , greatest(di.nu_lifetime_ngc_individual, di.nu_lifetime_ngc_with_spouse
-        , di_spouse.nu_lifetime_ngc_individual, di_spouse.nu_lifetime_ngc_with_spouse)
-      As nu_lifetime_ngc
+    , greatest(
+        nvl(di.nu_lifetime_ngc_individual, 0)
+        , nvl(di.nu_lifetime_ngc_with_spouse, 0)
+        , nvl(di_spouse.nu_lifetime_ngc_individual, 0)
+        , nvl(di_spouse.nu_lifetime_ngc_with_spouse, 0)
+      ) As nu_lifetime_ngc
     , di.nu_lifetime_ngc_individual
     , di.nu_lifetime_ngc_with_spouse
-    , greatest(hh.etl_update_date, di.etl_update_date, di_spouse.etl_update_date)
-      As etl_update_date
+    , greatest(
+        nvl(hh.etl_update_date, to_date('20250505', 'yyyymmdd'))
+        , nvl(di.etl_update_date, to_date('20250505', 'yyyymmdd'))
+        , nvl(di_spouse.etl_update_date, to_date('20250505', 'yyyymmdd'))
+      ) As etl_update_date
   From mv_households hh
   Left Join donorinfo di
     On di.donor_id = hh.household_primary_donor_id

@@ -312,6 +312,7 @@ Type rec_gift_credit Is Record (
   , credit_date stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_date_formula__c%type
   , fiscal_year stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.nu_fiscal_year__c%type
   , credit_type stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_type__c%type
+  , credit_subtype stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__credit_subtype__c%type
   , source_type stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__source__c%type
   , source_type_detail stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__gift_type_formula__c%type
   , opportunity_salesforce_id stg_alumni.ucinn_ascendv2__hard_and_soft_credit__c.ucinn_ascendv2__opportunity__c%type
@@ -1315,6 +1316,8 @@ Cursor c_gift_credit Is
       As fiscal_year
     , hsc.ucinn_ascendv2__credit_type__c
       As credit_type
+    , hsc.ucinn_ascendv2__credit_subtype__c
+      As credit_subtype
     , hsc.ucinn_ascendv2__source__c
       As source_type
     , hsc.ucinn_ascendv2__gift_type_formula__c

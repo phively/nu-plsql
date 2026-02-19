@@ -608,7 +608,26 @@ max(decode(rw,1,PLEDGE_AMOUNT_PAID_TO_DATE)) paid1,
 max(decode(rw,1,acct)) pacct1,
 max(decode(rw,1,bal)) bal1
 from NEW_PLEDGE_INFO
-group by NEW_PLEDGE_INFO.id)
+group by NEW_PLEDGE_INFO.id),
+
+--- KSM Faculty or Staff
+
+f as (SELECT DISTINCT 
+D.CONSTITUENT_DONOR_ID,
+d.constituent_type
+FROM DM_ALUMNI.DIM_CONSTITUENT d 
+WHERE CONSTITUENT_TYPE LIKE '%Faculty/Staff%'),
+
+ --- spouse program
+sp as (
+select 
+e.spouse_donor_id,
+e.spouse_name,
+d.first_ksm_year,
+d.program,
+d.program_group
+from mv_entity e 
+inner join mv_entity_ksm_degrees d on d.donor_id = e.spouse_donor_id)
       
  
 select distinct e.household_id,
@@ -635,7 +654,10 @@ select distinct e.household_id,
      FR.MIM_IND,
      e.spouse_donor_id,
      e.spouse_name,
-     e.spouse_institutional_suffix,     
+     e.spouse_institutional_suffix,   
+     sp.first_ksm_year as spouse_first_year,
+     sp.program as spouse_program,
+     sp.program_group as spouse_program_group, 
      hhdean.Spouse_Dean_Salut,
      hhdean.spouse_full_name,
      SMN.spouse_pref_mail_name,
@@ -738,6 +760,7 @@ select distinct e.household_id,
      employ.primary_employ_ind,
      employ.primary_job_title,
      employ.primary_employer,
+     case when f.CONSTITUENT_DONOR_ID is not null then 'Y' end as faculty_staff_flag, 
      assign.prospect_manager_name,
      assign.lagm_name,      
      case when sh.no_email_ind is null and sh.no_contact is null then email.email end as email,
@@ -862,3 +885,7 @@ left join SMN on SMN.donor_id = e.donor_id
 left join mods on mods.donor_id = e.donor_id
 --- Amy Pledge Code
 left join amy_pledge_code apc on apc.id = e.donor_id
+--- faculty or staff
+left join f on f.CONSTITUENT_DONOR_ID = e.donor_id
+--- spouse program
+left join sp on sp.spouse_donor_id = e.spouse_donor_id
