@@ -473,6 +473,8 @@ a.ap_is_active_formula__c
 from stg_alumni.ap_strategy_relation__c a 
 left join  mv_entity e on e.salesforce_id = a.ap_constituent__c
 where e.household_id_ksm is not null
+--- Added just active strategy 
+and a.ap_is_active_formula__c = 'true'
 ),
 
 sr as (select r.household_id_ksm
