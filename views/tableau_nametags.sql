@@ -119,8 +119,8 @@ degrees_concat As (
 
 
 Select Distinct
-  k.constituent_donor_id
-  , k.constituent_name
+    entity.donor_id
+  , entity.full_name
   , c.primary_constituent_type
   , c.salutation
   , c.first_name
@@ -141,18 +141,21 @@ Select Distinct
   , dc.degree_levels
   , dc.nu_degrees_string
   , family.Family
-From k
-Inner Join degrees_concat dc
-  On dc.constituent_donor_id = k.constituent_donor_id
+From mv_entity entity 
+left join k 
+  On k.constituent_donor_id = entity.donor_id
+left Join degrees_concat dc
+  On dc.constituent_donor_id = entity.donor_id
 -- get first name, record type, suffix
 Inner Join dm_alumni.dim_constituent c
-  On c.constituent_donor_id = k.constituent_donor_id
+  On c.constituent_donor_id = entity.donor_id
 -- Data Points from Paul's View
 Left Join mv_entity_ksm_degrees d
-  On d.donor_id = k.constituent_donor_id
+  On d.donor_id = entity.donor_id
 -- Check Joint Degree Programs - Test Case 
 Left Join V_ENTITY_SALUTATIONS_INDIVIDUAL dean
-  On dean.donor_id = k.constituent_donor_id
+  On dean.donor_id = entity.donor_id
 Left Join family 
-on family.donor_id = k.constituent_donor_id
+on family.donor_id = entity.donor_id
+where entity.person_or_org = 'P'
 ;
