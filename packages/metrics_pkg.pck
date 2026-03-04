@@ -268,10 +268,12 @@ Function tbl_contact_reports
 
 Function tbl_contact_count
   Return contact_count Pipelined;
-/*
-Function tbl_assist_count
+
+Function tbl_assist_count(
+    ask_amt number default metrics_pkg.mg_ask_amt
+  )
   Return ask_assist_credit Pipelined;
-*/
+
 Function tbl_mgo_activity_monthly
   Return mgo_activity_monthly Pipelined;
 
@@ -573,46 +575,35 @@ Cursor c_contact_count Is
 --------------------------------------
 -- Proposal assist credit
 -- Corresponds to old goal 6 subqueries in lines 1456-1489
-/*Cursor c_assist_count Is
+Cursor c_assist_count(
+    ask_amt_in In number
+  ) Is
+  
+  -- Must be proposal manager and above the ask credit threshold
   With
-  -- Count for proposal assists goal 6
-  proposal_assists_count As (
-    -- Must be proposal assist; no dollar threshold
+  
+  assist_asked_count As (
     Select *
-    From table(tbl_universal_proposals_data)
-    Where assignment_type = 'AS' -- Proposal Assist
+    From table(metrics_pkg.tbl_proposal_assist_data)
+    Where proposal_submitted_amount >= 100E3 --ask_amt_in
   )
-  , assist_count As (
-      -- Any active proposals (1st priority)
-        Select proposal_id
-          , assignment_id_number
-          , initial_contribution_date
-          , proposal_stop_date
-          , 1 As info_rank
-        From proposal_assists_count
-        Where assignment_active_ind = 'Y'
-      Union
-        Select proposal_id
-          , assignment_id_number
-          , initial_contribution_date
-          , proposal_stop_date
-          , 2 As info_rank
-        From proposal_assists_count
-        Where assignment_active_ind = 'N'
-          And proposal_stop_date - assignment_stop_date <= 1
-      Order By info_rank
-    )
-  Select proposal_id
-    , assignment_id_number
-    , min(initial_contribution_date) keep(dense_rank First Order By info_rank Asc)
-      As initial_contribution_date
-    -- Replace null initial_contribution_date with proposal_stop_date
-    , min(nvl(initial_contribution_date, proposal_stop_date)) keep(dense_rank First Order By info_rank Asc)
-      As ask_or_stop_dt
-  From assist_count
-  Group By proposal_id
-    , assignment_id_number
-;*/
+  
+  Select
+    proposal_record_id
+    , opportunity_user_salesforce_id
+      As proposal_assist_user_id
+    , opportunity_user_name
+      As proposal_assist_name
+    , opportunity_assignment_role
+      As opportunity_user_role
+    , historical_pm_business_unit
+    , ksm_flag
+    , proposal_submitted_date
+    -- Replace null submitted date with close date
+    , nvl(proposal_submitted_date, proposal_close_date)
+      As ask_or_close_date
+  From assist_asked_count
+;
 
 --------------------------------------
 -- Gift officer activity aggregated by month
@@ -949,47 +940,49 @@ Cursor c_mgo_activity_monthly Is
     , c.perf_quarter
 --    , g.goal_5
 --    , pyg.goal_5
-/*  Union
+  Union
   ----- Main query goal 6, equivalent to lines 1449-1627 in nu_gft_v_officer_metrics -----
-  Select acr.assignment_id_number As id_number
-    , e.report_name
+    Select
+    aca.historical_pm_user_id
+    , aca.historical_pm_name
     , 'PA' As goal_type
     , 'Proposal Assists' As goal_desc
-    , extract(year From acr.ask_or_stop_dt) As cal_year
-    , extract(month From acr.ask_or_stop_dt) As cal_month
-    , rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(acr.ask_or_stop_dt) As fiscal_year
-    , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'fisc') As fiscal_quarter
-    , rpt_pbh634.ksm_pkg_tmp.get_performance_year(acr.ask_or_stop_dt) As perf_year
-    , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'perf') As perf_quarter
-    , g.goal_6 As fy_goal
-    , pyg.goal_6 As py_goal
+    , pd.ask_cal_year
+    , pd.ask_cal_month
+    , pd.ask_fiscal_year
+    , pd.ask_fiscal_quarter
+    , pd.ask_perf_year
+    , pd.ask_perf_quarter
+--    , g.goal_6 As fy_goal
+--    , pyg.goal_6 As py_goal
     -- Original definition: count only if ask date is filled in
-    , Count(Distinct Case When acr.initial_contribution_date Is Not Null Then acr.proposal_id End)
+    , Count(Distinct Case When aca.ask_or_close_date Is Not Null Then aca.proposal_record_id End)
       As progress
     -- Alternate definition: count if either ask date or stop date is filled in
-    , Count(Distinct acr.proposal_id) As adjusted_progress
+    , Count(Distinct aca.proposal_record_id) As adjusted_progress
     , NULL As addl_progress_detail
-  From table(rpt_pbh634.metrics_pkg.tbl_assist_count) acr
-  Inner Join entity e On e.id_number = acr.assignment_id_number
-  -- Fiscal year goals
+  From table(metrics_pkg.tbl_assist_count) aca
+  Inner Join proposal_dates pd
+    On pd.proposal_record_id = aca.proposal_record_id
+/*  -- Fiscal year goals
   Left Join goal g
-    On acr.assignment_id_number = g.id_number
-      And g.year = rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(acr.ask_or_stop_dt) -- initial_contribution_date is 'ask_date'
+    On aca.assignment_id_number = g.id_number
+      And g.year = rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(aca.ask_or_stop_dt)
   -- Performance year goals
   Left Join goal pyg
-    On acr.assignment_id_number = pyg.id_number
-      And pyg.year = rpt_pbh634.ksm_pkg_tmp.get_performance_year(acr.ask_or_stop_dt)
-  Group By rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(acr.ask_or_stop_dt)
-    , acr.assignment_id_number
-    , e.report_name
-    , extract(year From acr.ask_or_stop_dt)
-    , extract(month From acr.ask_or_stop_dt)
-    , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'fisc')
-    , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'perf')
-    , rpt_pbh634.ksm_pkg_tmp.get_performance_year(acr.ask_or_stop_dt)
-    , g.goal_6
-    , pyg.goal_6
-*/
+    On aca.assignment_id_number = pyg.id_number
+      And pyg.year = rpt_pbh634.ksm_pkg_tmp.get_performance_year(aca.ask_or_stop_dt)
+*/  Group By
+    aca.historical_pm_user_id
+    , aca.historical_pm_name
+    , pd.ask_cal_year
+    , pd.ask_cal_month
+    , pd.ask_fiscal_year
+    , pd.ask_fiscal_quarter
+    , pd.ask_perf_year
+    , pd.ask_perf_quarter
+--    , g.goal_6
+--    , pyg.goal_6
 ;
 
 /*************************************************************************
@@ -1201,23 +1194,27 @@ Function tbl_contact_count
   End;
 
 --------------------------------------
-/*-- Pipelined function returning proposal assists data
-Function tbl_assist_count
+-- Pipelined function returning proposal assists data
+Function tbl_assist_count(
+    ask_amt number default metrics_pkg.mg_ask_amt
+  )
   Return ask_assist_credit Pipelined As
     -- Declarations
-    pd ask_assist_credit;
+    ac ask_assist_credit;
 
   Begin
-    Open c_assist_count; -- Annual Fund allocations cursor
-      Fetch c_assist_count Bulk Collect Into pd;
+    Open c_assist_count(
+      ask_amt_in => ask_amt
+    );
+      Fetch c_assist_count Bulk Collect Into ac;
     Close c_assist_count;
     -- Pipe out the data
-    For i in 1..(pd.count) Loop
-      Pipe row(pd(i));
+    For i in 1..(ac.count) Loop
+      Pipe row(ac(i));
     End Loop;
     Return;
   End;
-*/
+
 --------------------------------------
 -- Pipelined function returning consolidated GO activity
 Function tbl_mgo_activity_monthly
