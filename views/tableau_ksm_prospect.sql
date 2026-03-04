@@ -473,6 +473,8 @@ a.ap_is_active_formula__c
 from stg_alumni.ap_strategy_relation__c a 
 left join  mv_entity e on e.salesforce_id = a.ap_constituent__c
 where e.household_id_ksm is not null
+--- Added just active strategy 
+and a.ap_is_active_formula__c = 'true'
 ),
 
 sr as (select r.household_id_ksm
@@ -678,7 +680,8 @@ select  distinct
        funding.start_date as funding_start_date,
        funding.end_date as funding_end_date,
        funding.funding_interest_name,
-       kprop.ksm_active_proposal_count
+       kprop.ksm_active_proposal_count,
+       prop.ksm_flag
 from entity e 
 --- inner join prospect 
 inner join prospect on prospect.donor_id = e.donor_id
@@ -736,4 +739,12 @@ left join kprop on kprop.donor_id = e.donor_id
 left join strat_relation str on str.ucinn_ascendv2__donor_id__c = e.donor_id
 ---left join strategy_id_concat on strategy_id_concat.donor_id = e.donor_id
 left join final_strategy_id on final_strategy_id.donor_id = e.donor_id
- 
+--- proposal
+left join  prop on prop.donor_id = e.donor_id
+--- Next Param - Prospects OR if you active an active proposal flag with KSM flag = 'Y'
+where 
+--- prospect 
+(prospect.donor_id is not null
+--- prop = proposals are active, so just just use the KSM Flag = 'Y' here 
+or 
+(prop.donor_id is not null and prop.ksm_flag = 'Y'))

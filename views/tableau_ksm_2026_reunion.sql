@@ -580,7 +580,7 @@ INNER JOIN stg_alumni.ucinn_ascendv2__designation_detail__c DD
 ON DO.OPPORTUNITY_DONOR_ID = DD.UCINN_ASCENDV2__DONOR_ID_FORMULA__C
 AND DO.OPPORTUNITY_RECORD_ID = DD.UCINN_ASCENDV2__PLEDGE_ID_FORMULA__C
 AND MKT.DESIGNATION_NAME = DD.UCINN_ASCENDV2__ACKNOWLEDGEMENT_DESCRIPTION_FORMULA__C
-WHERE MKT.SOURCE_TYPE_DETAIL = 'Pledge'
+WHERE MKT.SOURCE_TYPE_DETAIL IN ('Pledge', 'Recurring Gift')   -- ADDED RECURRING GIFT AS TYPE on 2/9
 Group By MKT.CREDITED_DONOR_ID,MKT.CREDIT_DATE,MKT.OPPORTUNITY_STAGE,MKT.OPPORTUNITY_RECORD_ID, MKT.DESIGNATION_RECORD_ID)
  
 ,NEW_PLEDGE_INFO AS (
@@ -627,7 +627,81 @@ d.first_ksm_year,
 d.program,
 d.program_group
 from mv_entity e 
-inner join mv_entity_ksm_degrees d on d.donor_id = e.spouse_donor_id)
+inner join mv_entity_ksm_degrees d on d.donor_id = e.spouse_donor_id),
+
+--- Honor Roll 
+
+HR as (select c.id,
+       stg_alumni.contact.ucinn_ascendv2__donor_id__c as donor_id,
+       c.ucinn_ascendv2__first_name__c,
+       c.ucinn_ascendv2__last_name__c,
+       c.ucinn_ascendv2__type__c,
+       c.ucinn_ascendv2__constructed_name_formula__c,
+       c.ucinn_ascendv2__Data_Source__c,
+       c.etl_create_date,
+       c.etl_update_date
+from STG_ALUMNI.UCINN_ASCENDV2__CONTACT_NAME__C c 
+inner join stg_alumni.contact on stg_alumni.contact.id = c.ucinn_ascendv2__contact__c
+where c.ucinn_ascendv2__type__c = 'Honor Roll Name'
+and  c.ucinn_ascendv2__Data_Source__c like '%Annual Giving%'),
+
+event as (select
+a.NU_DONOR_ID__C  ,
+a.CONFERENCE360__ATTENDEE_FULL_NAME__C  ,
+a.CONFERENCE360__EVENT_NAME__C  ,
+a.CONFERENCE360__EVENT_START_DATE__C  ,
+a.conference360__attendance_status__c ,
+a.conference360__event_organizer_name__c,
+a.conference360__registration_status__c,
+a.conference360__event_id__c,
+case when a.CONFERENCE360__EVENT_NAME__C like '%KSM%'
+or a.CONFERENCE360__EVENT_NAME__C like '%Kellogg%'
+or a.conference360__event_organizer_name__c like '%Kellogg%'
+then 'Y' end as KSM_Event
+from stg_alumni.conference360__attendee__c a
+where a.NU_DONOR_ID__C  is not null
+and a.CONFERENCE360__EVENT_NAME__C is not null),
+
+--- Events Listagg - If needed in the future
+
+levent as (
+select event.NU_DONOR_ID__C,
+Listagg (event.CONFERENCE360__EVENT_NAME__C, ';  ') Within Group (Order By event.CONFERENCE360__EVENT_START_DATE__C) As event_name,
+Listagg (event.CONFERENCE360__EVENT_START_DATE__C, ';  ') Within Group (Order By event.CONFERENCE360__EVENT_START_DATE__C) As event_start_date,
+Listagg (event.conference360__attendance_status__c, ';  ') Within Group (Order By event.CONFERENCE360__EVENT_START_DATE__C) As event_attendance_status,
+Listagg (event.conference360__event_organizer_name__c, ';  ') Within Group (Order By event.CONFERENCE360__EVENT_START_DATE__C) As event_organizer_name,
+Listagg (event.conference360__registration_status__c, ';  ') Within Group (Order By event.CONFERENCE360__EVENT_START_DATE__C) As event_registration_status
+from event
+group by event.NU_DONOR_ID__C
+),
+
+--- event 
+
+reunion_event as (
+select
+e.donor_id,
+event.conference360__event_id__c as event_id,
+event.CONFERENCE360__EVENT_NAME__C  as event_name ,
+event.CONFERENCE360__EVENT_START_DATE__C as event_date ,
+event.conference360__attendance_status__c as attendance_status,
+event.conference360__event_organizer_name__c as organizer_name,
+event.conference360__registration_status__c as registraton_status,
+event.KSM_Event
+from event
+inner join e on event.NU_DONOR_ID__C = e.donor_id
+where event.CONFERENCE360__EVENT_NAME__C like '%KSM 2026 Reunion Weekend%'),
+
+--- anonymous donor
+
+anon as (Select household_id
+, household_primary_donor_id
+, s.household_primary_full_name
+, 'Y' As has_anon_giving_ksm
+, s.ngc_lifetime_full_rec
+, s.ngc_lifetime_nonanon_full_rec
+From mv_ksm_giving_summary s
+Where ngc_lifetime_full_rec <> ngc_lifetime_nonanon_full_rec
+Order By ngc_lifetime_full_rec Desc)
       
  
 select distinct e.household_id,
@@ -643,6 +717,7 @@ select distinct e.household_id,
      e.first_name,
      e.last_name,
      e.institutional_suffix,
+     case when  reunion_event.donor_id is not null then reunion_event.registraton_status end as Registered_2026_Reunion,
      --- case when MIM.id_number is not null then 'MiM' end as MiM_IND, 
      FR.reunion_year_concat,
      KSM_Degrees.first_ksm_year,
@@ -704,6 +779,10 @@ select distinct e.household_id,
      case when g.expendable_pfy3 is not null then g.expendable_pfy3 else 0 end as expendable_pfy3,
      case when g.expendable_pfy4 is not null then g.expendable_pfy4 else 0 end as expendable_pfy4,
      case when g.expendable_pfy5 is not null then g.expendable_pfy5 else 0 end as expendable_pfy5,
+     --- anon donor 
+     anon.has_anon_giving_ksm,
+     anon.ngc_lifetime_full_rec,
+     anon.ngc_lifetime_nonanon_full_rec,
      ---- Pull last 4 Gifts per Kellogg Fund 
      g.last_cash_tx_id,
      g.last_cash_date,
@@ -822,7 +901,12 @@ select distinct e.household_id,
      mods.student_supporter_description,
      mods.student_supporter_score,
      mods.etl_update_date,
-     mods.mv_last_refresh
+     mods.mv_last_refresh,
+     HR.ucinn_ascendv2__first_name__c as Honor_Roll_First_Name,
+     HR.ucinn_ascendv2__last_name__c as Honor_Roll_Last_Name,
+     HR.ucinn_ascendv2__type__c as Honor_Roll_Type,
+     HR.ucinn_ascendv2__constructed_name_formula__c as Honor_Roll_Name_Formula,
+     HR.ucinn_ascendv2__Data_Source__c as Honor_Roll_Data_Source
 from e 
 left join KSM_Degrees on KSM_Degrees.donor_id = e.donor_id
 --- Reunion eligible
@@ -889,3 +973,9 @@ left join amy_pledge_code apc on apc.id = e.donor_id
 left join f on f.CONSTITUENT_DONOR_ID = e.donor_id
 --- spouse program
 left join sp on sp.spouse_donor_id = e.spouse_donor_id
+--- Honor Roll 
+left join HR on HR.donor_id = e.donor_id
+--- Reunion Event 
+left join reunion_event on reunion_event.donor_id = e.donor_id
+--- anon donor
+left join anon on anon.household_id = e.household_id_ksm
