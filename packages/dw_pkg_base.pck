@@ -380,6 +380,18 @@ Type rec_assignment Is Record (
 );
 
 --------------------------------------
+Type rec_proposal_assignment Is Record (
+    opportunity_assignment_salesforce_id stg_alumni.opportunityteammember.id%type
+    , opportunity_user_salesforce_id stg_alumni.opportunityteammember.userid%type
+    , opportunity_user_name stg_alumni.opportunityteammember.name%type
+    , opportunity_assignment_role stg_alumni.opportunityteammember.teammemberrole%type
+    , opportunity_salesforce_id stg_alumni.opportunityteammember.opportunityid%type
+    , assignment_is_active stg_alumni.opportunityteammember.ap_is_active__c%type
+    , assignment_start_date stg_alumni.opportunityteammember.ap_start_date__c%type
+    , etl_update_date stg_alumni.opportunityteammember.etl_update_date%type
+);
+
+--------------------------------------
 Type rec_proposal Is Record (
   opportunity_salesforce_id dm_alumni.dim_proposal_opportunity.opportunity_salesforce_id%type
   , proposal_record_id dm_alumni.dim_proposal_opportunity.proposal_record_id%type
@@ -590,6 +602,7 @@ Type gift_credit Is Table Of rec_gift_credit;
 Type involvement Is Table Of rec_involvement;
 Type service_indicators Is Table Of rec_service_indicators;
 Type assignments Is Table Of rec_assignment;
+Type proposal_assignment Is Table Of rec_proposal_assignment;
 Type proposals Is Table Of rec_proposal;
 Type strategy Is Table Of rec_strategy;
 Type strategy_relation Is Table Of rec_strategy_relation;
@@ -652,6 +665,9 @@ Function tbl_service_indicators
 
 Function tbl_assignments
   Return assignments Pipelined;
+
+Function tbl_proposal_assignment
+  Return proposal_assignment Pipelined;
 
 Function tbl_proposals
   Return proposals Pipelined;
@@ -1447,6 +1463,27 @@ Cursor c_assignments Is
 ;
 
 --------------------------------------
+Cursor c_proposal_assignment Is
+  Select
+      otm.id
+      As opportunity_assignment_salesforce_id
+    , otm.userid
+      As opportunity_user_salesforce_id
+    , otm.name
+      As opportunity_user_name
+    , otm.teammemberrole
+      As opportunity_assignment_role
+    , otm.opportunityid
+      As opportunity_salesforce_id
+    , otm.ap_is_active__c
+      As assignment_is_active
+    , otm.ap_start_date__c
+      As assignment_start_date
+    , otm.etl_update_date
+  From stg_alumni.opportunityteammember otm
+;
+
+--------------------------------------
 Cursor c_proposals Is
 
   With
@@ -2072,6 +2109,23 @@ Function tbl_assignments
     Close c_assignments;
     For i in 1..(asn.count) Loop
       Pipe row(asn(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+-- Pipelined function returning disaggregated proposal assists
+Function tbl_proposal_assignment
+  Return proposal_assignment Pipelined As
+  -- Declarations
+  pa proposal_assignment;
+
+  Begin
+    Open c_proposal_assignment;
+      Fetch c_proposal_assignment Bulk Collect Into pa;
+    Close c_proposal_assignment;
+    For i in 1..(pa.count) Loop
+      Pipe row(pa(i));
     End Loop;
     Return;
   End;

@@ -27,7 +27,39 @@ Public type declarations
 
 --------------------------------------
 Type rec_proposals_data Is Record (
-  proposal_record_id mv_proposals.proposal_record_id%type
+  opportunity_salesforce_id mv_proposals.opportunity_salesforce_id%type
+  , proposal_record_id mv_proposals.proposal_record_id%type
+  , historical_pm_user_id mv_proposals.historical_pm_user_id%type
+  , historical_pm_name mv_proposals.historical_pm_name%type
+  , historical_pm_role mv_proposals.historical_pm_role%type
+  , historical_pm_business_unit mv_proposals.historical_pm_business_unit%type
+  , ksm_flag mv_proposals.ksm_flag%type
+  , historical_pm_is_active mv_proposals.historical_pm_is_active%type
+  , proposal_active_indicator mv_proposals.proposal_active_indicator%type
+  , proposal_type mv_proposals.proposal_type%type
+  , standard_proposal_flag varchar2(1)
+  , proposal_submitted_amount mv_proposals.proposal_submitted_amount%type
+  , proposal_funded_amount mv_proposals.proposal_funded_amount%type
+  , proposal_stage mv_proposals.proposal_stage%type
+  , proposal_created_date mv_proposals.proposal_created_date%type
+  , proposal_submitted_date mv_proposals.proposal_submitted_date%type
+  , proposal_close_date mv_proposals.proposal_close_date%type
+  , cal_year integer
+  , cal_month integer
+  , fiscal_year integer
+  , fiscal_quarter integer
+  , perf_year integer
+  , perf_quarter integer
+);
+
+--------------------------------------
+Type rec_proposal_assist_data Is Record (
+  opportunity_assignment_salesforce_id stg_alumni.opportunityteammember.id%type
+  , opportunity_assignment_role stg_alumni.opportunityteammember.teammemberrole%type
+  , opportunity_user_salesforce_id stg_alumni.opportunityteammember.userid%type
+  , opportunity_user_name stg_alumni.opportunityteammember.name%type
+  , assignment_is_active stg_alumni.opportunityteammember.ap_is_active__c%type
+  , proposal_record_id mv_proposals.proposal_record_id%type
   , historical_pm_user_id mv_proposals.historical_pm_user_id%type
   , historical_pm_name mv_proposals.historical_pm_name%type
   , historical_pm_role mv_proposals.historical_pm_role%type
@@ -153,6 +185,7 @@ Public table declarations
 *************************************************************************/
 
 Type proposals_data Is Table Of rec_proposals_data;
+Type proposal_assist_data Is Table Of rec_proposal_assist_data;
 Type goals_data Is Table Of rec_goals_data;
 Type funded_credit Is Table Of rec_funded_credit;
 Type funded_dollars Is Table Of rec_funded_dollars;
@@ -195,9 +228,12 @@ Select cal.*
 From table(rpt_pbh634.ksm_pkg_tmp.tbl_current_calendar) cal;
 *************************************************************************/
 
--- Standardized proposal data table function
+-- Standardized proposal data table functions
 Function tbl_universal_proposals_data
   Return proposals_data Pipelined;
+
+Function tbl_proposal_assist_data
+  Return proposal_assist_data Pipelined;
 
 -- Standardized goals data table function
 Function tbl_goals_data
@@ -252,7 +288,8 @@ Private cursor tables -- data definitions; update indicated sections as needed
 -- All fields needed to recreate proposals subqueries appearing throughout the original file
 Cursor c_universal_proposals_data Is
   Select
-    p.proposal_record_id
+    p.opportunity_salesforce_id
+    , p.proposal_record_id
     , p.historical_pm_user_id
     , p.historical_pm_name
     , p.historical_pm_role
@@ -280,6 +317,46 @@ Cursor c_universal_proposals_data Is
     And p.proposal_stage In (
       'Submitted', 'Approved by Donor', 'Declined', 'Funded'
     )
+;
+
+--------------------------------------
+-- Proposal assists data, disaggregated for multiple assists
+Cursor c_proposal_assist_data Is
+  Select
+    pa.opportunity_assignment_salesforce_id
+    , pa.opportunity_assignment_role
+    , pa.opportunity_user_salesforce_id
+      As proposal_assist_user_id
+    , pa.opportunity_user_name
+      As proposal_assist_name
+    , pa.assignment_is_active
+      As proposal_assist_is_active
+    , p.proposal_record_id
+    , p.historical_pm_user_id
+    , p.historical_pm_name
+    , p.historical_pm_role
+    , p.historical_pm_business_unit
+    , p.ksm_flag
+    , p.historical_pm_is_active
+    , p.proposal_active_indicator
+    , p.proposal_type
+    , p.standard_proposal_flag
+    , p.proposal_submitted_amount
+    , p.proposal_funded_amount
+    , p.proposal_stage
+    , p.proposal_created_date
+    , p.proposal_submitted_date
+    , p.proposal_close_date
+    , p.cal_year
+    , p.cal_month
+    , p.fiscal_year
+    , p.fiscal_quarter
+    , p.perf_year
+    , p.perf_quarter
+  From table(dw_pkg_base.tbl_proposal_assignment) pa
+  Inner Join table(metrics_pkg.tbl_universal_proposals_data) p
+    On p.opportunity_salesforce_id = pa.opportunity_salesforce_id
+  Where pa.opportunity_assignment_role = 'Proposal Assist'
 ;
 
 --------------------------------------
@@ -493,10 +570,10 @@ Cursor c_contact_count Is
   From table(metrics_pkg.tbl_contact_reports)
 ;
 
-/*--------------------------------------
--- Refactor goal 6 subqueries in lines 1456-1489
--- 3 clones, at 1501-1534, 1546-1579, 1591-1624
-Cursor c_assist_count Is
+--------------------------------------
+-- Proposal assist credit
+-- Corresponds to old goal 6 subqueries in lines 1456-1489
+/*Cursor c_assist_count Is
   With
   -- Count for proposal assists goal 6
   proposal_assists_count As (
@@ -535,8 +612,7 @@ Cursor c_assist_count Is
   From assist_count
   Group By proposal_id
     , assignment_id_number
-;
-*/
+;*/
 
 --------------------------------------
 -- Gift officer activity aggregated by month
@@ -962,6 +1038,23 @@ Function tbl_universal_proposals_data
   End;
 
 --------------------------------------
+-- Pipelined function returning disaggregated proposal assists
+Function tbl_proposal_assist_data
+  Return proposal_assist_data Pipelined As
+  -- Declarations
+  pa proposal_assist_data;
+
+  Begin
+    Open c_proposal_assist_data;
+      Fetch c_proposal_assist_data Bulk Collect Into pa;
+    Close c_proposal_assist_data;
+    For i in 1..(pa.count) Loop
+      Pipe row(pa(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
 -- Pipelined function returning goals
 Function tbl_goals_data
   Return goals_data Pipelined As
@@ -1107,8 +1200,8 @@ Function tbl_contact_count
     Return;
   End;
 
-/*--------------------------------------
--- Pipelined function returning proposal assists data
+--------------------------------------
+/*-- Pipelined function returning proposal assists data
 Function tbl_assist_count
   Return ask_assist_credit Pipelined As
     -- Declarations
@@ -1125,7 +1218,6 @@ Function tbl_assist_count
     Return;
   End;
 */
-
 --------------------------------------
 -- Pipelined function returning consolidated GO activity
 Function tbl_mgo_activity_monthly
