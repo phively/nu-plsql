@@ -64,6 +64,10 @@ From table(dw_pkg_base.tbl_assignments)
 ;
 
 Select *
+From table(dw_pkg_base.tbl_proposal_assignment)
+;
+
+Select *
 From table(dw_pkg_base.tbl_proposals)
 ;
 
