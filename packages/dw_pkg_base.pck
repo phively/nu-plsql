@@ -509,6 +509,7 @@ Type rec_work_plan Is Record (
   , metric_performance_year stg_alumni.ucinn_ascendv2__work_plan__c.ap_metric_year__c%type
   , metric_effective_date stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__effective_date__c%type
   , mg_commitments_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_major_gifts_commitments__c%type
+  , mg_asks_goal stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__total_major_gift_solicitations__c%type
   , mg_dollars_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_major_gifts_dollars_raised__c%type
   , visits_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_visits__c%type
   , qualifications_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_total_qualification_visits__c%type
@@ -1700,7 +1701,7 @@ Cursor c_work_plan Is
       As work_plan_salesforce_id
     , wp.name
       As work_plan_name
-    , wp.ap_reporting_manager__c
+    , wp.ucinn_ascendv2__development_officer__c
       As gift_officer_user_salesforce_id
     , wp.ap_gift_officer_type__c
       As gift_officer_type
@@ -1716,6 +1717,8 @@ Cursor c_work_plan Is
       As metric_effective_date
     , wp.ap_major_gifts_commitments__c
       As mg_commitments_goal
+    , wp.ucinn_ascendv2__total_major_gift_solicitations__c
+      As mg_asks_goal
     , wp.ap_major_gifts_dollars_raised__c
       As mg_dollars_goal
     , wp.ap_visits__c
