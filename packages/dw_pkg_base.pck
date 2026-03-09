@@ -506,6 +506,7 @@ Type rec_work_plan Is Record (
   , gift_officer_role stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__role__c%type
   , gift_officer_status stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__status__c%type
   , gift_officer_unit_salesforce_id stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__work_plan_unit__c%type
+  , manager_user_salesforce_id stg_alumni.ucinn_ascendv2__work_plan__c.ap_reporting_manager__c%type
   , metric_performance_year stg_alumni.ucinn_ascendv2__work_plan__c.ap_metric_year__c%type
   , metric_effective_date stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__effective_date__c%type
   , mg_commitments_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_major_gifts_commitments__c%type
@@ -1711,6 +1712,8 @@ Cursor c_work_plan Is
       As gift_officer_status
     , wp.ucinn_ascendv2__work_plan_unit__c
       As gift_officer_unit_salesforce_id
+    , wp.ap_reporting_manager__c
+      As gift_officer_manager_salesforce_id
     , wp.ap_metric_year__c
       As metric_performance_year
     , wp.ucinn_ascendv2__effective_date__c
