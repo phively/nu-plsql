@@ -233,6 +233,24 @@ from v_committee_kac),
 trustee as (Select *
 From v_committee_trustee),
 
+--- New committees requested 3-10 - PEAC, HCAK, REAC 
+
+--- peac 
+
+peac as (Select *
+From v_committee_privateequity),
+
+--- hcak
+
+hcak as (Select *
+From v_committee_healthcare),
+
+--- reac 
+
+reac as (Select *
+From v_committee_realestcouncil),
+
+
 --- Top Prospect
 
 TP as (select C.CONSTITUENT_DONOR_ID,
@@ -701,7 +719,56 @@ anon as (Select household_id
 , s.ngc_lifetime_nonanon_full_rec
 From mv_ksm_giving_summary s
 Where ngc_lifetime_full_rec <> ngc_lifetime_nonanon_full_rec
-Order By ngc_lifetime_full_rec Desc)
+Order By ngc_lifetime_full_rec Desc),
+
+--- For Honor Roll Report - Andy 
+--- Data Points in Anniversary report from Amy 
+
+an as (select 
+       a.HOUSEHOLD_ID_KSM,
+       a.YR1,
+       a.CREDIT_DATE1,
+       a.CREDIT_AMT1,
+       a.DAF_1,
+       a.DESIGNATION1,
+       a.OPPORTUNITY_TYPE1,
+       a.CAMPAIGN_MOTIVATION_CODE_1,
+       a.YR2,
+       a.CREDIT_DATE2,
+       a.CREDIT_AMT2,
+       a.DAF_2,
+       a.DESIGNATION2,
+       a.OPPORTUNITY_TYPE2,
+       a.CAMPAIGN_MOTIVATION_CODE_2,
+       a.YR3,
+       a.CREDIT_DATE3,
+       a.CREDIT_AMT3,
+       a.DAF_3,
+       a.DESIGNATION3,
+       a.OPPORTUNITY_TYPE3,
+       a.CAMPAIGN_MOTIVATION_CODE_3,
+       a.PLG_DATE,
+       a.PLG_STATUS,
+       a.PLG_ALLOC,
+       a.PLG_AMT,
+       a.PLG_AMT_PAID,
+       a.PLG_BALANCE,
+       a.NU_$,
+       a.KSM_$,
+       a.KSM_CRU_$,
+       a.KSM_#_2025,
+       a.KSM_$_2025,
+       a.KSM_MATCH_2025,
+       a.KSM_#_2024,
+       a.KSM_$_2024,
+       a.KSM_MATCH_2024,
+       a.KSM_#_2023,
+       a.KSM_$_2023,
+       a.KSM_MATCH_2023,
+       a.KSM_#_2022,
+       a.KSM_$_2022,
+       a.KSM_MATCH_2022
+from TABLEAU_AF_ANNIVERSARY a)
       
  
 select distinct e.household_id,
@@ -766,6 +833,8 @@ select distinct e.household_id,
      --- Write down expendable, cash, ngc explanations for team
      --- edit 9/16/25 - add zeros if blanks 
      case when g.ngc_lifetime is not null then g.ngc_lifetime else 0 end as ngc_lifetime,
+     --- add CYD 
+     case when g.ngc_cfy > 0 then 'CYD' end as CYD_Flag, 
      case when g.ngc_cfy is not null then g.ngc_cfy else 0 end as ngc_cfy,
      case when g.ngc_pfy1 is not null then g.ngc_pfy1 else 0 end as ngc_pfy1,
      case when g.ngc_pfy2 is not null then g.ngc_pfy2 else 0 end as ngc_pfy2,
@@ -859,6 +928,9 @@ select distinct e.household_id,
      trustee.involvement_name as trustee,
      kac.involvement_name as kac,
      asia.involvement_name as asia_exec_board,
+     peac.involvement_name as peac, 
+     reac.involvement_name as reac,
+     hcak.involvement_name as hcak,  
      --- I will probably need to listag club leader - check data first
      club.involvement_name as club_leader,
      --- NU/KSM KSM
@@ -906,13 +978,57 @@ select distinct e.household_id,
      HR.ucinn_ascendv2__last_name__c as Honor_Roll_Last_Name,
      HR.ucinn_ascendv2__type__c as Honor_Roll_Type,
      HR.ucinn_ascendv2__constructed_name_formula__c as Honor_Roll_Name_Formula,
-     HR.ucinn_ascendv2__Data_Source__c as Honor_Roll_Data_Source
+     HR.ucinn_ascendv2__Data_Source__c as Honor_Roll_Data_Source,
+     an.HOUSEHOLD_ID_KSM,
+     an.YR1,
+     an.CREDIT_DATE1,
+     an.CREDIT_AMT1,
+     an.DAF_1,
+     an.DESIGNATION1,
+     an.OPPORTUNITY_TYPE1,
+     an.CAMPAIGN_MOTIVATION_CODE_1,
+     an.YR2,
+     an.CREDIT_DATE2,
+     an.CREDIT_AMT2,
+     an.DAF_2,
+     an.DESIGNATION2,
+     an.OPPORTUNITY_TYPE2,
+     an.CAMPAIGN_MOTIVATION_CODE_2,
+     an.YR3,
+     an.CREDIT_DATE3,
+     an.CREDIT_AMT3,
+     an.DAF_3,
+     an.DESIGNATION3,
+     an.OPPORTUNITY_TYPE3,
+     an.CAMPAIGN_MOTIVATION_CODE_3,
+     an.PLG_DATE,
+     an.PLG_STATUS,
+     an.PLG_ALLOC,
+     an.PLG_AMT,
+     an.PLG_AMT_PAID,
+     an.PLG_BALANCE,
+     an.NU_$,
+     an.KSM_$,
+     an.KSM_CRU_$,
+     an.KSM_#_2025,
+     an.KSM_$_2025,
+     an.KSM_MATCH_2025,
+     an.KSM_#_2024,
+     an.KSM_$_2024,
+     an.KSM_MATCH_2024,
+     an.KSM_#_2023,
+     an.KSM_$_2023,
+     an.KSM_MATCH_2023,
+     an.KSM_#_2022,
+     an.KSM_$_2022,
+     an.KSM_MATCH_2022
 from e 
 left join KSM_Degrees on KSM_Degrees.donor_id = e.donor_id
 --- Reunion eligible
 inner join FR on FR.ucinn_ascendv2__donor_id__c = e.donor_id 
 --- giving info
-left join give g on g.household_id = e.household_id
+--- edit - use household KSM - Created Reunion a while ago, but now should use household ksm 
+left join give g on g.household_id = e.household_id_ksm
 --- linkedin
 left join linked on linked.ucinn_ascendv2__donor_id__c = e.donor_id 
 --- employment
@@ -979,3 +1095,11 @@ left join HR on HR.donor_id = e.donor_id
 left join reunion_event on reunion_event.donor_id = e.donor_id
 --- anon donor
 left join anon on anon.household_id = e.household_id_ksm
+--- Anniversary Report 
+left join an on an.HOUSEHOLD_ID_KSM = e.HOUSEHOLD_ID_KSM
+--- peac 
+left join peac on peac.constituent_donor_id = e.donor_id 
+--- hcak
+left join hcak on hcak.constituent_donor_id = e.donor_id
+--- reac
+left join reac on reac.constituent_donor_id = e.donor_id
