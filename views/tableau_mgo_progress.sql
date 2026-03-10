@@ -21,20 +21,14 @@ pm As (
 
 -- Staff table with descriptions
 , staff As (
-  Select
+  Select Distinct
     mah.staff_user_salesforce_id
     , mah.staff_name
-    , mah.assignment_active_calc
-    , mah.assignment_business_unit
-    , mah.assignment_type
     , kgo.start_dt As ksm_start_dt
     , kgo.stop_dt As ksm_stop_dt
     , kgo.active_flag
       As current_ksm_staff
     , kgo.team As ksm_team
-    , mah.start_date
-    , mah.end_date
-    , mah.etl_update_date
   From mv_assignment_history mah
   Left Join tbl_ksm_gos kgo
     On kgo.user_id = mah.staff_user_salesforce_id
@@ -49,11 +43,6 @@ pm As (
 Select Distinct
   mgm.historical_pm_user_id
   , mgm.historical_pm_name
-  , s.assignment_business_unit
-  , s.assignment_type
-  , s.assignment_active_calc
-  , s.start_date
-  , s.end_date
   , s.ksm_start_dt
   , s.ksm_stop_dt
   , s.current_ksm_staff
@@ -96,7 +85,7 @@ Select Distinct
         Else 365
     End
     As py_prog_days
-  , NULL
+  , ''
     As ksm_region
   , pm.portfolio_count
 From mgm
