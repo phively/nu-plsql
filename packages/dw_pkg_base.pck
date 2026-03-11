@@ -120,6 +120,8 @@ Type rec_mini_entity Is Record (
 --------------------------------------
 Type rec_users Is Record (
     user_salesforce_id stg_alumni.user_tbl.id%type
+    , staff_donor_id stg_alumni.contact.ucinn_ascendv2__donor_id__c%type
+    , staff_sort_name varchar2(300)
     , user_username stg_alumni.user_tbl.username%type
     , user_constituent_salesforce_id stg_alumni.user_tbl.contactid%type
     , user_name stg_alumni.user_tbl.name%type
@@ -924,9 +926,38 @@ Cursor c_mini_entity Is
 
 --------------------------------------
 Cursor c_users Is
+  With
+  
+  -- Link contact and user tables by NetID
+  id_link As (
+    Select
+      id
+      , accountid
+        As account_salesforce_id
+      , ucinn_ascendv2__donor_id__c
+        As donor_id
+      , trim(c.lastname || ', ' || c.firstname || ' ' || c.middlename)
+        As sort_name
+      , c.ap_nu_full_name_formula__c
+        As full_name
+      , ap_institutional_suffix__c
+        As institutional_suffix
+      , ap_netid__c
+        As netid
+      , trim(ap_netid__c) || '@ads.northwestern.edu'
+        As federationidentifier
+      , ap_primary_employer__c
+        As primary_employer_salesforce_id
+    From stg_alumni.contact c
+  )
+
   Select
     usr.id
       As user_salesforce_id
+    , idl.donor_id
+      As staff_donor_id
+    , idl.sort_name
+      As staff_sort_name
     , usr.username
       As user_username
     , usr.contactid
@@ -941,6 +972,8 @@ Cursor c_users Is
       As user_is_active
     , usr.etl_update_date
   From stg_alumni.user_tbl usr
+  Left Join id_link idl
+    On idl.federationidentifier = usr.federationidentifier
 ;
 
 --------------------------------------

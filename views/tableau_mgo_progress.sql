@@ -43,6 +43,8 @@ pm As (
 Select Distinct
   mgm.historical_pm_user_id
   , mgm.historical_pm_name
+  , mgm.gift_officer_donor_id
+  , mgm.gift_officer_sort_name
   , s.ksm_start_dt
   , s.ksm_stop_dt
   , s.current_ksm_staff

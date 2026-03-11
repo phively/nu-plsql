@@ -89,6 +89,8 @@ Type rec_goals_data Is Record (
   , work_plan_name stg_alumni.ucinn_ascendv2__work_plan__c.name%type
   , gift_officer_user_salesforce_id stg_alumni.ucinn_ascendv2__work_plan__c.ap_reporting_manager__c%type
   , gift_officer_user_name stg_alumni.user_tbl.name%type
+  , gift_officer_donor_id stg_alumni.contact.ucinn_ascendv2__donor_id__c%type
+  , gift_officer_sort_name varchar2(300)
   , gift_officer_type stg_alumni.ucinn_ascendv2__work_plan__c.ap_gift_officer_type__c%type
   , gift_officer_role stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__role__c%type
   , gift_officer_status stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__status__c%type
@@ -168,6 +170,8 @@ Type rec_contact_count Is Record (
 Type rec_mgo_activity_monthly Is Record (
   historical_pm_user_id mv_contact_reports.cr_credit_salesforce_id%type
   , historical_pm_name mv_contact_reports.cr_credit_name%type 
+  , gift_officer_donor_id stg_alumni.contact.ucinn_ascendv2__donor_id__c%type
+  , gift_officer_sort_name varchar2(300)
   , goal_type varchar2(8)
   , goal_desc varchar2(32)
   , cal_year integer
@@ -373,6 +377,10 @@ Cursor c_goals_data Is
     , wp.gift_officer_user_salesforce_id
     , usr.user_name
       As gift_officer_user_name
+    , usr.staff_donor_id
+      As gift_officer_donor_id
+    , usr.staff_sort_name
+      As gift_officer_sort_name
     , wp.gift_officer_type
     , Case
         When wp.gift_officer_role Is Not Null
@@ -675,6 +683,8 @@ Cursor c_mgo_activity_monthly Is
   Select
     fcd.historical_pm_user_id
     , fcd.historical_pm_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , 'MGC' As goal_type
     , 'MG Closes' As goal_desc
     , pd.cal_year
@@ -702,6 +712,8 @@ Cursor c_mgo_activity_monthly Is
   Group By
     fcd.historical_pm_user_id
     , fcd.historical_pm_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , pd.cal_year
     , pd.cal_month
     , pd.fiscal_year
@@ -715,6 +727,8 @@ Cursor c_mgo_activity_monthly Is
   Select
     acr.historical_pm_user_id
     , acr.historical_pm_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , 'MGS' As goal_type
     , 'MG Sols' As goal_desc
     , pd.ask_cal_year
@@ -745,6 +759,8 @@ Cursor c_mgo_activity_monthly Is
   Group By
     acr.historical_pm_user_id
     , acr.historical_pm_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , pd.ask_cal_year
     , pd.ask_cal_month
     , pd.ask_fiscal_year
@@ -758,6 +774,8 @@ Cursor c_mgo_activity_monthly Is
   Select
     ack.historical_pm_user_id
     , ack.historical_pm_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , 'KGS' As goal_type
     , 'KSM Sols' As goal_desc
     , pd.ask_cal_year
@@ -788,6 +806,8 @@ Cursor c_mgo_activity_monthly Is
   Group By
     ack.historical_pm_user_id
     , ack.historical_pm_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , pd.ask_cal_year
     , pd.ask_cal_month
     , pd.ask_fiscal_year
@@ -799,7 +819,9 @@ Cursor c_mgo_activity_monthly Is
   Union
   ----- KSM supplement - expendable cash from non-pledge payments
   Select
-    ksm_cash.donor_id
+    u.user_salesforce_id
+    , u.user_name
+    , ksm_cash.donor_id
     , ksm_cash.sort_name
     , ksm_cash.goal_type
     , ksm_cash.goal_desc
@@ -815,8 +837,12 @@ Cursor c_mgo_activity_monthly Is
     , trunc(sum(cash_countable_amount), 2) As adjusted_progress
     , trunc(sum(cash_countable_amount), 2) As addl_progress_detail
   From ksm_cash
+  Left Join table(dw_pkg_base.tbl_users) u
+    On u.staff_donor_id = ksm_cash.donor_id
   Group By
-    ksm_cash.donor_id
+    u.user_salesforce_id
+    , u.user_name
+    , ksm_cash.donor_id
     , ksm_cash.sort_name
     , ksm_cash.goal_type
     , ksm_cash.goal_desc
@@ -833,6 +859,8 @@ Cursor c_mgo_activity_monthly Is
   Select
     fr.historical_pm_user_id
     , fr.historical_pm_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , 'MGDR' As goal_type
     , 'MG Dollars Raised' As goal_desc
     , pd.cal_year
@@ -860,6 +888,8 @@ Cursor c_mgo_activity_monthly Is
   Group By
     fr.historical_pm_user_id
     , fr.historical_pm_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , pd.cal_year
     , pd.cal_month
     , pd.fiscal_year
@@ -873,6 +903,8 @@ Cursor c_mgo_activity_monthly Is
   Select Distinct
     cr.cr_credit_salesforce_id
     , cr.cr_credit_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , 'NOV' as goal_type
     , 'Visits' As goal_desc
     , c.cal_year
@@ -900,6 +932,8 @@ Cursor c_mgo_activity_monthly Is
   Group By
     cr.cr_credit_salesforce_id
     , cr.cr_credit_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , c.cal_year
     , c.cal_month
     , c.fiscal_year
@@ -913,6 +947,8 @@ Cursor c_mgo_activity_monthly Is
   Select Distinct
     cr.cr_credit_salesforce_id
     , cr.cr_credit_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , 'NOQV' As goal_type
     , 'Qual Visits' As goal_desc
     , c.cal_year
@@ -941,6 +977,8 @@ Cursor c_mgo_activity_monthly Is
   Group By
     cr.cr_credit_salesforce_id
     , cr.cr_credit_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , c.cal_year
     , c.cal_month
     , c.fiscal_year
@@ -954,6 +992,8 @@ Cursor c_mgo_activity_monthly Is
     Select
     aca.historical_pm_user_id
     , aca.historical_pm_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , 'PA' As goal_type
     , 'Proposal Assists' As goal_desc
     , pd.ask_cal_year
@@ -984,6 +1024,8 @@ Cursor c_mgo_activity_monthly Is
   Group By
     aca.historical_pm_user_id
     , aca.historical_pm_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , pd.ask_cal_year
     , pd.ask_cal_month
     , pd.ask_fiscal_year
