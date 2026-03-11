@@ -36,8 +36,14 @@ pm As (
 
 -- MGO activity over time
 , mgm As (
+  (
   Select *
   From table(metrics_pkg.tbl_mgo_activity_monthly)
+  -- Placeholder 0 progress rows to force Tableau to populate all goals
+  ) Union (
+  Select *
+  From table(metrics_pkg.tbl_mgo_activity_placeholders)
+  )
 )
 
 Select Distinct

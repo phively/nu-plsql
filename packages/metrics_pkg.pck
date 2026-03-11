@@ -284,6 +284,9 @@ Function tbl_assist_count(
 Function tbl_mgo_activity_monthly
   Return mgo_activity_monthly Pipelined;
 
+Function tbl_mgo_activity_placeholders
+  Return mgo_activity_monthly Pipelined;
+
 End metrics_pkg;
 /
 Create Or Replace Package Body metrics_pkg Is
@@ -619,6 +622,7 @@ Cursor c_assist_count(
 
 --------------------------------------
 -- Gift officer activity aggregated by month
+-- !!! Match columns to c_mgo_activity_placeholders, below !!!
 Cursor c_mgo_activity_monthly Is
 
   With
@@ -1036,6 +1040,209 @@ Cursor c_mgo_activity_monthly Is
     , pyg.proposal_assist_goal
 ;
 
+--------------------------------------
+-- Placeholder 0 progress rows to force Tableau to populate all goals
+-- !!! Match columns to c_mgo_activity_monthly, above !!!
+Cursor c_mgo_activity_placeholders Is
+  
+  With
+  
+  usr As (
+    Select *
+    From table(dw_pkg_base.tbl_users)
+  )
+  
+  , goal As (
+    Select *
+    From table(metrics_pkg.tbl_goals_data)
+  )
+  
+  -- Goal 1
+  Select
+    goal.gift_officer_user_salesforce_id
+    , goal.gift_officer_user_name
+    , goal.gift_officer_donor_id
+    , goal.gift_officer_sort_name
+    , 'MGC' As goal_type
+    , 'MG Closes' As goal_desc
+    , goal.metric_performance_year As cal_year
+    , 1 As cal_month
+    , goal.metric_performance_year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.metric_performance_year As perf_year
+    , 1 As perf_quarter
+    , goal.mg_commitments_goal As fy_goal
+    , goal.mg_commitments_goal As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+    , NULL As addl_progress_detail
+  From usr
+  Inner Join goal
+    On usr.user_salesforce_id = goal.gift_officer_user_salesforce_id
+  Union All
+  -- Goal 2
+  Select
+    goal.gift_officer_user_salesforce_id
+    , goal.gift_officer_user_name
+    , goal.gift_officer_donor_id
+    , goal.gift_officer_sort_name
+    , 'MGS' As goal_type
+    , 'MG Sols' As goal_desc
+    , goal.metric_performance_year As cal_year
+    , 1 As cal_month
+    , goal.metric_performance_year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.metric_performance_year As perf_year
+    , 1 As perf_quarter
+    , mg_asks_goal As fy_goal
+    , mg_asks_goal As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+    , NULL As addl_progress_detail
+  From usr
+  Inner Join goal
+    On usr.user_salesforce_id = goal.gift_officer_user_salesforce_id
+  Union All
+  -- Goal 2 KSM
+  Select
+    goal.gift_officer_user_salesforce_id
+    , goal.gift_officer_user_name
+    , goal.gift_officer_donor_id
+    , goal.gift_officer_sort_name
+    , 'KGS' As goal_type
+    , 'KSM Sols' As goal_desc
+    , goal.metric_performance_year As cal_year
+    , 1 As cal_month
+    , goal.metric_performance_year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.metric_performance_year As perf_year
+    , 1 As perf_quarter
+    , mg_asks_goal As fy_goal
+    , mg_asks_goal As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+    , NULL As addl_progress_detail
+  From usr
+  Inner Join goal
+    On usr.user_salesforce_id = goal.gift_officer_user_salesforce_id
+  Union All
+  -- Goal 3
+  Select
+    goal.gift_officer_user_salesforce_id
+    , goal.gift_officer_user_name
+    , goal.gift_officer_donor_id
+    , goal.gift_officer_sort_name
+    , 'MGDR' As goal_type
+    , 'MG Dollars Raised' As goal_desc
+    , goal.metric_performance_year As cal_year
+    , 1 As cal_month
+    , goal.metric_performance_year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.metric_performance_year As perf_year
+    , 1 As perf_quarter
+    , mg_asks_goal As fy_goal
+    , mg_asks_goal As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+    , NULL As addl_progress_detail
+  From usr
+  Inner Join goal
+    On usr.user_salesforce_id = goal.gift_officer_user_salesforce_id
+  Union All
+  -- Goal 3 cash version
+  -- KSM Cash
+  Select
+    goal.gift_officer_user_salesforce_id
+    , goal.gift_officer_user_name
+    , goal.gift_officer_donor_id
+    , goal.gift_officer_sort_name
+    , 'KGC' As goal_type
+    , 'KSM Cash' As goal_desc
+    , goal.metric_performance_year As cal_year
+    , 1 As cal_month
+    , goal.metric_performance_year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.metric_performance_year As perf_year
+    , 1 As perf_quarter
+    , 0 As fy_goal
+    , 0 As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+    , NULL As addl_progress_detail
+  From usr
+  Inner Join goal
+    On usr.user_salesforce_id = goal.gift_officer_user_salesforce_id
+  Union All
+  -- Goal 4
+  Select
+    goal.gift_officer_user_salesforce_id
+    , goal.gift_officer_user_name
+    , goal.gift_officer_donor_id
+    , goal.gift_officer_sort_name
+    , 'NOV' as goal_type
+    , 'Visits' As goal_desc
+    , goal.metric_performance_year As cal_year
+    , 1 As cal_month
+    , goal.metric_performance_year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.metric_performance_year As perf_year
+    , 1 As perf_quarter
+    , visits_goal As fy_goal
+    , visits_goal As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+    , NULL As addl_progress_detail
+  From usr
+  Inner Join goal
+    On usr.user_salesforce_id = goal.gift_officer_user_salesforce_id
+  Union All
+  -- Goal 5
+  Select
+    goal.gift_officer_user_salesforce_id
+    , goal.gift_officer_user_name
+    , goal.gift_officer_donor_id
+    , goal.gift_officer_sort_name
+    , 'NOQV' As goal_type
+    , 'Qual Visits' As goal_desc
+     , goal.metric_performance_year As cal_year
+    , 1 As cal_month
+    , goal.metric_performance_year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.metric_performance_year As perf_year
+    , 1 As perf_quarter
+    , qualifications_goal As fy_goal
+    , qualifications_goal As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+    , NULL As addl_progress_detail
+  From usr
+  Inner Join goal
+    On usr.user_salesforce_id = goal.gift_officer_user_salesforce_id
+  Union All
+  -- Goal 6
+  Select
+    goal.gift_officer_user_salesforce_id
+    , goal.gift_officer_user_name
+    , goal.gift_officer_donor_id
+    , goal.gift_officer_sort_name
+    , 'PA' As goal_type
+    , 'Proposal Assists' As goal_desc
+     , goal.metric_performance_year As cal_year
+    , 1 As cal_month
+    , goal.metric_performance_year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.metric_performance_year As perf_year
+    , 1 As perf_quarter
+    , proposal_assist_goal As fy_goal
+    , proposal_assist_goal As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+    , NULL As addl_progress_detail
+  From usr
+  Inner Join goal
+    On usr.user_salesforce_id = goal.gift_officer_user_salesforce_id
+;
+
 /*************************************************************************
 Functions
 *************************************************************************/
@@ -1277,6 +1484,22 @@ Function tbl_mgo_activity_monthly
     Open c_mgo_activity_monthly; -- Annual Fund allocations cursor
       Fetch c_mgo_activity_monthly Bulk Collect Into ma;
     Close c_mgo_activity_monthly;
+    -- Pipe out the data
+    For i in 1..(ma.count) Loop
+      Pipe row(ma(i));
+    End Loop;
+    Return;
+  End;
+
+Function tbl_mgo_activity_placeholders
+  Return mgo_activity_monthly Pipelined As
+    -- Declarations
+    ma mgo_activity_monthly;
+
+  Begin
+    Open c_mgo_activity_placeholders; -- Annual Fund allocations cursor
+      Fetch c_mgo_activity_placeholders Bulk Collect Into ma;
+    Close c_mgo_activity_placeholders;
     -- Pipe out the data
     For i in 1..(ma.count) Loop
       Pipe row(ma(i));
