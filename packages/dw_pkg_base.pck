@@ -120,6 +120,8 @@ Type rec_mini_entity Is Record (
 --------------------------------------
 Type rec_users Is Record (
     user_salesforce_id stg_alumni.user_tbl.id%type
+    , staff_donor_id stg_alumni.contact.ucinn_ascendv2__donor_id__c%type
+    , staff_sort_name varchar2(300)
     , user_username stg_alumni.user_tbl.username%type
     , user_constituent_salesforce_id stg_alumni.user_tbl.contactid%type
     , user_name stg_alumni.user_tbl.name%type
@@ -380,6 +382,18 @@ Type rec_assignment Is Record (
 );
 
 --------------------------------------
+Type rec_proposal_assignment Is Record (
+    opportunity_assignment_salesforce_id stg_alumni.opportunityteammember.id%type
+    , opportunity_user_salesforce_id stg_alumni.opportunityteammember.userid%type
+    , opportunity_user_name stg_alumni.opportunityteammember.name%type
+    , opportunity_assignment_role stg_alumni.opportunityteammember.teammemberrole%type
+    , opportunity_salesforce_id stg_alumni.opportunityteammember.opportunityid%type
+    , assignment_is_active stg_alumni.opportunityteammember.ap_is_active__c%type
+    , assignment_start_date stg_alumni.opportunityteammember.ap_start_date__c%type
+    , etl_update_date stg_alumni.opportunityteammember.etl_update_date%type
+);
+
+--------------------------------------
 Type rec_proposal Is Record (
   opportunity_salesforce_id dm_alumni.dim_proposal_opportunity.opportunity_salesforce_id%type
   , proposal_record_id dm_alumni.dim_proposal_opportunity.proposal_record_id%type
@@ -494,9 +508,11 @@ Type rec_work_plan Is Record (
   , gift_officer_role stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__role__c%type
   , gift_officer_status stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__status__c%type
   , gift_officer_unit_salesforce_id stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__work_plan_unit__c%type
+  , manager_user_salesforce_id stg_alumni.ucinn_ascendv2__work_plan__c.ap_reporting_manager__c%type
   , metric_performance_year stg_alumni.ucinn_ascendv2__work_plan__c.ap_metric_year__c%type
   , metric_effective_date stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__effective_date__c%type
   , mg_commitments_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_major_gifts_commitments__c%type
+  , mg_asks_goal stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__total_major_gift_solicitations__c%type
   , mg_dollars_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_major_gifts_dollars_raised__c%type
   , visits_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_visits__c%type
   , qualifications_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_total_qualification_visits__c%type
@@ -590,6 +606,7 @@ Type gift_credit Is Table Of rec_gift_credit;
 Type involvement Is Table Of rec_involvement;
 Type service_indicators Is Table Of rec_service_indicators;
 Type assignments Is Table Of rec_assignment;
+Type proposal_assignment Is Table Of rec_proposal_assignment;
 Type proposals Is Table Of rec_proposal;
 Type strategy Is Table Of rec_strategy;
 Type strategy_relation Is Table Of rec_strategy_relation;
@@ -652,6 +669,9 @@ Function tbl_service_indicators
 
 Function tbl_assignments
   Return assignments Pipelined;
+
+Function tbl_proposal_assignment
+  Return proposal_assignment Pipelined;
 
 Function tbl_proposals
   Return proposals Pipelined;
@@ -906,9 +926,38 @@ Cursor c_mini_entity Is
 
 --------------------------------------
 Cursor c_users Is
+  With
+  
+  -- Link contact and user tables by NetID
+  id_link As (
+    Select
+      id
+      , accountid
+        As account_salesforce_id
+      , ucinn_ascendv2__donor_id__c
+        As donor_id
+      , trim(c.lastname || ', ' || c.firstname || ' ' || c.middlename)
+        As sort_name
+      , c.ap_nu_full_name_formula__c
+        As full_name
+      , ap_institutional_suffix__c
+        As institutional_suffix
+      , ap_netid__c
+        As netid
+      , trim(ap_netid__c) || '@ads.northwestern.edu'
+        As federationidentifier
+      , ap_primary_employer__c
+        As primary_employer_salesforce_id
+    From stg_alumni.contact c
+  )
+
   Select
     usr.id
       As user_salesforce_id
+    , idl.donor_id
+      As staff_donor_id
+    , idl.sort_name
+      As staff_sort_name
     , usr.username
       As user_username
     , usr.contactid
@@ -923,6 +972,8 @@ Cursor c_users Is
       As user_is_active
     , usr.etl_update_date
   From stg_alumni.user_tbl usr
+  Left Join id_link idl
+    On idl.federationidentifier = usr.federationidentifier
 ;
 
 --------------------------------------
@@ -1447,6 +1498,27 @@ Cursor c_assignments Is
 ;
 
 --------------------------------------
+Cursor c_proposal_assignment Is
+  Select
+      otm.id
+      As opportunity_assignment_salesforce_id
+    , otm.userid
+      As opportunity_user_salesforce_id
+    , otm.name
+      As opportunity_user_name
+    , otm.teammemberrole
+      As opportunity_assignment_role
+    , otm.opportunityid
+      As opportunity_salesforce_id
+    , otm.ap_is_active__c
+      As assignment_is_active
+    , otm.ap_start_date__c
+      As assignment_start_date
+    , otm.etl_update_date
+  From stg_alumni.opportunityteammember otm
+;
+
+--------------------------------------
 Cursor c_proposals Is
 
   With
@@ -1663,7 +1735,7 @@ Cursor c_work_plan Is
       As work_plan_salesforce_id
     , wp.name
       As work_plan_name
-    , wp.ap_reporting_manager__c
+    , wp.ucinn_ascendv2__development_officer__c
       As gift_officer_user_salesforce_id
     , wp.ap_gift_officer_type__c
       As gift_officer_type
@@ -1673,12 +1745,16 @@ Cursor c_work_plan Is
       As gift_officer_status
     , wp.ucinn_ascendv2__work_plan_unit__c
       As gift_officer_unit_salesforce_id
+    , wp.ap_reporting_manager__c
+      As gift_officer_manager_salesforce_id
     , wp.ap_metric_year__c
       As metric_performance_year
     , wp.ucinn_ascendv2__effective_date__c
       As metric_effective_date
     , wp.ap_major_gifts_commitments__c
       As mg_commitments_goal
+    , wp.ucinn_ascendv2__total_major_gift_solicitations__c
+      As mg_asks_goal
     , wp.ap_major_gifts_dollars_raised__c
       As mg_dollars_goal
     , wp.ap_visits__c
@@ -2072,6 +2148,23 @@ Function tbl_assignments
     Close c_assignments;
     For i in 1..(asn.count) Loop
       Pipe row(asn(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+-- Pipelined function returning disaggregated proposal assists
+Function tbl_proposal_assignment
+  Return proposal_assignment Pipelined As
+  -- Declarations
+  pa proposal_assignment;
+
+  Begin
+    Open c_proposal_assignment;
+      Fetch c_proposal_assignment Bulk Collect Into pa;
+    Close c_proposal_assignment;
+    For i in 1..(pa.count) Loop
+      Pipe row(pa(i));
     End Loop;
     Return;
   End;

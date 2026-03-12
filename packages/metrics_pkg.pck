@@ -27,7 +27,39 @@ Public type declarations
 
 --------------------------------------
 Type rec_proposals_data Is Record (
-  proposal_record_id mv_proposals.proposal_record_id%type
+  opportunity_salesforce_id mv_proposals.opportunity_salesforce_id%type
+  , proposal_record_id mv_proposals.proposal_record_id%type
+  , historical_pm_user_id mv_proposals.historical_pm_user_id%type
+  , historical_pm_name mv_proposals.historical_pm_name%type
+  , historical_pm_role mv_proposals.historical_pm_role%type
+  , historical_pm_business_unit mv_proposals.historical_pm_business_unit%type
+  , ksm_flag mv_proposals.ksm_flag%type
+  , historical_pm_is_active mv_proposals.historical_pm_is_active%type
+  , proposal_active_indicator mv_proposals.proposal_active_indicator%type
+  , proposal_type mv_proposals.proposal_type%type
+  , standard_proposal_flag varchar2(1)
+  , proposal_submitted_amount mv_proposals.proposal_submitted_amount%type
+  , proposal_funded_amount mv_proposals.proposal_funded_amount%type
+  , proposal_stage mv_proposals.proposal_stage%type
+  , proposal_created_date mv_proposals.proposal_created_date%type
+  , proposal_submitted_date mv_proposals.proposal_submitted_date%type
+  , proposal_close_date mv_proposals.proposal_close_date%type
+  , cal_year integer
+  , cal_month integer
+  , fiscal_year integer
+  , fiscal_quarter integer
+  , perf_year integer
+  , perf_quarter integer
+);
+
+--------------------------------------
+Type rec_proposal_assist_data Is Record (
+  opportunity_assignment_salesforce_id stg_alumni.opportunityteammember.id%type
+  , opportunity_assignment_role stg_alumni.opportunityteammember.teammemberrole%type
+  , opportunity_user_salesforce_id stg_alumni.opportunityteammember.userid%type
+  , opportunity_user_name stg_alumni.opportunityteammember.name%type
+  , assignment_is_active stg_alumni.opportunityteammember.ap_is_active__c%type
+  , proposal_record_id mv_proposals.proposal_record_id%type
   , historical_pm_user_id mv_proposals.historical_pm_user_id%type
   , historical_pm_name mv_proposals.historical_pm_name%type
   , historical_pm_role mv_proposals.historical_pm_role%type
@@ -57,12 +89,15 @@ Type rec_goals_data Is Record (
   , work_plan_name stg_alumni.ucinn_ascendv2__work_plan__c.name%type
   , gift_officer_user_salesforce_id stg_alumni.ucinn_ascendv2__work_plan__c.ap_reporting_manager__c%type
   , gift_officer_user_name stg_alumni.user_tbl.name%type
+  , gift_officer_donor_id stg_alumni.contact.ucinn_ascendv2__donor_id__c%type
+  , gift_officer_sort_name varchar2(300)
   , gift_officer_type stg_alumni.ucinn_ascendv2__work_plan__c.ap_gift_officer_type__c%type
   , gift_officer_role stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__role__c%type
   , gift_officer_status stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__status__c%type
-  , metric_performance_year stg_alumni.ucinn_ascendv2__work_plan__c.ap_metric_year__c%type
+  , metric_performance_year integer
   , metric_effective_date stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__effective_date__c%type
   , mg_commitments_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_major_gifts_commitments__c%type
+  , mg_asks_goal stg_alumni.ucinn_ascendv2__work_plan__c.ucinn_ascendv2__total_major_gift_solicitations__c%type
   , mg_dollars_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_major_gifts_dollars_raised__c%type
   , visits_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_visits__c%type
   , qualifications_goal stg_alumni.ucinn_ascendv2__work_plan__c.ap_total_qualification_visits__c%type
@@ -135,6 +170,8 @@ Type rec_contact_count Is Record (
 Type rec_mgo_activity_monthly Is Record (
   historical_pm_user_id mv_contact_reports.cr_credit_salesforce_id%type
   , historical_pm_name mv_contact_reports.cr_credit_name%type 
+  , gift_officer_donor_id stg_alumni.contact.ucinn_ascendv2__donor_id__c%type
+  , gift_officer_sort_name varchar2(300)
   , goal_type varchar2(8)
   , goal_desc varchar2(32)
   , cal_year integer
@@ -143,6 +180,8 @@ Type rec_mgo_activity_monthly Is Record (
   , fiscal_qtr integer
   , perf_year integer
   , perf_quarter integer
+  , py_goal integer
+  , fy_goal integer
   , progress integer
   , adjusted_progress integer
   , addl_progress_detail integer
@@ -153,6 +192,7 @@ Public table declarations
 *************************************************************************/
 
 Type proposals_data Is Table Of rec_proposals_data;
+Type proposal_assist_data Is Table Of rec_proposal_assist_data;
 Type goals_data Is Table Of rec_goals_data;
 Type funded_credit Is Table Of rec_funded_credit;
 Type funded_dollars Is Table Of rec_funded_dollars;
@@ -195,9 +235,12 @@ Select cal.*
 From table(rpt_pbh634.ksm_pkg_tmp.tbl_current_calendar) cal;
 *************************************************************************/
 
--- Standardized proposal data table function
+-- Standardized proposal data table functions
 Function tbl_universal_proposals_data
   Return proposals_data Pipelined;
+
+Function tbl_proposal_assist_data
+  Return proposal_assist_data Pipelined;
 
 -- Standardized goals data table function
 Function tbl_goals_data
@@ -232,11 +275,16 @@ Function tbl_contact_reports
 
 Function tbl_contact_count
   Return contact_count Pipelined;
-/*
-Function tbl_assist_count
+
+Function tbl_assist_count(
+    ask_amt number default metrics_pkg.mg_ask_amt
+  )
   Return ask_assist_credit Pipelined;
-*/
+
 Function tbl_mgo_activity_monthly
+  Return mgo_activity_monthly Pipelined;
+
+Function tbl_mgo_activity_placeholders
   Return mgo_activity_monthly Pipelined;
 
 End metrics_pkg;
@@ -252,7 +300,8 @@ Private cursor tables -- data definitions; update indicated sections as needed
 -- All fields needed to recreate proposals subqueries appearing throughout the original file
 Cursor c_universal_proposals_data Is
   Select
-    p.proposal_record_id
+    p.opportunity_salesforce_id
+    , p.proposal_record_id
     , p.historical_pm_user_id
     , p.historical_pm_name
     , p.historical_pm_role
@@ -283,6 +332,46 @@ Cursor c_universal_proposals_data Is
 ;
 
 --------------------------------------
+-- Proposal assists data, disaggregated for multiple assists
+Cursor c_proposal_assist_data Is
+  Select
+    pa.opportunity_assignment_salesforce_id
+    , pa.opportunity_assignment_role
+    , pa.opportunity_user_salesforce_id
+      As proposal_assist_user_id
+    , pa.opportunity_user_name
+      As proposal_assist_name
+    , pa.assignment_is_active
+      As proposal_assist_is_active
+    , p.proposal_record_id
+    , p.historical_pm_user_id
+    , p.historical_pm_name
+    , p.historical_pm_role
+    , p.historical_pm_business_unit
+    , p.ksm_flag
+    , p.historical_pm_is_active
+    , p.proposal_active_indicator
+    , p.proposal_type
+    , p.standard_proposal_flag
+    , p.proposal_submitted_amount
+    , p.proposal_funded_amount
+    , p.proposal_stage
+    , p.proposal_created_date
+    , p.proposal_submitted_date
+    , p.proposal_close_date
+    , p.cal_year
+    , p.cal_month
+    , p.fiscal_year
+    , p.fiscal_quarter
+    , p.perf_year
+    , p.perf_quarter
+  From table(dw_pkg_base.tbl_proposal_assignment) pa
+  Inner Join table(metrics_pkg.tbl_universal_proposals_data) p
+    On p.opportunity_salesforce_id = pa.opportunity_salesforce_id
+  Where pa.opportunity_assignment_role = 'Proposal Assist'
+;
+
+--------------------------------------
 -- Combined goals data
 Cursor c_goals_data Is
   Select
@@ -291,6 +380,10 @@ Cursor c_goals_data Is
     , wp.gift_officer_user_salesforce_id
     , usr.user_name
       As gift_officer_user_name
+    , usr.staff_donor_id
+      As gift_officer_donor_id
+    , usr.staff_sort_name
+      As gift_officer_sort_name
     , wp.gift_officer_type
     , Case
         When wp.gift_officer_role Is Not Null
@@ -302,6 +395,7 @@ Cursor c_goals_data Is
     , wp.metric_performance_year
     , wp.metric_effective_date
     , wp.mg_commitments_goal
+    , wp.mg_asks_goal
     , wp.mg_dollars_goal
     , wp.visits_goal
     , wp.qualifications_goal
@@ -493,53 +587,42 @@ Cursor c_contact_count Is
   From table(metrics_pkg.tbl_contact_reports)
 ;
 
-/*--------------------------------------
--- Refactor goal 6 subqueries in lines 1456-1489
--- 3 clones, at 1501-1534, 1546-1579, 1591-1624
-Cursor c_assist_count Is
+--------------------------------------
+-- Proposal assist credit
+-- Corresponds to old goal 6 subqueries in lines 1456-1489
+Cursor c_assist_count(
+    ask_amt_in In number
+  ) Is
+  
+  -- Must be proposal manager and above the ask credit threshold
   With
-  -- Count for proposal assists goal 6
-  proposal_assists_count As (
-    -- Must be proposal assist; no dollar threshold
+  
+  assist_asked_count As (
     Select *
-    From table(tbl_universal_proposals_data)
-    Where assignment_type = 'AS' -- Proposal Assist
+    From table(metrics_pkg.tbl_proposal_assist_data)
+    Where proposal_submitted_amount >= 100E3 --ask_amt_in
   )
-  , assist_count As (
-      -- Any active proposals (1st priority)
-        Select proposal_id
-          , assignment_id_number
-          , initial_contribution_date
-          , proposal_stop_date
-          , 1 As info_rank
-        From proposal_assists_count
-        Where assignment_active_ind = 'Y'
-      Union
-        Select proposal_id
-          , assignment_id_number
-          , initial_contribution_date
-          , proposal_stop_date
-          , 2 As info_rank
-        From proposal_assists_count
-        Where assignment_active_ind = 'N'
-          And proposal_stop_date - assignment_stop_date <= 1
-      Order By info_rank
-    )
-  Select proposal_id
-    , assignment_id_number
-    , min(initial_contribution_date) keep(dense_rank First Order By info_rank Asc)
-      As initial_contribution_date
-    -- Replace null initial_contribution_date with proposal_stop_date
-    , min(nvl(initial_contribution_date, proposal_stop_date)) keep(dense_rank First Order By info_rank Asc)
-      As ask_or_stop_dt
-  From assist_count
-  Group By proposal_id
-    , assignment_id_number
+  
+  Select
+    proposal_record_id
+    , opportunity_user_salesforce_id
+      As proposal_assist_user_id
+    , opportunity_user_name
+      As proposal_assist_name
+    , opportunity_assignment_role
+      As opportunity_user_role
+    , historical_pm_business_unit
+    , ksm_flag
+    , proposal_submitted_date
+    -- Replace null submitted date with close date
+    , nvl(proposal_submitted_date, proposal_close_date)
+      As ask_or_close_date
+  From assist_asked_count
 ;
-*/
 
 --------------------------------------
 -- Gift officer activity aggregated by month
+-- !!! Match columns to c_mgo_activity_placeholders, below !!!
 Cursor c_mgo_activity_monthly Is
 
   With
@@ -547,6 +630,7 @@ Cursor c_mgo_activity_monthly Is
   proposal_dates As (
     Select
       proposal_record_id
+      , proposal_submitted_date
       , proposal_close_date
       , cal_year
       , cal_month
@@ -554,9 +638,21 @@ Cursor c_mgo_activity_monthly Is
       , fiscal_quarter
       , perf_year
       , perf_quarter
+      , extract(year From proposal_submitted_date)
+        As ask_cal_year
+      , extract(month From proposal_submitted_date)
+        As ask_cal_month
+      , ksm_pkg_calendar.get_fiscal_year(proposal_submitted_date)
+        As ask_fiscal_year
+      , ksm_pkg_calendar.get_quarter(proposal_submitted_date, 'fisc')
+        As ask_fiscal_quarter
+      , ksm_pkg_calendar.get_performance_year(proposal_submitted_date)
+        As ask_perf_year
+      , ksm_pkg_calendar.get_quarter(proposal_submitted_date, 'perf')
+        As ask_perf_quarter
     From table(metrics_pkg.tbl_universal_proposals_data)
   )
-
+  
   , ksm_cash As (
     Select
       gos.donor_id
@@ -581,11 +677,18 @@ Cursor c_mgo_activity_monthly Is
       -- Exclude pledge payments
       And c.gypm_ind <> 'Y'
   )
+  
+  , goal As (
+    Select *
+    From table(metrics_pkg.tbl_goals_data)
+  )
 
   ----- Main query goal 1, equivalent to lines 4-511 in nu_gft_v_officer_metrics -----
   Select
     fcd.historical_pm_user_id
     , fcd.historical_pm_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , 'MGC' As goal_type
     , 'MG Closes' As goal_desc
     , pd.cal_year
@@ -594,50 +697,54 @@ Cursor c_mgo_activity_monthly Is
     , pd.fiscal_quarter
     , pd.perf_year
     , pd.perf_quarter
---    , g.goal_1 As fy_goal
---    , pyg.goal_1 As py_goal
+    , g.mg_commitments_goal As fy_goal
+    , pyg.mg_commitments_goal As py_goal
     , Count(Distinct fcd.proposal_record_id) As progress
     , Count(Distinct fcd.proposal_record_id) As adjusted_progress
     , NULL As addl_progress_detail
   From table(metrics_pkg.tbl_funded_count) fcd
   Inner Join proposal_dates pd
     On pd.proposal_record_id = fcd.proposal_record_id
-/*  -- Fiscal year goals
+  -- Fiscal year goals
   Left Join goal g
-    On fcd.assignment_id_number = g.id_number
-      And g.year = pd.fiscal_year
+    On fcd.historical_pm_user_id = g.gift_officer_user_salesforce_id
+      And g.metric_performance_year = pd.fiscal_year
   -- Performance year goals
   Left Join goal pyg
-    On fcd.assignment_id_number = pyg.id_number
-      And pyg.year = pd.perf_year
-*/  Group By
+    On fcd.historical_pm_user_id = pyg.gift_officer_user_salesforce_id
+      And pyg.metric_performance_year = pd.perf_year
+  Group By
     fcd.historical_pm_user_id
     , fcd.historical_pm_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , pd.cal_year
     , pd.cal_month
     , pd.fiscal_year
     , pd.fiscal_quarter
     , pd.perf_year
     , pd.perf_quarter
---    , g.goal_1
---    , pyg.goal_1
+    , g.mg_commitments_goal
+    , pyg.mg_commitments_goal
   Union
   ----- Main query goal 2, equivalent to lines 512-847 in nu_gft_v_officer_metrics -----
   Select
     acr.historical_pm_user_id
     , acr.historical_pm_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , 'MGS' As goal_type
     , 'MG Sols' As goal_desc
-    , pd.cal_year
-    , pd.cal_month
-    , pd.fiscal_year
-    , pd.fiscal_quarter
-    , pd.perf_year
-    , pd.perf_quarter
---    , g.goal_2 As fy_goal
---    , pyg.goal_2 As py_goal
+    , pd.ask_cal_year
+    , pd.ask_cal_month
+    , pd.ask_fiscal_year
+    , pd.ask_fiscal_quarter
+    , pd.ask_perf_year
+    , pd.ask_perf_quarter
+    , g.mg_asks_goal As fy_goal
+    , pyg.mg_asks_goal As py_goal
     -- Original definition: count only if ask date is filled in
-    , Count(Distinct Case When acr.proposal_submitted_date Is Not Null Then acr.proposal_record_id End)
+    , Count(Distinct Case When acr.ask_or_close_date Is Not Null Then acr.proposal_record_id End)
       As progress
     -- Alternate definition: count if either ask date or stop date is filled in
     , Count(Distinct acr.proposal_record_id) As adjusted_progress
@@ -645,42 +752,46 @@ Cursor c_mgo_activity_monthly Is
   From table(metrics_pkg.tbl_asked_count) acr
   Inner Join proposal_dates pd
     On pd.proposal_record_id = acr.proposal_record_id
-/*  -- Fiscal year goals
+  -- Fiscal year goals
   Left Join goal g
-    On acr.assignment_id_number = g.id_number
-      And g.year = rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(acr.ask_or_stop_dt)
+    On acr.historical_pm_user_id = g.gift_officer_user_salesforce_id
+      And g.metric_performance_year = pd.fiscal_year
   -- Performance year goals
   Left Join goal pyg
-    On acr.assignment_id_number = pyg.id_number
-      And pyg.year = rpt_pbh634.ksm_pkg_tmp.get_performance_year(acr.ask_or_stop_dt)
-*/  Group By
+    On acr.historical_pm_user_id = pyg.gift_officer_user_salesforce_id
+      And pyg.metric_performance_year = pd.perf_year
+  Group By
     acr.historical_pm_user_id
     , acr.historical_pm_name
-    , pd.cal_year
-    , pd.cal_month
-    , pd.fiscal_year
-    , pd.fiscal_quarter
-    , pd.perf_year
-    , pd.perf_quarter
---    , g.goal_2
---    , pyg.goal_2
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
+    , pd.ask_cal_year
+    , pd.ask_cal_month
+    , pd.ask_fiscal_year
+    , pd.ask_fiscal_quarter
+    , pd.ask_perf_year
+    , pd.ask_perf_quarter
+    , g.mg_asks_goal
+    , pyg.mg_asks_goal
   Union
   ----- KSM supplement - Kellogg asks
   Select
     ack.historical_pm_user_id
     , ack.historical_pm_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , 'KGS' As goal_type
     , 'KSM Sols' As goal_desc
-    , pd.cal_year
-    , pd.cal_month
-    , pd.fiscal_year
-    , pd.fiscal_quarter
-    , pd.perf_year
-    , pd.perf_quarter
---    , g.goal_2 As fy_goal
---    , pyg.goal_2 As py_goal
+    , pd.ask_cal_year
+    , pd.ask_cal_month
+    , pd.ask_fiscal_year
+    , pd.ask_fiscal_quarter
+    , pd.ask_perf_year
+    , pd.ask_perf_quarter
+    , g.mg_asks_goal As fy_goal
+    , pyg.mg_asks_goal As py_goal
     -- Original definition: count only if ask date is filled in
-    , Count(Distinct Case When ack.proposal_submitted_date Is Not Null Then ack.proposal_record_id End)
+    , Count(Distinct Case When ack.ask_or_close_date Is Not Null Then ack.proposal_record_id End)
       As progress
     -- Alternate definition: count if either ask date or stop date is filled in
     , Count(Distinct ack.proposal_record_id) As adjusted_progress
@@ -688,29 +799,33 @@ Cursor c_mgo_activity_monthly Is
   From table(metrics_pkg.tbl_asked_count_ksm) ack
   Inner Join proposal_dates pd
     On pd.proposal_record_id = ack.proposal_record_id
-/*  -- Fiscal year goals
+  -- Fiscal year goals
   Left Join goal g
-    On ack.assignment_id_number = g.id_number
-      And g.year = rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(ack.ask_or_stop_dt)
+    On ack.historical_pm_user_id = g.gift_officer_user_salesforce_id
+      And g.metric_performance_year = pd.fiscal_year
   -- Performance year goals
   Left Join goal pyg
-    On ack.assignment_id_number = pyg.id_number
-      And pyg.year = rpt_pbh634.ksm_pkg_tmp.get_performance_year(ack.ask_or_stop_dt)
-*/  Group By
+    On ack.historical_pm_user_id = pyg.gift_officer_user_salesforce_id
+      And pyg.metric_performance_year = pd.perf_year
+  Group By
     ack.historical_pm_user_id
     , ack.historical_pm_name
-    , pd.cal_year
-    , pd.cal_month
-    , pd.fiscal_year
-    , pd.fiscal_quarter
-    , pd.perf_year
-    , pd.perf_quarter
---    , g.goal_2
---    , pyg.goal_2
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
+    , pd.ask_cal_year
+    , pd.ask_cal_month
+    , pd.ask_fiscal_year
+    , pd.ask_fiscal_quarter
+    , pd.ask_perf_year
+    , pd.ask_perf_quarter
+    , g.mg_asks_goal
+    , pyg.mg_asks_goal
   Union
   ----- KSM supplement - expendable cash from non-pledge payments
   Select
-    ksm_cash.donor_id
+    u.user_salesforce_id
+    , u.user_name
+    , ksm_cash.donor_id
     , ksm_cash.sort_name
     , ksm_cash.goal_type
     , ksm_cash.goal_desc
@@ -720,14 +835,18 @@ Cursor c_mgo_activity_monthly Is
     , ksm_cash.fiscal_quarter
     , ksm_cash.perf_year
     , ksm_cash.perf_quarter
---    , ksm_cash.fy_goal
---    , ksm_cash.py_goal
+    , ksm_cash.fy_goal
+    , ksm_cash.py_goal
     , trunc(sum(cash_countable_amount), 2) As progress
     , trunc(sum(cash_countable_amount), 2) As adjusted_progress
     , trunc(sum(cash_countable_amount), 2) As addl_progress_detail
   From ksm_cash
+  Left Join table(dw_pkg_base.tbl_users) u
+    On u.staff_donor_id = ksm_cash.donor_id
   Group By
-    ksm_cash.donor_id
+    u.user_salesforce_id
+    , u.user_name
+    , ksm_cash.donor_id
     , ksm_cash.sort_name
     , ksm_cash.goal_type
     , ksm_cash.goal_desc
@@ -737,13 +856,15 @@ Cursor c_mgo_activity_monthly Is
     , ksm_cash.fiscal_quarter
     , ksm_cash.perf_year
     , ksm_cash.perf_quarter
---    , ksm_cash.fy_goal
---    , ksm_cash.py_goal
+    , ksm_cash.fy_goal
+    , ksm_cash.py_goal
   Union
   ----- Main query goal 3, equivalent to lines 848-1391 in nu_gft_v_officer_metrics -----
   Select
     fr.historical_pm_user_id
     , fr.historical_pm_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , 'MGDR' As goal_type
     , 'MG Dollars Raised' As goal_desc
     , pd.cal_year
@@ -752,38 +873,42 @@ Cursor c_mgo_activity_monthly Is
     , pd.fiscal_quarter
     , pd.perf_year
     , pd.perf_quarter
---    , g.goal_3 As fy_goal
---    , pyg.goal_3 As py_goal
+    , g.mg_dollars_goal As fy_goal
+    , pyg.mg_dollars_goal As py_goal
     , sum(Case When rec_funded_credit_flag = 'Y' Then fr.proposal_funded_amount End) As progress
     , sum(Case When rec_funded_credit_flag = 'Y' Then fr.proposal_funded_amount End) As adjusted_progress
     , sum(fr.proposal_funded_amount) As addl_progress_detail
   From table(metrics_pkg.tbl_funded_dollars) fr
   Inner Join proposal_dates pd
     On pd.proposal_record_id = fr.proposal_record_id
-/*  -- Fiscal year goals
+  -- Fiscal year goals
   Left Join goal g
-    On fr.assignment_id_number = g.id_number
-      And g.year = rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(pd.date_of_record)
+    On fr.historical_pm_user_id = g.gift_officer_user_salesforce_id
+      And g.metric_performance_year = pd.fiscal_year
   -- Performance year goals
   Left Join goal pyg
-    On fr.assignment_id_number = pyg.id_number
-      And pyg.year = rpt_pbh634.ksm_pkg_tmp.get_performance_year(pd.date_of_record)
-*/  Group By
+    On fr.historical_pm_user_id = pyg.gift_officer_user_salesforce_id
+      And pyg.metric_performance_year = pd.perf_year
+  Group By
     fr.historical_pm_user_id
     , fr.historical_pm_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , pd.cal_year
     , pd.cal_month
     , pd.fiscal_year
     , pd.fiscal_quarter
     , pd.perf_year
     , pd.perf_quarter
---    , g.goal_3
---    , pyg.goal_3
+    , g.mg_dollars_goal
+    , pyg.mg_dollars_goal
   Union
   ----- Main query goal 4, equivalent to lines 1392-1419 in nu_gft_v_officer_metrics -----
   Select Distinct
     cr.cr_credit_salesforce_id
     , cr.cr_credit_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , 'NOV' as goal_type
     , 'Visits' As goal_desc
     , c.cal_year
@@ -792,38 +917,42 @@ Cursor c_mgo_activity_monthly Is
     , c.fiscal_qtr As fiscal_quarter
     , c.perf_year
     , c.perf_quarter
---    , g.goal_4 As fy_goal
---    , pyg.goal_4 As py_goal
+    , g.visits_goal As fy_goal
+    , pyg.visits_goal As py_goal
     , count(Distinct c.contact_report_record_id) As progress
     , count(Distinct c.contact_report_record_id) As adjusted_progress
     , NULL As addl_progress_detail
   From table(metrics_pkg.tbl_contact_count) cr
   Inner Join table(metrics_pkg.tbl_contact_reports) c
     On cr.contact_report_record_id = c.contact_report_record_id
-/*  -- Fiscal year goals
+  -- Fiscal year goals
   Left Join goal g
-    On g.id_number = cr.id_number
-      And g.year = c.fiscal_year
+    On cr.cr_credit_salesforce_id = g.gift_officer_user_salesforce_id
+      And g.metric_performance_year = c.fiscal_year
   -- Performance year goals
   Left Join goal pyg
-    On pyg.id_number = cr.id_number
-      And pyg.year = c.perf_year
-*/  Group By
+    On cr.cr_credit_salesforce_id = pyg.gift_officer_user_salesforce_id
+      And pyg.metric_performance_year = c.perf_year
+  Group By
     cr.cr_credit_salesforce_id
     , cr.cr_credit_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , c.cal_year
     , c.cal_month
     , c.fiscal_year
     , c.fiscal_qtr
     , c.perf_year
     , c.perf_quarter
---    , g.goal_4
---    , pyg.goal_4
+    , g.visits_goal
+    , pyg.visits_goal
   Union
   ----- Main query goal 5, equivalent to lines 1420-1448 in nu_gft_v_officer_metrics -----
   Select Distinct
     cr.cr_credit_salesforce_id
     , cr.cr_credit_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , 'NOQV' As goal_type
     , 'Qual Visits' As goal_desc
     , c.cal_year
@@ -832,75 +961,286 @@ Cursor c_mgo_activity_monthly Is
     , c.fiscal_qtr As fiscal_quarter
     , c.perf_year
     , c.perf_quarter
---    , g.goal_5 As fy_goal
---    , pyg.goal_5 As py_goal
+    , g.qualifications_goal As fy_goal
+    , pyg.qualifications_goal As py_goal
     , count(Distinct c.contact_report_record_id) As progress
     , count(Distinct c.contact_report_record_id) As adjusted_progress
     , NULL As addl_progress_detail
   From table(metrics_pkg.tbl_contact_count) cr
   Inner Join table(metrics_pkg.tbl_contact_reports) c
     On cr.contact_report_record_id = c.contact_report_record_id
-/*  -- Fiscal year goals
+  -- Fiscal year goals
   Left Join goal g
-    On g.id_number = cr.id_number
-      And g.year = c.fiscal_year
+    On c.cr_credit_salesforce_id = g.gift_officer_user_salesforce_id
+      And g.metric_performance_year = c.fiscal_year
   -- Performance year goals
   Left Join goal pyg
-    On pyg.id_number = cr.id_number
-      And pyg.year = c.perf_year
-*/  Where c.contact_report_purpose = 'Qualification' -- Only count qualification visits
+    On cr.cr_credit_salesforce_id = pyg.gift_officer_user_salesforce_id
+      And pyg.metric_performance_year = c.perf_year
+  Where c.contact_report_purpose = 'Qualification' -- Only count qualification visits
   Group By
     cr.cr_credit_salesforce_id
     , cr.cr_credit_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , c.cal_year
     , c.cal_month
     , c.fiscal_year
     , c.fiscal_qtr
     , c.perf_year
     , c.perf_quarter
---    , g.goal_5
---    , pyg.goal_5
-/*  Union
+    , g.qualifications_goal
+    , pyg.qualifications_goal
+  Union
   ----- Main query goal 6, equivalent to lines 1449-1627 in nu_gft_v_officer_metrics -----
-  Select acr.assignment_id_number As id_number
-    , e.report_name
+    Select
+    aca.historical_pm_user_id
+    , aca.historical_pm_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
     , 'PA' As goal_type
     , 'Proposal Assists' As goal_desc
-    , extract(year From acr.ask_or_stop_dt) As cal_year
-    , extract(month From acr.ask_or_stop_dt) As cal_month
-    , rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(acr.ask_or_stop_dt) As fiscal_year
-    , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'fisc') As fiscal_quarter
-    , rpt_pbh634.ksm_pkg_tmp.get_performance_year(acr.ask_or_stop_dt) As perf_year
-    , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'perf') As perf_quarter
-    , g.goal_6 As fy_goal
-    , pyg.goal_6 As py_goal
+    , pd.ask_cal_year
+    , pd.ask_cal_month
+    , pd.ask_fiscal_year
+    , pd.ask_fiscal_quarter
+    , pd.ask_perf_year
+    , pd.ask_perf_quarter
+    , g.proposal_assist_goal As fy_goal
+    , pyg.proposal_assist_goal As py_goal
     -- Original definition: count only if ask date is filled in
-    , Count(Distinct Case When acr.initial_contribution_date Is Not Null Then acr.proposal_id End)
+    , Count(Distinct Case When aca.ask_or_close_date Is Not Null Then aca.proposal_record_id End)
       As progress
     -- Alternate definition: count if either ask date or stop date is filled in
-    , Count(Distinct acr.proposal_id) As adjusted_progress
+    , Count(Distinct aca.proposal_record_id) As adjusted_progress
     , NULL As addl_progress_detail
-  From table(rpt_pbh634.metrics_pkg.tbl_assist_count) acr
-  Inner Join entity e On e.id_number = acr.assignment_id_number
+  From table(metrics_pkg.tbl_assist_count) aca
+  Inner Join proposal_dates pd
+    On pd.proposal_record_id = aca.proposal_record_id
   -- Fiscal year goals
   Left Join goal g
-    On acr.assignment_id_number = g.id_number
-      And g.year = rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(acr.ask_or_stop_dt) -- initial_contribution_date is 'ask_date'
+    On aca.historical_pm_user_id = g.gift_officer_user_salesforce_id
+      And g.metric_performance_year = pd.fiscal_year
   -- Performance year goals
   Left Join goal pyg
-    On acr.assignment_id_number = pyg.id_number
-      And pyg.year = rpt_pbh634.ksm_pkg_tmp.get_performance_year(acr.ask_or_stop_dt)
-  Group By rpt_pbh634.ksm_pkg_tmp.get_fiscal_year(acr.ask_or_stop_dt)
-    , acr.assignment_id_number
-    , e.report_name
-    , extract(year From acr.ask_or_stop_dt)
-    , extract(month From acr.ask_or_stop_dt)
-    , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'fisc')
-    , rpt_pbh634.ksm_pkg_tmp.get_quarter(acr.ask_or_stop_dt, 'perf')
-    , rpt_pbh634.ksm_pkg_tmp.get_performance_year(acr.ask_or_stop_dt)
-    , g.goal_6
-    , pyg.goal_6
-*/
+    On aca.historical_pm_user_id = pyg.gift_officer_user_salesforce_id
+      And pyg.metric_performance_year = pd.perf_year
+  Group By
+    aca.historical_pm_user_id
+    , aca.historical_pm_name
+    , g.gift_officer_donor_id
+    , g.gift_officer_sort_name
+    , pd.ask_cal_year
+    , pd.ask_cal_month
+    , pd.ask_fiscal_year
+    , pd.ask_fiscal_quarter
+    , pd.ask_perf_year
+    , pd.ask_perf_quarter
+    , g.proposal_assist_goal
+    , pyg.proposal_assist_goal
+;
+
+--------------------------------------
+-- Placeholder 0 progress rows to force Tableau to populate all goals
+-- !!! Match columns to c_mgo_activity_monthly, above !!!
+Cursor c_mgo_activity_placeholders Is
+  
+  With
+  
+  usr As (
+    Select *
+    From table(dw_pkg_base.tbl_users)
+  )
+  
+  , goal As (
+    Select *
+    From table(metrics_pkg.tbl_goals_data)
+  )
+  
+  -- Goal 1
+  Select
+    goal.gift_officer_user_salesforce_id
+    , goal.gift_officer_user_name
+    , goal.gift_officer_donor_id
+    , goal.gift_officer_sort_name
+    , 'MGC' As goal_type
+    , 'MG Closes' As goal_desc
+    , goal.metric_performance_year As cal_year
+    , 1 As cal_month
+    , goal.metric_performance_year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.metric_performance_year As perf_year
+    , 1 As perf_quarter
+    , goal.mg_commitments_goal As fy_goal
+    , goal.mg_commitments_goal As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+    , NULL As addl_progress_detail
+  From usr
+  Inner Join goal
+    On usr.user_salesforce_id = goal.gift_officer_user_salesforce_id
+  Union All
+  -- Goal 2
+  Select
+    goal.gift_officer_user_salesforce_id
+    , goal.gift_officer_user_name
+    , goal.gift_officer_donor_id
+    , goal.gift_officer_sort_name
+    , 'MGS' As goal_type
+    , 'MG Sols' As goal_desc
+    , goal.metric_performance_year As cal_year
+    , 1 As cal_month
+    , goal.metric_performance_year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.metric_performance_year As perf_year
+    , 1 As perf_quarter
+    , mg_asks_goal As fy_goal
+    , mg_asks_goal As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+    , NULL As addl_progress_detail
+  From usr
+  Inner Join goal
+    On usr.user_salesforce_id = goal.gift_officer_user_salesforce_id
+  Union All
+  -- Goal 2 KSM
+  Select
+    goal.gift_officer_user_salesforce_id
+    , goal.gift_officer_user_name
+    , goal.gift_officer_donor_id
+    , goal.gift_officer_sort_name
+    , 'KGS' As goal_type
+    , 'KSM Sols' As goal_desc
+    , goal.metric_performance_year As cal_year
+    , 1 As cal_month
+    , goal.metric_performance_year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.metric_performance_year As perf_year
+    , 1 As perf_quarter
+    , mg_asks_goal As fy_goal
+    , mg_asks_goal As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+    , NULL As addl_progress_detail
+  From usr
+  Inner Join goal
+    On usr.user_salesforce_id = goal.gift_officer_user_salesforce_id
+  Union All
+  -- Goal 3
+  Select
+    goal.gift_officer_user_salesforce_id
+    , goal.gift_officer_user_name
+    , goal.gift_officer_donor_id
+    , goal.gift_officer_sort_name
+    , 'MGDR' As goal_type
+    , 'MG Dollars Raised' As goal_desc
+    , goal.metric_performance_year As cal_year
+    , 1 As cal_month
+    , goal.metric_performance_year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.metric_performance_year As perf_year
+    , 1 As perf_quarter
+    , mg_asks_goal As fy_goal
+    , mg_asks_goal As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+    , NULL As addl_progress_detail
+  From usr
+  Inner Join goal
+    On usr.user_salesforce_id = goal.gift_officer_user_salesforce_id
+  Union All
+  -- Goal 3 cash version
+  -- KSM Cash
+  Select
+    goal.gift_officer_user_salesforce_id
+    , goal.gift_officer_user_name
+    , goal.gift_officer_donor_id
+    , goal.gift_officer_sort_name
+    , 'KGC' As goal_type
+    , 'KSM Cash' As goal_desc
+    , goal.metric_performance_year As cal_year
+    , 1 As cal_month
+    , goal.metric_performance_year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.metric_performance_year As perf_year
+    , 1 As perf_quarter
+    , 0 As fy_goal
+    , 0 As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+    , NULL As addl_progress_detail
+  From usr
+  Inner Join goal
+    On usr.user_salesforce_id = goal.gift_officer_user_salesforce_id
+  Union All
+  -- Goal 4
+  Select
+    goal.gift_officer_user_salesforce_id
+    , goal.gift_officer_user_name
+    , goal.gift_officer_donor_id
+    , goal.gift_officer_sort_name
+    , 'NOV' as goal_type
+    , 'Visits' As goal_desc
+    , goal.metric_performance_year As cal_year
+    , 1 As cal_month
+    , goal.metric_performance_year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.metric_performance_year As perf_year
+    , 1 As perf_quarter
+    , visits_goal As fy_goal
+    , visits_goal As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+    , NULL As addl_progress_detail
+  From usr
+  Inner Join goal
+    On usr.user_salesforce_id = goal.gift_officer_user_salesforce_id
+  Union All
+  -- Goal 5
+  Select
+    goal.gift_officer_user_salesforce_id
+    , goal.gift_officer_user_name
+    , goal.gift_officer_donor_id
+    , goal.gift_officer_sort_name
+    , 'NOQV' As goal_type
+    , 'Qual Visits' As goal_desc
+     , goal.metric_performance_year As cal_year
+    , 1 As cal_month
+    , goal.metric_performance_year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.metric_performance_year As perf_year
+    , 1 As perf_quarter
+    , qualifications_goal As fy_goal
+    , qualifications_goal As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+    , NULL As addl_progress_detail
+  From usr
+  Inner Join goal
+    On usr.user_salesforce_id = goal.gift_officer_user_salesforce_id
+  Union All
+  -- Goal 6
+  Select
+    goal.gift_officer_user_salesforce_id
+    , goal.gift_officer_user_name
+    , goal.gift_officer_donor_id
+    , goal.gift_officer_sort_name
+    , 'PA' As goal_type
+    , 'Proposal Assists' As goal_desc
+     , goal.metric_performance_year As cal_year
+    , 1 As cal_month
+    , goal.metric_performance_year As fiscal_year
+    , 3 As fiscal_quarter
+    , goal.metric_performance_year As perf_year
+    , 1 As perf_quarter
+    , proposal_assist_goal As fy_goal
+    , proposal_assist_goal As py_goal
+    , 0 As progress
+    , 0 As adjusted_progress
+    , NULL As addl_progress_detail
+  From usr
+  Inner Join goal
+    On usr.user_salesforce_id = goal.gift_officer_user_salesforce_id
 ;
 
 /*************************************************************************
@@ -944,6 +1284,23 @@ Function tbl_universal_proposals_data
     Close c_universal_proposals_data;
     For i in 1..(pd.count) Loop
       Pipe row(pd(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+-- Pipelined function returning disaggregated proposal assists
+Function tbl_proposal_assist_data
+  Return proposal_assist_data Pipelined As
+  -- Declarations
+  pa proposal_assist_data;
+
+  Begin
+    Open c_proposal_assist_data;
+      Fetch c_proposal_assist_data Bulk Collect Into pa;
+    Close c_proposal_assist_data;
+    For i in 1..(pa.count) Loop
+      Pipe row(pa(i));
     End Loop;
     Return;
   End;
@@ -1094,24 +1451,27 @@ Function tbl_contact_count
     Return;
   End;
 
-/*--------------------------------------
+--------------------------------------
 -- Pipelined function returning proposal assists data
-Function tbl_assist_count
+Function tbl_assist_count(
+    ask_amt number default metrics_pkg.mg_ask_amt
+  )
   Return ask_assist_credit Pipelined As
     -- Declarations
-    pd ask_assist_credit;
+    ac ask_assist_credit;
 
   Begin
-    Open c_assist_count; -- Annual Fund allocations cursor
-      Fetch c_assist_count Bulk Collect Into pd;
+    Open c_assist_count(
+      ask_amt_in => ask_amt
+    );
+      Fetch c_assist_count Bulk Collect Into ac;
     Close c_assist_count;
     -- Pipe out the data
-    For i in 1..(pd.count) Loop
-      Pipe row(pd(i));
+    For i in 1..(ac.count) Loop
+      Pipe row(ac(i));
     End Loop;
     Return;
   End;
-*/
 
 --------------------------------------
 -- Pipelined function returning consolidated GO activity
@@ -1124,6 +1484,22 @@ Function tbl_mgo_activity_monthly
     Open c_mgo_activity_monthly; -- Annual Fund allocations cursor
       Fetch c_mgo_activity_monthly Bulk Collect Into ma;
     Close c_mgo_activity_monthly;
+    -- Pipe out the data
+    For i in 1..(ma.count) Loop
+      Pipe row(ma(i));
+    End Loop;
+    Return;
+  End;
+
+Function tbl_mgo_activity_placeholders
+  Return mgo_activity_monthly Pipelined As
+    -- Declarations
+    ma mgo_activity_monthly;
+
+  Begin
+    Open c_mgo_activity_placeholders; -- Annual Fund allocations cursor
+      Fetch c_mgo_activity_placeholders Bulk Collect Into ma;
+    Close c_mgo_activity_placeholders;
     -- Pipe out the data
     For i in 1..(ma.count) Loop
       Pipe row(ma(i));
