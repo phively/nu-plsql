@@ -128,7 +128,6 @@ Select Distinct
   , c.last_name
   , dean.dean_salut
   , dean.dean_source
-  , dean.full_name
   , c.institutional_suffix
   , d.degrees_verbose
   , d.degrees_concat
