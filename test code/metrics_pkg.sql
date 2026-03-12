@@ -57,3 +57,7 @@ From table(metrics_pkg.tbl_contact_count)
 Select *
 From table(metrics_pkg.tbl_mgo_activity_monthly)
 ;
+
+Select *
+From table(metrics_pkg.tbl_mgo_activity_placeholders)
+;
