@@ -74,7 +74,19 @@ l as (select distinct c.ucinn_ascendv2__donor_id__c,
 c.ucinn_ascendv2__first_and_last_name_formula__c,
 a.linkedin_address
 from stg_alumni.contact c
-inner join a on c.id = a.ucinn_ascendv2__contact__c)
+inner join a on c.id = a.ucinn_ascendv2__contact__c),
+
+--- Add in geocodes now that Paul has it built - 3/16/26
+
+
+addy as (select ad.donor_id,
+       ad.address_preferred_indicator,
+       ad.address_city,
+       ad.address_state,
+       ad.address_country,
+       ad.geocode_primary
+from mv_address ad 
+where ad.address_preferred_indicator = 'Y')
 
 select e.donor_id,
        e.person_or_org,
@@ -89,9 +101,12 @@ else 'U' end as gender_identity,
        e.lost_indicator,
        e.is_deceased_indicator,
        e.institutional_suffix,
-       e.preferred_address_city,
-       e.preferred_address_state,
-       e.preferred_address_country,
+       --- replace entity with address, keep primary address like in entity , but add in geocodes
+       addy.address_preferred_indicator,
+       addy.address_city,
+       addy.address_state,
+       addy.address_country,
+       addy.geocode_primary,
        d.full_name,
        d.sort_name,
        d.degrees_verbose,
@@ -141,3 +156,5 @@ left join give on give.household_primary_donor_id = e.donor_id
 left join l on l.ucinn_ascendv2__donor_id__c = e.donor_id
 --- Special handling
 left join s on s.donor_id = e.donor_id
+--- add primary address and geocode
+left join addy on addy.donor_id = e.donor_id 
