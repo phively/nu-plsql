@@ -833,8 +833,8 @@ select distinct e.household_id,
      --- Write down expendable, cash, ngc explanations for team
      --- edit 9/16/25 - add zeros if blanks 
      case when g.ngc_lifetime is not null then g.ngc_lifetime else 0 end as ngc_lifetime,
-     --- add CYD 
-     case when g.ngc_cfy > 0 then 'CYD' end as CYD_Flag, 
+     --- add CYD --- Andy wants cash AND Pledges 
+     case when g.cash_cfy > 0 Or g.ngc_cfy > 0  then 'Y' end as CYD_Flag, 
      case when g.ngc_cfy is not null then g.ngc_cfy else 0 end as ngc_cfy,
      case when g.ngc_pfy1 is not null then g.ngc_pfy1 else 0 end as ngc_pfy1,
      case when g.ngc_pfy2 is not null then g.ngc_pfy2 else 0 end as ngc_pfy2,

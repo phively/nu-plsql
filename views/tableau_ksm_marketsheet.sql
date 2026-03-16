@@ -84,7 +84,8 @@ addy as (select ad.donor_id,
        ad.address_city,
        ad.address_state,
        ad.address_country,
-       ad.geocode_primary
+       ad.geocode_primary,
+       ad.address_postal_code
 from mv_address ad 
 where ad.address_preferred_indicator = 'Y')
 
@@ -92,6 +93,7 @@ select e.donor_id,
        e.person_or_org,
        e.household_primary,
        e.full_name,
+       e.sort_name,
 /* Gender 
 We will use the old definitions: M, F and U
 */              
@@ -107,8 +109,9 @@ else 'U' end as gender_identity,
        addy.address_state,
        addy.address_country,
        addy.geocode_primary,
-       d.full_name,
-       d.sort_name,
+       addy.address_postal_code,
+       ---d.full_name,
+       ---d.sort_name,
        d.degrees_verbose,
        d.degrees_concat,
        d.first_ksm_grad_date,
