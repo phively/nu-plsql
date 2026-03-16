@@ -29,6 +29,8 @@ pm As (
     , kgo.active_flag
       As current_ksm_staff
     , kgo.team As ksm_team
+    , kgo.donor_id As gift_officer_donor_id
+    , kgo.sort_name As gift_officer_sort_name
   From mv_assignment_history mah
   Left Join tbl_ksm_gos kgo
     On kgo.user_id = mah.staff_user_salesforce_id
@@ -49,8 +51,18 @@ pm As (
 Select Distinct
   mgm.historical_pm_user_id
   , mgm.historical_pm_name
-  , mgm.gift_officer_donor_id
-  , mgm.gift_officer_sort_name
+  , Case
+      When mgm.gift_officer_donor_id Is Not Null
+        Then mgm.gift_officer_donor_id
+      Else s.gift_officer_donor_id
+      End
+    As gift_officer_donor_id
+  , Case
+      When mgm.gift_officer_sort_name Is Not Null
+        Then mgm.gift_officer_sort_name
+      Else s.gift_officer_sort_name
+      End
+    As gift_officer_sort_name
   , s.ksm_start_dt
   , s.ksm_stop_dt
   , s.current_ksm_staff
