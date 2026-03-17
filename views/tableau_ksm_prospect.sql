@@ -62,10 +62,11 @@ left join c on c.id = s.ucinn_ascendv2__contact__c
 where s.ap_is_active__c = 'true'
 ),
 
-final_strategy_id as (Select psr.donor_id,
+final_strategy_id as (Select distinct psr.donor_id,
 psr.strategy_record_id,
 psr.strategy_relation_record_id
-From table(dw_pkg_base.tbl_strategy_relation) psr),
+From table(dw_pkg_base.tbl_strategy_relation) psr
+where SR_ACTIVE_IND = 'Y'),
 
 --- Involvements - KSM, Kellogg
 
@@ -684,7 +685,7 @@ select  distinct
        prop.ksm_flag
 from entity e 
 --- inner join prospect 
-inner join prospect on prospect.donor_id = e.donor_id
+left join prospect on prospect.donor_id = e.donor_id
 --- Inner join degrees 
 left join d on d.donor_id = e.donor_id
 --- giving info  
