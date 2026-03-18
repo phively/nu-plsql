@@ -768,7 +768,33 @@ an as (select
        a.KSM_#_2022,
        a.KSM_$_2022,
        a.KSM_MATCH_2022
-from TABLEAU_AF_ANNIVERSARY a)
+from TABLEAU_AF_ANNIVERSARY a),
+
+--- andy wants to add the name tag field 
+
+nametag as (select n.donor_id,
+       n.full_name,
+       n.primary_constituent_type,
+       n.salutation,
+       n.first_name,
+       n.middle_name,
+       n.last_name,
+       n.dean_salut,
+       n.dean_source,
+       n.institutional_suffix,
+       n.degrees_verbose,
+       n.degrees_concat,
+       n.first_ksm_year,
+       n.first_masters_year,
+       n.last_masters_year,
+       n.program,
+       n.program_group,
+       n.class_section,
+       n.degree_levels,
+       n.nu_degrees_string,
+       n.family
+from tableau_nametags n) 
+
       
  
 select distinct e.household_id,
@@ -979,28 +1005,6 @@ select distinct e.household_id,
      HR.ucinn_ascendv2__type__c as Honor_Roll_Type,
      HR.ucinn_ascendv2__constructed_name_formula__c as Honor_Roll_Name_Formula,
      HR.ucinn_ascendv2__Data_Source__c as Honor_Roll_Data_Source,
-     an.HOUSEHOLD_ID_KSM,
-     an.YR1,
-     an.CREDIT_DATE1,
-     an.CREDIT_AMT1,
-     an.DAF_1,
-     an.DESIGNATION1,
-     an.OPPORTUNITY_TYPE1,
-     an.CAMPAIGN_MOTIVATION_CODE_1,
-     an.YR2,
-     an.CREDIT_DATE2,
-     an.CREDIT_AMT2,
-     an.DAF_2,
-     an.DESIGNATION2,
-     an.OPPORTUNITY_TYPE2,
-     an.CAMPAIGN_MOTIVATION_CODE_2,
-     an.YR3,
-     an.CREDIT_DATE3,
-     an.CREDIT_AMT3,
-     an.DAF_3,
-     an.DESIGNATION3,
-     an.OPPORTUNITY_TYPE3,
-     an.CAMPAIGN_MOTIVATION_CODE_3,
      an.PLG_DATE,
      an.PLG_STATUS,
      an.PLG_ALLOC,
@@ -1021,7 +1025,13 @@ select distinct e.household_id,
      an.KSM_MATCH_2023,
      an.KSM_#_2022,
      an.KSM_$_2022,
-     an.KSM_MATCH_2022
+     an.KSM_MATCH_2022,
+     nametag.first_name as nametag_first_name,
+     nametag.middle_name as nametag_middle_name,
+     nametag.last_name as nametag_last_name,
+     nametag.dean_salut as nametag_dean_salut,
+     nametag.nu_degrees_string as nametag_deg_string,
+     nametag.family as nametag_family
 from e 
 left join KSM_Degrees on KSM_Degrees.donor_id = e.donor_id
 --- Reunion eligible
@@ -1103,3 +1113,5 @@ left join peac on peac.constituent_donor_id = e.donor_id
 left join hcak on hcak.constituent_donor_id = e.donor_id
 --- reac
 left join reac on reac.constituent_donor_id = e.donor_id
+--- nametag
+left join nametag on nametag.donor_id = e.donor_id 
