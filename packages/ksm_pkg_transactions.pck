@@ -184,6 +184,11 @@ Cursor c_matches Is
       , opp.stagename
   )
   
+  , des As (
+    Select *
+    From table(dw_pkg_base.tbl_designation)
+  )
+  
   -- Matching data can come from opportunities, or payments
   , matches_preunion As
   ((
@@ -193,11 +198,23 @@ Cursor c_matches Is
         As matching_gift_record_id
       , 'opportunity'
         As data_source
-      , des.designation_record_id
+      , Case
+          When des.designation_record_id Is Not Null
+            Then des.designation_record_id
+          Else dopp.designation_record_id
+          End
         As matching_gift_designation_id
-      , des.designation_salesforce_id
+      , Case
+          When des.designation_salesforce_id Is Not Null
+            Then des.designation_salesforce_id
+          Else dopp.designation_salesforce_id
+          End
         As matching_gift_designation_sf_id
-      , des.designation_name
+      , Case
+          When des.designation_name Is Not Null
+            Then des.designation_name
+          Else dopp.designation_name
+          End
         As matching_gift_designation
       , opp.stagename
       , opp.amount
@@ -212,12 +229,14 @@ Cursor c_matches Is
         As matching_payment_gift_receipt
       , opp.etl_update_date
     From opp
-    Left Join table(dw_pkg_base.tbl_designation) des
+    Inner Join stg_alumni.ucinn_ascendv2__payment__c pay
+      On pay.ucinn_ascendv2__opportunity__c = opp.id
+    Inner Join stg_alumni.ucinn_ascendv2__payment__c pay
+      On pay.ucinn_ascendv2__opportunity__c = opp.id
+    Left Join des
       On opp.ucinn_ascendv2__designation__c = des.designation_salesforce_id
-    Inner Join stg_alumni.ucinn_ascendv2__payment__c pay
-      On pay.ucinn_ascendv2__opportunity__c = opp.id
-    Inner Join stg_alumni.ucinn_ascendv2__payment__c pay
-      On pay.ucinn_ascendv2__opportunity__c = opp.id
+    Left Join des dopp
+      On pay.ucinn_ascendv2__designation__c = dopp.designation_salesforce_id
     Where opp.is_match = 'Y'
       And opp.stagename Not In ('Potential Match', 'Adjusted')
   ) Union (
@@ -227,11 +246,23 @@ Cursor c_matches Is
         As matching_gift_record_id
       , 'mg origination'
         As data_source
-      , des.designation_record_id
+      , Case
+          When des.designation_record_id Is Not Null
+            Then des.designation_record_id
+          Else dopp.designation_record_id
+          End
         As matching_gift_designation_id
-      , des.designation_salesforce_id
+      , Case
+          When des.designation_salesforce_id Is Not Null
+            Then des.designation_salesforce_id
+          Else dopp.designation_salesforce_id
+          End
         As matching_gift_designation_sf_id
-      , des.designation_name
+      , Case
+          When des.designation_name Is Not Null
+            Then des.designation_name
+          Else dopp.designation_name
+          End
         As matching_gift_designation
       , opp.stagename
       , opp.amount
@@ -246,12 +277,14 @@ Cursor c_matches Is
         As matching_payment_gift_receipt
       , pay.etl_update_date
     From opp
-    Left Join table(dw_pkg_base.tbl_designation) des
-      On opp.ucinn_ascendv2__designation__c = des.designation_salesforce_id
     Inner Join stg_alumni.ucinn_ascendv2__matching_gift_origination__c mgo
       On opp.id = mgo.ucinn_ascendv2__opportunity__c
     Inner Join stg_alumni.ucinn_ascendv2__payment__c pay
       On pay.id = mgo.ucinn_ascendv2__payment__c
+    Left Join des
+      On opp.ucinn_ascendv2__designation__c = des.designation_salesforce_id
+    Left Join des dopp
+      On pay.ucinn_ascendv2__designation__c = dopp.designation_salesforce_id
     Where opp.is_match = 'Y'
       And opp.stagename Not In ('Potential Match', 'Adjusted')
   ))
