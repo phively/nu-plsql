@@ -304,6 +304,7 @@ Cursor c_matches Is
   , matches As (
     Select
       mu.matching_gift_record_id
+      , matching_gift_designation_sf_id
       , mu.matching_gift_designation_id
       , mu.matching_gift_designation
       , mu.stagename
@@ -319,6 +320,8 @@ Cursor c_matches Is
         As orig_gift_record_id_opp
       , payc.name
         As orig_gift_record_id_pay
+      , dwp.credit_date As pay_credit_dt
+      , dwo.credit_date As opp_credit_dt
       , Case
           When opp_pay.is_pledge = 'Y'
             And payc.name Is Not Null
@@ -371,7 +374,8 @@ Cursor c_matches Is
         ) As rn
     From matches_union mu
     Left Join opp
-      On opp.ucinn_ascendv2__receipt_number__c = mu.matching_gift_original_gift_receipt
+      On nvl(opp.ucinn_ascendv2__receipt_number__c, opp.ap_legacy_receipt_number__c) =
+        mu.matching_gift_original_gift_receipt
       And opp.stagename Not In ('Potential Match')
     Left Join table(dw_pkg_base.tbl_opportunity) dwo
       On dwo.opportunity_record_id = opp.name
@@ -380,7 +384,8 @@ Cursor c_matches Is
       On adj.name = opp.name
     -- Joined to check payments table
     Left Join stg_alumni.ucinn_ascendv2__payment__c payc
-      On payc.ap_legacy_receipt_number__c = mu.matching_gift_original_gift_receipt
+      On nvl(payc.ap_legacy_receipt_number__c, payc.ucinn_ascendv2__receipt_number__c) =
+        mu.matching_gift_original_gift_receipt
       And payc.ucinn_ascendv2__designation__c = mu.matching_gift_designation_sf_id
       And payc.ucinn_ascendv2__opportunity__c Not In ('Potential Match', 'Adjusted')
     Left Join table(dw_pkg_base.tbl_payment) dwp
