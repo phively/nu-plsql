@@ -26,6 +26,8 @@ Select
   , mve.institutional_suffix
   , mve.household_id
   , mve.household_primary
+  , mve.household_id_ksm
+  , mve.household_primary_ksm
   , mve.person_or_org
   , mve.primary_record_type
   , mve.is_deceased_indicator

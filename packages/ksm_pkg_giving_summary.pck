@@ -45,6 +45,8 @@ Type rec_lifetime_giving Is Record (
 --------------------------------------
 Type rec_giving_summary Is Record (
     household_id mv_households.household_id%type
+    , household_id_ksm mv_households.household_id_ksm%type
+    , household_primary_ksm mv_households.household_primary_ksm%type
     , household_account_name mv_households.household_account_name%type
     , household_primary_donor_id mv_households.household_primary_donor_id%type
     , household_primary_full_name mv_households.household_primary_full_name%type
@@ -241,8 +243,11 @@ Cursor c_ksm_giving_summary Is
   )
 
   , hh_base As (
+    -- Keep this as household_id, not household_id_ksm; needed to run legacy code
     Select Distinct
       hh.household_id
+      , hh.household_id_ksm
+      , hh.household_primary_ksm
       , hh.household_account_name
       , hh.household_primary_donor_id
       , hh.household_primary_full_name
@@ -269,7 +274,7 @@ Cursor c_ksm_giving_summary Is
   -- Sum cash amounts
   , cash As (
     Select Distinct
-      cash.household_id
+      cash.household_id_ksm
       -- Lifetime giving
       , sum(cash.hh_credit) As cash_lifetime
       -- Yearly totals
@@ -318,13 +323,13 @@ Cursor c_ksm_giving_summary Is
     Cross Join v_current_calendar cal
     Cross Join params
     Group By
-      cash.household_id
+      cash.household_id_ksm
   )
 
   -- Sum transaction amounts
   , ngc As (
     Select Distinct
-      ngc.household_id
+      ngc.household_id_ksm
       -- Lifetime giving
       , sum(ngc.hh_credit) As ngc_lifetime
       , sum(ngc.hh_recognition_credit) -- Count bequests at face value and internal transfers at > $0
@@ -413,12 +418,14 @@ Cursor c_ksm_giving_summary Is
     Cross Join v_current_calendar cal
     Cross Join params
     Group By
-      ngc.household_id
+      ngc.household_id_ksm
   )
 
   -- Main query
   Select
     hh_base.household_id
+    , hh_base.household_id_ksm
+    , hh_base.household_primary_ksm
     , hh_base.household_account_name
     , hh_base.household_primary_donor_id
     , hh_base.household_primary_full_name
@@ -519,9 +526,9 @@ Cursor c_ksm_giving_summary Is
   Cross Join params
   Cross Join v_current_calendar cal
   Left Join cash
-    On cash.household_id = hh_base.household_id
+    On cash.household_id_ksm = hh_base.household_id_ksm
   Left Join ngc
-    On ngc.household_id = hh_base.household_id
+    On ngc.household_id_ksm = hh_base.household_id_ksm
 ;
 
 
