@@ -59,7 +59,7 @@ Type rec_unsplit Is Record (
 Type rec_donor_count Is Record (
     tx_id mv_transactions.tx_id%type
     , designation_record_id mv_transactions.designation_record_id%type
-    , household_id mv_entity.household_id%type
+    , household_id_ksm mv_entity.household_id_ksm%type
     , hh_credited_donors integer
     , etl_update_date mv_entity.etl_update_date%type
 );
@@ -78,6 +78,9 @@ Type rec_source_donor Is Record (
 Type rec_transaction Is Record (
   credited_donor_id mv_entity.donor_id%type
   , household_id mv_entity.household_id%type
+  , household_primary mv_entity.household_primary%type
+  , household_id_ksm mv_entity.household_id_ksm%type
+  , household_primary_ksm mv_entity.household_primary_ksm%type
   , credited_donor_name mv_entity.full_name%type
   , credited_donor_sort_name mv_entity.sort_name%type
   , credited_donor_audit varchar2(255) -- See dw_pkg_base.rec_gift_credit.donor_name_and_id
@@ -253,7 +256,7 @@ Cursor c_hh_donor_count Is
 Select Distinct
     trans.tx_id
     , trans.designation_record_id
-    , mve.household_id
+    , mve.household_id_ksm
     , count(trans.credited_donor_id)
       As hh_credited_donors
     , max(trans.max_etl_update_date)
@@ -266,7 +269,7 @@ Select Distinct
   Group By
     trans.tx_id
     , trans.designation_record_id
-    , mve.household_id
+    , mve.household_id_ksm
 ;
 
 --------------------------------------
@@ -467,6 +470,9 @@ Cursor c_ksm_transactions Is
       Select
         trans.credited_donor_id
         , mve.household_id
+        , mve.household_primary
+        , mve.household_id_ksm
+        , mve.household_primary_ksm
         , trans.credited_donor_name
         , trans.credited_donor_sort_name
         , trans.credited_donor_audit
@@ -702,7 +708,7 @@ Cursor c_ksm_transactions Is
     From trans_data t
     -- Householded counts, for hh_credit
     Inner Join table(ksm_pkg_gifts.tbl_hh_donor_count) hhdc
-      On hhdc.household_id = t.household_id
+      On hhdc.household_id_ksm = t.household_id_ksm
       And hhdc.tx_id = t.tx_id
       And hhdc.designation_record_id = t.designation_record_id
     -- Historical credit

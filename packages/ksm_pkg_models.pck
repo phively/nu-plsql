@@ -125,6 +125,9 @@ Function tbl_ksm_model_student_supporter
 Function tbl_ksm_models
   Return ksm_models Pipelined;
 
+Function tbl_ksm_models_hh
+  Return ksm_models Pipelined;
+
 /*********************** About pipelined functions ***********************
 Q: What is a pipelined function?
 
@@ -253,12 +256,14 @@ Cursor c_ksm_models Is
     , mve.sort_name
     , mve.primary_record_type
     , mve.institutional_suffix
+    -- MGID
     , mg.id_code
       As mg_id_code
     , mg.id_segment
       As mg_id_description
     , mg.id_score
       As mg_id_score
+    -- MGPR
     , mg.pr_code
       As mg_pr_code
     , mg.pr_segment
@@ -267,18 +272,21 @@ Cursor c_ksm_models Is
       As mg_pr_score
     , mg.est_probability
       As mg_probability
+    -- AF
     , af.segment_code
       As af_10k_code
     , af.description
       As af_10k_description
     , af.score
       As af_10k_score
+    -- AE
     , ae.segment_code
       As alumni_engagement_code
     , ae.description
       As alumni_engagement_description
     , ae.score
       As alumni_engagement_score
+    -- AESS
     , ss.segment_code
       As student_supporter_code
     , ss.description
@@ -298,6 +306,106 @@ Cursor c_ksm_models Is
     On ae.donor_id = allids.donor_id
   Left Join ss
     On ss.donor_id = allids.donor_id
+;
+
+--------------------------------------
+-- Merged model scores, householded
+
+Cursor c_ksm_models_hh Is
+
+  With
+  
+  model As (
+    Select *
+    From table(ksm_pkg_models.tbl_ksm_models)
+  )
+  
+  , hh_max_score As (
+    Select Distinct
+      household_id_ksm
+      , max(household_primary_ksm)
+        As household_primary_ksm
+      -- Sort by higher score, then HH primary
+      -- MGID
+      , max(mg_id_code) keep(dense_rank First Order By mg_id_score Desc Nulls Last, household_primary_ksm Desc)
+        As mg_id_code
+      , max(mg_id_description) keep(dense_rank First Order By mg_id_score Desc Nulls Last, household_primary_ksm Desc)
+        As mg_id_description
+      , max(mg_id_score) keep(dense_rank First Order By mg_id_score Desc Nulls Last, household_primary_ksm Desc)
+        As mg_id_score
+      -- MGPR
+      , max(mg_pr_code) keep(dense_rank First Order By mg_pr_score Desc Nulls Last, household_primary_ksm Desc)
+        As mg_pr_code
+      , max(mg_pr_description) keep(dense_rank First Order By mg_pr_score Desc Nulls Last, household_primary_ksm Desc)
+        As mg_pr_description
+      , max(mg_pr_score) keep(dense_rank First Order By mg_pr_score Desc Nulls Last, household_primary_ksm Desc)
+        As mg_pr_score
+      , max(mg_probability) keep(dense_rank First Order By mg_pr_score Desc Nulls Last, household_primary_ksm Desc)
+        As mg_probability
+      -- AF
+      , max(af_10k_code) keep(dense_rank First Order By af_10k_score Desc Nulls Last, household_primary_ksm Desc)
+        As af_10k_code
+      , max(af_10k_description) keep(dense_rank First Order By af_10k_score Desc Nulls Last, household_primary_ksm Desc)
+        As af_10k_description
+      , max(af_10k_score) keep(dense_rank First Order By af_10k_score Desc Nulls Last, household_primary_ksm Desc)
+        As af_10k_score
+      -- AE
+      , max(alumni_engagement_code) keep(dense_rank First Order By alumni_engagement_score Desc Nulls Last, household_primary_ksm Desc)
+        As alumni_engagement_code
+      , max(alumni_engagement_description) keep(dense_rank First Order By alumni_engagement_score Desc Nulls Last, household_primary_ksm Desc)
+        As alumni_engagement_description
+      , max(alumni_engagement_score) keep(dense_rank First Order By alumni_engagement_score Desc Nulls Last, household_primary_ksm Desc)
+        As alumni_engagement_score
+      -- AESS
+      , max(student_supporter_code) keep(dense_rank First Order By student_supporter_score Desc Nulls Last, household_primary_ksm Desc)
+        As student_supporter_code
+      , max(student_supporter_description) keep(dense_rank First Order By student_supporter_score Desc Nulls Last, household_primary_ksm Desc)
+        As student_supporter_description
+      , max(student_supporter_score) keep(dense_rank First Order By student_supporter_score Desc Nulls Last, household_primary_ksm Desc)
+        As student_supporter_score
+      -- ETL
+      , max(etl_update_date)
+        As etl_update_date
+    From model
+    Group By household_id_ksm
+  )
+  
+  Select
+    model.donor_id
+    , model.household_id
+    , model.household_primary
+    , hms.household_id_ksm
+    , hms.household_primary_ksm
+    , model.sort_name
+    , model.primary_record_type
+    , model.institutional_suffix
+    -- MGID
+    , hms.mg_id_code
+    , hms.mg_id_description
+    , hms.mg_id_score
+    -- MGPR
+    , hms.mg_pr_code
+    , hms.mg_pr_description
+    , hms.mg_pr_score
+    , hms.mg_probability
+    -- AF
+    , hms.af_10k_code
+    , hms.af_10k_description
+    , hms.af_10k_score
+    -- AE
+    , hms.alumni_engagement_code
+    , hms.alumni_engagement_description
+    , hms.alumni_engagement_score
+    -- AESS
+    , hms.student_supporter_code
+    , hms.student_supporter_description
+    , hms.student_supporter_score
+    -- ETL
+    , model.etl_update_date
+  From hh_max_score hms
+  Inner Join model
+    On model.household_id_ksm = hms.household_id_ksm
+    And model.household_primary_ksm = hms.household_primary_ksm
 ;
 
 /*************************************************************************
@@ -378,6 +486,22 @@ Function tbl_ksm_models
     Open c_ksm_models;
       Fetch c_ksm_models Bulk Collect Into km;
     Close c_ksm_models;
+    For i in 1..(km.count) Loop
+      Pipe row(km(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_ksm_models_hh
+  Return ksm_models Pipelined As
+  -- Declarations
+  km ksm_models;
+  
+  Begin
+    Open c_ksm_models_hh;
+      Fetch c_ksm_models_hh Bulk Collect Into km;
+    Close c_ksm_models_hh;
     For i in 1..(km.count) Loop
       Pipe row(km(i));
     End Loop;
