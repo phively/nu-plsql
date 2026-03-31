@@ -11,6 +11,10 @@ From table(ksm_pkg_models.tbl_ksm_model_af_10k)
 ;
 
 Select *
+From table(ksm_pkg_models.tbl_ksm_model_af_pr)
+;
+
+Select *
 From table(ksm_pkg_models.tbl_ksm_model_alumni_engagement)
 ;
 
@@ -34,6 +38,7 @@ Select
   count(m.mg_id_code) As mg_id
   , count(m.mg_pr_code) As mg_pr
   , count(m.af_10k_code) As af_10k
+  , count(m.af_pr_code) As af_pr
   , count(m.alumni_engagement_code) As ae
   , count(m.student_supporter_code) As ss
 From mv_ksm_models m
@@ -43,6 +48,7 @@ Select
   count(m.mg_id_code) As mg_id
   , count(m.mg_pr_code) As mg_pr
   , count(m.af_10k_code) As af_10k
+  , count(m.af_pr_code) As af_pr
   , count(m.alumni_engagement_code) As ae
   , count(m.student_supporter_code) As ss
 From mv_ksm_models_hh m
@@ -57,7 +63,7 @@ Where h.donor_id In (86400, 86401)
 ;
 
 Select
-  'Nonprimary households appear' As explanation
+  'No nonprimary households appear' As explanation
   , h.*
 From mv_ksm_models_hh h
 Where h.household_primary_ksm = 'N'
