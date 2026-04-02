@@ -144,6 +144,7 @@ Type rec_relationships Is Record (
   , relationship_donor_id stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__related_contact_donor_id_formula__c%type
   , relationship_role stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__related_contact_role__c%type
   , relationship_notes stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__notes__c%type
+  , apply_soft_credit stg_alumni.ucinn_ascendv2__relationship__c.ucinn_ascendv2__apply_soft_credit__c%type
   , etl_update_date stg_alumni.ucinn_ascendv2__relationship__c.etl_update_date%type
 );
 
@@ -1010,6 +1011,7 @@ Cursor c_relationships Is
     , r.ucinn_ascendv2__related_contact_donor_id_formula__c As relationship_donor_id
     , r.ucinn_ascendv2__related_contact_role__c As relationship_role
     , r.ucinn_ascendv2__notes__c As relationship_notes
+    , r.ucinn_ascendv2__apply_soft_credit__c As apply_soft_credit
     , r.etl_update_date
   From stg_alumni.ucinn_ascendv2__relationship__c r
   Inner Join stg_alumni.contact c
