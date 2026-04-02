@@ -87,6 +87,9 @@ Type rec_ksm_models Is Record (
   , af_10k_code varchar2(20)
   , af_10k_description varchar2(60)
   , af_10k_score number
+  , af_pr_code varchar2(20)
+  , af_pr_description varchar2(60)
+  , af_pr_score number
   , alumni_engagement_code varchar2(20)
   , alumni_engagement_description varchar2(60)
   , alumni_engagement_score number
@@ -114,6 +117,9 @@ Function tbl_ksm_model_mg
   Return ksm_model_mg Pipelined;
   
 Function tbl_ksm_model_af_10k
+  Return ksm_model_af_10k Pipelined;
+
+Function tbl_ksm_model_af_pr
   Return ksm_model_af_10k Pipelined;
 
 Function tbl_ksm_model_alumni_engagement
@@ -169,6 +175,22 @@ Cursor c_ksm_model_af_10k Is
   From tbl_ksm_model_af_10k
 ;
 
+Cursor c_ksm_model_af_pr Is
+  Select
+    e.donor_id
+    , 2026 As segment_year
+    , 3 As segment_month
+    , 'AFPR' As segment_code
+    , m.af_fy26_tier
+      As description
+    , m.af_fy26_score
+      As score
+  From af_fy26_model m
+  Inner Join mv_entity e
+    On e.household_id_ksm = m.household_id_ksm
+    And e.household_primary_ksm = 'Y'
+;
+
 --------------------------------------
 -- All alumni engagement model scores
 Cursor c_ksm_model_alumni_engagement Is
@@ -215,6 +237,17 @@ Cursor c_ksm_models Is
     From table(ksm_pkg_models.tbl_ksm_model_af_10k) af10k
   )
   
+  , afpr As (
+    Select
+      pr.donor_id
+      , pr.segment_year
+      , pr.segment_month
+      , pr.segment_code
+      , pr.description
+      , pr.score
+    From table(ksm_pkg_models.tbl_ksm_model_af_pr) pr
+  )
+  
   , ae As (
     Select
       alen.donor_id
@@ -241,6 +274,8 @@ Cursor c_ksm_models Is
     Select donor_id From mg
     Union
     Select donor_id From af
+    Union
+    Select donor_id From afpr
     Union
     Select donor_id From ae
     Union
@@ -279,6 +314,13 @@ Cursor c_ksm_models Is
       As af_10k_description
     , af.score
       As af_10k_score
+    -- AFPR
+    , afpr.segment_code
+      As af_pr_code
+    , afpr.description
+      As af_pr_description
+    , afpr.score
+      As af_pr_score
     -- AE
     , ae.segment_code
       As alumni_engagement_code
@@ -302,6 +344,8 @@ Cursor c_ksm_models Is
     On mg.donor_id = allids.donor_id
   Left Join af
     On af.donor_id = allids.donor_id
+  Left Join afpr
+    On afpr.donor_id = allids.donor_id
   Left Join ae
     On ae.donor_id = allids.donor_id
   Left Join ss
@@ -349,6 +393,13 @@ Cursor c_ksm_models_hh Is
         As af_10k_description
       , max(af_10k_score) keep(dense_rank First Order By af_10k_score Desc Nulls Last, household_primary_ksm Desc)
         As af_10k_score
+      -- AFPR
+      , max(af_pr_code) keep(dense_rank First Order By af_pr_score Desc Nulls Last, household_primary_ksm Desc)
+        As af_pr_code
+      , max(af_pr_description) keep(dense_rank First Order By af_pr_score Desc Nulls Last, household_primary_ksm Desc)
+        As af_pr_description
+      , max(af_pr_score) keep(dense_rank First Order By af_pr_score Desc Nulls Last, household_primary_ksm Desc)
+        As af_pr_score
       -- AE
       , max(alumni_engagement_code) keep(dense_rank First Order By alumni_engagement_score Desc Nulls Last, household_primary_ksm Desc)
         As alumni_engagement_code
@@ -392,6 +443,10 @@ Cursor c_ksm_models_hh Is
     , hms.af_10k_code
     , hms.af_10k_description
     , hms.af_10k_score
+    -- AFPR
+    , hms.af_pr_code
+    , hms.af_pr_description
+    , hms.af_pr_score
     -- AE
     , hms.alumni_engagement_code
     , hms.alumni_engagement_description
@@ -438,6 +493,22 @@ Function tbl_ksm_model_af_10k
     Open c_ksm_model_af_10k;
       Fetch c_ksm_model_af_10k Bulk Collect Into af;
     Close c_ksm_model_af_10k;
+    For i in 1..(af.count) Loop
+      Pipe row(af(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_ksm_model_af_pr
+  Return ksm_model_af_10k Pipelined As
+  -- Declarations
+  af ksm_model_af_10k;
+  
+  Begin
+    Open c_ksm_model_af_pr;
+      Fetch c_ksm_model_af_pr Bulk Collect Into af;
+    Close c_ksm_model_af_pr;
     For i in 1..(af.count) Loop
       Pipe row(af(i));
     End Loop;
