@@ -797,10 +797,12 @@ from tableau_nametags n),
 
 --- Zach's AF Model Scores View
 
-zaf as (select m.household_id_ksm,
-       m.af_fy26_score,
-       m.af_fy26_tier
-from AF_FY26_MODEL m)
+zaf as (select 
+        m.household_id_ksm,
+        m.af_pr_code,
+        m.af_pr_description,
+        m.af_pr_score
+from mv_ksm_models m)
       
  
 select distinct e.household_id,
@@ -1037,9 +1039,10 @@ select distinct e.household_id,
      nametag.last_name as nametag_last_name,
      nametag.dean_salut as nametag_dean_salut,
      nametag.nu_degrees_string as nametag_deg_string,
-     nametag.family as nametag_family,
-     zaf.af_fy26_score,
-     zaf.af_fy26_tier
+     nametag.family as nametag_family, 
+     zaf.af_pr_code,
+     zaf.af_pr_description,
+     zaf.af_pr_score
 from e 
 left join KSM_Degrees on KSM_Degrees.donor_id = e.donor_id
 --- Reunion eligible
