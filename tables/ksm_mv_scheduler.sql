@@ -1,5 +1,6 @@
 /*************************************************************************
--- To refresh an mv without dropping first run this script:
+-- When adding/removing fields, the MV must be dropped first.
+-- To refresh an mv with the same fields without dropping, run this script:
 BEGIN
 DBMS_SNAPSHOT.REFRESH('SVC_KELLOGG_ALUMNI_REPORTING.INSERT_MV_NAME_HERE');
 END;

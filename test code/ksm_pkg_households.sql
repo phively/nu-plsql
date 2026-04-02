@@ -49,3 +49,30 @@ Where dat.explanation Is Not Null
   Or sdat.explanation Is Not Null
 Order By hh.household_id_ksm Asc
 ;
+
+-- Joint credit flags
+With
+
+dat As (
+  Select '0000086400' As donor_id, 'Y' As expected_flag From DUAL
+  Union Select '0000086401', 'Y' From DUAL
+  Union Select '0000391949', 'N' From DUAL
+  Union Select '0000234053', 'N' From DUAL
+)
+
+Select
+  hh.household_primary_sort_name
+  , hh.sort_name
+  , hh.household_joint_soft_credit
+  , dat.expected_flag
+  , Case
+      When dat.expected_flag = hh.household_joint_soft_credit
+        Then 'Y'
+      Else 'FALSE'
+      End
+    As pass
+From mv_households hh
+Inner Join dat
+  On dat.donor_id = hh.donor_id
+Order By household_primary_sort_name Asc
+;
