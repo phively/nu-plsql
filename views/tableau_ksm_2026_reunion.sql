@@ -797,8 +797,9 @@ from tableau_nametags n),
 
 --- Zach's AF Model Scores View
 
-zaf as (select 
+zaf as (select distinct 
         m.household_id_ksm,
+        m.donor_id,
         m.af_pr_code,
         m.af_pr_description,
         m.af_pr_score
@@ -1127,4 +1128,4 @@ left join reac on reac.constituent_donor_id = e.donor_id
 --- nametag
 left join nametag on nametag.donor_id = e.donor_id 
 --- Zach AF 
-left join zaf on zaf.household_id_ksm = e.household_id_ksm
+left join zaf on zaf.donor_id = e.donor_id
