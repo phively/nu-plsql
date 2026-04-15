@@ -202,7 +202,8 @@ SH as (select  s.donor_id,
        s.never_engaged_forever,
        s.never_engaged_reunion,
        s.no_solicit,
-       s.service_indicators_concat
+       s.service_indicators_concat,
+       s.gab
 from mv_special_handling s),
 
 --- email
@@ -1043,7 +1044,11 @@ select distinct e.household_id,
      nametag.family as nametag_family, 
      zaf.af_pr_code,
      zaf.af_pr_description,
-     zaf.af_pr_score
+     zaf.af_pr_score,
+     case when sh2.gab end as spouse_gab,
+     case when reac2.CONSTITUENT_DONOR_ID is not null then 'REAC Spouse' end as REAC_Spouse,
+     case when hcak2.CONSTITUENT_DONOR_ID is not null then 'HCAK Spouse' end as HCAK_Spouse,
+     case when peac2.CONSTITUENT_DONOR_ID is not null then 'PEAC Spouse' end as PEAC_Spouse
 from e 
 left join KSM_Degrees on KSM_Degrees.donor_id = e.donor_id
 --- Reunion eligible
@@ -1129,3 +1134,11 @@ left join reac on reac.constituent_donor_id = e.donor_id
 left join nametag on nametag.donor_id = e.donor_id 
 --- Zach AF 
 left join zaf on zaf.donor_id = e.donor_id
+--- Special Handling, BUT for Spouses
+left join sh sh2 on sh2.donor_id = e.spouse_donor_id
+--- REAC Spouse IND
+left join REAC reac2 on reac2.CONSTITUENT_DONOR_ID = e.spouse_donor_id
+--- HCAK Spouse IND
+left join HCAK hcak2 on hcak2.CONSTITUENT_DONOR_ID = e.spouse_donor_id
+--- PEAC Spouse IND
+left join PEAC peac2 on peac2.CONSTITUENT_DONOR_ID = e.spouse_donor_id 
