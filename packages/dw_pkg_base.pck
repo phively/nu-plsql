@@ -95,6 +95,7 @@ Type rec_contact Is Record (
   contact_salesforce_id stg_alumni.contact.id%type
   , donor_id stg_alumni.contact.ucinn_ascendv2__donor_id__c%type
   , ses_id stg_alumni.contact.ucinn_ascendv2__student_information_system_id__c%type
+  , is_veteran stg_alumni.contact.ap_is_veteran__c%type
 );
 
 --------------------------------------
@@ -879,6 +880,8 @@ Cursor c_contact Is
       As donor_id
     , s.ucinn_ascendv2__student_information_system_id__c
       As ses_id
+    , s.ap_is_veteran__c
+      As is_veteran
   From stg_alumni.contact s
 ;
 
