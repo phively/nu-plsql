@@ -179,6 +179,9 @@ Cursor c_households Is
       , relationship_donor_id
       , apply_soft_credit
     From table(dw_pkg_base.tbl_relationships) r
+    Where r.relationship_status = 'Current'
+      And r.primary_role = 'Spouse'
+      And r.relationship_role = 'Spouse'
   )
   
   Select

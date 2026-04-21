@@ -273,6 +273,7 @@ Cursor c_ksm_giving_summary Is
 
   -- Sum cash amounts
   , cash As (
+    -- Use donor id if no joint credit, else household id ksm
     Select Distinct
       cash.household_id_ksm
       -- Lifetime giving
@@ -329,6 +330,7 @@ Cursor c_ksm_giving_summary Is
   -- Sum transaction amounts
   , ngc As (
     Select Distinct
+      -- Use donor id if no joint credit, else household id ksm
       ngc.household_id_ksm
       -- Lifetime giving
       , sum(ngc.hh_credit) As ngc_lifetime
