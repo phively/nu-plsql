@@ -724,52 +724,34 @@ Order By ngc_lifetime_full_rec Desc),
 
 --- For Honor Roll Report - Andy 
 --- Data Points in Anniversary report from Amy 
+--- Edit: 4/20/26
 
 an as (select 
-       a.HOUSEHOLD_ID_KSM,
-       a.YR1,
-       a.CREDIT_DATE1,
-       a.CREDIT_AMT1,
-       a.DAF_1,
-       a.DESIGNATION1,
-       a.OPPORTUNITY_TYPE1,
-       a.CAMPAIGN_MOTIVATION_CODE_1,
-       a.YR2,
-       a.CREDIT_DATE2,
-       a.CREDIT_AMT2,
-       a.DAF_2,
-       a.DESIGNATION2,
-       a.OPPORTUNITY_TYPE2,
-       a.CAMPAIGN_MOTIVATION_CODE_2,
-       a.YR3,
-       a.CREDIT_DATE3,
-       a.CREDIT_AMT3,
-       a.DAF_3,
-       a.DESIGNATION3,
-       a.OPPORTUNITY_TYPE3,
-       a.CAMPAIGN_MOTIVATION_CODE_3,
-       a.PLG_DATE,
-       a.PLG_STATUS,
-       a.PLG_ALLOC,
-       a.PLG_AMT,
-       a.PLG_AMT_PAID,
-       a.PLG_BALANCE,
-       a.NU_$,
-       a.KSM_$,
-       a.KSM_CRU_$,
-       a.KSM_#_2025,
-       a.KSM_$_2025,
-       a.KSM_MATCH_2025,
-       a.KSM_#_2024,
-       a.KSM_$_2024,
-       a.KSM_MATCH_2024,
-       a.KSM_#_2023,
-       a.KSM_$_2023,
-       a.KSM_MATCH_2023,
-       a.KSM_#_2022,
-       a.KSM_$_2022,
-       a.KSM_MATCH_2022
-from TABLEAU_AF_ANNIVERSARY a),
+a.DONOR_ID,
+a.HOUSEHOLD_ID_KSM,
+a.last_plg_dt as last_pledge_date_hr,
+a.status1 as status_hr,
+a.type1 as pledge_type_hr,
+a.plg1 as pg1_hr,
+a.pamt1 as pamtl_hr,
+a.pacct1 as pacct1_hr,
+a.bal1 as ball_hr,
+a.NU_$,
+a.KSM_$,
+a.KSM_CRU_$,
+a.KSM_#_2025,
+a.KSM_$_2025,
+a.KSM_MATCH_2025,
+a.KSM_#_2024,
+a.KSM_$_2024,
+a.KSM_MATCH_2024,
+a.KSM_#_2023,
+a.KSM_$_2023,
+a.KSM_MATCH_2023,
+a.KSM_#_2022,
+a.KSM_$_2022,
+a.KSM_MATCH_2022
+from TABLEAU_AF_FIELDS a),
 
 --- andy wants to add the name tag field 
 
@@ -804,7 +786,25 @@ zaf as (select distinct
         m.af_pr_code,
         m.af_pr_description,
         m.af_pr_score
-from mv_ksm_models m)
+from mv_ksm_models m),
+
+an26 as (select m.credited_donor_id,
+       m.tx_id,
+       m.credit_date,
+       m.fiscal_year,
+       m.entry_date,
+       m.credit_type,
+       m.credit_amount,
+       m.hard_credit_amount
+from mv_transactions m
+where m.anonymous_type IN ('Show name only',
+'Completely anonymous','Show amount only')
+and m.fiscal_year = '2026'),
+
+an26f as (select an26.credited_donor_id,
+sum (an26.credit_amount) as anon_2026 
+from an26 
+group by an26.credited_donor_id)
       
  
 select distinct e.household_id,
@@ -1015,12 +1015,13 @@ select distinct e.household_id,
      HR.ucinn_ascendv2__type__c as Honor_Roll_Type,
      HR.ucinn_ascendv2__constructed_name_formula__c as Honor_Roll_Name_Formula,
      HR.ucinn_ascendv2__Data_Source__c as Honor_Roll_Data_Source,
-     an.PLG_DATE,
-     an.PLG_STATUS,
-     an.PLG_ALLOC,
-     an.PLG_AMT,
-     an.PLG_AMT_PAID,
-     an.PLG_BALANCE,
+     an.last_pledge_date_hr,
+     an.status_hr,
+     an.pledge_type_hr,
+     an.pg1_hr,
+     an.pamtl_hr,
+     an.pacct1_hr,
+     an.ball_hr,
      an.NU_$,
      an.KSM_$,
      an.KSM_CRU_$,
@@ -1045,10 +1046,13 @@ select distinct e.household_id,
      zaf.af_pr_code,
      zaf.af_pr_description,
      zaf.af_pr_score,
-     case when sh2.gab end as spouse_gab,
+     case when gab2.CONSTITUENT_DONOR_ID is not null then 'Spouse GAB' end as gab_spouse,
      case when reac2.CONSTITUENT_DONOR_ID is not null then 'REAC Spouse' end as REAC_Spouse,
      case when hcak2.CONSTITUENT_DONOR_ID is not null then 'HCAK Spouse' end as HCAK_Spouse,
-     case when peac2.CONSTITUENT_DONOR_ID is not null then 'PEAC Spouse' end as PEAC_Spouse
+     case when peac2.CONSTITUENT_DONOR_ID is not null then 'PEAC Spouse' end as PEAC_Spouse,
+     case when trustee2.CONSTITUENT_DONOR_ID is not null then 'Trustee Spouse' end as Trustee_Spouse,
+     an26f.anon_2026 
+     
 from e 
 left join KSM_Degrees on KSM_Degrees.donor_id = e.donor_id
 --- Reunion eligible
@@ -1123,7 +1127,7 @@ left join reunion_event on reunion_event.donor_id = e.donor_id
 --- anon donor
 left join anon on anon.household_id = e.household_id_ksm
 --- Anniversary Report 
-left join an on an.HOUSEHOLD_ID_KSM = e.HOUSEHOLD_ID_KSM
+left join an on an.donor_id = e.donor_id
 --- peac 
 left join peac on peac.constituent_donor_id = e.donor_id 
 --- hcak
@@ -1134,11 +1138,15 @@ left join reac on reac.constituent_donor_id = e.donor_id
 left join nametag on nametag.donor_id = e.donor_id 
 --- Zach AF 
 left join zaf on zaf.donor_id = e.donor_id
---- Special Handling, BUT for Spouses
-left join sh sh2 on sh2.donor_id = e.spouse_donor_id
+--- GAB Spouse IND 
+left join gab gab2 on gab2.CONSTITUENT_DONOR_ID = e.spouse_donor_id
 --- REAC Spouse IND
 left join REAC reac2 on reac2.CONSTITUENT_DONOR_ID = e.spouse_donor_id
 --- HCAK Spouse IND
 left join HCAK hcak2 on hcak2.CONSTITUENT_DONOR_ID = e.spouse_donor_id
 --- PEAC Spouse IND
 left join PEAC peac2 on peac2.CONSTITUENT_DONOR_ID = e.spouse_donor_id 
+--- Trustee Spouse IND
+left join trustee trustee2 on trustee2.CONSTITUENT_DONOR_ID = e.spouse_donor_id
+--- anon gift summed in 2026
+left join an26f on an26f.credited_donor_id = e.donor_id
