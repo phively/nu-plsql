@@ -794,65 +794,43 @@ from mv_ksm_models m),
 
 --- We will take her code, but adjust filters on Transactions to anon giving 
 
+--- Anon flag from Special Handling
 
-GIVING_TRANS AS (
-  SELECT
-   ME.SALESFORCE_ID
-   ,MT.*
-  FROM MV_KSM_TRANSACTIONS MT
-  INNER JOIN MV_ENTITY ME
-  ON MT.CREDITED_DONOR_ID = ME.DONOR_ID
-  ---- NEW --- Ask Paul for Anon 
-  WHERE MT.anonymous_type = 'Completely anonymous'
----'Show name only',
----'Show amount only')
-),
+sanon as (select h.household_id_ksm,
+h.donor_id,
+h.spouse_donor_id,
+h.anonymous_donor as anonymous_donor_from_special_handling
+From mv_special_handling h
+where h.anonymous_donor Is Not Null),
 
-MYDATA AS (
-  SELECT
-    KT.CREDITED_DONOR_ID
-   ,CASE WHEN A.AP_DONOR_ADVISED_FUND__C = 'true' THEN KT.OPPORTUNITY_DONOR_NAME ELSE ' ' END AS OPPORTUNITY_DONOR_NAME
-   ,KT.FISCAL_YEAR
-   ,KT.CREDIT_DATE
-   ,KT.CREDIT_AMOUNT
-   ,KT.DESIGNATION_NAME
-   ,KT.OPPORTUNITY_TYPE
-   ---- Giving Trans will just have Anon Donor 
-  FROM GIVING_TRANS KT
-  LEFT JOIN dm_alumni.DIM_OPPORTUNITY DOP
-  ON KT.OPPORTUNITY_RECORD_ID = DOP.OPPORTUNITY_RECORD_ID
-  LEFT JOIN stg_alumni.account A
-  ON KT.OPPORTUNITY_DONOR_ID = A.UCINN_ASCENDV2__DONOR_ID__C
-   LEFT JOIN DM_ALUMNI.DIM_CAMPAIGN DCAMP
-   ON DOP.CAMPAIGN_SALESFORCE_ID = DCAMP.CAMPAIGN_SALESFORCE_ID
-  WHERE KT.GYPM_IND NOT IN ('P', 'M')
-),
+--- Transactions for anonymous in 2026
 
-ROWDATA AS (
-  SELECT
-    CREDITED_DONOR_ID
-    ,ROW_NUMBER() OVER(PARTITION BY CREDITED_DONOR_ID ORDER BY CREDIT_DATE DESC) RW
-    ,OPPORTUNITY_DONOR_NAME
-    ,CREDIT_AMOUNT
-    ,CREDIT_DATE
-    ,DESIGNATION_NAME
-    ,FISCAL_YEAR
-    ,OPPORTUNITY_TYPE
-  FROM MYDATA
-),
+t as (Select t.household_id_ksm,
+t.tx_id,
+t.credit_date,
+t.fiscal_year,
+t.credit_amount, 
+t.hard_credit_amount,
+t.designation_status, 
+t.designation_name,
+t.anonymous_type
+From mv_ksm_transactions t
+Where t.fiscal_year = 2026
+And t.anonymous_type = 'Completely anonymous'),
 
-ANON_FINAL as ( 
-  SELECT
-    CREDITED_DONOR_ID
-    ,MAX(DECODE(RW,1,FISCAL_YEAR)) anon_yr1
-    ,max(decode(RW,1,CREDIT_DATE))   anon_credit_date_1
-    ,MAX(DECODE(RW,1,CREDIT_AMOUNT))    anon_credit_amt1
-    ,MAX(DECODE(RW,1,OPPORTUNITY_DONOR_NAME))    anon_daf1
-    ,MAX(DECODE(RW,1,DESIGNATION_NAME))   anon_designation1
-    ,MAX(DECODE(RW,1,OPPORTUNITY_TYPE))   anon_opportunity_type1
- FROM ROWDATA
- GROUP BY CREDITED_DONOR_ID)
+--- 2026 Anonymous Gifts
 
+anons as (select t.household_id_ksm,
+Listagg (t.tx_id, ';  ') Within Group (Order By t.tx_id) As anon_tx_id_fy_26,
+Listagg (t.credit_date, ';  ') Within Group (Order By t.tx_id) As anon_credit_date_fy_26,
+Listagg (t.fiscal_year, ';  ') Within Group (Order By t.tx_id) As anon_fiscal_year_fy_26,
+Listagg (t.credit_amount, ';  ') Within Group (Order By t.tx_id) As anon_credit_amount_fy_26,
+Listagg (t.hard_credit_amount, ';  ') Within Group (Order By t.tx_id) As anon_hard_credit_amount_fy_26,
+Listagg (t.designation_status, ';  ') Within Group (Order By t.tx_id) As anon_designation_status_fy_26,
+Listagg (t.designation_name, ';  ') Within Group (Order By t.tx_id) As anon_designation_name_fy_26
+---Listagg (anon.anonymous_type, ';  ') Within Group (Order By anon.tx_id) As anonymous_type
+from t 
+group by t.household_id_ksm)
       
  
 select distinct e.household_id,
@@ -1099,12 +1077,14 @@ select distinct e.household_id,
      case when hcak2.CONSTITUENT_DONOR_ID is not null then 'HCAK Spouse' end as HCAK_Spouse,
      case when peac2.CONSTITUENT_DONOR_ID is not null then 'PEAC Spouse' end as PEAC_Spouse,
      case when trustee2.CONSTITUENT_DONOR_ID is not null then 'Trustee Spouse' end as Trustee_Spouse,
-     ANON_FINAL.anon_yr1,
-     ANON_FINAL.anon_credit_date_1,
-     ANON_FINAL.anon_credit_amt1,
-     ANON_FINAL.anon_daf1,
-     ANON_FINAL.anon_designation1,
-     ANON_FINAL.anon_opportunity_type1
+     sanon.anonymous_donor_from_special_handling,
+     anons.anon_tx_id_fy_26,
+     anons.anon_credit_date_fy_26,
+     anons.anon_fiscal_year_fy_26,
+     anons.anon_credit_amount_fy_26,
+     anons.anon_hard_credit_amount_fy_26,
+     anons.anon_designation_status_fy_26,
+     anons.anon_designation_name_fy_26
      from e 
 left join KSM_Degrees on KSM_Degrees.donor_id = e.donor_id
 --- Reunion eligible
@@ -1201,4 +1181,6 @@ left join PEAC peac2 on peac2.CONSTITUENT_DONOR_ID = e.spouse_donor_id
 --- Trustee Spouse IND
 left join trustee trustee2 on trustee2.CONSTITUENT_DONOR_ID = e.spouse_donor_id
 --- anon gift summed in 2026
-left join ANON_FINAL on ANON_FINAL.credited_donor_id = e.donor_id
+left join sanon on sanon.household_id_ksm = e.household_id_ksm
+--- 2026 Anonymous gifts
+left join anons on anons.household_id_ksm = e.household_id_ksm
