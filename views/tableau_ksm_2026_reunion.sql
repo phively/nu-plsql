@@ -788,23 +788,71 @@ zaf as (select distinct
         m.af_pr_score
 from mv_ksm_models m),
 
-an26 as (select m.credited_donor_id,
-       m.tx_id,
-       m.credit_date,
-       m.fiscal_year,
-       m.entry_date,
-       m.credit_type,
-       m.credit_amount,
-       m.hard_credit_amount
-from mv_transactions m
-where m.anonymous_type IN ('Show name only',
-'Completely anonymous','Show amount only')
-and m.fiscal_year = '2026'),
+--- Anonymous Flag - Most recent gift - trying to find if they made one in 2026 
 
-an26f as (select an26.credited_donor_id,
-sum (an26.credit_amount) as anon_2026 
-from an26 
-group by an26.credited_donor_id)
+--- Code is from Amy's Tableau Report - Amy does NOT have anon giving in her Tableau AF report, so made it here instead. 
+
+--- We will take her code, but adjust filters on Transactions to anon giving 
+
+
+GIVING_TRANS AS (
+  SELECT
+   ME.SALESFORCE_ID
+   ,MT.*
+  FROM MV_KSM_TRANSACTIONS MT
+  INNER JOIN MV_ENTITY ME
+  ON MT.CREDITED_DONOR_ID = ME.DONOR_ID
+  ---- NEW --- Ask Paul for Anon 
+  WHERE MT.anonymous_type = 'Completely anonymous'
+---'Show name only',
+---'Show amount only')
+),
+
+MYDATA AS (
+  SELECT
+    KT.CREDITED_DONOR_ID
+   ,CASE WHEN A.AP_DONOR_ADVISED_FUND__C = 'true' THEN KT.OPPORTUNITY_DONOR_NAME ELSE ' ' END AS OPPORTUNITY_DONOR_NAME
+   ,KT.FISCAL_YEAR
+   ,KT.CREDIT_DATE
+   ,KT.CREDIT_AMOUNT
+   ,KT.DESIGNATION_NAME
+   ,KT.OPPORTUNITY_TYPE
+   ---- Giving Trans will just have Anon Donor 
+  FROM GIVING_TRANS KT
+  LEFT JOIN dm_alumni.DIM_OPPORTUNITY DOP
+  ON KT.OPPORTUNITY_RECORD_ID = DOP.OPPORTUNITY_RECORD_ID
+  LEFT JOIN stg_alumni.account A
+  ON KT.OPPORTUNITY_DONOR_ID = A.UCINN_ASCENDV2__DONOR_ID__C
+   LEFT JOIN DM_ALUMNI.DIM_CAMPAIGN DCAMP
+   ON DOP.CAMPAIGN_SALESFORCE_ID = DCAMP.CAMPAIGN_SALESFORCE_ID
+  WHERE KT.GYPM_IND NOT IN ('P', 'M')
+),
+
+ROWDATA AS (
+  SELECT
+    CREDITED_DONOR_ID
+    ,ROW_NUMBER() OVER(PARTITION BY CREDITED_DONOR_ID ORDER BY CREDIT_DATE DESC) RW
+    ,OPPORTUNITY_DONOR_NAME
+    ,CREDIT_AMOUNT
+    ,CREDIT_DATE
+    ,DESIGNATION_NAME
+    ,FISCAL_YEAR
+    ,OPPORTUNITY_TYPE
+  FROM MYDATA
+),
+
+ANON_FINAL as ( 
+  SELECT
+    CREDITED_DONOR_ID
+    ,MAX(DECODE(RW,1,FISCAL_YEAR)) anon_yr1
+    ,max(decode(RW,1,CREDIT_DATE))   anon_credit_date_1
+    ,MAX(DECODE(RW,1,CREDIT_AMOUNT))    anon_credit_amt1
+    ,MAX(DECODE(RW,1,OPPORTUNITY_DONOR_NAME))    anon_daf1
+    ,MAX(DECODE(RW,1,DESIGNATION_NAME))   anon_designation1
+    ,MAX(DECODE(RW,1,OPPORTUNITY_TYPE))   anon_opportunity_type1
+ FROM ROWDATA
+ GROUP BY CREDITED_DONOR_ID)
+
       
  
 select distinct e.household_id,
@@ -1051,9 +1099,13 @@ select distinct e.household_id,
      case when hcak2.CONSTITUENT_DONOR_ID is not null then 'HCAK Spouse' end as HCAK_Spouse,
      case when peac2.CONSTITUENT_DONOR_ID is not null then 'PEAC Spouse' end as PEAC_Spouse,
      case when trustee2.CONSTITUENT_DONOR_ID is not null then 'Trustee Spouse' end as Trustee_Spouse,
-     an26f.anon_2026 
-     
-from e 
+     ANON_FINAL.anon_yr1,
+     ANON_FINAL.anon_credit_date_1,
+     ANON_FINAL.anon_credit_amt1,
+     ANON_FINAL.anon_daf1,
+     ANON_FINAL.anon_designation1,
+     ANON_FINAL.anon_opportunity_type1
+     from e 
 left join KSM_Degrees on KSM_Degrees.donor_id = e.donor_id
 --- Reunion eligible
 inner join FR on FR.ucinn_ascendv2__donor_id__c = e.donor_id 
@@ -1149,4 +1201,4 @@ left join PEAC peac2 on peac2.CONSTITUENT_DONOR_ID = e.spouse_donor_id
 --- Trustee Spouse IND
 left join trustee trustee2 on trustee2.CONSTITUENT_DONOR_ID = e.spouse_donor_id
 --- anon gift summed in 2026
-left join an26f on an26f.credited_donor_id = e.donor_id
+left join ANON_FINAL on ANON_FINAL.credited_donor_id = e.donor_id
