@@ -796,12 +796,16 @@ from mv_ksm_models m),
 
 --- Anon flag from Special Handling
 
-sanon as (select h.household_id_ksm,
-h.donor_id,
-h.spouse_donor_id,
-h.anonymous_donor as anonymous_donor_from_special_handling
+sanon as (Select h.household_id_ksm
 From mv_special_handling h
-where h.anonymous_donor Is Not Null),
+where h.anonymous_donor Is Not Null
+
+UNION 
+
+Select t.household_id_ksm
+From mv_ksm_transactions t
+Where t.fiscal_year = 2026
+And t.anonymous_type = 'Completely anonymous'),
 
 --- Transactions for anonymous in 2026
 
@@ -1077,7 +1081,7 @@ select distinct e.household_id,
      case when hcak2.CONSTITUENT_DONOR_ID is not null then 'HCAK Spouse' end as HCAK_Spouse,
      case when peac2.CONSTITUENT_DONOR_ID is not null then 'PEAC Spouse' end as PEAC_Spouse,
      case when trustee2.CONSTITUENT_DONOR_ID is not null then 'Trustee Spouse' end as Trustee_Spouse,
-     sanon.anonymous_donor_from_special_handling,
+     case when sanon.household_id_ksm is not null then 'Y' end as anonymous_26,
      anons.anon_tx_id_fy_26,
      anons.anon_credit_date_fy_26,
      anons.anon_fiscal_year_fy_26,
