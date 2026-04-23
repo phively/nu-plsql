@@ -262,6 +262,8 @@ Cursor c_ksm_giving_summary Is
         As af_young_alum2
       , Case When hh.household_last_masters_year >= cal.curr_fy - young_klc_yrs - 3 Then 'Y' End
         As af_young_alum3
+      , hh.household_joint_soft_credit
+      , hh.hh_or_donor_id_for_soft_credit
       , hh.etl_update_date
     From mv_households hh
     Inner Join mv_ksm_transactions kt
