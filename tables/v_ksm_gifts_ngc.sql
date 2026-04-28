@@ -35,6 +35,8 @@ Select
     As source_donor_id
   , nvl(srcdonor.source_donor_name, kt.opportunity_donor_name)
     As source_donor_name
+  , hh.household_joint_soft_credit
+  , hh.hh_or_donor_id_for_soft_credit
   , kt.tribute_type
   , kt.tx_id
   , kt.opportunity_record_id
@@ -107,6 +109,8 @@ From mv_ksm_transactions kt
 Cross Join v_current_calendar cal
 Inner Join mv_entity mve
   On mve.donor_id = kt.credited_donor_id
+Inner Join mv_households hh
+  On hh.donor_id = mve.donor_id
 Left Join srcdonor
   On srcdonor.tx_id = kt.tx_id
 Left Join table(ksm_pkg_gifts.tbl_unsplit_amounts) unsplit
