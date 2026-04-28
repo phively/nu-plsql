@@ -44,7 +44,10 @@ Type rec_lifetime_giving Is Record (
 
 --------------------------------------
 Type rec_giving_summary Is Record (
-    household_id mv_households.household_id%type
+    hh_or_donor_id_for_soft_credit mv_households.hh_or_donor_id_for_soft_credit%type
+    , donor_id mv_households.donor_id%type
+    , sort_name mv_households.sort_name%type
+    , household_id mv_households.household_id%type
     , household_id_ksm mv_households.household_id_ksm%type
     , household_primary_ksm mv_households.household_primary_ksm%type
     , household_account_name mv_households.household_account_name%type
@@ -248,6 +251,9 @@ Cursor c_ksm_giving_summary Is
       hh.household_id
       , hh.household_id_ksm
       , hh.household_primary_ksm
+      , hh.hh_or_donor_id_for_soft_credit
+      , hh.donor_id
+      , hh.sort_name
       , hh.household_account_name
       , hh.household_primary_donor_id
       , hh.household_primary_full_name
@@ -262,19 +268,20 @@ Cursor c_ksm_giving_summary Is
         As af_young_alum2
       , Case When hh.household_last_masters_year >= cal.curr_fy - young_klc_yrs - 3 Then 'Y' End
         As af_young_alum3
+      , hh.household_joint_soft_credit
       , hh.etl_update_date
     From mv_households hh
     Inner Join mv_ksm_transactions kt
       On kt.household_id = hh.household_id
     Cross Join params
     Cross Join v_current_calendar cal
-    Where hh.household_primary = 'Y'
   )
 
   -- Sum cash amounts
   , cash As (
+    -- Use donor id if no joint credit, else household id ksm
     Select Distinct
-      cash.household_id_ksm
+      cash.hh_or_donor_id_for_soft_credit
       -- Lifetime giving
       , sum(cash.hh_credit) As cash_lifetime
       -- Yearly totals
@@ -323,13 +330,14 @@ Cursor c_ksm_giving_summary Is
     Cross Join v_current_calendar cal
     Cross Join params
     Group By
-      cash.household_id_ksm
+      cash.hh_or_donor_id_for_soft_credit
   )
 
   -- Sum transaction amounts
   , ngc As (
     Select Distinct
-      ngc.household_id_ksm
+      -- Use donor id if no joint credit, else household id ksm
+      ngc.hh_or_donor_id_for_soft_credit
       -- Lifetime giving
       , sum(ngc.hh_credit) As ngc_lifetime
       , sum(ngc.hh_recognition_credit) -- Count bequests at face value and internal transfers at > $0
@@ -418,12 +426,15 @@ Cursor c_ksm_giving_summary Is
     Cross Join v_current_calendar cal
     Cross Join params
     Group By
-      ngc.household_id_ksm
+      ngc.hh_or_donor_id_for_soft_credit
   )
 
   -- Main query
   Select
-    hh_base.household_id
+    hh_base.hh_or_donor_id_for_soft_credit
+    , hh_base.donor_id
+    , hh_base.sort_name
+    , hh_base.household_id
     , hh_base.household_id_ksm
     , hh_base.household_primary_ksm
     , hh_base.household_account_name
@@ -526,11 +537,10 @@ Cursor c_ksm_giving_summary Is
   Cross Join params
   Cross Join v_current_calendar cal
   Left Join cash
-    On cash.household_id_ksm = hh_base.household_id_ksm
+    On cash.hh_or_donor_id_for_soft_credit = hh_base.hh_or_donor_id_for_soft_credit
   Left Join ngc
-    On ngc.household_id_ksm = hh_base.household_id_ksm
+    On ngc.hh_or_donor_id_for_soft_credit = hh_base.hh_or_donor_id_for_soft_credit
 ;
-
 
 /*************************************************************************
 Private functions

@@ -41,6 +41,7 @@ Type rec_household Is Record (
   , household_spouse_sort_name mv_entity.sort_name%type
   , household_spouse_suffix mv_entity.spouse_institutional_suffix%type
   , household_joint_soft_credit varchar2(1)
+  , hh_or_donor_id_for_soft_credit varchar2(20)
   , household_first_ksm_year mv_entity_ksm_degrees.first_ksm_year%type
   , household_first_masters_year mv_entity_ksm_degrees.first_masters_year%type
   , household_last_masters_year mv_entity_ksm_degrees.last_masters_year%type
@@ -179,6 +180,41 @@ Cursor c_households Is
       , relationship_donor_id
       , apply_soft_credit
     From table(dw_pkg_base.tbl_relationships) r
+    Where r.relationship_status = 'Current'
+      And r.primary_role = 'Spouse'
+      And r.relationship_role = 'Spouse'
+  )
+  
+  , hhsc_final As (
+    Select Distinct
+      mve.donor_id
+      , Case
+          When hhscp.apply_soft_credit = 'false'
+            Or hhscs.apply_soft_credit = 'false'
+            Then 'N'
+          When hhscp.apply_soft_credit = 'true'
+            Or hhscs.apply_soft_credit = 'true'
+            Then 'Y'
+          End
+        As household_joint_soft_credit
+      , Case
+        When hhscp.apply_soft_credit = 'false'
+          Or hhscs.apply_soft_credit = 'false'
+          Then mve.donor_id
+        When hhscp.apply_soft_credit = 'true'
+          Or hhscs.apply_soft_credit = 'true'
+          Then mve.household_id_ksm
+        Else mve.household_id_ksm
+        End
+      As hh_or_donor_id_for_soft_credit
+    From mv_entity mve
+    -- Soft credit indicators
+    Left Join hhsc hhscp
+      On hhscp.primary_donor_id = mve.donor_id
+      And hhscp.relationship_donor_id = mve.spouse_donor_id
+    Left Join hhsc hhscs
+      On hhscs.relationship_donor_id = mve.donor_id
+      And hhscs.primary_donor_id = mve.spouse_donor_id
   )
   
   Select
@@ -199,15 +235,8 @@ Cursor c_households Is
     , hhp.household_spouse_full_name
     , hhp.household_spouse_sort_name
     , hhp.household_spouse_suffix
-    , Case
-        When hhscp.apply_soft_credit = 'true'
-          Or hhscs.apply_soft_credit = 'true'
-          Then 'Y'
-        When hhscp.apply_soft_credit = 'false'
-          Or hhscs.apply_soft_credit = 'false'
-          Then 'N'
-        End
-      As household_joint_soft_credit
+    , hhscf.household_joint_soft_credit
+    , hhscf.hh_or_donor_id_for_soft_credit
     , hhp.household_first_ksm_year
     , hhp.household_first_masters_year
     , hhp.household_last_masters_year
@@ -229,12 +258,8 @@ Cursor c_households Is
   Left Join hh_rating hhr
     On hhr.household_id_ksm = mve.household_id_ksm
   -- Soft credit indicators
-  Left Join hhsc hhscp
-    On hhscp.primary_donor_id = mve.donor_id
-    And hhscp.relationship_donor_id = mve.spouse_donor_id
-  Left Join hhsc hhscs
-    On hhscs.relationship_donor_id = mve.donor_id
-    And hhscs.primary_donor_id = mve.spouse_donor_id
+  Left Join hhsc_final hhscf
+    On hhscf.donor_id = mve.donor_id
 ;
 
 /*************************************************************************
