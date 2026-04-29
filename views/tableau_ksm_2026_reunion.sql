@@ -1095,7 +1095,7 @@ left join KSM_Degrees on KSM_Degrees.donor_id = e.donor_id
 inner join FR on FR.ucinn_ascendv2__donor_id__c = e.donor_id 
 --- giving info
 --- edit - use household KSM - Created Reunion a while ago, but now should use household ksm 
-left join give g on g.household_id = e.household_id_ksm
+left join give g on g.donor_id = e.donor_id
 --- linkedin
 left join linked on linked.ucinn_ascendv2__donor_id__c = e.donor_id 
 --- employment
