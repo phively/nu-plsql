@@ -22,6 +22,7 @@ From mv_entity_ksm_degrees d),
 --- Giving
 
 give as (select g.household_id,
+       g.donor_id,
        g.household_account_name,
        g.household_primary_donor_id,
        g.household_primary_full_name,
@@ -689,7 +690,7 @@ left join prospect on prospect.donor_id = e.donor_id
 --- Inner join degrees 
 left join d on d.donor_id = e.donor_id
 --- giving info  
-left join give g on g.household_id = e.household_id_ksm
+left join give g on g.donor_id = e.donor_id
 --- employment
 left join employ on employ.UCINN_ASCENDV2__RELATED_CONTACT_DONOR_ID_FORMULA__C = e.donor_id
 --- c suite flag
