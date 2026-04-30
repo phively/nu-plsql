@@ -30,6 +30,7 @@ from mv_special_handling s),
 
 give as (select g.household_id,
 g.household_primary_donor_id,
+g.donor_id,
        g.ngc_lifetime,
        g.ngc_cfy,
        g.ngc_pfy1,
@@ -154,7 +155,7 @@ inner join d on d.donor_id = e.donor_id
 --- empoloyment
 left join employ on employ.UCINN_ASCENDV2__RELATED_CONTACT_DONOR_ID_FORMULA__C = e.donor_id
 --- giving
-left join give on give.household_primary_donor_id = e.donor_id
+left join give on give.donor_id = e.donor_id
 --- Linkedin 
 left join l on l.ucinn_ascendv2__donor_id__c = e.donor_id
 --- Special handling
