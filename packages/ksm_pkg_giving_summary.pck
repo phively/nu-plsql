@@ -36,6 +36,7 @@ Type rec_lifetime_giving Is Record (
     , household_primary_sort_name mv_households.household_primary_sort_name%type
     , household_spouse_donor_id mv_households.household_spouse_donor_id%type
     , household_spouse_sort_name mv_households.household_spouse_sort_name%type
+    , household_joint_soft_credit mv_households.household_joint_soft_credit%type
     , nu_lifetime_ngc dm_alumni.dim_donor_summary.lifetime_ngc%type
     , nu_lifetime_ngc_individual dm_alumni.dim_donor_summary.lifetime_ngc%type
     , nu_lifetime_ngc_with_spouse dm_alumni.dim_donor_summary.lifetime_ngc_with_spouse%type
@@ -210,11 +211,18 @@ Cursor c_lifetime_giving Is
     , hh.household_primary_sort_name
     , hh.household_spouse_donor_id
     , hh.household_spouse_sort_name
+    , hh.household_joint_soft_credit
     , greatest(
         nvl(di.nu_lifetime_ngc_individual, 0)
-        , nvl(di.nu_lifetime_ngc_with_spouse, 0)
+        , Case When hh.household_joint_soft_credit = 'Y'
+            Then nvl(di.nu_lifetime_ngc_with_spouse, 0)
+          Else 0
+          End
         , nvl(di_spouse.nu_lifetime_ngc_individual, 0)
-        , nvl(di_spouse.nu_lifetime_ngc_with_spouse, 0)
+        , Case When hh.household_joint_soft_credit = 'Y'
+            Then nvl(di_spouse.nu_lifetime_ngc_with_spouse, 0)
+          Else 0
+          End
       ) As nu_lifetime_ngc
     , di.nu_lifetime_ngc_individual
     , di.nu_lifetime_ngc_with_spouse
@@ -225,7 +233,7 @@ Cursor c_lifetime_giving Is
       ) As etl_update_date
   From mv_households hh
   Left Join donorinfo di
-    On di.donor_id = hh.household_primary_donor_id
+    On di.donor_id = hh.donor_id
   Left Join donorinfo di_spouse
     On di_spouse.donor_id = hh.household_spouse_donor_id
 ;
