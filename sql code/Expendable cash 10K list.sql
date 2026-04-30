@@ -1,6 +1,11 @@
 With
 
-pledge_bal As (
+pd As (
+  Select *
+  From tableau_pledge_data
+)
+
+, pledge_bal As (
   Select
     pd.donor_id
     , pd.pref_mail_name
@@ -8,22 +13,53 @@ pledge_bal As (
       As next_payment_dt
     , sum(pd.balance_cfy)
       As pledge_balance_cfy
-  From tableau_pledge_data pd
+    , sum(pd.new_pledge_balance)
+      As pledge_balance_total
+  From pd
   Group By
     donor_id
     , pref_mail_name
 )
 
--- CFY pledge balances + KGS + hh count
+, pledge_paid As (
+  Select
+    pd.donor_id
+    , pd.pref_mail_name
+    , min(pd.opportunity_stage)
+      As closed_pledge_stage
+    , sum(last_payment_amount)
+      As final_payments_total
+    , sum(new_pledge_balance)
+      As final_balance_total
+  From tableau_pledge_data pd
+  Cross Join v_current_calendar cal
+  Inner Join mv_ksm_designation d
+    On d.designation_record_id = pd.designation_record_id
+  Where
+    -- Expendable pledges only
+    d.cash_category = 'Expendable'
+    -- Closed pledges paid off in CFY or PFY
+    And pd.opportunity_stage In ('Paid', 'Written Off')
+    And ksm_pkg_calendar.get_fiscal_year(pd.last_payment_date) Between cal.curr_fy - 1 And cal.curr_fy
+  Group By
+    pd.donor_id
+    , pd.pref_mail_name
+)
 
+-- CFY pledge balances + KGS + hh count
 , gs As (
   Select
     kgs.*
     , pledge_bal.pledge_balance_cfy
     , pledge_bal.next_payment_dt
+    , pledge_bal.pledge_balance_total
+    , pp.closed_pledge_stage
+    , pp.final_payments_total
   From mv_ksm_giving_summary kgs
   Left Join pledge_bal
     On pledge_bal.donor_id = kgs.household_primary_donor_id
+  Left Join pledge_paid pp
+    On pp.donor_id = kgs.household_primary_donor_id
   Where
     kgs.expendable_pfy1 >= 10E3
     Or kgs.expendable_pfy2 >= 10E3
@@ -78,6 +114,9 @@ pledge_bal As (
       As gave_as_of
     , gs.pledge_balance_cfy
     , gs.next_payment_dt
+    , gs.pledge_balance_total
+    , gs.closed_pledge_stage
+    , gs.final_payments_total
     , cc.committees_and_roles
     , cc.committee_start_dates
     , NULL
@@ -114,7 +153,7 @@ pledge_bal As (
   From gs
   Cross Join v_current_calendar cal
   Inner Join mv_entity mve
-    On mve.household_id = gs.household_id
+    On mve.donor_id = gs.donor_id
   Inner Join mv_households hh
     On hh.household_id_ksm = mve.household_id_ksm
   Left Join mv_assignments mva
@@ -137,8 +176,13 @@ Select
         Then 'Y'
       End
     As review_flag
+  , Case
+      When final_payments_total > 0
+        And (pledge_balance_total Is Null Or pledge_balance_total = 0)
+        Then 'Y'
+      End
+    As pledge_flag
 From prefinal pf
 Order By
   committees_and_roles Nulls First
   , last_cash_recognition_credit Desc
-;
