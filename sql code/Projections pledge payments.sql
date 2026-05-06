@@ -11,6 +11,14 @@ plg_credit As (
     gc.opportunity_record_id
 )
 
+, cash As (
+  Select Distinct
+    kt.opportunity_record_id
+    , kt.designation_record_id
+    , kt.cash_category
+  From mv_ksm_transactions kt
+)
+
 , plg As (
   Select
     pd.*
@@ -39,8 +47,9 @@ plg_credit As (
         End
       As plg_status_desc
   From tableau_pledge_data pd
-  Inner Join mv_ksm_designation cash
-    On cash.designation_record_id = pd.designation_record_id
+  Inner Join cash
+    On cash.opportunity_record_id = pd.OPPORTUNITY_RECORD_ID
+    And cash.designation_record_id = pd.designation_record_id
   Where pd.BALANCE_CFY > 0
     And cash.cash_category = 'Expendable'
 )
