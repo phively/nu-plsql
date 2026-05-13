@@ -26,6 +26,7 @@ Public type declarations
 Type rec_special_handling Is Record (
     household_id mv_entity.household_id%type
     , household_id_ksm mv_entity.household_id_ksm%type
+    , sort_name mv_entity.sort_name%type
     , donor_id mv_entity.donor_id%type
     , spouse_donor_id mv_entity.spouse_donor_id%type
     , service_indicators_concat varchar2(1600)
@@ -92,7 +93,6 @@ Private cursors -- data definitions
 *************************************************************************/
 
 Cursor c_special_handling Is
-
 
   With
   -- Special handling entities
@@ -261,7 +261,7 @@ Cursor c_special_handling Is
   )
   
   -- All IDs
-  , ids As (
+  , all_ids As (
     Select donor_id, spouse_donor_id
     From svc_ind
     /*Union
@@ -301,6 +301,7 @@ Cursor c_special_handling Is
   Select Distinct
     mve.household_id
     , mve.household_id_ksm
+    , mve.sort_name
     , ids.donor_id
     , ids.spouse_donor_id
     , svc_ind.service_indicators_concat
@@ -405,7 +406,9 @@ Cursor c_special_handling Is
         Else mve.etl_update_date
         End
       As etl_update_date
-  From unc_ids ids
+  From all_ids ids
+  Left Join unc_ids uids
+    On uids.donor_id = ids.donor_id
   Inner Join mv_entity mve
     On mve.donor_id = ids.donor_id
   Left Join svc_ind
