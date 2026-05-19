@@ -85,6 +85,7 @@ dates As (
   Union All Select '0000947772', 'MG', to_date('20250407', 'yyyymmdd'), to_date('20260210', 'yyyymmdd') From DUAL
   Union All Select '0000724805', 'MG', to_date('20250721', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0004012400', 'AF', to_date('20260323', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0004034548', 'AF', to_date('20260427', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
 )
 
 , user_donor_map As (
@@ -175,6 +176,7 @@ dates As (
   Union All Select '0000947772', '005Uz000009UJJOIA4' From DUAL
   Union All Select '0000724805', '005Uz00000CJAROIA5' From DUAL
   Union All Select '0004012400', '005Uz00000JQuDJIA1' From DUAL
+  Union All Select '0004034548', '005Uz00000JxftpIAB' From DUAL
 )
 
 Select
