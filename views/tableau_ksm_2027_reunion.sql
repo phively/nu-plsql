@@ -6,6 +6,10 @@ Select
   From DUAL
 ),
 
+--- Entity View: Will provide basic data points and also primary HH and Deceased Indicator (we will include deceased in raw data)
+e as (select *
+From mv_entity),
+
 
 KSM_Degrees as (Select d.donor_id,
 d.program,
@@ -16,7 +20,7 @@ d.degrees_verbose,
 d.class_section
 From mv_entity_ksm_degrees d),
 
---- Pull Kellogg Reunion Year 
+--- Pull Kellogg Reunion Year - 2s, 7s, 2026 
 
 d as (select c.id,
        c.ucinn_ascendv2__contact__c,
@@ -101,67 +105,9 @@ inner join KSM_Degrees on KSM_Degrees.donor_id = en.spouse_donor_id),
 --- Contact Data
 --- Linkedin, Address, Phone, Email, Accounts for Speical Handling 
 
-contact as (select c.donor_id,
-       c.sort_name,
-       c.service_indicators_concat,
-       c.linkedin_url,
-       c.primary_geocodes_concat,
-       c.address_preferred_type,
-       c.preferred_address_line_1,
-       c.preferred_address_line_2,
-       c.preferred_address_line_3,
-       c.preferred_address_line_4,
-       c.preferred_address_city,
-       c.preferred_address_state,
-       c.preferred_address_postal_code,
-       c.preferred_address_country,
-       c.preferred_geocode_primary,
-       c.preferred_geocodes_concat,
-       c.preferred_address_latitude,
-       c.preferred_address_longitude,
-       c.home_address_line_1,
-       c.home_address_line_2,
-       c.home_address_line_3,
-       c.home_address_line_4,
-       c.home_address_city,
-       c.home_address_state,
-       c.home_address_postal_code,
-       c.home_address_country,
-       c.home_geocode_primary,
-       c.home_geocodes_concat,
-       c.home_address_latitude,
-       c.home_address_longitude,
-       c.business_address_line_1,
-       c.business_address_line_2,
-       c.business_address_line_3,
-       c.business_address_line_4,
-       c.business_address_city,
-       c.business_address_state,
-       c.business_address_postal_code,
-       c.business_address_country,
-       c.business_geocode_primary,
-       c.business_geocodes_concat,
-       c.business_address_latitude,
-       c.business_address_longitude,
-       c.email_preferred_type,
-       c.email_preferred,
-       c.email_personal,
-       c.email_business,
-       c.emails_concat,
-       c.phone_preferred_type,
-       c.phone_preferred,
-       c.phone_mobile,
-       c.phone_home,
-       c.phone_business,
-       c.max_etl_update_date,
-       c.min_etl_update_date,
-       c.mv_last_refresh
+contact as (select *
 from mv_entity_contact_info c ),
 
-
---- Entity View: Will provide basic data points and also primary HH and Deceased Indicator (we will include deceased in raw data)
-e as (select *
-From mv_entity),
  
 --- Giving Summary
 
@@ -178,6 +124,14 @@ max (c.UCINN_ASCENDV2__RELATED_ACCOUNT_NAME_FORMULA__C) keep (dense_rank first o
 from stg_alumni.ucinn_ascendv2__Affiliation__c c
 where c.ap_is_primary_employment__c = 'true'
 group by c.UCINN_ASCENDV2__RELATED_CONTACT_DONOR_ID_FORMULA__C),
+
+-- Industry 
+
+industry as (select distinct
+ co.constituent_donor_id,
+ co.industry_subsectors,
+ co.industries
+from DM_ALUMNI.Dim_Constituent co),
 
 --- Special Handling 
 
@@ -262,7 +216,7 @@ s as (select d.constituent_donor_id,
        d.constituent_visit_count,
        d.constituent_visit_last_year_count,
        d.constituent_last_visit_date
-       from DM_ALUMNI.DIM_CONSTITUENT d),
+from DM_ALUMNI.DIM_CONSTITUENT d),
 
 --- Preferred Mail Name - From Amy
 MN as (SELECT ME.DONOR_ID,
@@ -337,7 +291,7 @@ where i.involvement_name like '%KSM Reunion Committee%'
 and i.involvement_start_date BETWEEN TO_DATE('09/01/2016', 'MM/DD/YYYY')
 AND TO_DATE('08/31/2017', 'MM/DD/YYYY')),
 
---- assignment
+--- Assignment
 
 assign as (Select a.household_id,
        a.donor_id,
@@ -349,14 +303,12 @@ assign as (Select a.household_id,
 From mv_assignments a),
 
 --- Dean Salutation 
---- update: 10/24/25 Zach's new Salutation code 
 
 Dean as (Select e.donor_id,
        e.dean_salut,
        e.dean_source
 From V_ENTITY_SALUTATIONS_INDIVIDUAL e),
 
---- household Dean Salutation 
 --- Use this for Joint Salutations and Spouse 
 
 hhdean as (select e.household_id_ksm,
@@ -365,9 +317,9 @@ hhdean as (select e.household_id_ksm,
        e.Spouse_Dean_Source,
        e.joint_dean_salut,
        e.joint_fullname
-  from V_ENTITY_SALUTATIONS_HOUSEHOLD e),
+from V_ENTITY_SALUTATIONS_HOUSEHOLD e),
 
---- Pull KLC
+--- Pull KLC Members 
 
 klc as (Select k.DONOR_ID,
 k.segment
@@ -538,7 +490,7 @@ max(decode(rw,1,bal)) bal1
 from NEW_PLEDGE_INFO
 group by NEW_PLEDGE_INFO.id),
 
---- KSM Faculty or Staff
+--- KSM Faculty or Staff Flag 
 
 f as (SELECT DISTINCT 
 D.CONSTITUENT_DONOR_ID,
@@ -546,7 +498,7 @@ d.constituent_type
 FROM DM_ALUMNI.DIM_CONSTITUENT d 
 WHERE CONSTITUENT_TYPE LIKE '%Faculty/Staff%'),
 
- --- spouse program
+ --- Spouse program information 
 sp as (
 select 
 e.spouse_donor_id,
@@ -588,7 +540,6 @@ Order By ngc_lifetime_full_rec Desc),
 
 --- For Honor Roll Report - Andy 
 --- Data Points in Anniversary report from Amy 
---- Edit: 4/20/26
 
 an as (select 
 a.DONOR_ID,
@@ -617,7 +568,7 @@ a.KSM_$_2022,
 a.KSM_MATCH_2022
 from TABLEAU_AF_FIELDS a),
 
---- andy wants to add the name tag field 
+--- Nametag 
 
 nametag as (select n.donor_id,
        n.full_name,
@@ -737,17 +688,17 @@ select distinct e.household_id,
      spr.reunion_year_concat as spouse_ksm_reunion_year,
      case when spr.reunion_year_concat is not null then hhdean.joint_dean_salut end as joint_dean_salut_reunion,
      case when spr.reunion_year_concat is not null then hhdean.Spouse_Dean_Source end as Spouse_Dean_Source_reunion,
-       contact.address_preferred_type,
-       contact.preferred_address_line_1,
-       contact.preferred_address_line_2,
-       contact.preferred_address_line_3,
-       contact.preferred_address_line_4,
-       contact.preferred_address_city,
-       contact.preferred_address_state,
-       contact.preferred_address_postal_code,
-       contact.preferred_address_country,
-       contact.preferred_geocode_primary,
-       contact.preferred_geocodes_concat,
+     contact.address_preferred_type,
+     contact.preferred_address_line_1,
+     contact.preferred_address_line_2,
+     contact.preferred_address_line_3,
+     contact.preferred_address_line_4,
+     contact.preferred_address_city,
+     contact.preferred_address_state,
+     contact.preferred_address_postal_code,
+     contact.preferred_address_country,
+     contact.preferred_geocode_primary,
+     contact.preferred_geocodes_concat,
      klc.segment as KLC,
      case when g.ngc_fy_giving_first_yr is not null then g.ngc_fy_giving_first_yr else 0 end as ngc_fy_giving_first_yr,
      case when g.cash_fy_giving_first_yr is not null then g.cash_fy_giving_first_yr else 0 end as cash_fy_giving_first_yr,
@@ -821,6 +772,8 @@ select distinct e.household_id,
      employ.primary_employ_ind,
      employ.primary_job_title,
      employ.primary_employer,
+     industry.industry_subsectors,
+     industry.industries, 
      case when f.CONSTITUENT_DONOR_ID is not null then 'Y' end as faculty_staff_flag, 
      assign.prospect_manager_name,
      assign.lagm_name,      
@@ -923,7 +876,7 @@ select distinct e.household_id,
      anons.anon_designation_name_fy_26
      from e 
 left join KSM_Degrees on KSM_Degrees.donor_id = e.donor_id
---- Reunion eligible
+--- Reunion eligible folks only 
 inner join FR on FR.donor_id = e.donor_id 
 --- giving info
 --- edit - use household KSM - Created Reunion a while ago, but now should use household ksm 
@@ -1003,3 +956,5 @@ left join sanon on sanon.household_id_ksm = e.household_id_ksm
 left join anons on anons.household_id_ksm = e.household_id_ksm
 --- contact 
 left join contact on contact.donor_id = e.donor_id
+--- industry 
+left join industry on industry.constituent_donor_id = e.donor_id 
