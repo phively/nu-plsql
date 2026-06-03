@@ -100,3 +100,8 @@ Create Or Replace View v_committee_climate As
 Select *
 From table(ksm_pkg_committee.tbl_committee_members('committee_climate'))
 ;
+
+Create Or Replace View v_committee_veterans As
+Select *
+From table(ksm_pkg_committee.tbl_committee_members('committee_veterans'))
+;

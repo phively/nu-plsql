@@ -37,6 +37,7 @@ committee_yab Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_asc
 committee_tech Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type := 'COM-KTC'; -- Kellogg Alumni Tech Council
 committee_kfc_campaign Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type := 'COM-KFCCC'; -- Kellogg Full Circle Campaign Committee
 committee_climate Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type := 'COM-ACAAC'; -- Abrams Climate Academy Advisory Council
+committee_veterans Constant stg_alumni.ucinn_ascendv2__involvement_value__c.ucinn_ascendv2__code__c%type :=  'COM-KVC'; -- Kellogg Veterans Council
 
 --------------------------------------
 -- Committee dues
@@ -50,7 +51,9 @@ dues_healthcare Constant number := 5.0E3;
 dues_healthcare_nonalum Constant number := 1.0E3;
 dues_kac Constant number := 5.0E3;
 dues_womensleadership Constant number := 2.5E3;
-dues_yab Constant number := 0.0E3;
+dues_yab Constant number := 0.25E3;
+dues_kvc Constant number := 2.5E3;
+dues_kvc_young Constant number := 1.0E3;
 
 /*************************************************************************
 Public type declarations
@@ -193,6 +196,7 @@ Cursor c_committees_all Is
     Union Select ksm_pkg_committee.get_string_constant('committee_womensLeadership') From DUAL
     Union Select ksm_pkg_committee.get_string_constant('committee_kfc_campaign') From DUAL
     Union Select ksm_pkg_committee.get_string_constant('committee_climate') From DUAL
+    Union Select ksm_pkg_committee.get_string_constant('committee_veterans') From DUAL
   )
 ;
 
