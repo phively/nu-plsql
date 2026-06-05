@@ -291,6 +291,27 @@ where i.involvement_name like '%KSM Reunion Committee%'
 and i.involvement_start_date BETWEEN TO_DATE('09/01/2016', 'MM/DD/YYYY')
 AND TO_DATE('08/31/2017', 'MM/DD/YYYY')),
 
+--- Reunion 2022 Reunion Committee
+
+rc22 as (select i.constituent_donor_id,
+       i.constituent_name,
+       i.involvement_record_id,
+       i.involvement_code,
+       i.involvement_name,
+       i.involvement_status,
+       i.involvement_type,
+       i.involvement_role,
+       i.involvement_business_unit,
+       i.involvement_start_date,
+       i.involvement_end_date,
+       i.involvement_comment,
+       i.etl_update_date,
+       i.mv_last_refresh
+from i 
+where i.involvement_name like '%KSM Reunion Committee%' 
+and i.involvement_start_date BETWEEN TO_DATE('09/01/2021', 'MM/DD/YYYY')
+AND TO_DATE('08/31/2022', 'MM/DD/YYYY')),
+
 --- Assignment
 
 assign as (Select a.household_id,
@@ -785,6 +806,8 @@ select distinct e.household_id,
      sh.never_engaged_forever,
      sh.never_engaged_reunion,
      sh.no_solicit,
+     case when rc17.constituent_donor_id is not null then 'Reunion 2017 Committee' End as Reunion_2017_Committee,
+     case when rc22.constituent_donor_id is not null then 'Reunion 2022 Committee' End as Reunion_2022_Committee,
      sh.service_indicators_concat,
      gab.involvement_name as gab,
      trustee.involvement_name as trustee,
@@ -958,3 +981,7 @@ left join anons on anons.household_id_ksm = e.household_id_ksm
 left join contact on contact.donor_id = e.donor_id
 --- industry 
 left join industry on industry.constituent_donor_id = e.donor_id 
+--- reunion committee 2017
+left join rc17 on rc17.constituent_donor_id = e.donor_id
+--- reunion committee 2022
+left join rc22 on rc22.constituent_donor_id = e.donor_id
