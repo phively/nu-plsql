@@ -203,19 +203,19 @@ From mv_assignments a),
 --- Salutation + Contact Reports 
 
 s as (select  cr.cr_relation_donor_id,
-max (cr.contact_report_record_id) keep (dense_rank first order by cr.contact_report_date DESC, cr.contact_report_date) as contact_report_record_id,
-max (cr.cr_credit_salesforce_id) keep (dense_rank first order by cr.contact_report_date DESC, cr.contact_report_date) as cr_credit_salesforce_id,
-max (cr.cr_credit_name) keep (dense_rank first order by cr.contact_report_date DESC, cr.contact_report_date) as cr_credit_name,
-max (cr.cr_credit_title) keep (dense_rank first order by cr.contact_report_date DESC, cr.contact_report_date) as cr_credit_title,
-max (cr.cr_credit_type) keep (dense_rank first order by cr.contact_report_date DESC, cr.contact_report_date) as cr_credit_type,
-max (cr.cr_relation_sort_name) keep (dense_rank first order by cr.contact_report_date DESC, cr.contact_report_date) as cr_relation_sort_name,
-max (cr.contact_role) keep (dense_rank first order by cr.contact_report_date DESC, cr.contact_report_date) as contact_role,
-max (cr.contact_report_type) keep (dense_rank first order by cr.contact_report_date DESC, cr.contact_report_date) as contact_report_type,
-max (cr.contact_report_purpose) keep (dense_rank first order by cr.contact_report_date DESC, cr.contact_report_date) as contact_report_purpose,
-max (cr.contact_report_visit_flag) keep (dense_rank first order by cr.contact_report_date DESC, cr.contact_report_date) as contact_report_visit_flag,
-max (cr.contact_report_date) keep (dense_rank first order by cr.contact_report_date DESC, cr.contact_report_date) as contact_report_date,
-max (cr.contact_report_description) keep (dense_rank first order by cr.contact_report_date DESC, cr.contact_report_date) as contact_report_description,
-max (cr.contact_report_body) keep (dense_rank first order by cr.contact_report_date DESC, cr.contact_report_date) as contact_report_body
+max (cr.contact_report_record_id) keep (dense_rank first order by cr.contact_report_date DESC) as contact_report_record_id,
+max (cr.cr_credit_salesforce_id) keep (dense_rank first order by cr.contact_report_date DESC) as cr_credit_salesforce_id,
+max (cr.cr_credit_name) keep (dense_rank first order by cr.contact_report_date DESC) as cr_credit_name,
+max (cr.cr_credit_title) keep (dense_rank first order by cr.contact_report_date DESC) as cr_credit_title,
+max (cr.cr_credit_type) keep (dense_rank first order by cr.contact_report_date DESC) as cr_credit_type,
+max (cr.cr_relation_sort_name) keep (dense_rank first order by cr.contact_report_date DESC) as cr_relation_sort_name,
+max (cr.contact_role) keep (dense_rank first order by cr.contact_report_date DESC) as contact_role,
+max (cr.contact_report_type) keep (dense_rank first order by cr.contact_report_date DESC) as contact_report_type,
+max (cr.contact_report_purpose) keep (dense_rank first order by cr.contact_report_date DESC) as contact_report_purpose,
+max (cr.contact_report_visit_flag) keep (dense_rank first order by cr.contact_report_date DESC) as contact_report_visit_flag,
+max (cr.contact_report_date) keep (dense_rank first order by cr.contact_report_date DESC) as contact_report_date,
+max (cr.contact_report_description) keep (dense_rank first order by cr.contact_report_date DESC) as contact_report_description,
+max (cr.contact_report_body) keep (dense_rank first order by cr.contact_report_date DESC) as contact_report_body
 from mv_contact_reports cr
 group by cr.cr_relation_donor_id),
 
