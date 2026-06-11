@@ -6,6 +6,10 @@ Select
   From DUAL
 ),
 
+--- Entity View: Will provide basic data points and also primary HH and Deceased Indicator (we will include deceased in raw data)
+e as (select *
+From mv_entity),
+
 
 KSM_Degrees as (Select d.donor_id,
 d.program,
@@ -16,7 +20,7 @@ d.degrees_verbose,
 d.class_section
 From mv_entity_ksm_degrees d),
 
---- Pull Kellogg Reunion Year 
+--- Pull Kellogg Reunion Year - 2s, 7s, 2026 
 
 d as (select c.id,
        c.ucinn_ascendv2__contact__c,
@@ -101,67 +105,9 @@ inner join KSM_Degrees on KSM_Degrees.donor_id = en.spouse_donor_id),
 --- Contact Data
 --- Linkedin, Address, Phone, Email, Accounts for Speical Handling 
 
-contact as (select c.donor_id,
-       c.sort_name,
-       c.service_indicators_concat,
-       c.linkedin_url,
-       c.primary_geocodes_concat,
-       c.address_preferred_type,
-       c.preferred_address_line_1,
-       c.preferred_address_line_2,
-       c.preferred_address_line_3,
-       c.preferred_address_line_4,
-       c.preferred_address_city,
-       c.preferred_address_state,
-       c.preferred_address_postal_code,
-       c.preferred_address_country,
-       c.preferred_geocode_primary,
-       c.preferred_geocodes_concat,
-       c.preferred_address_latitude,
-       c.preferred_address_longitude,
-       c.home_address_line_1,
-       c.home_address_line_2,
-       c.home_address_line_3,
-       c.home_address_line_4,
-       c.home_address_city,
-       c.home_address_state,
-       c.home_address_postal_code,
-       c.home_address_country,
-       c.home_geocode_primary,
-       c.home_geocodes_concat,
-       c.home_address_latitude,
-       c.home_address_longitude,
-       c.business_address_line_1,
-       c.business_address_line_2,
-       c.business_address_line_3,
-       c.business_address_line_4,
-       c.business_address_city,
-       c.business_address_state,
-       c.business_address_postal_code,
-       c.business_address_country,
-       c.business_geocode_primary,
-       c.business_geocodes_concat,
-       c.business_address_latitude,
-       c.business_address_longitude,
-       c.email_preferred_type,
-       c.email_preferred,
-       c.email_personal,
-       c.email_business,
-       c.emails_concat,
-       c.phone_preferred_type,
-       c.phone_preferred,
-       c.phone_mobile,
-       c.phone_home,
-       c.phone_business,
-       c.max_etl_update_date,
-       c.min_etl_update_date,
-       c.mv_last_refresh
+contact as (select *
 from mv_entity_contact_info c ),
 
-
---- Entity View: Will provide basic data points and also primary HH and Deceased Indicator (we will include deceased in raw data)
-e as (select *
-From mv_entity),
  
 --- Giving Summary
 
@@ -178,6 +124,14 @@ max (c.UCINN_ASCENDV2__RELATED_ACCOUNT_NAME_FORMULA__C) keep (dense_rank first o
 from stg_alumni.ucinn_ascendv2__Affiliation__c c
 where c.ap_is_primary_employment__c = 'true'
 group by c.UCINN_ASCENDV2__RELATED_CONTACT_DONOR_ID_FORMULA__C),
+
+-- Industry 
+
+industry as (select distinct
+ co.constituent_donor_id,
+ co.industry_subsectors,
+ co.industries
+from DM_ALUMNI.Dim_Constituent co),
 
 --- Special Handling 
 
@@ -248,21 +202,23 @@ From mv_assignments a),
 
 --- Salutation + Contact Reports 
 
-s as (select d.constituent_donor_id,
-       d.salutation,
-       d.gender_identity,
-       d.constituent_contact_report_count,
-       d.constituent_contact_report_last_year_count,
-       d.constituent_last_contact_report_record_id,
-       d.constituent_last_contact_report_date,
-       d.constituent_last_contact_primary_relationship_manager_date,
-       d.constituent_last_contact_report_author,
-       d.constituent_last_contact_report_purpose,
-       d.constituent_last_contact_report_method,
-       d.constituent_visit_count,
-       d.constituent_visit_last_year_count,
-       d.constituent_last_visit_date
-       from DM_ALUMNI.DIM_CONSTITUENT d),
+s as (select  cr.cr_relation_donor_id,
+max (cr.contact_report_record_id) keep (dense_rank first order by cr.contact_report_date DESC) as contact_report_record_id,
+max (cr.cr_credit_salesforce_id) keep (dense_rank first order by cr.contact_report_date DESC) as cr_credit_salesforce_id,
+max (cr.cr_credit_name) keep (dense_rank first order by cr.contact_report_date DESC) as cr_credit_name,
+max (cr.cr_credit_title) keep (dense_rank first order by cr.contact_report_date DESC) as cr_credit_title,
+max (cr.cr_credit_type) keep (dense_rank first order by cr.contact_report_date DESC) as cr_credit_type,
+max (cr.cr_relation_sort_name) keep (dense_rank first order by cr.contact_report_date DESC) as cr_relation_sort_name,
+max (cr.contact_role) keep (dense_rank first order by cr.contact_report_date DESC) as contact_role,
+max (cr.contact_report_type) keep (dense_rank first order by cr.contact_report_date DESC) as contact_report_type,
+max (cr.contact_report_purpose) keep (dense_rank first order by cr.contact_report_date DESC) as contact_report_purpose,
+max (cr.contact_report_visit_flag) keep (dense_rank first order by cr.contact_report_date DESC) as contact_report_visit_flag,
+max (cr.contact_report_date) keep (dense_rank first order by cr.contact_report_date DESC) as contact_report_date,
+max (cr.contact_report_description) keep (dense_rank first order by cr.contact_report_date DESC) as contact_report_description,
+max (cr.contact_report_body) keep (dense_rank first order by cr.contact_report_date DESC) as contact_report_body
+from mv_contact_reports cr
+group by cr.cr_relation_donor_id),
+
 
 --- Preferred Mail Name - From Amy
 MN as (SELECT ME.DONOR_ID,
@@ -337,7 +293,28 @@ where i.involvement_name like '%KSM Reunion Committee%'
 and i.involvement_start_date BETWEEN TO_DATE('09/01/2016', 'MM/DD/YYYY')
 AND TO_DATE('08/31/2017', 'MM/DD/YYYY')),
 
---- assignment
+--- Reunion 2022 Reunion Committee
+
+rc22 as (select i.constituent_donor_id,
+       i.constituent_name,
+       i.involvement_record_id,
+       i.involvement_code,
+       i.involvement_name,
+       i.involvement_status,
+       i.involvement_type,
+       i.involvement_role,
+       i.involvement_business_unit,
+       i.involvement_start_date,
+       i.involvement_end_date,
+       i.involvement_comment,
+       i.etl_update_date,
+       i.mv_last_refresh
+from i 
+where i.involvement_name like '%KSM Reunion Committee%' 
+and i.involvement_start_date BETWEEN TO_DATE('09/01/2021', 'MM/DD/YYYY')
+AND TO_DATE('08/31/2022', 'MM/DD/YYYY')),
+
+--- Assignment
 
 assign as (Select a.household_id,
        a.donor_id,
@@ -349,14 +326,12 @@ assign as (Select a.household_id,
 From mv_assignments a),
 
 --- Dean Salutation 
---- update: 10/24/25 Zach's new Salutation code 
 
 Dean as (Select e.donor_id,
        e.dean_salut,
        e.dean_source
 From V_ENTITY_SALUTATIONS_INDIVIDUAL e),
 
---- household Dean Salutation 
 --- Use this for Joint Salutations and Spouse 
 
 hhdean as (select e.household_id_ksm,
@@ -365,9 +340,9 @@ hhdean as (select e.household_id_ksm,
        e.Spouse_Dean_Source,
        e.joint_dean_salut,
        e.joint_fullname
-  from V_ENTITY_SALUTATIONS_HOUSEHOLD e),
+from V_ENTITY_SALUTATIONS_HOUSEHOLD e),
 
---- Pull KLC
+--- Pull KLC Members 
 
 klc as (Select k.DONOR_ID,
 k.segment
@@ -538,7 +513,7 @@ max(decode(rw,1,bal)) bal1
 from NEW_PLEDGE_INFO
 group by NEW_PLEDGE_INFO.id),
 
---- KSM Faculty or Staff
+--- KSM Faculty or Staff Flag 
 
 f as (SELECT DISTINCT 
 D.CONSTITUENT_DONOR_ID,
@@ -546,7 +521,7 @@ d.constituent_type
 FROM DM_ALUMNI.DIM_CONSTITUENT d 
 WHERE CONSTITUENT_TYPE LIKE '%Faculty/Staff%'),
 
- --- spouse program
+ --- Spouse program information 
 sp as (
 select 
 e.spouse_donor_id,
@@ -588,7 +563,6 @@ Order By ngc_lifetime_full_rec Desc),
 
 --- For Honor Roll Report - Andy 
 --- Data Points in Anniversary report from Amy 
---- Edit: 4/20/26
 
 an as (select 
 a.DONOR_ID,
@@ -603,6 +577,9 @@ a.bal1 as ball_hr,
 a.NU_$,
 a.KSM_$,
 a.KSM_CRU_$,
+a.KSM_#_2026,
+a.KSM_$_2026,
+a.KSM_MATCH_2026,
 a.KSM_#_2025,
 a.KSM_$_2025,
 a.KSM_MATCH_2025,
@@ -614,10 +591,13 @@ a.KSM_$_2023,
 a.KSM_MATCH_2023,
 a.KSM_#_2022,
 a.KSM_$_2022,
-a.KSM_MATCH_2022
+a.KSM_MATCH_2022,
+a.KSM_#_2021,
+a.KSM_$_2021,
+a.KSM_MATCH_2021
 from TABLEAU_AF_FIELDS a),
 
---- andy wants to add the name tag field 
+--- Nametag 
 
 nametag as (select n.donor_id,
        n.full_name,
@@ -709,7 +689,7 @@ select distinct e.household_id,
      e.household_primary,
      g.household_primary_donor_id,
      e.is_deceased_indicator,
-     s.gender_identity,
+     e.gender_code,
      MN.preferred_mail_name,
      e.full_name,
      dean.dean_salut,
@@ -737,17 +717,17 @@ select distinct e.household_id,
      spr.reunion_year_concat as spouse_ksm_reunion_year,
      case when spr.reunion_year_concat is not null then hhdean.joint_dean_salut end as joint_dean_salut_reunion,
      case when spr.reunion_year_concat is not null then hhdean.Spouse_Dean_Source end as Spouse_Dean_Source_reunion,
-       contact.address_preferred_type,
-       contact.preferred_address_line_1,
-       contact.preferred_address_line_2,
-       contact.preferred_address_line_3,
-       contact.preferred_address_line_4,
-       contact.preferred_address_city,
-       contact.preferred_address_state,
-       contact.preferred_address_postal_code,
-       contact.preferred_address_country,
-       contact.preferred_geocode_primary,
-       contact.preferred_geocodes_concat,
+     contact.address_preferred_type,
+     contact.preferred_address_line_1,
+     contact.preferred_address_line_2,
+     contact.preferred_address_line_3,
+     contact.preferred_address_line_4,
+     contact.preferred_address_city,
+     contact.preferred_address_state,
+     contact.preferred_address_postal_code,
+     contact.preferred_address_country,
+     contact.preferred_geocode_primary,
+     contact.preferred_geocodes_concat,
      klc.segment as KLC,
      case when g.ngc_fy_giving_first_yr is not null then g.ngc_fy_giving_first_yr else 0 end as ngc_fy_giving_first_yr,
      case when g.cash_fy_giving_first_yr is not null then g.cash_fy_giving_first_yr else 0 end as cash_fy_giving_first_yr,
@@ -821,6 +801,8 @@ select distinct e.household_id,
      employ.primary_employ_ind,
      employ.primary_job_title,
      employ.primary_employer,
+     industry.industry_subsectors,
+     industry.industries, 
      case when f.CONSTITUENT_DONOR_ID is not null then 'Y' end as faculty_staff_flag, 
      assign.prospect_manager_name,
      assign.lagm_name,      
@@ -832,6 +814,8 @@ select distinct e.household_id,
      sh.never_engaged_forever,
      sh.never_engaged_reunion,
      sh.no_solicit,
+     case when rc17.constituent_donor_id is not null then 'Reunion 2017 Committee' End as Reunion_2017_Committee,
+     case when rc22.constituent_donor_id is not null then 'Reunion 2022 Committee' End as Reunion_2022_Committee,
      sh.service_indicators_concat,
      gab.involvement_name as gab,
      trustee.involvement_name as trustee,
@@ -843,17 +827,19 @@ select distinct e.household_id,
      club.involvement_name as club_leader,
      tp.constituent_university_overall_rating,
      tp.constituent_research_evaluation,
-     s.constituent_contact_report_count,
-     s.constituent_contact_report_last_year_count,
-     s.constituent_last_contact_report_record_id,
-     s.constituent_last_contact_report_date,
-     s.constituent_last_contact_primary_relationship_manager_date,
-     s.constituent_last_contact_report_author,
-     s.constituent_last_contact_report_purpose,
-     s.constituent_last_contact_report_method,
-     s.constituent_visit_count,
-     s.constituent_visit_last_year_count,
-     s.constituent_last_visit_date,
+     s.contact_report_record_id,
+     s.cr_credit_salesforce_id,
+     s.cr_credit_name,
+     s.cr_credit_title,
+     s.cr_credit_type,
+     s.cr_relation_sort_name,
+     s.contact_role,
+     s.contact_report_type,
+     s.contact_report_purpose,
+     s.contact_report_visit_flag,
+     s.contact_report_date,
+     s.contact_report_description,
+     s.contact_report_body,
      mods.mg_id_code,
      mods.mg_id_description,
      mods.mg_id_score,
@@ -887,6 +873,9 @@ select distinct e.household_id,
      an.NU_$,
      an.KSM_$,
      an.KSM_CRU_$,
+     an.KSM_#_2026,
+     an.KSM_$_2026,
+     an.KSM_MATCH_2026,  
      an.KSM_#_2025,
      an.KSM_$_2025,
      an.KSM_MATCH_2025,
@@ -899,6 +888,9 @@ select distinct e.household_id,
      an.KSM_#_2022,
      an.KSM_$_2022,
      an.KSM_MATCH_2022,
+     an.KSM_#_2021,
+     an.KSM_$_2021,
+     an.KSM_MATCH_2021,
      nametag.first_name as nametag_first_name,
      nametag.middle_name as nametag_middle_name,
      nametag.last_name as nametag_last_name,
@@ -923,7 +915,7 @@ select distinct e.household_id,
      anons.anon_designation_name_fy_26
      from e 
 left join KSM_Degrees on KSM_Degrees.donor_id = e.donor_id
---- Reunion eligible
+--- Reunion eligible folks only 
 inner join FR on FR.donor_id = e.donor_id 
 --- giving info
 --- edit - use household KSM - Created Reunion a while ago, but now should use household ksm 
@@ -945,7 +937,7 @@ left join TP on TP.CONSTITUENT_DONOR_ID = e.donor_id
 --- assignment
 left join assign on assign.donor_id = e.donor_id
 --- contact reports
-left join s on s.constituent_donor_id = e.donor_id 
+left join s on s.cr_relation_donor_id = e.donor_id 
 --- preferred mail name
 left join MN on MN.DONOR_ID = e.donor_id 
 ---left join Salutation on Salutation.donor_id = e.spouse_donor_id
@@ -1003,3 +995,9 @@ left join sanon on sanon.household_id_ksm = e.household_id_ksm
 left join anons on anons.household_id_ksm = e.household_id_ksm
 --- contact 
 left join contact on contact.donor_id = e.donor_id
+--- industry 
+left join industry on industry.constituent_donor_id = e.donor_id 
+--- reunion committee 2017
+left join rc17 on rc17.constituent_donor_id = e.donor_id
+--- reunion committee 2022
+left join rc22 on rc22.constituent_donor_id = e.donor_id

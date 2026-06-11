@@ -21,7 +21,7 @@ From mv_entity_ksm_degrees d),
 
 --- Giving
 
-give as (select g.household_id,
+give as (select distinct g.household_id,
        g.donor_id,
        g.household_account_name,
        g.household_primary_donor_id,
