@@ -114,7 +114,13 @@ degrees_concat As (
     As degree_levels
   From degrees_group_by_year
   Group By constituent_donor_id
-)
+),
+
+--- Nametag field from Constituent Object 
+
+nu as (select distinct stg_alumni.contact.ucinn_ascendv2__donor_id__c as donor_id,
+stg_alumni.contact.nametag__c as nametag_nu
+from stg_alumni.contact)
 
 
 
@@ -140,6 +146,7 @@ Select Distinct
   , dc.degree_levels
   , dc.nu_degrees_string
   , family.Family
+  , nu.nametag_nu 
 From mv_entity entity 
 left join k 
   On k.constituent_donor_id = entity.donor_id
@@ -156,5 +163,7 @@ Left Join V_ENTITY_SALUTATIONS_INDIVIDUAL dean
   On dean.donor_id = entity.donor_id
 Left Join family 
 on family.donor_id = entity.donor_id
+Left Join NU 
+on NU.donor_id = entity.donor_id
 where entity.person_or_org = 'P'
 ;
