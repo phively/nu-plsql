@@ -190,6 +190,11 @@ from DM_ALUMNI.DIM_CONSTITUENT C ),
 asia as (Select *
 From v_committee_asia),
 
+--- PHS 
+
+PHS as (select *
+from v_committee_phs),
+
 --- Assignment
 
 assign as (Select a.household_id,
@@ -820,6 +825,7 @@ select distinct e.household_id,
      gab.involvement_name as gab,
      trustee.involvement_name as trustee,
      kac.involvement_name as kac,
+     phs.involvement_name as phs,
      asia.involvement_name as asia_exec_board,
      peac.involvement_name as peac, 
      reac.involvement_name as reac,
@@ -1001,3 +1007,5 @@ left join industry on industry.constituent_donor_id = e.donor_id
 left join rc17 on rc17.constituent_donor_id = e.donor_id
 --- reunion committee 2022
 left join rc22 on rc22.constituent_donor_id = e.donor_id
+--- PHS 
+left join phs on phs.constituent_donor_id = e.donor_id
