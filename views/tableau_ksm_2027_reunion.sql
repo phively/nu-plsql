@@ -173,6 +173,12 @@ From v_committee_privateequity),
 hcak as (Select *
 From v_committee_healthcare),
 
+--- AMP 
+
+amp as (Select *
+From v_committee_amp),
+
+
 --- REAC 
 
 reac as (Select *
@@ -830,6 +836,7 @@ select distinct e.household_id,
      peac.involvement_name as peac, 
      reac.involvement_name as reac,
      hcak.involvement_name as hcak,  
+     amp.involvement_name as amp, 
      club.involvement_name as club_leader,
      tp.constituent_university_overall_rating,
      tp.constituent_research_evaluation,
@@ -981,6 +988,8 @@ left join peac on peac.constituent_donor_id = e.donor_id
 left join hcak on hcak.constituent_donor_id = e.donor_id
 --- reac
 left join reac on reac.constituent_donor_id = e.donor_id
+--- amp 
+left join amp on amp.constituent_donor_id = e.donor_id
 --- nametag
 left join nametag on nametag.donor_id = e.donor_id 
 --- Zach AF 
