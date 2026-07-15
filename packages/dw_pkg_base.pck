@@ -588,6 +588,27 @@ Type rec_geocode Is Record (
   , etl_update_date stg_alumni.ap_geocode__c.etl_update_date%type
 );
 
+--------------------------------------
+Type rec_employment Is Record (
+  affiliation_salesforce_id dm_alumni.dim_affiliation.affiliation_salesforce_id%type
+  , affiliation_record_id dm_alumni.dim_affiliation.affiliation_record_id%type
+  , constituent_donor_id dm_alumni.dim_affiliation.constituent_donor_id%type
+  , constituent_name dm_alumni.dim_affiliation.constituent_name%type
+  , employer_organization_donor_id dm_alumni.dim_affiliation.employer_organization_donor_id%type
+  , employer_organization_name dm_alumni.dim_affiliation.employer_organization_name%type
+  , employee_job_title dm_alumni.dim_affiliation.employee_job_title%type
+  , org_ult_parent_id dm_alumni.dim_affiliation.employer_ultimate_parent_organization_donor_id%type
+  , org_ult_parent_name dm_alumni.dim_affiliation.employer_ultimate_parent_organization_donor_name%type
+  , employment_status dm_alumni.dim_affiliation.employment_status%type
+  , primary_employment_indicator dm_alumni.dim_affiliation.primary_employment_indicator%type
+  , on_leave_indicator dm_alumni.dim_affiliation.on_leave_indicator%type
+  , employment_start_date stg_alumni.ucinn_ascendv2__affiliation__c.ucinn_ascendv2__start_date__c%type
+  , employment_end_date stg_alumni.ucinn_ascendv2__affiliation__c.ucinn_ascendv2__end_date__c%type
+  , employment_data_source stg_alumni.ucinn_ascendv2__affiliation__c.ucinn_ascendv2__data_source__c%type
+  , employment_notes stg_alumni.ucinn_ascendv2__affiliation__c.ucinn_ascendv2__notes__c%type
+  , etl_update_date dm_alumni.dim_affiliation.etl_update_date%type
+);
+
 /*************************************************************************
 Public table declarations
 *************************************************************************/
@@ -619,6 +640,7 @@ Type work_plan Is Table Of rec_work_plan;
 Type econtacts Is Table Of rec_econtact;
 Type address Is Table Of rec_address;
 Type geocode Is Table Of rec_geocode;
+Type employment Is Table Of rec_employment;
 
 /*************************************************************************
 Public pipelined functions declarations
@@ -704,6 +726,9 @@ Function tbl_address
 
 Function tbl_geocode
   Return geocode Pipelined;
+
+Function tbl_employment
+  Return employment Pipelined;
 
 /*********************** About pipelined functions ***********************
 Q: What is a pipelined function?
@@ -1897,6 +1922,53 @@ Cursor c_geocode Is
     )
 ;
 
+--------------------------------------
+Cursor c_employment Is
+  
+  With
+
+  employ As (
+    Select Distinct
+      affil.id
+        As affiliation_salesforce_id
+      , affil.ucinn_ascendv2__data_source__c
+        As data_source
+      , affil.ucinn_ascendv2__start_date__c
+        As start_date
+      , affil.ucinn_ascendv2__end_date__c
+        As end_date
+      , affil.ucinn_ascendv2__notes__c
+        As notes
+    From stg_alumni.ucinn_ascendv2__affiliation__c affil
+  )
+
+  Select Distinct
+    da.affiliation_salesforce_id
+    , da.affiliation_record_id
+    , da.constituent_donor_id
+    , da.constituent_name
+    , da.employer_organization_donor_id
+    , da.employer_organization_name
+    , nullif(da.employee_job_title, '-')
+      As employee_job_title
+    , da.employer_ultimate_parent_organization_donor_id
+      As org_ult_parent_id
+    , da.employer_ultimate_parent_organization_donor_name
+      As org_ult_parent_name
+    , da.employment_status
+    , da.primary_employment_indicator
+    , da.on_leave_indicator
+    , employ.start_date
+    , employ.end_date
+    , employ.data_source
+    , employ.notes
+    , trunc(da.etl_update_date)
+      As etl_update_date
+  From dm_alumni.dim_affiliation da
+  Inner Join employ
+    On employ.affiliation_salesforce_id = da.affiliation_salesforce_id
+;
+
 /*************************************************************************
 Pipelined functions
 *************************************************************************/
@@ -2330,6 +2402,22 @@ Function tbl_geocode
     Close c_geocode;
     For i in 1..(gc.count) Loop
       Pipe row(gc(i));
+    End Loop;
+    Return;
+  End;
+
+--------------------------------------
+Function tbl_employment
+  Return employment Pipelined As
+    -- Declarations
+    emp employment;
+
+  Begin
+    Open c_employment;
+      Fetch c_employment Bulk Collect Into emp;
+    Close c_employment;
+    For i in 1..(emp.count) Loop
+      Pipe row(emp(i));
     End Loop;
     Return;
   End;
