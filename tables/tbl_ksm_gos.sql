@@ -86,6 +86,7 @@ dates As (
   Union All Select '0000724805', 'MG', to_date('20250721', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0004012400', 'AF', to_date('20260323', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0004034548', 'AF', to_date('20260427', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
+  Union All Select '0004058421', 'AF', to_date('20260629', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0004059568', 'AF', to_date('20260706', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
 )
 
@@ -178,6 +179,7 @@ dates As (
   Union All Select '0000724805', '005Uz00000CJAROIA5' From DUAL
   Union All Select '0004012400', '005Uz00000JQuDJIA1' From DUAL
   Union All Select '0004034548', '005Uz00000JxftpIAB' From DUAL
+  Union All Select '0004058421', '005Uz00000Kz5LpIAJ' From DUAL
   Union All Select '0004059568', '005Uz00000LGUHNIA5' From DUAL
 )
 
