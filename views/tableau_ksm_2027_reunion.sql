@@ -691,7 +691,37 @@ Listagg (t.designation_status, ';  ') Within Group (Order By t.tx_id) As anon_de
 Listagg (t.designation_name, ';  ') Within Group (Order By t.tx_id) As anon_designation_name_fy_26
 ---Listagg (anon.anonymous_type, ';  ') Within Group (Order By anon.tx_id) As anonymous_type
 from t 
-group by t.household_id_ksm)
+group by t.household_id_ksm),
+
+--- Proposals - Code from Amy 
+
+PROPOSALROWS AS (     
+     SELECT 
+     DONOR_ID
+     ,row_number() OVER(PARTITION BY DONOR_ID ORDER BY PROPOSAL_RECORD_ID ASC) RW
+     ,PROPOSAL_STAGE
+     ,PROPOSAL_SUBMITTED_DATE
+     ,PROPOSAL_SUBMITTED_AMOUNT
+     ,PROPOSAL_CLOSE_DATE
+     ,PROPOSAL_NAME
+     ,PROPOSAL_DESCRIPTION
+      FROM MV_PROPOSALS
+      WHERE PROPOSAL_ACTIVE_INDICATOR = 'Y'
+        --AND KSM_FLAG = 'Y' IF THEY ONLY WANT KELLOGG
+)
+
+,PROP_INFO AS (
+SELECT 
+    PROPR.DONOR_ID              
+    ,MAX(DECODE(PROPR.rw, 1, PROPR.PROPOSAL_STAGE)) PROPOSAL_STATUS
+    ,MAX(DECODE(PROPR.rw, 1, PROPR.PROPOSAL_SUBMITTED_DATE)) PROPOSAL_ASK_DATE
+    ,MAX(DECODE(PROPR.rw, 1, PROPR.PROPOSAL_SUBMITTED_AMOUNT)) PROPOSAL_ASK_AMOUNT
+    ,MAX(DECODE(PROPR.rw, 1, PROPR.PROPOSAL_CLOSE_DATE)) PROPOSAL_CLOSE_DATE
+    ,MAX(DECODE(PROPR.rw, 1, PROPR.Proposal_Name)) PROPOSAL_NAME
+    ,MAX(DECODE(PROPR.rw, 1, PROPR.PROPOSAL_DESCRIPTION)) PROPOSAL_DESCRIPTION
+FROM PROPOSALROWS PROPR
+GROUP BY PROPR.DONOR_ID)
+
       
  
 select distinct e.household_id,
@@ -925,7 +955,13 @@ select distinct e.household_id,
      anons.anon_credit_amount_fy_26,
      anons.anon_hard_credit_amount_fy_26,
      anons.anon_designation_status_fy_26,
-     anons.anon_designation_name_fy_26
+     anons.anon_designation_name_fy_26,     
+     PROP_INFO.PROPOSAL_STATUS,
+     PROP_INFO.PROPOSAL_ASK_DATE,
+     PROP_INFO.PROPOSAL_ASK_AMOUNT,
+     PROP_INFO.PROPOSAL_CLOSE_DATE,
+     PROP_INFO.PROPOSAL_NAME,
+     PROP_INFO.PROPOSAL_DESCRIPTION
      from e 
 left join KSM_Degrees on KSM_Degrees.donor_id = e.donor_id
 --- Reunion eligible folks only 
@@ -1018,3 +1054,5 @@ left join rc17 on rc17.constituent_donor_id = e.donor_id
 left join rc22 on rc22.constituent_donor_id = e.donor_id
 --- PHS 
 left join phs on phs.constituent_donor_id = e.donor_id
+--- Proposals
+left join PROP_INFO on PROP_INFO.donor_id = e.donor_id
