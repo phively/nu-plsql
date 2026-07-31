@@ -33,6 +33,7 @@ Type rec_entity Is Record (
   , household_primary_ksm dm_alumni.dim_constituent.household_primary_constituent_indicator%type
   , donor_id dm_alumni.dim_constituent.constituent_donor_id%type
   , ses_id stg_alumni.contact.ucinn_ascendv2__student_information_system_id__c%type
+  , netid stg_alumni.contact.ap_netid__c%type
   , full_name dm_alumni.dim_constituent.full_name%type
   , sort_name dm_alumni.dim_constituent.full_name%type
   , salutation dm_alumni.dim_constituent.salutation%type
@@ -135,6 +136,7 @@ Cursor c_entity Is
       As household_primary_ksm
     , c.donor_id
     , ct.ses_id
+    , ct.netid
     , c.full_name
     , c.sort_name
     , c.salutation
@@ -194,6 +196,7 @@ Cursor c_entity Is
       As household_primary_ksm
     , o.donor_id
     , ct.ses_id
+    , ct.netid
     , o.organization_name
     , o.sort_name
     , NULL As salutation
