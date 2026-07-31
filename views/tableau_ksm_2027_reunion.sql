@@ -173,6 +173,12 @@ From v_committee_privateequity),
 hcak as (Select *
 From v_committee_healthcare),
 
+--- AMP 
+
+amp as (Select *
+From v_committee_amp),
+
+
 --- REAC 
 
 reac as (Select *
@@ -189,6 +195,11 @@ from DM_ALUMNI.DIM_CONSTITUENT C ),
 --- Asia exec board
 asia as (Select *
 From v_committee_asia),
+
+--- PHS 
+
+PHS as (select *
+from v_committee_phs),
 
 --- Assignment
 
@@ -680,7 +691,51 @@ Listagg (t.designation_status, ';  ') Within Group (Order By t.tx_id) As anon_de
 Listagg (t.designation_name, ';  ') Within Group (Order By t.tx_id) As anon_designation_name_fy_26
 ---Listagg (anon.anonymous_type, ';  ') Within Group (Order By anon.tx_id) As anonymous_type
 from t 
-group by t.household_id_ksm)
+group by t.household_id_ksm),
+
+--- Proposals - Code from Amy 
+
+PROPOSALROWS AS (     
+     SELECT 
+     DONOR_ID
+     ,row_number() OVER(PARTITION BY DONOR_ID ORDER BY PROPOSAL_RECORD_ID ASC) RW
+     ,PROPOSAL_STAGE
+     ,PROPOSAL_SUBMITTED_DATE
+     ,PROPOSAL_SUBMITTED_AMOUNT
+     ,PROPOSAL_CLOSE_DATE
+     ,PROPOSAL_NAME
+     ,PROPOSAL_DESCRIPTION
+      FROM MV_PROPOSALS
+      WHERE PROPOSAL_ACTIVE_INDICATOR = 'Y'
+        --AND KSM_FLAG = 'Y' IF THEY ONLY WANT KELLOGG
+)
+
+,PROP_INFO AS (
+SELECT 
+    PROPR.DONOR_ID              
+    ,MAX(DECODE(PROPR.rw, 1, PROPR.PROPOSAL_STAGE)) PROPOSAL_STATUS
+    ,MAX(DECODE(PROPR.rw, 1, PROPR.PROPOSAL_SUBMITTED_DATE)) PROPOSAL_ASK_DATE
+    ,MAX(DECODE(PROPR.rw, 1, PROPR.PROPOSAL_SUBMITTED_AMOUNT)) PROPOSAL_ASK_AMOUNT
+    ,MAX(DECODE(PROPR.rw, 1, PROPR.PROPOSAL_CLOSE_DATE)) PROPOSAL_CLOSE_DATE
+    ,MAX(DECODE(PROPR.rw, 1, PROPR.Proposal_Name)) PROPOSAL_NAME
+    ,MAX(DECODE(PROPR.rw, 1, PROPR.PROPOSAL_DESCRIPTION)) PROPOSAL_DESCRIPTION
+FROM PROPOSALROWS PROPR
+GROUP BY PROPR.DONOR_ID),
+
+--- 2017 and 2022 Registrants
+
+r17 as (select distinct
+a.NU_DONOR_ID__C  as donor_id
+from stg_alumni.conference360__attendee__c a
+where a.CONFERENCE360__EVENT_NAME__C  like '%KSM17 Reunion Weekend%'),
+
+--- Reunion 2022 Weekend 2 Paid Registrants
+
+r22 as (select distinct
+a.NU_DONOR_ID__C  as donor_id
+from stg_alumni.conference360__attendee__c a
+where a.CONFERENCE360__EVENT_NAME__C  like '%KSM 2022 Reunion Weekend Two - April 30 & May 1st%')
+
       
  
 select distinct e.household_id,
@@ -820,10 +875,12 @@ select distinct e.household_id,
      gab.involvement_name as gab,
      trustee.involvement_name as trustee,
      kac.involvement_name as kac,
+     phs.involvement_name as phs,
      asia.involvement_name as asia_exec_board,
      peac.involvement_name as peac, 
      reac.involvement_name as reac,
      hcak.involvement_name as hcak,  
+     amp.involvement_name as amp, 
      club.involvement_name as club_leader,
      tp.constituent_university_overall_rating,
      tp.constituent_research_evaluation,
@@ -912,7 +969,15 @@ select distinct e.household_id,
      anons.anon_credit_amount_fy_26,
      anons.anon_hard_credit_amount_fy_26,
      anons.anon_designation_status_fy_26,
-     anons.anon_designation_name_fy_26
+     anons.anon_designation_name_fy_26,     
+     PROP_INFO.PROPOSAL_STATUS,
+     PROP_INFO.PROPOSAL_ASK_DATE,
+     PROP_INFO.PROPOSAL_ASK_AMOUNT,
+     PROP_INFO.PROPOSAL_CLOSE_DATE,
+     PROP_INFO.PROPOSAL_NAME,
+     PROP_INFO.PROPOSAL_DESCRIPTION,
+     case when r17.donor_id is not null then 'Y' end as Reunion_2017_Attendee,
+     case when r22.donor_id is not null then 'Y' end as Reunion_2022_Attendee
      from e 
 left join KSM_Degrees on KSM_Degrees.donor_id = e.donor_id
 --- Reunion eligible folks only 
@@ -975,6 +1040,8 @@ left join peac on peac.constituent_donor_id = e.donor_id
 left join hcak on hcak.constituent_donor_id = e.donor_id
 --- reac
 left join reac on reac.constituent_donor_id = e.donor_id
+--- amp 
+left join amp on amp.constituent_donor_id = e.donor_id
 --- nametag
 left join nametag on nametag.donor_id = e.donor_id 
 --- Zach AF 
@@ -1001,3 +1068,11 @@ left join industry on industry.constituent_donor_id = e.donor_id
 left join rc17 on rc17.constituent_donor_id = e.donor_id
 --- reunion committee 2022
 left join rc22 on rc22.constituent_donor_id = e.donor_id
+--- PHS 
+left join phs on phs.constituent_donor_id = e.donor_id
+--- Proposals
+left join PROP_INFO on PROP_INFO.donor_id = e.donor_id
+--- Reunion 2017
+left join r17 on r17.donor_id = e.donor_id
+--- Reunion 2022
+left join r22 on r22.donor_id = e.donor_id
