@@ -720,7 +720,21 @@ SELECT
     ,MAX(DECODE(PROPR.rw, 1, PROPR.Proposal_Name)) PROPOSAL_NAME
     ,MAX(DECODE(PROPR.rw, 1, PROPR.PROPOSAL_DESCRIPTION)) PROPOSAL_DESCRIPTION
 FROM PROPOSALROWS PROPR
-GROUP BY PROPR.DONOR_ID)
+GROUP BY PROPR.DONOR_ID),
+
+--- 2017 and 2022 Registrants
+
+r17 as (select distinct
+a.NU_DONOR_ID__C  as donor_id
+from stg_alumni.conference360__attendee__c a
+where a.CONFERENCE360__EVENT_NAME__C  like '%KSM17 Reunion Weekend%'),
+
+--- Reunion 2022 Weekend 2 Paid Registrants
+
+r22 as (select distinct
+a.NU_DONOR_ID__C  as donor_id
+from stg_alumni.conference360__attendee__c a
+where a.CONFERENCE360__EVENT_NAME__C  like '%KSM 2022 Reunion Weekend Two - April 30 & May 1st%')
 
       
  
@@ -961,7 +975,9 @@ select distinct e.household_id,
      PROP_INFO.PROPOSAL_ASK_AMOUNT,
      PROP_INFO.PROPOSAL_CLOSE_DATE,
      PROP_INFO.PROPOSAL_NAME,
-     PROP_INFO.PROPOSAL_DESCRIPTION
+     PROP_INFO.PROPOSAL_DESCRIPTION,
+     case when r17.donor_id is not null then 'Y' end as Reunion_2017_Attendee,
+     case when r22.donor_id is not null then 'Y' end as Reunion_2022_Attendee
      from e 
 left join KSM_Degrees on KSM_Degrees.donor_id = e.donor_id
 --- Reunion eligible folks only 
@@ -1056,3 +1072,7 @@ left join rc22 on rc22.constituent_donor_id = e.donor_id
 left join phs on phs.constituent_donor_id = e.donor_id
 --- Proposals
 left join PROP_INFO on PROP_INFO.donor_id = e.donor_id
+--- Reunion 2017
+left join r17 on r17.donor_id = e.donor_id
+--- Reunion 2022
+left join r22 on r22.donor_id = e.donor_id
