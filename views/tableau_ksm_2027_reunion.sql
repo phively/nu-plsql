@@ -479,6 +479,8 @@ from MV_KSM_TRANSACTIONS),
 PLEDGEINFO AS (
 SELECT DISTINCT
 MKT.CREDITED_DONOR_ID
+,MKT.credited_donor_name
+,MKT.PLEDGE_RECORD_ID
 ,MKT.CREDIT_DATE
 ,MKT.OPPORTUNITY_STAGE
 ,MKT.OPPORTUNITY_RECORD_ID
@@ -495,7 +497,8 @@ ON DO.OPPORTUNITY_DONOR_ID = DD.UCINN_ASCENDV2__DONOR_ID_FORMULA__C
 AND DO.OPPORTUNITY_RECORD_ID = DD.UCINN_ASCENDV2__PLEDGE_ID_FORMULA__C
 AND MKT.DESIGNATION_NAME = DD.UCINN_ASCENDV2__ACKNOWLEDGEMENT_DESCRIPTION_FORMULA__C
 WHERE MKT.SOURCE_TYPE_DETAIL IN ('Pledge', 'Recurring Gift')   -- ADDED RECURRING GIFT AS TYPE on 2/9
-Group By MKT.CREDITED_DONOR_ID,MKT.CREDIT_DATE,MKT.OPPORTUNITY_STAGE,MKT.OPPORTUNITY_RECORD_ID, MKT.DESIGNATION_RECORD_ID),
+Group By MKT.CREDITED_DONOR_ID,MKT.CREDIT_DATE,MKT.OPPORTUNITY_STAGE,MKT.OPPORTUNITY_RECORD_ID, MKT.DESIGNATION_RECORD_ID,
+MKT.credited_donor_name ,MKT.PLEDGE_RECORD_ID),
 
 NEW_PLEDGE_INFO AS (
 SELECT
@@ -508,6 +511,8 @@ KT.CREDITED_DONOR_ID AS ID
 ,KT.PLEDGE_TOTAL_KSM AS AMT
 ,KT.PLEDGE_AMOUNT_PAID_TO_DATE
 ,KT.PLEDGE_BALANCE AS BAL
+,KT.credited_donor_name as NAME
+,KT.PLEDGE_RECORD_ID as PLG_ID
 FROM PLEDGEINFO KT
 ),
  
@@ -520,7 +525,9 @@ max(decode(rw,1,plg)) plg1,
 max(decode(rw,1,amt)) pamt1,
 max(decode(rw,1,PLEDGE_AMOUNT_PAID_TO_DATE)) paid1,
 max(decode(rw,1,acct)) pacct1,
-max(decode(rw,1,bal)) bal1
+max(decode(rw,1,bal)) bal1,
+max(decode(rw,1,NAME)) NAME,
+max(decode(rw,1,PLG_ID)) PLG_ID
 from NEW_PLEDGE_INFO
 group by NEW_PLEDGE_INFO.id),
 
@@ -815,6 +822,8 @@ select distinct e.household_id,
      g.last_pledge_designation,
      case when  g.last_pledge_recognition_credit is not null then g.last_pledge_recognition_credit end as last_pledge_recognition_credit,
      apc.last_plg_dt,
+     apc.name,
+     apc.plg_id,
      apc.status1,
      apc.plg1,
      apc.pamt1,
