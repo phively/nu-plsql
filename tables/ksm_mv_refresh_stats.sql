@@ -57,6 +57,9 @@ From mv_contact_reports
 Union
 Select 1, 'mv_address', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_address
+Union
+Select 1, 'mv_entity_employment', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+From mv_entity_employment
 -- 7:40 AM
 Union
 Select 2, 'mv_households', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
