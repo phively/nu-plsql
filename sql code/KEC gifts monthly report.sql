@@ -1,5 +1,8 @@
+-- KEC/ADC monthly report
 Select
   Case
+    When kt.gypm_ind Is Null
+      Then 'unpaid match'
     When kt.gypm_ind = 'P'
       Then 'commitment'
     When kt.gypm_ind = 'Y'
