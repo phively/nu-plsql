@@ -9,8 +9,8 @@ e.sort_name,
 --- Kellogg Event Flag 
 case when event.name like '%KSM%'
 or event.name like '%Kellogg%' 
-or event.conference360__organizer_contact__c like '%Kellogg%'
-or event.conference360__organizer_contact__c like '%KSM%'
+or e.sort_name like '%Kellogg%'
+or e.sort_name like '%KSM%'
 then 'Y' end as KSM_Event,
 event.conference360__status__c,
 event.conference360__category__c,
