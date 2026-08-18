@@ -1,4 +1,6 @@
---- Create or Replace View Tableau_NU_Events
+Create or Replace View Tableau_NU_Events
+
+--- Subquery to pull events from STG Table 
 
 with v as (select 
 event.id,
@@ -12,6 +14,7 @@ or event.name like '%Kellogg%'
 or e.sort_name like '%Kellogg%'
 or e.sort_name like '%KSM%'
 then 'Y' end as KSM_Event,
+--- Status, Category, Start/End Dates, SF URL
 event.conference360__status__c,
 event.conference360__category__c,
 event.conference360__event_end_date__c,
@@ -19,6 +22,7 @@ event.conference360__event_start_date__c,
 event.conference360__event_url__c,
 event.etl_create_date, 
 event.etl_update_date,
+--- Venue Details 
 event.conference360__venue_city__c,
 event.conference360__venue_country__c,
 event.conference360__venue_name__c,

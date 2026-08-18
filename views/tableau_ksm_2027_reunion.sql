@@ -42,7 +42,7 @@ KD.degrees_verbose,
 KD.class_section
  from mv_entity a
 CROSS JOIN manual_dates MD
-inner join d on d.ucinn_ascendv2__contact__c = a.salesforce_id
+left join d on d.ucinn_ascendv2__contact__c = a.salesforce_id
 inner join KSM_Degrees KD on KD.donor_id = a.donor_id 
 where ((TO_NUMBER(NVL(TRIM(d.ucinn_ascendv2__reunion_year__c),'1')) 
 IN (MD.CFY-1, MD.CFY-5, MD.CFY-10, MD.CFY-15, MD.CFY-20, 
@@ -58,11 +58,19 @@ AND KD.PROGRAM IN (
 --- Full Time 
  'FT', 'FT-1Y', 'FT-2Y', 'FT-JDMBA', 'FT-MMGT', 'FT-MMM',
 --- Include MSMS (AKA MiM) and MBAi 
- 'FT-MS', 'FT-MBAi', 'FT-MIM', 
+ 'FT-MS', 'FT-MIM', 
 ---- The old Undergrad programs - should be 50+ milestone Now
  'FT-CB', 'FT-EB',
  --- Evening and Weekend 
- 'TMP', 'TMP-SAT','TMP-SATXCEL', 'TMP-XCEL')),
+ 'TMP', 'TMP-SAT','TMP-SATXCEL', 'TMP-XCEL')
+ 
+ --- Account for MBAi
+ 
+  OR KD.PROGRAM = 'FT-MBAi'
+
+ 
+ 
+ ),
 
 --- Listagg Reunion Years, some have more than 2 preferred KSM Reunions (self reported by alumnus) 
 

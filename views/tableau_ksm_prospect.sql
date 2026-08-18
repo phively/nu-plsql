@@ -524,7 +524,15 @@ c.ucinn_ascendv2__donor_id__c,
 s.*
 from stg_alumni.ap_strategy_relation__c s
 left join c on c.id = s.ap_constituent__c
-where s.ap_is_active_formula__c = 'true' )
+where s.ap_is_active_formula__c = 'true' ),
+
+--- age 
+
+age as (
+select distinct 
+c.ucinn_ascendv2__donor_id__c as donor_id,
+c.ucinn_ascendv2__age_formula__c as age 
+from stg_alumni.contact c)
 
 
 select  distinct 
@@ -545,6 +553,7 @@ select  distinct
        e.is_deceased_indicator,
        e.primary_record_type,
        e.institutional_suffix,
+       age.age,
        e.spouse_donor_id,
        e.spouse_name,
        e.spouse_institutional_suffix,
@@ -743,6 +752,8 @@ left join strat_relation str on str.ucinn_ascendv2__donor_id__c = e.donor_id
 left join final_strategy_id on final_strategy_id.donor_id = e.donor_id
 --- proposal
 left join  prop on prop.donor_id = e.donor_id
+--- Age 
+left join age on age.donor_id = e.donor_id
 --- Next Param - Prospects OR if you active an active proposal flag with KSM flag = 'Y'
 where 
 --- prospect 
