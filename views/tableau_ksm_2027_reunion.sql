@@ -31,6 +31,21 @@ where c.ap_school_reunion_year__c like '%Kellogg%'
 and c.ap_degree_type_from_degreecode__c Not In ('Certificate', 'Doctorate Degree')
 ),
 
+--- MBAi 
+
+mbai as (select co.donor_id,
+       KSM_Degrees.program,
+       c.ucinn_ascendv2__reunion_year__c,
+       c.ap_school_reunion_year__c
+from stg_alumni.ucinn_ascendv2__degree_information__c c
+CROSS JOIN manual_dates MD
+left join mv_entity co on co.salesforce_id = c.ucinn_ascendv2__contact__c
+inner join KSM_Degrees on KSM_Degrees.donor_id = co.donor_id
+where c.ap_school_reunion_year__c like '%McCormick%'
+and KSM_Degrees.program like '%FT-MBAi%' 
+and ((TO_NUMBER(NVL(TRIM(c.ucinn_ascendv2__reunion_year__c),'1')) 
+IN (MD.CFY-1, MD.CFY-5)))),
+
 
 reunion_year as (select a.donor_id,
 d.ucinn_ascendv2__reunion_year__c,
@@ -43,6 +58,7 @@ KD.class_section
  from mv_entity a
 CROSS JOIN manual_dates MD
 left join d on d.ucinn_ascendv2__contact__c = a.salesforce_id
+left join mbai on mbai.donor_id = a.donor_id 
 inner join KSM_Degrees KD on KD.donor_id = a.donor_id 
 where ((TO_NUMBER(NVL(TRIM(d.ucinn_ascendv2__reunion_year__c),'1')) 
 IN (MD.CFY-1, MD.CFY-5, MD.CFY-10, MD.CFY-15, MD.CFY-20, 
@@ -66,7 +82,7 @@ AND KD.PROGRAM IN (
  
  --- Account for MBAi
  
-  OR KD.PROGRAM = 'FT-MBAi'
+  OR mbai.donor_id is not null 
 
  
  
