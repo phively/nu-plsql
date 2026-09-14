@@ -878,8 +878,8 @@ select distinct e.household_id,
      g.last_pledge_designation,
      case when  g.last_pledge_recognition_credit is not null then g.last_pledge_recognition_credit end as last_pledge_recognition_credit,
      apc.last_plg_dt,
-     apc.name as plg_name,
-     apc.plg_id as plg_id,
+     apc.name as plg_name1,
+     apc.plg_id as plg_id1,
      apc.status1,
      apc.plg1,
      apc.pamt1,
@@ -1031,6 +1031,7 @@ select distinct e.household_id,
      case when hcak2.CONSTITUENT_DONOR_ID is not null then 'HCAK Spouse' end as HCAK_Spouse,
      case when peac2.CONSTITUENT_DONOR_ID is not null then 'PEAC Spouse' end as PEAC_Spouse,
      case when trustee2.CONSTITUENT_DONOR_ID is not null then 'Trustee Spouse' end as Trustee_Spouse,
+     case when kac2.CONSTITUENT_DONOR_ID is not null then 'KAC Spouse' end as KAC_Spouse,
      case when sanon.household_id_ksm is not null then 'Y' end as anonymous_26,
      anons.anon_tx_id_fy_26,
      anons.anon_credit_date_fy_26,
@@ -1125,6 +1126,8 @@ left join HCAK hcak2 on hcak2.CONSTITUENT_DONOR_ID = e.spouse_donor_id
 left join PEAC peac2 on peac2.CONSTITUENT_DONOR_ID = e.spouse_donor_id 
 --- Trustee Spouse IND
 left join trustee trustee2 on trustee2.CONSTITUENT_DONOR_ID = e.spouse_donor_id
+--- KAC Spouse 
+left join kac kac2 on kac2.CONSTITUENT_DONOR_ID = e.spouse_donor_id
 --- anon gift summed in 2026
 left join sanon on sanon.household_id_ksm = e.household_id_ksm
 --- 2026 Anonymous gifts
