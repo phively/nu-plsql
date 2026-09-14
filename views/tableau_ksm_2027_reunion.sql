@@ -168,7 +168,10 @@ SH as (select  s.donor_id,
        s.never_engaged_reunion,
        s.no_solicit,
        s.service_indicators_concat,
-       s.gab
+       s.gab,
+       s.no_phone_sol_ind,
+       s.no_email_sol_ind,
+       s.no_texts_sol_ind
 from mv_special_handling s),
 
 -- GAB
@@ -349,6 +352,30 @@ where i.involvement_name like '%KSM Reunion Committee%'
 and i.involvement_start_date BETWEEN TO_DATE('09/01/2021', 'MM/DD/YYYY')
 AND TO_DATE('08/31/2022', 'MM/DD/YYYY')),
 
+
+--- Reunion 2027 Committee 
+
+rc27 as (select i.constituent_donor_id,
+       i.constituent_name,
+       i.involvement_record_id,
+       i.involvement_code,
+       i.involvement_name,
+       i.involvement_status,
+       i.involvement_type,
+       i.involvement_role,
+       i.involvement_business_unit,
+       i.involvement_start_date,
+       i.involvement_end_date,
+       i.involvement_comment,
+       i.etl_update_date,
+       i.mv_last_refresh
+from i 
+where i.involvement_name like '%KSM Reunion Committee%' 
+and i.involvement_status = 'Current'
+and (i.involvement_start_date BETWEEN TO_DATE('06/01/2026', 'MM/DD/YYYY')
+AND TO_DATE('08/31/2027', 'MM/DD/YYYY'))),
+
+
 --- Assignment
 
 assign as (Select a.household_id,
@@ -370,6 +397,7 @@ From V_ENTITY_SALUTATIONS_INDIVIDUAL e),
 --- Use this for Joint Salutations and Spouse 
 
 hhdean as (select e.household_id_ksm,
+       e.p_donor_id,
        e.Spouse_Dean_Salut,
        e.spouse_full_name,
        e.Spouse_Dean_Source,
@@ -794,7 +822,7 @@ select distinct e.household_id,
      sp.first_ksm_year as spouse_first_year,
      sp.program as spouse_program,
      sp.program_group as spouse_program_group, 
-     hhdean.Spouse_Dean_Salut,
+     hhdean2.Spouse_Dean_Salut,
      hhdean.spouse_full_name,
      SMN.spouse_pref_mail_name,
      hhdean.spouse_Dean_Source,
@@ -814,6 +842,10 @@ select distinct e.household_id,
      contact.preferred_address_country,
      contact.preferred_geocode_primary,
      contact.preferred_geocodes_concat,
+     --- Annual Fund wants to see where folks are located, event if they have a No Mail or No Contact 
+     e.preferred_address_city as pref_city_non_special_handling,
+     e.preferred_address_state as pref_state_non_special_handling,
+     e.preferred_address_country as pref_country_non_special_handling,             
      klc.segment as KLC,
      case when g.ngc_fy_giving_first_yr is not null then g.ngc_fy_giving_first_yr else 0 end as ngc_fy_giving_first_yr,
      case when g.cash_fy_giving_first_yr is not null then g.cash_fy_giving_first_yr else 0 end as cash_fy_giving_first_yr,
@@ -846,8 +878,8 @@ select distinct e.household_id,
      g.last_pledge_designation,
      case when  g.last_pledge_recognition_credit is not null then g.last_pledge_recognition_credit end as last_pledge_recognition_credit,
      apc.last_plg_dt,
-     apc.name,
-     apc.plg_id,
+     apc.name as plg_name,
+     apc.plg_id as plg_id,
      apc.status1,
      apc.plg1,
      apc.pamt1,
@@ -902,8 +934,12 @@ select distinct e.household_id,
      sh.never_engaged_forever,
      sh.never_engaged_reunion,
      sh.no_solicit,
+     sh.no_phone_sol_ind,
+     sh.no_email_sol_ind,
+     sh.no_texts_sol_ind,
      case when rc17.constituent_donor_id is not null then 'Reunion 2017 Committee' End as Reunion_2017_Committee,
      case when rc22.constituent_donor_id is not null then 'Reunion 2022 Committee' End as Reunion_2022_Committee,
+     case when rc27.constituent_donor_id is not null then 'Reunion 2027 Committee' End as Reunion_2027_Committee,
      sh.service_indicators_concat,
      gab.involvement_name as gab,
      trustee.involvement_name as trustee,
@@ -1101,6 +1137,8 @@ left join industry on industry.constituent_donor_id = e.donor_id
 left join rc17 on rc17.constituent_donor_id = e.donor_id
 --- reunion committee 2022
 left join rc22 on rc22.constituent_donor_id = e.donor_id
+--- Reunion 2027 committee
+left join rc27 on rc27.constituent_donor_id = e.donor_id
 --- PHS 
 left join phs on phs.constituent_donor_id = e.donor_id
 --- Proposals
@@ -1109,3 +1147,5 @@ left join PROP_INFO on PROP_INFO.donor_id = e.donor_id
 left join r17 on r17.donor_id = e.donor_id
 --- Reunion 2022
 left join r22 on r22.donor_id = e.donor_id
+---- dean spouse 
+left join hhdean hhdean2 on hhdean2.p_donor_id = e.donor_id
