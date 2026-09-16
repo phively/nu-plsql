@@ -718,7 +718,7 @@ UNION
 
 Select t.household_id_ksm
 From mv_ksm_transactions t
-Where t.fiscal_year = 2026
+Where t.fiscal_year = 2027
 And t.anonymous_type = 'Completely anonymous'),
 
 --- Transactions for anonymous in 2026
@@ -734,20 +734,20 @@ t.designation_status,
 t.designation_name,
 t.anonymous_type
 From mv_ksm_transactions t
-Where t.fiscal_year = 2026
+Where t.fiscal_year = 2027
 And t.anonymous_type = 'Completely anonymous'),
 
 --- 2026 Anonymous Gifts
 --- Need to change this when we get into 2027
 
 anons as (select t.household_id_ksm,
-Listagg (t.tx_id, ';  ') Within Group (Order By t.tx_id) As anon_tx_id_fy_26,
-Listagg (t.credit_date, ';  ') Within Group (Order By t.tx_id) As anon_credit_date_fy_26,
-Listagg (t.fiscal_year, ';  ') Within Group (Order By t.tx_id) As anon_fiscal_year_fy_26,
-Listagg (t.credit_amount, ';  ') Within Group (Order By t.tx_id) As anon_credit_amount_fy_26,
-Listagg (t.hard_credit_amount, ';  ') Within Group (Order By t.tx_id) As anon_hard_credit_amount_fy_26,
-Listagg (t.designation_status, ';  ') Within Group (Order By t.tx_id) As anon_designation_status_fy_26,
-Listagg (t.designation_name, ';  ') Within Group (Order By t.tx_id) As anon_designation_name_fy_26
+Listagg (t.tx_id, ';  ') Within Group (Order By t.tx_id) As anon_tx_id_fy_27,
+Listagg (t.credit_date, ';  ') Within Group (Order By t.tx_id) As anon_credit_date_fy_27,
+Listagg (t.fiscal_year, ';  ') Within Group (Order By t.tx_id) As anon_fiscal_year_fy_27,
+Listagg (t.credit_amount, ';  ') Within Group (Order By t.tx_id) As anon_credit_amount_fy_27,
+Listagg (t.hard_credit_amount, ';  ') Within Group (Order By t.tx_id) As anon_hard_credit_amount_fy_27,
+Listagg (t.designation_status, ';  ') Within Group (Order By t.tx_id) As anon_designation_status_fy_27,
+Listagg (t.designation_name, ';  ') Within Group (Order By t.tx_id) As anon_designation_name_fy_27
 ---Listagg (anon.anonymous_type, ';  ') Within Group (Order By anon.tx_id) As anonymous_type
 from t 
 group by t.household_id_ksm),
@@ -1032,14 +1032,14 @@ select distinct e.household_id,
      case when peac2.CONSTITUENT_DONOR_ID is not null then 'PEAC Spouse' end as PEAC_Spouse,
      case when trustee2.CONSTITUENT_DONOR_ID is not null then 'Trustee Spouse' end as Trustee_Spouse,
      case when kac2.CONSTITUENT_DONOR_ID is not null then 'KAC Spouse' end as KAC_Spouse,
-     case when sanon.household_id_ksm is not null then 'Y' end as anonymous_26,
-     anons.anon_tx_id_fy_26,
-     anons.anon_credit_date_fy_26,
-     anons.anon_fiscal_year_fy_26,
-     anons.anon_credit_amount_fy_26,
-     anons.anon_hard_credit_amount_fy_26,
-     anons.anon_designation_status_fy_26,
-     anons.anon_designation_name_fy_26,     
+     case when sanon.household_id_ksm is not null then 'Y' end as anonymous_27,
+     anons.anon_tx_id_fy_27,
+     anons.anon_credit_date_fy_27,
+     anons.anon_fiscal_year_fy_27,
+     anons.anon_credit_amount_fy_27,
+     anons.anon_hard_credit_amount_fy_27,
+     anons.anon_designation_status_fy_27,
+     anons.anon_designation_name_fy_27,     
      PROP_INFO.PROPOSAL_STATUS,
      PROP_INFO.PROPOSAL_ASK_DATE,
      PROP_INFO.PROPOSAL_ASK_AMOUNT,
