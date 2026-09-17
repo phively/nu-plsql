@@ -316,6 +316,8 @@ Cursor c_source_donors Is
             om_mve.person_or_org Desc
             -- Earlier grad year before later grad year
             , om_deg.first_ksm_year Asc Nulls Last
+            -- Org before DAF
+            , mve.donor_advised_fund_indicator Asc Nulls First
             -- Donor ID as tiebreak
             , om_mve.donor_id Asc
           )
@@ -327,6 +329,8 @@ Cursor c_source_donors Is
             mve.person_or_org Desc
             -- Earlier grad year before later grad year
             , deg.first_ksm_year Asc Nulls Last
+            -- Org before DAF
+            , mve.donor_advised_fund_indicator Asc Nulls First
             -- Donor ID as tiebreak
             , mve.donor_id Asc
           )
