@@ -23,28 +23,17 @@ From mv_entity_ksm_degrees d),
 --- Pull Kellogg Reunion Year - 2s, 7s, 2026 
 
 d as (select c.id,
+       ME.DONOR_ID,
        c.ucinn_ascendv2__contact__c,
        c.ucinn_ascendv2__reunion_year__c,
        c.ap_school_reunion_year__c
 from stg_alumni.ucinn_ascendv2__degree_information__c c
-where c.ap_school_reunion_year__c like '%Kellogg%'
-and c.ap_degree_type_from_degreecode__c Not In ('Certificate', 'Doctorate Degree')
+INNER JOIN MV_ENTITY ME ON C.UCINN_ASCENDV2__CONTACT__C = ME.SALESFORCE_ID
+LEFT JOIN MV_ENTITY_KSM_DEGREES KD ON ME.DONOR_ID = KD.DONOR_ID
+where (c.ap_school_reunion_year__c like '%Kellogg%'
+and c.ap_degree_type_from_degreecode__c Not In ('Certificate'))
+OR (c.ap_school_reunion_year__c like '%McCormick%' and KD.PROGRAM = 'FT-MBAi')
 ),
-
---- MBAi 
-
-mbai as (select co.donor_id,
-       KSM_Degrees.program,
-       c.ucinn_ascendv2__reunion_year__c,
-       c.ap_school_reunion_year__c
-from stg_alumni.ucinn_ascendv2__degree_information__c c
-CROSS JOIN manual_dates MD
-left join mv_entity co on co.salesforce_id = c.ucinn_ascendv2__contact__c
-inner join KSM_Degrees on KSM_Degrees.donor_id = co.donor_id
-where c.ap_school_reunion_year__c like '%McCormick%'
-and KSM_Degrees.program like '%FT-MBAi%' 
-and ((TO_NUMBER(NVL(TRIM(c.ucinn_ascendv2__reunion_year__c),'1')) 
-IN (MD.CFY-1, MD.CFY-5)))),
 
 
 reunion_year as (select a.donor_id,
@@ -57,36 +46,26 @@ KD.degrees_verbose,
 KD.class_section
  from mv_entity a
 CROSS JOIN manual_dates MD
-left join d on d.ucinn_ascendv2__contact__c = a.salesforce_id
-left join mbai on mbai.donor_id = a.donor_id 
-inner join KSM_Degrees KD on KD.donor_id = a.donor_id 
-where ((TO_NUMBER(NVL(TRIM(d.ucinn_ascendv2__reunion_year__c),'1')) 
-IN (MD.CFY-1, MD.CFY-5, MD.CFY-10, MD.CFY-15, MD.CFY-20, 
+inner join KSM_Degrees KD on KD.donor_id = a.donor_id
+inner join d on d.ucinn_ascendv2__contact__c = a.salesforce_id
+where (TO_NUMBER(NVL(TRIM(d.ucinn_ascendv2__reunion_year__c),'1')) IN (MD.CFY-1, MD.CFY-5, MD.CFY-10, MD.CFY-15, MD.CFY-20,
 MD.CFY-25, MD.CFY-30, MD.CFY-35, MD.CFY-40,
-MD.CFY-45, MD.CFY-50, MD.CFY-51, MD.CFY-52, 
-MD.CFY-53, MD.CFY-54, MD.CFY-55, MD.CFY-56, 
-MD.CFY-57, MD.CFY-58, MD.CFY-59, MD.CFY-60)))
+MD.CFY-45, MD.CFY-50, MD.CFY-51, MD.CFY-52,
+MD.CFY-53, MD.CFY-54, MD.CFY-55, MD.CFY-56,
+MD.CFY-57, MD.CFY-58, MD.CFY-59, MD.CFY-60))
 
 AND KD.PROGRAM IN (
- --- All EMBA
- 'EMP', 'EMP-FL', 'EMP-IL', 'EMP-CAN', 'EMP-GER', 'EMP-HK', 'EMP-ISR', 'EMP-JAN', 'EMP-CHI', 
---- No PHDs for now. We don't directly invite them, but won't turn them down. Could be a one time ad-hoc if requested. 
---- Full Time 
- 'FT', 'FT-1Y', 'FT-2Y', 'FT-JDMBA', 'FT-MMGT', 'FT-MMM',
---- Include MSMS (AKA MiM) and MBAi 
- 'FT-MS', 'FT-MIM', 
+--- All EMBA
+'EMP', 'EMP-FL', 'EMP-IL', 'EMP-CAN', 'EMP-GER', 'EMP-HK', 'EMP-ISR', 'EMP-JAN', 'EMP-CHI',
+--- No PHDs for now. We don't directly invite them, but won't turn them down. Could be a one time ad-hoc if requested.
+--- Full Time
+'FT', 'FT-1Y', 'FT-2Y', 'FT-JDMBA', 'FT-MMGT', 'FT-MMM',
+--- Include MSMS (AKA MiM) and MBAi
+'FT-MS', 'FT-MBAi', 'FT-MIM',
 ---- The old Undergrad programs - should be 50+ milestone Now
- 'FT-CB', 'FT-EB',
- --- Evening and Weekend 
- 'TMP', 'TMP-SAT','TMP-SATXCEL', 'TMP-XCEL')
- 
- --- Account for MBAi
- 
-  OR mbai.donor_id is not null 
-
- 
- 
- ),
+'FT-CB', 'FT-EB',
+--- Evening and Weekend
+'TMP', 'TMP-SAT','TMP-SATXCEL', 'TMP-XCEL')),
 
 --- Listagg Reunion Years, some have more than 2 preferred KSM Reunions (self reported by alumnus) 
 
