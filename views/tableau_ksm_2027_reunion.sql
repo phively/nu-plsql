@@ -804,10 +804,15 @@ select distinct e.household_id,
      hhdean2.Spouse_Dean_Salut,
      hhdean.spouse_full_name,
      SMN.spouse_pref_mail_name,
+     CASE WHEN e.spouse_donor_id IS NOT NULL THEN /*THIS IS NEW FOR THE SALUTATION ISSUE  AMY*/
+     DEAN.dean_salut||' and '|| DEANSP.DEAN_SALUT 
+     ELSE DEAN.dean_salut END AS NEW_joint_dean_salut,
      hhdean.spouse_Dean_Source,
      hhdean.joint_dean_salut, 
      hhdean.joint_fullname,    
      spr.reunion_year_concat as spouse_ksm_reunion_year,
+     CASE WHEN spr.reunion_year_concat IS NOT NULL THEN /* NEW FOR JOINT REUION SALUT AMY*/
+     DEAN.dean_salut||' and '|| DEANSP.DEAN_SALUT END AS NEW_joint_dean_salut_reunion,
      case when spr.reunion_year_concat is not null then hhdean.joint_dean_salut end as joint_dean_salut_reunion,
      case when spr.reunion_year_concat is not null then hhdean.Spouse_Dean_Source end as Spouse_Dean_Source_reunion,
      contact.address_preferred_type,
@@ -1062,6 +1067,8 @@ left join club on club.constituent_donor_id = e.donor_id
 --- Dean indiv Salutation
 left join Dean on Dean.donor_id = e.donor_id 
 --- Dean Joint Salutation 
+/* FOR SPOUSE DEAN AMY ADDITION*/
+LEFT JOIN DEAN DEANSP ON DEANSP.DONOR_ID = E.SPOUSE_DONOR_ID
 left join hhdean on hhdean.household_id_ksm = e.household_id 
 --- KLC 
 left join klc on klc.donor_id = e.donor_id 
