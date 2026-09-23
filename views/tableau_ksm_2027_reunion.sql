@@ -23,28 +23,17 @@ From mv_entity_ksm_degrees d),
 --- Pull Kellogg Reunion Year - 2s, 7s, 2026 
 
 d as (select c.id,
+       ME.DONOR_ID,
        c.ucinn_ascendv2__contact__c,
        c.ucinn_ascendv2__reunion_year__c,
        c.ap_school_reunion_year__c
 from stg_alumni.ucinn_ascendv2__degree_information__c c
-where c.ap_school_reunion_year__c like '%Kellogg%'
-and c.ap_degree_type_from_degreecode__c Not In ('Certificate', 'Doctorate Degree')
+INNER JOIN MV_ENTITY ME ON C.UCINN_ASCENDV2__CONTACT__C = ME.SALESFORCE_ID
+LEFT JOIN MV_ENTITY_KSM_DEGREES KD ON ME.DONOR_ID = KD.DONOR_ID
+where (c.ap_school_reunion_year__c like '%Kellogg%'
+and c.ap_degree_type_from_degreecode__c Not In ('Certificate'))
+OR (c.ap_school_reunion_year__c like '%McCormick%' and KD.PROGRAM = 'FT-MBAi')
 ),
-
---- MBAi 
-
-mbai as (select co.donor_id,
-       KSM_Degrees.program,
-       c.ucinn_ascendv2__reunion_year__c,
-       c.ap_school_reunion_year__c
-from stg_alumni.ucinn_ascendv2__degree_information__c c
-CROSS JOIN manual_dates MD
-left join mv_entity co on co.salesforce_id = c.ucinn_ascendv2__contact__c
-inner join KSM_Degrees on KSM_Degrees.donor_id = co.donor_id
-where c.ap_school_reunion_year__c like '%McCormick%'
-and KSM_Degrees.program like '%FT-MBAi%' 
-and ((TO_NUMBER(NVL(TRIM(c.ucinn_ascendv2__reunion_year__c),'1')) 
-IN (MD.CFY-1, MD.CFY-5)))),
 
 
 reunion_year as (select a.donor_id,
@@ -57,36 +46,26 @@ KD.degrees_verbose,
 KD.class_section
  from mv_entity a
 CROSS JOIN manual_dates MD
-left join d on d.ucinn_ascendv2__contact__c = a.salesforce_id
-left join mbai on mbai.donor_id = a.donor_id 
-inner join KSM_Degrees KD on KD.donor_id = a.donor_id 
-where ((TO_NUMBER(NVL(TRIM(d.ucinn_ascendv2__reunion_year__c),'1')) 
-IN (MD.CFY-1, MD.CFY-5, MD.CFY-10, MD.CFY-15, MD.CFY-20, 
+inner join KSM_Degrees KD on KD.donor_id = a.donor_id
+inner join d on d.ucinn_ascendv2__contact__c = a.salesforce_id
+where (TO_NUMBER(NVL(TRIM(d.ucinn_ascendv2__reunion_year__c),'1')) IN (MD.CFY-1, MD.CFY-5, MD.CFY-10, MD.CFY-15, MD.CFY-20,
 MD.CFY-25, MD.CFY-30, MD.CFY-35, MD.CFY-40,
-MD.CFY-45, MD.CFY-50, MD.CFY-51, MD.CFY-52, 
-MD.CFY-53, MD.CFY-54, MD.CFY-55, MD.CFY-56, 
-MD.CFY-57, MD.CFY-58, MD.CFY-59, MD.CFY-60)))
+MD.CFY-45, MD.CFY-50, MD.CFY-51, MD.CFY-52,
+MD.CFY-53, MD.CFY-54, MD.CFY-55, MD.CFY-56,
+MD.CFY-57, MD.CFY-58, MD.CFY-59, MD.CFY-60))
 
 AND KD.PROGRAM IN (
- --- All EMBA
- 'EMP', 'EMP-FL', 'EMP-IL', 'EMP-CAN', 'EMP-GER', 'EMP-HK', 'EMP-ISR', 'EMP-JAN', 'EMP-CHI', 
---- No PHDs for now. We don't directly invite them, but won't turn them down. Could be a one time ad-hoc if requested. 
---- Full Time 
- 'FT', 'FT-1Y', 'FT-2Y', 'FT-JDMBA', 'FT-MMGT', 'FT-MMM',
---- Include MSMS (AKA MiM) and MBAi 
- 'FT-MS', 'FT-MIM', 
+--- All EMBA
+'EMP', 'EMP-FL', 'EMP-IL', 'EMP-CAN', 'EMP-GER', 'EMP-HK', 'EMP-ISR', 'EMP-JAN', 'EMP-CHI',
+--- No PHDs for now. We don't directly invite them, but won't turn them down. Could be a one time ad-hoc if requested.
+--- Full Time
+'FT', 'FT-1Y', 'FT-2Y', 'FT-JDMBA', 'FT-MMGT', 'FT-MMM',
+--- Include MSMS (AKA MiM) and MBAi
+'FT-MS', 'FT-MBAi', 'FT-MIM',
 ---- The old Undergrad programs - should be 50+ milestone Now
- 'FT-CB', 'FT-EB',
- --- Evening and Weekend 
- 'TMP', 'TMP-SAT','TMP-SATXCEL', 'TMP-XCEL')
- 
- --- Account for MBAi
- 
-  OR mbai.donor_id is not null 
-
- 
- 
- ),
+'FT-CB', 'FT-EB',
+--- Evening and Weekend
+'TMP', 'TMP-SAT','TMP-SATXCEL', 'TMP-XCEL')),
 
 --- Listagg Reunion Years, some have more than 2 preferred KSM Reunions (self reported by alumnus) 
 
@@ -168,7 +147,10 @@ SH as (select  s.donor_id,
        s.never_engaged_reunion,
        s.no_solicit,
        s.service_indicators_concat,
-       s.gab
+       s.gab,
+       s.no_phone_sol_ind,
+       s.no_email_sol_ind,
+       s.no_texts_sol_ind
 from mv_special_handling s),
 
 -- GAB
@@ -349,6 +331,30 @@ where i.involvement_name like '%KSM Reunion Committee%'
 and i.involvement_start_date BETWEEN TO_DATE('09/01/2021', 'MM/DD/YYYY')
 AND TO_DATE('08/31/2022', 'MM/DD/YYYY')),
 
+
+--- Reunion 2027 Committee 
+
+rc27 as (select i.constituent_donor_id,
+       i.constituent_name,
+       i.involvement_record_id,
+       i.involvement_code,
+       i.involvement_name,
+       i.involvement_status,
+       i.involvement_type,
+       i.involvement_role,
+       i.involvement_business_unit,
+       i.involvement_start_date,
+       i.involvement_end_date,
+       i.involvement_comment,
+       i.etl_update_date,
+       i.mv_last_refresh
+from i 
+where i.involvement_name like '%KSM Reunion Committee%' 
+and i.involvement_status = 'Current'
+and (i.involvement_start_date BETWEEN TO_DATE('06/01/2026', 'MM/DD/YYYY')
+AND TO_DATE('08/31/2027', 'MM/DD/YYYY'))),
+
+
 --- Assignment
 
 assign as (Select a.household_id,
@@ -370,6 +376,7 @@ From V_ENTITY_SALUTATIONS_INDIVIDUAL e),
 --- Use this for Joint Salutations and Spouse 
 
 hhdean as (select e.household_id_ksm,
+       e.p_donor_id,
        e.Spouse_Dean_Salut,
        e.spouse_full_name,
        e.Spouse_Dean_Source,
@@ -690,7 +697,7 @@ UNION
 
 Select t.household_id_ksm
 From mv_ksm_transactions t
-Where t.fiscal_year = 2026
+Where t.fiscal_year = 2027
 And t.anonymous_type = 'Completely anonymous'),
 
 --- Transactions for anonymous in 2026
@@ -706,20 +713,20 @@ t.designation_status,
 t.designation_name,
 t.anonymous_type
 From mv_ksm_transactions t
-Where t.fiscal_year = 2026
+Where t.fiscal_year = 2027
 And t.anonymous_type = 'Completely anonymous'),
 
 --- 2026 Anonymous Gifts
 --- Need to change this when we get into 2027
 
 anons as (select t.household_id_ksm,
-Listagg (t.tx_id, ';  ') Within Group (Order By t.tx_id) As anon_tx_id_fy_26,
-Listagg (t.credit_date, ';  ') Within Group (Order By t.tx_id) As anon_credit_date_fy_26,
-Listagg (t.fiscal_year, ';  ') Within Group (Order By t.tx_id) As anon_fiscal_year_fy_26,
-Listagg (t.credit_amount, ';  ') Within Group (Order By t.tx_id) As anon_credit_amount_fy_26,
-Listagg (t.hard_credit_amount, ';  ') Within Group (Order By t.tx_id) As anon_hard_credit_amount_fy_26,
-Listagg (t.designation_status, ';  ') Within Group (Order By t.tx_id) As anon_designation_status_fy_26,
-Listagg (t.designation_name, ';  ') Within Group (Order By t.tx_id) As anon_designation_name_fy_26
+Listagg (t.tx_id, ';  ') Within Group (Order By t.tx_id) As anon_tx_id_fy_27,
+Listagg (t.credit_date, ';  ') Within Group (Order By t.tx_id) As anon_credit_date_fy_27,
+Listagg (t.fiscal_year, ';  ') Within Group (Order By t.tx_id) As anon_fiscal_year_fy_27,
+Listagg (t.credit_amount, ';  ') Within Group (Order By t.tx_id) As anon_credit_amount_fy_27,
+Listagg (t.hard_credit_amount, ';  ') Within Group (Order By t.tx_id) As anon_hard_credit_amount_fy_27,
+Listagg (t.designation_status, ';  ') Within Group (Order By t.tx_id) As anon_designation_status_fy_27,
+Listagg (t.designation_name, ';  ') Within Group (Order By t.tx_id) As anon_designation_name_fy_27
 ---Listagg (anon.anonymous_type, ';  ') Within Group (Order By anon.tx_id) As anonymous_type
 from t 
 group by t.household_id_ksm),
@@ -794,13 +801,18 @@ select distinct e.household_id,
      sp.first_ksm_year as spouse_first_year,
      sp.program as spouse_program,
      sp.program_group as spouse_program_group, 
-     hhdean.Spouse_Dean_Salut,
+     hhdean2.Spouse_Dean_Salut,
      hhdean.spouse_full_name,
      SMN.spouse_pref_mail_name,
+     CASE WHEN e.spouse_donor_id IS NOT NULL THEN /*THIS IS NEW FOR THE SALUTATION ISSUE  AMY*/
+     DEAN.dean_salut||' and '|| DEANSP.DEAN_SALUT 
+     ELSE DEAN.dean_salut END AS NEW_joint_dean_salut,
      hhdean.spouse_Dean_Source,
      hhdean.joint_dean_salut, 
      hhdean.joint_fullname,    
      spr.reunion_year_concat as spouse_ksm_reunion_year,
+     CASE WHEN spr.reunion_year_concat IS NOT NULL THEN /* NEW FOR JOINT REUION SALUT AMY*/
+     DEAN.dean_salut||' and '|| DEANSP.DEAN_SALUT END AS NEW_joint_dean_salut_reunion,
      case when spr.reunion_year_concat is not null then hhdean.joint_dean_salut end as joint_dean_salut_reunion,
      case when spr.reunion_year_concat is not null then hhdean.Spouse_Dean_Source end as Spouse_Dean_Source_reunion,
      contact.address_preferred_type,
@@ -814,6 +826,10 @@ select distinct e.household_id,
      contact.preferred_address_country,
      contact.preferred_geocode_primary,
      contact.preferred_geocodes_concat,
+     --- Annual Fund wants to see where folks are located, event if they have a No Mail or No Contact 
+     e.preferred_address_city as pref_city_non_special_handling,
+     e.preferred_address_state as pref_state_non_special_handling,
+     e.preferred_address_country as pref_country_non_special_handling,             
      klc.segment as KLC,
      case when g.ngc_fy_giving_first_yr is not null then g.ngc_fy_giving_first_yr else 0 end as ngc_fy_giving_first_yr,
      case when g.cash_fy_giving_first_yr is not null then g.cash_fy_giving_first_yr else 0 end as cash_fy_giving_first_yr,
@@ -846,8 +862,8 @@ select distinct e.household_id,
      g.last_pledge_designation,
      case when  g.last_pledge_recognition_credit is not null then g.last_pledge_recognition_credit end as last_pledge_recognition_credit,
      apc.last_plg_dt,
-     apc.name,
-     apc.plg_id,
+     apc.name as plg_name1,
+     apc.plg_id as plg_id1,
      apc.status1,
      apc.plg1,
      apc.pamt1,
@@ -902,8 +918,12 @@ select distinct e.household_id,
      sh.never_engaged_forever,
      sh.never_engaged_reunion,
      sh.no_solicit,
+     sh.no_phone_sol_ind,
+     sh.no_email_sol_ind,
+     sh.no_texts_sol_ind,
      case when rc17.constituent_donor_id is not null then 'Reunion 2017 Committee' End as Reunion_2017_Committee,
      case when rc22.constituent_donor_id is not null then 'Reunion 2022 Committee' End as Reunion_2022_Committee,
+     case when rc27.constituent_donor_id is not null then 'Reunion 2027 Committee' End as Reunion_2027_Committee,
      sh.service_indicators_concat,
      gab.involvement_name as gab,
      trustee.involvement_name as trustee,
@@ -995,14 +1015,15 @@ select distinct e.household_id,
      case when hcak2.CONSTITUENT_DONOR_ID is not null then 'HCAK Spouse' end as HCAK_Spouse,
      case when peac2.CONSTITUENT_DONOR_ID is not null then 'PEAC Spouse' end as PEAC_Spouse,
      case when trustee2.CONSTITUENT_DONOR_ID is not null then 'Trustee Spouse' end as Trustee_Spouse,
-     case when sanon.household_id_ksm is not null then 'Y' end as anonymous_26,
-     anons.anon_tx_id_fy_26,
-     anons.anon_credit_date_fy_26,
-     anons.anon_fiscal_year_fy_26,
-     anons.anon_credit_amount_fy_26,
-     anons.anon_hard_credit_amount_fy_26,
-     anons.anon_designation_status_fy_26,
-     anons.anon_designation_name_fy_26,     
+     case when kac2.CONSTITUENT_DONOR_ID is not null then 'KAC Spouse' end as KAC_Spouse,
+     case when sanon.household_id_ksm is not null then 'Y' end as anonymous_27,
+     anons.anon_tx_id_fy_27,
+     anons.anon_credit_date_fy_27,
+     anons.anon_fiscal_year_fy_27,
+     anons.anon_credit_amount_fy_27,
+     anons.anon_hard_credit_amount_fy_27,
+     anons.anon_designation_status_fy_27,
+     anons.anon_designation_name_fy_27,     
      PROP_INFO.PROPOSAL_STATUS,
      PROP_INFO.PROPOSAL_ASK_DATE,
      PROP_INFO.PROPOSAL_ASK_AMOUNT,
@@ -1046,6 +1067,8 @@ left join club on club.constituent_donor_id = e.donor_id
 --- Dean indiv Salutation
 left join Dean on Dean.donor_id = e.donor_id 
 --- Dean Joint Salutation 
+/* FOR SPOUSE DEAN AMY ADDITION*/
+LEFT JOIN DEAN DEANSP ON DEANSP.DONOR_ID = E.SPOUSE_DONOR_ID
 left join hhdean on hhdean.household_id_ksm = e.household_id 
 --- KLC 
 left join klc on klc.donor_id = e.donor_id 
@@ -1089,6 +1112,8 @@ left join HCAK hcak2 on hcak2.CONSTITUENT_DONOR_ID = e.spouse_donor_id
 left join PEAC peac2 on peac2.CONSTITUENT_DONOR_ID = e.spouse_donor_id 
 --- Trustee Spouse IND
 left join trustee trustee2 on trustee2.CONSTITUENT_DONOR_ID = e.spouse_donor_id
+--- KAC Spouse 
+left join kac kac2 on kac2.CONSTITUENT_DONOR_ID = e.spouse_donor_id
 --- anon gift summed in 2026
 left join sanon on sanon.household_id_ksm = e.household_id_ksm
 --- 2026 Anonymous gifts
@@ -1101,6 +1126,8 @@ left join industry on industry.constituent_donor_id = e.donor_id
 left join rc17 on rc17.constituent_donor_id = e.donor_id
 --- reunion committee 2022
 left join rc22 on rc22.constituent_donor_id = e.donor_id
+--- Reunion 2027 committee
+left join rc27 on rc27.constituent_donor_id = e.donor_id
 --- PHS 
 left join phs on phs.constituent_donor_id = e.donor_id
 --- Proposals
@@ -1109,3 +1136,5 @@ left join PROP_INFO on PROP_INFO.donor_id = e.donor_id
 left join r17 on r17.donor_id = e.donor_id
 --- Reunion 2022
 left join r22 on r22.donor_id = e.donor_id
+---- dean spouse 
+left join hhdean hhdean2 on hhdean2.p_donor_id = e.donor_id
