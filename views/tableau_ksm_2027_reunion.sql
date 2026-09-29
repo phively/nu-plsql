@@ -772,9 +772,19 @@ where a.CONFERENCE360__EVENT_NAME__C  like '%KSM17 Reunion Weekend%'),
 r22 as (select distinct
 a.NU_DONOR_ID__C  as donor_id
 from stg_alumni.conference360__attendee__c a
-where a.CONFERENCE360__EVENT_NAME__C  like '%KSM 2022 Reunion Weekend Two - April 30 & May 1st%')
+where a.CONFERENCE360__EVENT_NAME__C  like '%KSM 2022 Reunion Weekend Two - April 30 & May 1st%'),
 
-      
+FR_GIVING_10 as (
+select DISTINCT 
+FR.donor_id
+,'Y' AS Reunion_10
+from FR
+INNER JOIN MV_KSM_TRANSACTIONS KT
+ON KT.CREDITED_DONOR_ID = FR.donor_ID
+WHERE KT.GYPM_IND NOT IN ('P', 'M')
+  AND KT.FISCAL_YEAR >= 2017
+  AND KT.CASH_CATEGORY IN ('Expendable', 'KEC', 'Endowed', 'Other/TBD'))
+
  
 select distinct e.household_id,
      e.household_id_ksm,
@@ -1031,7 +1041,8 @@ select distinct e.household_id,
      PROP_INFO.PROPOSAL_NAME,
      PROP_INFO.PROPOSAL_DESCRIPTION,
      case when r17.donor_id is not null then 'Y' end as Reunion_2017_Attendee,
-     case when r22.donor_id is not null then 'Y' end as Reunion_2022_Attendee
+     case when r22.donor_id is not null then 'Y' end as Reunion_2022_Attendee,
+     r10.Reunion_10
      from e 
 left join KSM_Degrees on KSM_Degrees.donor_id = e.donor_id
 --- Reunion eligible folks only 
@@ -1138,3 +1149,5 @@ left join r17 on r17.donor_id = e.donor_id
 left join r22 on r22.donor_id = e.donor_id
 ---- dean spouse 
 left join hhdean hhdean2 on hhdean2.p_donor_id = e.donor_id
+--- Reunion 10 
+left join FR_GIVING_10 r10 on r10.donor_id = e.donor_id
