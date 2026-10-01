@@ -80,7 +80,7 @@ i as (select distinct i.constituent_donor_id,
 from mv_involvement i
 where i.involvement_status = 'Current'
 and (i.involvement_name like '%KSM%'
-or i.involvement_name like '%Kellogg%')),
+or i.involvement_name like '%Kellogg Campaign%')),
 
 --- Listagg Involvements 
 
