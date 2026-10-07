@@ -516,6 +516,7 @@ MKT.CREDITED_DONOR_ID
 ,MKT.OPPORTUNITY_STAGE
 ,MKT.OPPORTUNITY_RECORD_ID
 ,MKT.DESIGNATION_RECORD_ID
+,MKT.designation_name
 ,MAX(DD.UCINN_ASCENDV2__AMOUNT_PAID_TO_DATE_ROLL_UP__C) AS PLEDGE_AMOUNT_PAID_TO_DATE
 ,MAX(DD.UCINN_ASCENDV2__AMOUNT__C) AS PLEDGE_TOTAL_KSM
 ,MAX(DD.UCINN_ASCENDV2__REMAINING_AMOUNT_DUE_FORMULA__C) AS PLEDGE_BALANCE
@@ -529,7 +530,7 @@ AND DO.OPPORTUNITY_RECORD_ID = DD.UCINN_ASCENDV2__PLEDGE_ID_FORMULA__C
 AND MKT.DESIGNATION_NAME = DD.UCINN_ASCENDV2__ACKNOWLEDGEMENT_DESCRIPTION_FORMULA__C
 WHERE MKT.SOURCE_TYPE_DETAIL IN ('Pledge', 'Recurring Gift')   -- ADDED RECURRING GIFT AS TYPE on 2/9
 Group By MKT.CREDITED_DONOR_ID,MKT.CREDIT_DATE,MKT.OPPORTUNITY_STAGE,MKT.OPPORTUNITY_RECORD_ID, MKT.DESIGNATION_RECORD_ID,
-MKT.credited_donor_name ,MKT.PLEDGE_RECORD_ID),
+MKT.credited_donor_name ,MKT.PLEDGE_RECORD_ID,MKT.designation_name),
 
 NEW_PLEDGE_INFO AS (
 SELECT
@@ -544,6 +545,7 @@ KT.CREDITED_DONOR_ID AS ID
 ,KT.PLEDGE_BALANCE AS BAL
 ,KT.credited_donor_name as NAME
 ,KT.PLEDGE_RECORD_ID as PLG_ID
+,KT.designation_name as designation_name
 FROM PLEDGEINFO KT
 ),
  
@@ -558,7 +560,8 @@ max(decode(rw,1,PLEDGE_AMOUNT_PAID_TO_DATE)) paid1,
 max(decode(rw,1,acct)) pacct1,
 max(decode(rw,1,bal)) bal1,
 max(decode(rw,1,NAME)) NAME,
-max(decode(rw,1,PLG_ID)) PLG_ID
+max(decode(rw,1,PLG_ID)) PLG_ID,
+max(decode(rw,1,designation_name)) designation_name                                                                                                
 from NEW_PLEDGE_INFO
 group by NEW_PLEDGE_INFO.id),
 
@@ -810,8 +813,8 @@ select distinct e.household_id,
      e.spouse_institutional_suffix,   
      sp.first_ksm_year as spouse_first_year,
      sp.program as spouse_program,
-     sp.program_group as spouse_program_group, 
-     hhdean2.Spouse_Dean_Salut,
+     sp.program_group as spouse_program_group,     
+     dean2.dean_salut as spouse_dean_salut,   
      hhdean.spouse_full_name,
      SMN.spouse_pref_mail_name,
      CASE WHEN e.spouse_donor_id IS NOT NULL THEN /*THIS IS NEW FOR THE SALUTATION ISSUE  AMY*/
@@ -873,6 +876,7 @@ select distinct e.household_id,
      case when  g.last_pledge_recognition_credit is not null then g.last_pledge_recognition_credit end as last_pledge_recognition_credit,
      apc.last_plg_dt,
      apc.name as plg_name1,
+     apc.designation_name,
      apc.plg_id as plg_id1,
      apc.status1,
      apc.plg1,
@@ -1077,6 +1081,8 @@ left join spr on spr.spouse_donor_id = e.spouse_donor_id
 left join club on club.constituent_donor_id = e.donor_id 
 --- Dean indiv Salutation
 left join Dean on Dean.donor_id = e.donor_id 
+---- Dean Spouse --- Join on spouse ID for entity!
+left join Dean dean2 on dean2.donor_id = e.spouse_donor_id
 --- Dean Joint Salutation 
 /* FOR SPOUSE DEAN AMY ADDITION*/
 LEFT JOIN DEAN DEANSP ON DEANSP.DONOR_ID = E.SPOUSE_DONOR_ID
@@ -1147,7 +1153,5 @@ left join PROP_INFO on PROP_INFO.donor_id = e.donor_id
 left join r17 on r17.donor_id = e.donor_id
 --- Reunion 2022
 left join r22 on r22.donor_id = e.donor_id
----- dean spouse 
-left join hhdean hhdean2 on hhdean2.p_donor_id = e.donor_id
 --- Reunion 10 
 left join FR_GIVING_10 r10 on r10.donor_id = e.donor_id
