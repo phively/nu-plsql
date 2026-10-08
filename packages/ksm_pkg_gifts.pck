@@ -704,13 +704,24 @@ Cursor c_ksm_transactions Is
           End
         As historical_credit_active_flag
       -- Household credit is evenly split between household members per transaction and designation
+      -- EXCEPT for when spouses don't want joint gift credit
       , hhdc.hh_credited_donors
-      , t.credit_amount / hhdc.hh_credited_donors
+      , Case
+          When hh.household_joint_soft_credit = 'Y'
+            Then t.credit_amount / hhdc.hh_credited_donors
+          Else t.credit_amount
+          End
         As hh_credit 
-      , t.recognition_credit / hhdc.hh_credited_donors
+      , Case
+          When hh.household_joint_soft_credit = 'Y'
+            Then t.recognition_credit / hhdc.hh_credited_donors
+          Else t.recognition_credit
+          End
         As hh_recognition_credit
     From trans_data t
     -- Householded counts, for hh_credit
+    Inner Join mv_households hh
+      On hh.donor_id = t.credited_donor_id
     Inner Join table(ksm_pkg_gifts.tbl_hh_donor_count) hhdc
       On hhdc.household_id_ksm = t.household_id_ksm
       And hhdc.tx_id = t.tx_id

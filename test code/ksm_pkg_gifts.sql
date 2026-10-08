@@ -55,6 +55,19 @@ From table(ksm_pkg_gifts.tbl_unsplit_amounts) ua
 Where ua.pledge_or_gift_record_id = 'PN2482912'
 ;
 
+Select
+  'No joint credit doesn''t divide hh giving' As explanation
+  , kt.credited_donor_name
+  , kt.tx_id
+  , kt.credit_amount
+  , kt.hard_credit_amount
+  , kt.hh_credited_donors
+  , kt.hh_credit
+  , kt.hh_recognition_credit
+From table(ksm_pkg_gifts.tbl_ksm_transactions) kt
+Where tx_id = 'T3065431'
+;
+
 ---------------------------
 -- mv_source_donor tests
 ---------------------------
