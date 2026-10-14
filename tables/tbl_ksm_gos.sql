@@ -69,6 +69,7 @@ dates As (
   Union All Select '0000887951', 'AF', to_date('20220919', 'yyyymmdd'), to_date('20260206', 'yyyymmdd') From DUAL
   Union All Select '0000889141', 'AF', to_date('20221128', 'yyyymmdd'), to_date('20260123', 'yyyymmdd') From DUAL
   Union All Select '0000889424', 'AF', to_date('20221205', 'yyyymmdd'), to_date('20260130', 'yyyymmdd') From DUAL
+  Union All Select '0000889424', 'MG', to_date('20261012', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000809084', 'AR', to_date('20221117', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL
   Union All Select '0000757346', 'AF', to_date('20230424', 'yyyymmdd'), to_date('20230915', 'yyyymmdd') From DUAL
   Union All Select '0000767254', 'AF', to_date('20230705', 'yyyymmdd'), to_date(NULL, 'yyyymmdd') From DUAL

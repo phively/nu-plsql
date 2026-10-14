@@ -6,6 +6,8 @@ Contains SQL and PL/SQL code for various Kellogg data definitions and best pract
 
 Concept: lower level tables should be defined based on SF objects, then joined/transformed into higher level definitions. Data packages should have clear hierarchical dependencies, and a single responsibility.
 
+"What's this level 1, level 2, level 3 stuff about?" See [Medallion architecture](https://learn.microsoft.com/en-us/azure/databricks/lakehouse/medallion).
+
 ![data_hierarchy.png](images/data_hierarchy.png "Proposed data hierarchy")
 
 # Naming conventions
@@ -49,6 +51,7 @@ Important: respect dependencies! For example, `mv_ksm_transactions` is scheduled
  
  ## Prospect
  
+ * [tbl_ksm_gos](tables/tbl_ksm_gos.sql) = staff assignments table; requires donor ID, team, start and stop (if applicable) dates, user ID (to link staff record) 
  * [mv_assignments](packages/ksm_pkg_prospect.pck) = all active staff assignments in wide format (one row per entity). See `c_assignment_summary`
  * [mv_contact_reports](packages/ksm_pkg_contact_reports.pck) = consolidated contact report views in long format, disaggregating staff credit across multiple rows. See `c_contact_reports`
  * [mv_ksm_models](packages/ksm_pkg_models.pck) = KSM model scores in wide format (one row per entity)
