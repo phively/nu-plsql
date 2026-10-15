@@ -925,6 +925,7 @@ Cursor c_mgo_activity_monthly Is
   From table(metrics_pkg.tbl_contact_count) cr
   Inner Join table(metrics_pkg.tbl_contact_reports) c
     On cr.contact_report_record_id = c.contact_report_record_id
+    And cr.cr_credit_salesforce_id = c.cr_credit_salesforce_id
   -- Fiscal year goals
   Left Join goal g
     On cr.cr_credit_salesforce_id = g.gift_officer_user_salesforce_id
@@ -969,6 +970,7 @@ Cursor c_mgo_activity_monthly Is
   From table(metrics_pkg.tbl_contact_count) cr
   Inner Join table(metrics_pkg.tbl_contact_reports) c
     On cr.contact_report_record_id = c.contact_report_record_id
+    And cr.cr_credit_salesforce_id = c.cr_credit_salesforce_id
   -- Fiscal year goals
   Left Join goal g
     On c.cr_credit_salesforce_id = g.gift_officer_user_salesforce_id
