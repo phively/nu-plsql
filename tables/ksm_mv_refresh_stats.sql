@@ -60,6 +60,12 @@ From mv_address
 Union
 Select 1, 'mv_entity_employment', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
 From mv_entity_employment
+Union
+Select 1, 'mv_nu_events', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+From mv_nu_events
+Union
+Select 1, 'mv_nu_event_participants', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)
+From mv_nu_event_participants
 -- 7:40 AM
 Union
 Select 2, 'mv_households', count(*), min(mv_last_refresh), max(etl_update_date), min(etl_update_date)

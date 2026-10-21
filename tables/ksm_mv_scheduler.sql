@@ -277,6 +277,36 @@ Select
 From table(ksm_pkg_models.tbl_ksm_models_hh) kmhh
 ;
 
+--------------------------------------
+-- ksm_pkg_nu_events
+-- tbl_nu_events
+-- Drop Materialized View mv_nu_events;
+Create Materialized View mv_nu_events
+Refresh Complete
+Start With sysdate
+-- 7:30 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.5/24)
+As
+Select
+  nue.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_nu_events.tbl_nu_events) nue
+;
+
+-- tbl_nu_participants
+-- Drop Materialized View mv_nu_event_participants;
+Create Materialized View mv_nu_event_participants
+Refresh Complete
+Start With sysdate
+-- 7:30 AM tomorrow
+Next (trunc(sysdate) + 1 + 7.5/24)
+As
+Select
+  nup.*
+  , sysdate as mv_last_refresh
+From table(ksm_pkg_nu_events.tbl_nu_participants) nup
+;
+
 /*************************************************************************
 Level 2 dependencies
 7:40 AM
