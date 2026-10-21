@@ -31,14 +31,14 @@ salesforce_event_id   stg_alumni.conference360__event__c.id%type
 ,event_category       stg_alumni.conference360__event__c.conference360__category__c%type
 ,organizer_account    stg_alumni.conference360__event__c.conference360__organizer_account__c%type
 ,organizer_name       mv_entity.sort_name%type
-,KSM_Event            varchar2(10)
+,KSM_Event            varchar2(10) --- KSM Event Flag 
 ,url_link             stg_alumni.conference360__event__c.conference360__event_url__c%type
 ,venue_name           stg_alumni.conference360__event__c.conference360__venue_name__c%type               
 ,venue_city           stg_alumni.conference360__event__c.conference360__venue_city__c%type
 ,venue_state          stg_alumni.conference360__event__c.conference360__venue_state_province__c%type
 ,venue_country        stg_alumni.conference360__event__c.conference360__venue_country__c%type
-,create_date          stg_alumni.conference360__event__c.etl_create_date%type
-,update_date          stg_alumni.conference360__event__c.etl_update_date%type 
+,etl_create_date          stg_alumni.conference360__event__c.etl_create_date%type
+,etl_update_date          stg_alumni.conference360__event__c.etl_update_date%type 
 );
 
 Type rec_nu_participants Is Record (
@@ -55,13 +55,12 @@ household_id              mv_entity.household_id%type
 ,event_id                 stg_alumni.conference360__attendee__c.conference360__event_id__c%type
 ,event_name               stg_alumni.conference360__attendee__c.CONFERENCE360__EVENT_NAME__C%type
 ,organizer_name           stg_alumni.conference360__attendee__c.conference360__event_organizer_name__c%type
---- KSM Event Flag 
-,KSM_Event                varchar2(1) 
+,KSM_Event                varchar2(1) --- KSM Event Flag
 ,start_date               stg_alumni.conference360__attendee__c.CONFERENCE360__EVENT_START_DATE__C%type
 ,end_date                 stg_alumni.conference360__attendee__c.conference360__event_end_date__c%type
 ,registration_status      stg_alumni.conference360__attendee__c.conference360__registration_status__c%type
 ,attendance_status        stg_alumni.conference360__attendee__c.conference360__attendance_status__c%type 
-,create_date              stg_alumni.conference360__attendee__c.etl_create_date%type
+,etl_create_date              stg_alumni.conference360__attendee__c.etl_create_date%type
 ,etl_update_date           stg_alumni.conference360__attendee__c.etl_update_date%type
 );
 
@@ -79,10 +78,10 @@ Public pipelined functions declarations
 
 -- Return pipelined events
 Function tbl_nu_events
-    Return nu_events Pipelined;
+  Return nu_events Pipelined;
 
 Function tbl_nu_participants
-Return nu_participants Pipelined;
+  Return nu_participants Pipelined;
 
 /*********************** About pipelined functions ***********************
 Q: What is a pipelined function?
@@ -109,7 +108,8 @@ Private cursors -- data definitions
 
 Cursor c_nu_events Is
 
-with v as (select 
+with v as (
+select 
 event.id,
 event.name,
 event.conference360__organizer_account__c,
@@ -167,7 +167,8 @@ Cursor c_nu_participants Is
 
 --- Create a subquery to pull event participant data from STG tables 
 
-with event as (select  
+with event as (
+select  
 a.NU_DONOR_ID__C  as donor_id,
 a.CONFERENCE360__ATTENDEE_FULL_NAME__C as full_name ,
 a.CONFERENCE360__EVENT_NAME__C  as event_name,
