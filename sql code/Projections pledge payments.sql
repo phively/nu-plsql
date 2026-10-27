@@ -48,24 +48,26 @@ plg_credit As (
       As plg_status_desc
   From tableau_pledge_data pd
   Inner Join cash
-    On cash.opportunity_record_id = pd.OPPORTUNITY_RECORD_ID
+    On cash.opportunity_record_id = pd.opportunity_record_id
     And cash.designation_record_id = pd.designation_record_id
-  Where pd.BALANCE_CFY > 0
+  Where pd.balance_cfy > 0
     And cash.cash_category = 'Expendable'
+    And pd.opportunity_type Not Like '%PGBEQ%'
 )
 
 Select
   pd.donor_id
   , vas.prospect_manager_name
   , vas.lagm_name
-  , pd.PREF_MAIL_NAME
-  , pd.OPPORTUNITY_RECORD_ID
-  , pd.CREDIT_DATE
+  , pd.pref_mail_name
+  , pd.opportunity_record_id
+  , pd.credit_date
   , pd.designation_record_id
-  , pd.DESIGNATION_NAME
+  , pd.designation_name
   , pd.cash_category
+  , pd.opportunity_type
   , plg_credit.managed_hierarchy
-  , pd.FISCAL_YEAR
+  , pd.fiscal_year
   , pd.paid_cfy
   , pd.balance_cfy
   , Case
@@ -85,8 +87,8 @@ Select
     As recommended_discount_to
   , NULL
     As expected_cash
-  , pd.MONTHS_OVERDUE1
-  , pd.NEW_MONTHS_OVERDUE
+  , pd.months_overdue1
+  , pd.new_months_overdue
   , pd.pledge_original_amount
   , pd.pledge_ksm_total
   , pd.next_payment_date
