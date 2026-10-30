@@ -52,6 +52,7 @@ Type rec_proposal Is Record (
   , proposal_anticipated_amount dm_alumni.dim_proposal_opportunity.proposal_anticipated_amount%type
   , proposal_funded_amount dm_alumni.dim_proposal_opportunity.proposal_funded_amount%type
   , proposal_linked_gift_pledge_ids dm_alumni.dim_proposal_opportunity.proposal_linked_gift_pledge_ids%type
+  , proposal_first_linked_gift_pledge_id dm_alumni.dim_proposal_opportunity.proposal_linked_gift_pledge_ids%type
   , proposal_created_date dm_alumni.dim_proposal_opportunity.proposal_created_date%type
   , proposal_submitted_date dm_alumni.dim_proposal_opportunity.proposal_submitted_date%type
   , proposal_submitted_fy integer
@@ -168,6 +169,8 @@ Cursor c_proposals Is
     , prop.proposal_anticipated_amount
     , prop.proposal_funded_amount
     , prop.proposal_linked_gift_pledge_ids
+    , regexp_substr(proposal_linked_gift_pledge_ids, '[A-z0-9]*')
+      As proposal_first_linked_gift_pledge_id
     , prop.proposal_created_date
     , prop.proposal_submitted_date
     , ksm_pkg_calendar.get_fiscal_year(prop.proposal_submitted_date)
