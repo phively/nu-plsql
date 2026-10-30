@@ -12,9 +12,27 @@ metrics As (
   From DUAL
 )
 
+, credit_date As (
+  Select Distinct
+    opportunity_record_id
+    , min(credit_date)
+      As first_credit_date
+  From mv_transactions
+  Group By opportunity_record_id
+)
+
 Select
   mvp.opportunity_salesforce_id
   , mvp.proposal_record_id
+  , mvp.household_id_ksm
+  , mvp.household_primary_ksm
+  , mvp.prospect_name
+  , mvp.donor_id
+  , mvp.sort_name
+  , mve.institutional_suffix
+  , mve.preferred_address_city
+  , mve.preferred_address_state
+  , mve.preferred_address_country
   , mvp.historical_pm_user_id
   , mvp.historical_pm_name
   , mvp.historical_pm_role
@@ -22,12 +40,16 @@ Select
   , mvp.ksm_flag
   , mvp.proposal_active_indicator
   , upd.standard_proposal_flag
+  , mvp.proposal_type
+  , mvp.proposal_anticipated_amount
   , mvp.proposal_submitted_amount
   , mvp.proposal_funded_amount
   , mvp.proposal_stage
   , mvp.proposal_created_date
   , mvp.proposal_submitted_date
   , mvp.proposal_close_date
+  , mvp.proposal_first_linked_gift_pledge_id
+  , cd.first_credit_date
   , upd.cal_year
   , upd.cal_month
   , upd.fiscal_year
@@ -38,6 +60,8 @@ Select
     As ask_perf_year
   , ksm_pkg_calendar.get_quarter(upd.proposal_submitted_date, 'performance')
     As ask_perf_quarter
+  , ksm_pkg_calendar.get_performance_year(cd.first_credit_date)
+    As funded_perf_year
   -- MG dollars raised criteria
   , Case
       When mvp.proposal_submitted_amount >= mg_ask_amt
@@ -68,4 +92,8 @@ From table(metrics_pkg.tbl_universal_proposals_data) upd
 Cross Join metrics
 Inner Join mv_proposals mvp
   On mvp.proposal_record_id = upd.proposal_record_id
+Inner Join mv_entity mve
+  On mve.donor_id = mvp.donor_id
+Left Join credit_date cd
+  On cd.opportunity_record_id = mvp.proposal_first_linked_gift_pledge_id
 ;
